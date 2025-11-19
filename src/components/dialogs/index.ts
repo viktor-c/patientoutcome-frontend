@@ -1,0 +1,6 @@
+export { default as ChangePasswordDialog } from './ChangePasswordDialog.vue'
+export { default as CreatePatientCaseAndConsultationDialog } from './CreatePatientCaseAndConsultationDialog.vue'
+export { default as EditUserSettingsDialog } from './EditUserSettingsDialog.vue'
+export { default as SearchPatientOrCaseDialog } from './SearchPatientOrCaseDialog.vue'
+export { default as CreateEditConsultationDialog } from './CreateEditConsultationDialog.vue'
+export { default as CreateBatchConsultationsDialog } from './CreateBatchConsultationsDialog.vue'

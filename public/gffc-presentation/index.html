@@ -1,0 +1,235 @@
+<!doctype html>
+<html lang="de">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>PatientOutcome — Technologie-Präsentation</title>
+
+  <!-- Reveal.js CSS - local assets -->
+  <link rel="stylesheet" href="reveal/reveal.css">
+  <link rel="stylesheet" href="reveal/theme/night.css" id="theme">
+  <link rel="stylesheet" href="reveal/plugin/highlight/monokai.css">
+
+    <style>
+      /* Page-level container to center Reveal in the viewport */
+      body, html {
+        height: 100%;
+        margin: 0;
+        background: #000;
+        font-family: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial;
+      }
+      .reveal { height: 100%; }
+      .reveal .slides { max-width: 1200px; box-sizing: border-box; }
+
+      /* Simple readable adjustments for non-technical audience */
+      h1, h2, h3, h4 { margin: 0.4rem 0; }
+      ul { margin-top: 0.6rem; }
+      .two-columns { display: grid; grid-template-columns: 1fr 1fr; gap: 1.2rem; text-align: left; }
+      .features-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+      .feature-card { background: rgba(255,255,255,0.04); padding: 1rem; border-radius: 8px; }
+      .tech-item { background: rgba(255,255,255,0.03); padding: 0.7rem; border-radius: 6px; }
+    </style>
+  </head>
+  <body>
+
+    <div class="reveal">
+      <div class="slides">
+
+        <section data-background-gradient="linear-gradient(to bottom, #1e3a8a, #3b82f6)">
+          <h1>PatientOutcome</h1>
+          <h3>Technologie-Stack einer modernen Webanwendung</h3>
+          <p><small>Eine Full-Stack-Lösung für Patient Reported Outcome Measures (PROMs)</small></p>
+        </section>
+
+        <section>
+          <h2>Projektübersicht</h2>
+          <div class="two-columns">
+            <div>
+              <h4>Was ist PatientOutcome?</h4>
+              <ul>
+                <li>Digitale Erfassung von Patientendaten</li>
+                <li>Standardisierte Fragebögen (PROMs)</li>
+                <li>Anonyme Datenverwaltung</li>
+                <li>Automatische Auswertung</li>
+              </ul>
+            </div>
+            <div>
+              <h4>Technologie</h4>
+              <ul>
+                <li>🌐 Webanwendung</li>
+                <li>📱 Responsive Design</li>
+                <li>🔒 Datenschutzkonform</li>
+                <li>🆓 Open Source (MIT-Lizenz)</li>
+              </ul>
+            </div>
+          </div>
+        </section>
+
+        <section>
+          <h2>Eine Sprache für alles: JavaScript</h2>
+          <div style="margin-top:1rem;">
+            <p><strong>Frontend:</strong> Vue.js 3 + TypeScript — Was der Nutzer sieht</p>
+            <p><strong>Backend:</strong> Node.js + Express + TypeScript — Logik und APIs</p>
+            <p><strong>Datenbank:</strong> MongoDB — Persistente Speicherung</p>
+          </div>
+        </section>
+
+        <section>
+          <h2>Vorteile einer Full-Stack JavaScript-Lösung</h2>
+          <ul>
+            <li>Eine gemeinsame Sprache für Frontend & Backend</li>
+            <li>Code-Wiederverwendung und schnellere Entwicklung</li>
+            <li>Große Community & viele Bibliotheken</li>
+          </ul>
+        </section>
+
+        <section>
+          <h2>Frontend-Technologien</h2>
+          <div class="two-columns" style="margin-top:1rem;">
+            <div class="tech-item"><strong>Vue.js 3</strong> – Reaktive UI</div>
+            <div class="tech-item"><strong>Vuetify</strong> – UI-Komponenten</div>
+            <div class="tech-item"><strong>JSONForms</strong> – Dynamische Formulare</div>
+            <div class="tech-item"><strong>Vite</strong> – Dev-Server / Build-Tool</div>
+          </div>
+        </section>
+
+        <section>
+          <h2>Backend-Technologien</h2>
+          <div class="two-columns" style="margin-top:1rem;">
+            <div class="tech-item"><strong>Node.js & Express</strong></div>
+            <div class="tech-item"><strong>Zod</strong> – Schema-Validierung</div>
+            <div class="tech-item"><strong>Mongoose</strong> – MongoDB ODM</div>
+            <div class="tech-item"><strong>pino</strong> – Logging</div>
+          </div>
+        </section>
+
+        <section data-background-color="#2d3748">
+          <h2>🤖 KI-Assistenten in der Entwicklung</h2>
+          <ul>
+            <li>Verwendete LLMs: GPT-4o, GPT-4.1, Claude Sonnet 4</li>
+          </ul>
+        </section>
+
+        <section>
+          <h2>Vorteile von KI</h2>
+          <ul>
+            <li>Code-Generierung</li>
+            <li>Fehlersuche & Dokumentation</li>
+            <li>Lernhilfe für Entwickler</li>
+          </ul>
+        </section>
+
+        <section>
+          <h2>Nachteile & Best Practices</h2>
+          <div class="two-columns" style="margin-top:1rem;">
+            <div>
+              <h4>Herausforderungen</h4>
+              <ul>
+                <li>Falsche Vorschläge möglich</li>
+                <li>Kontext kann fehlen</li>
+                <li>Menschliche Überprüfung nötig</li>
+              </ul>
+            </div>
+            <div>
+              <h4>Best Practices</h4>
+              <ul>
+                <li>Code testen</li>
+                <li>KI als Assistenz nutzen</li>
+              </ul>
+            </div>
+          </div>
+        </section>
+
+        <section data-background-color="#10b981">
+          <h2>🆓 Open Source & MIT-Lizenz</h2>
+          <p>Der Code ist frei zugänglich. MIT erlaubt Nutzung und Verteilung.</p>
+        </section>
+
+        <section data-background-color="#7c3aed">
+          <h2>🔒 Datenschutz & Anonymität</h2>
+          <ul>
+            <li>Anonymisierung – keine direkten Identifikatoren</li>
+            <li>Rollenbasierte Zugriffskontrolle</li>
+            <li>DSGVO-konforme Ansätze</li>
+          </ul>
+        </section>
+
+        <section>
+          <h2>🚀 Geplante Features</h2>
+          <div class="features-grid">
+            <div class="feature-card"><h4>Statistiken für PROMs</h4><p>Auswertung & Visualisierung</p></div>
+            <div class="feature-card"><h4>Datenexport</h4><p>JSON / PDF</p></div>
+            <div class="feature-card"><h4>Verlaufsanalysen</h4><p>Veränderungen über Zeit</p></div>
+            <div class="feature-card"><h4>Benachrichtigungen</h4><p>Follow-up Erinnerungen</p></div>
+          </div>
+        </section>
+
+        <section data-background-color="#0ea5a4">
+          <h2>🔗 API-Design & OpenAPI</h2>
+          <h4>Warum API-Design wichtig ist</h4>
+          <ul>
+            <li>Klare Verträge zwischen Frontend und Backend</li>
+            <li>Erleichtert Wartung und Zusammenarbeit</li>
+          </ul>
+          <h4>OpenAPI / Swagger</h4>
+          <ul>
+            <li>Maschinenlesbare Spezifikation</li>
+            <li>Interaktive Doku (Swagger UI)</li>
+            <li>Generierung von Client-Code & Typen</li>
+          </ul>
+          <h4>Generierte Typen (TypeScript)</h4>
+          <ul>
+            <li>Mehr Typsicherheit im Frontend</li>
+            <li>Weniger Laufzeitfehler</li>
+          </ul>
+          <p><small>Im Projekt: Skript: <code>npm run regenerate-api</code></small></p>
+        </section>
+
+        <section>
+          <h2>🧪 Testing & Qualitätssicherung</h2>
+          <ul>
+            <li>Vitest (Unit)</li>
+            <li>Playwright (E2E)</li>
+          </ul>
+        </section>
+
+        <section>
+          <h2>📦 Versionierung & CI/CD</h2>
+          <ul>
+            <li>Git & GitHub</li>
+            <li>Automatische Tests in CI</li>
+            <li>Docker-basiertes Deployment</li>
+          </ul>
+        </section>
+
+        <section data-background-gradient="linear-gradient(to bottom, #3b82f6, #1e3a8a)">
+          <h2>Zusammenfassung</h2>
+          <ul>
+            <li>Full-Stack JavaScript</li>
+            <li>KI-unterstützte Entwicklung</li>
+            <li>Open Source (MIT)</li>
+            <li>Datenschutz & Qualitätssicherung</li>
+          </ul>
+          <h3>Danke!</h3>
+        </section>
+
+      </div>
+    </div>
+
+  <!-- Reveal.js and plugins - local assets -->
+  <script src="reveal/reveal.js"></script>
+  <script src="reveal/plugin/notes/notes.js"></script>
+  <script src="reveal/plugin/highlight/highlight.js"></script>
+
+    <script>
+      const deck = new Reveal(document.querySelector('.reveal'), {
+        hash: true,
+        center: true,
+        transition: 'slide',
+        backgroundTransition: 'fade',
+        plugins: [ RevealNotes, RevealHighlight ],
+      })
+      deck.initialize();
+    </script>
+  </body>
+</html>

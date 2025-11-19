@@ -1,0 +1,459 @@
+{
+  "formName": "MOXFQ",
+  "formTitle": "Manchester-Oxford Foot Questionnaire",
+  "version": "2.0.0",
+  "description": "A standardized questionnaire to assess foot and ankle pain and its impact on daily activities with integrated scoring system",
+  "lastUpdated": "2025-09-25",
+  "metadata": {
+    "questions": 16,
+    "scoringRange": "0-4 for each question",
+    "totalScoreRange": "0-64 (raw), 0-100 (normalized)",
+    "specialQuestions": [15, 16],
+    "languages": ["en", "de"],
+    "features": [
+      "Real-time scoring",
+      "Subscale analysis", 
+      "Table renderer",
+      "Progress tracking",
+      "Clinical interpretation",
+      "Responsive design"
+    ]
+  },
+  "schema": {
+    "type": "object",
+    "properties": {
+      "moxfq": {
+        "type": "object",
+        "title": "MANCHESTER-OXFORD FOOT QUESTIONNAIRE (MOXFQ)",
+        "properties": {
+          "q1": {
+            "type": "integer",
+            "title": "I have pain in my foot/ankle",
+            "enum": [0, 1, 2, 3, 4],
+            "enumNames": ["None of the time", "Rarely", "Some of the time", "Most of the time", "All of the time"],
+            "scaleType": "likert",
+            "subscale": "walkingStanding"
+          },
+          "q2": {
+            "type": "integer",
+            "title": "I avoid walking long distances because of pain in my foot/ankle",
+            "enum": [0, 1, 2, 3, 4],
+            "enumNames": ["None of the time", "Rarely", "Some of the time", "Most of the time", "All of the time"],
+            "scaleType": "likert",
+            "subscale": "walkingStanding"
+          },
+          "q3": {
+            "type": "integer",
+            "title": "I change the way I walk due to pain in my foot/ankle",
+            "enum": [0, 1, 2, 3, 4],
+            "enumNames": ["None of the time", "Rarely", "Some of the time", "Most of the time", "All of the time"],
+            "scaleType": "likert",
+            "subscale": "walkingStanding"
+          },
+          "q4": {
+            "type": "integer",
+            "title": "I walk slowly because of pain in my foot/ankle",
+            "enum": [0, 1, 2, 3, 4],
+            "enumNames": ["None of the time", "Rarely", "Some of the time", "Most of the time", "All of the time"],
+            "scaleType": "likert",
+            "subscale": "walkingStanding"
+          },
+          "q5": {
+            "type": "integer",
+            "title": "I have to stop and rest my foot/ankle because of pain",
+            "enum": [0, 1, 2, 3, 4],
+            "enumNames": ["None of the time", "Rarely", "Some of the time", "Most of the time", "All of the time"],
+            "scaleType": "likert",
+            "subscale": "walkingStanding"
+          },
+          "q6": {
+            "type": "integer",
+            "title": "I avoid some hard or rough surfaces because of pain in my foot/ankle",
+            "enum": [0, 1, 2, 3, 4],
+            "enumNames": ["None of the time", "Rarely", "Some of the time", "Most of the time", "All of the time"],
+            "scaleType": "likert",
+            "subscale": "walkingStanding"
+          },
+          "q7": {
+            "type": "integer",
+            "title": "I avoid standing for a long time because of pain in my foot/ankle",
+            "enum": [0, 1, 2, 3, 4],
+            "enumNames": ["None of the time", "Rarely", "Some of the time", "Most of the time", "All of the time"],
+            "scaleType": "likert",
+            "subscale": "walkingStanding"
+          },
+          "q8": {
+            "type": "integer",
+            "title": "I catch the bus or use the car instead of walking, because of pain in my foot/ankle",
+            "enum": [0, 1, 2, 3, 4],
+            "enumNames": ["None of the time", "Rarely", "Some of the time", "Most of the time", "All of the time"],
+            "scaleType": "likert",
+            "subscale": "walkingStanding"
+          },
+          "q9": {
+            "type": "integer",
+            "title": "I feel self-conscious about my foot/ankle",
+            "enum": [0, 1, 2, 3, 4],
+            "enumNames": ["None of the time", "Rarely", "Some of the time", "Most of the time", "All of the time"],
+            "scaleType": "likert",
+            "subscale": "pain"
+          },
+          "q10": {
+            "type": "integer",
+            "title": "I feel self-conscious about the shoes I have to wear",
+            "enum": [0, 1, 2, 3, 4],
+            "enumNames": ["None of the time", "Rarely", "Some of the time", "Most of the time", "All of the time"],
+            "scaleType": "likert",
+            "subscale": "socialInteraction"
+          },
+          "q11": {
+            "type": "integer",
+            "title": "The pain in my foot/ankle is more painful in the evening",
+            "enum": [0, 1, 2, 3, 4],
+            "enumNames": ["None of the time", "Rarely", "Some of the time", "Most of the time", "All of the time"],
+            "scaleType": "likert",
+            "subscale": "pain"
+          },
+          "q12": {
+            "type": "integer",
+            "title": "I get shooting pains in my foot/ankle",
+            "enum": [0, 1, 2, 3, 4],
+            "enumNames": ["None of the time", "Rarely", "Some of the time", "Most of the time", "All of the time"],
+            "scaleType": "likert",
+            "subscale": "pain"
+          },
+          "q13": {
+            "type": "integer",
+            "title": "The pain in my foot/ankle prevents me from carrying out my work/everyday activities",
+            "enum": [0, 1, 2, 3, 4],
+            "enumNames": ["None of the time", "Rarely", "Some of the time", "Most of the time", "All of the time"],
+            "scaleType": "likert",
+            "subscale": "socialInteraction"
+          },
+          "q14": {
+            "type": "integer",
+            "title": "I am unable to do all my social or recreational activities because of pain in my foot/ankle",
+            "enum": [0, 1, 2, 3, 4],
+            "enumNames": ["None of the time", "Rarely", "Some of the time", "Most of the time", "All of the time"],
+            "scaleType": "likert",
+            "subscale": "socialInteraction"
+          },
+          "q15": {
+            "type": "integer",
+            "title": "During the past 4 weeks how would you describe the pain you usually have in your foot/ankle? (please tick one box)",
+            "enum": [0, 1, 2, 3, 4],
+            "enumNames": ["None", "Very mild", "Mild", "Moderate", "Severe"],
+            "scaleType": "painSeverity",
+            "subscale": "pain",
+            "specialQuestion": true
+          },
+          "q16": {
+            "type": "integer",
+            "title": "During the past 4 weeks have you been troubled by pain from your foot/ankle in bed at night? (please tick one box)",
+            "enum": [0, 1, 2, 3, 4],
+            "enumNames": ["No nights", "Only 1 or 2 nights", "Some nights", "Most nights", "Every night"],
+            "scaleType": "nightPain",
+            "subscale": "socialInteraction",
+            "specialQuestion": true
+          }
+        },
+        "required": ["q1", "q2", "q3", "q4", "q5", "q6", "q7", "q8", "q9", "q10", "q11", "q12", "q13", "q14", "q15", "q16"]
+      }
+    },
+    "required": ["moxfq"]
+  },
+  "uiSchema": {
+    "type": "VerticalLayout",
+    "elements": [
+      {
+        "type": "Group",
+        "label": "MANCHESTER-OXFORD FOOT QUESTIONNAIRE (MOXFQ)",
+        "elements": [
+          { "type": "Control", "scope": "#/properties/moxfq/properties/q1", "options": { "format": "radio" } },
+          { "type": "Control", "scope": "#/properties/moxfq/properties/q2", "options": { "format": "radio" } },
+          { "type": "Control", "scope": "#/properties/moxfq/properties/q3", "options": { "format": "radio" } },
+          { "type": "Control", "scope": "#/properties/moxfq/properties/q4", "options": { "format": "radio" } },
+          { "type": "Control", "scope": "#/properties/moxfq/properties/q5", "options": { "format": "radio" } },
+          { "type": "Control", "scope": "#/properties/moxfq/properties/q6", "options": { "format": "radio" } },
+          { "type": "Control", "scope": "#/properties/moxfq/properties/q7", "options": { "format": "radio" } },
+          { "type": "Control", "scope": "#/properties/moxfq/properties/q8", "options": { "format": "radio" } },
+          { "type": "Control", "scope": "#/properties/moxfq/properties/q9", "options": { "format": "radio" } },
+          { "type": "Control", "scope": "#/properties/moxfq/properties/q10", "options": { "format": "radio" } },
+          { "type": "Control", "scope": "#/properties/moxfq/properties/q11", "options": { "format": "radio" } },
+          { "type": "Control", "scope": "#/properties/moxfq/properties/q12", "options": { "format": "radio" } },
+          { "type": "Control", "scope": "#/properties/moxfq/properties/q13", "options": { "format": "radio" } },
+          { "type": "Control", "scope": "#/properties/moxfq/properties/q14", "options": { "format": "radio" } },
+          { "type": "Control", "scope": "#/properties/moxfq/properties/q15", "options": { "format": "radio" } },
+          { "type": "Control", "scope": "#/properties/moxfq/properties/q16", "options": { "format": "radio" } }
+        ]
+      }
+    ]
+  },
+  "initialData": {
+    "moxfq": {
+      "q1": null, "q2": null, "q3": null, "q4": null, "q5": null, "q6": null, "q7": null, "q8": null,
+      "q9": null, "q10": null, "q11": null, "q12": null, "q13": null, "q14": null, "q15": null, "q16": null
+    }
+  },
+  "scoring": {
+    "method": "sum",
+    "minScore": 0,
+    "maxScore": 64,
+    "normalizedScale": "0-100",
+    "subscales": {
+      "walkingStanding": {
+        "name": "Walking & Standing",
+        "questions": ["q1", "q2", "q3", "q4", "q5", "q6", "q7", "q8"],
+        "maxScore": 32,
+        "description": "Mobility and weight-bearing activities"
+      },
+      "pain": {
+        "name": "Pain",
+        "questions": ["q9", "q11", "q12", "q15"],
+        "maxScore": 16,
+        "description": "Pain experience and severity"
+      },
+      "socialInteraction": {
+        "name": "Social Interaction",
+        "questions": ["q10", "q13", "q14", "q16"],
+        "maxScore": 16,
+        "description": "Social and recreational activities impact"
+      }
+    },
+    "calculation": {
+      "rawScore": "Sum of all answered questions",
+      "normalizedScore": "(rawScore / maxPossibleScore) × 100",
+      "interpretation": {
+        "0-25": "Mild Impact",
+        "26-50": "Moderate Impact", 
+        "51-75": "Severe Impact",
+        "76-100": "Very Severe Impact"
+      }
+    }
+  },
+  "validation": {
+    "allQuestionsRequired": true,
+    "validValues": [0, 1, 2, 3, 4],
+    "specialValidation": {
+      "q15": "Pain severity scale - different enumNames",
+      "q16": "Night pain frequency scale - different enumNames"
+    }
+  },
+  "translations": {
+    "en": {
+      "formTitle": "MANCHESTER-OXFORD FOOT QUESTIONNAIRE (MOXFQ)",
+      "likertScale": {
+        "0": "None of the time",
+        "1": "Rarely",
+        "2": "Some of the time", 
+        "3": "Most of the time",
+        "4": "All of the time"
+      },
+      "painSeverity": {
+        "0": "None",
+        "1": "Very mild",
+        "2": "Mild",
+        "3": "Moderate",
+        "4": "Severe"
+      },
+      "nightPain": {
+        "0": "No nights",
+        "1": "Only 1 or 2 nights",
+        "2": "Some nights",
+        "3": "Most nights",
+        "4": "Every night"
+      },
+      "questions": {
+        "q1": "I have pain in my foot/ankle",
+        "q2": "I avoid walking long distances because of pain in my foot/ankle",
+        "q3": "I change the way I walk due to pain in my foot/ankle",
+        "q4": "I walk slowly because of pain in my foot/ankle",
+        "q5": "I have to stop and rest my foot/ankle because of pain",
+        "q6": "I avoid some hard or rough surfaces because of pain in my foot/ankle",
+        "q7": "I avoid standing for a long time because of pain in my foot/ankle",
+        "q8": "I catch the bus or use the car instead of walking, because of pain in my foot/ankle",
+        "q9": "I feel self-conscious about my foot/ankle",
+        "q10": "I feel self-conscious about the shoes I have to wear",
+        "q11": "The pain in my foot/ankle is more painful in the evening",
+        "q12": "I get shooting pains in my foot/ankle",
+        "q13": "The pain in my foot/ankle prevents me from carrying out my work/everyday activities",
+        "q14": "I am unable to do all my social or recreational activities because of pain in my foot/ankle",
+        "q15": "During the past 4 weeks how would you describe the pain you usually have in your foot/ankle? (please tick one box)",
+        "q16": "During the past 4 weeks have you been troubled by pain from your foot/ankle in bed at night? (please tick one box)"
+      },
+      "interpretation": {
+        "mild": "Mild Impact",
+        "moderate": "Moderate Impact",
+        "severe": "Severe Impact",
+        "verySevere": "Very Severe Impact"
+      }
+    },
+    "de": {
+      "formTitle": "MANCHESTER-OXFORD FUSS FRAGEBOGEN (MOXFQ)",
+      "likertScale": {
+        "0": "Niemals",
+        "1": "Selten",
+        "2": "Manchmal",
+        "3": "Meistens",
+        "4": "Immer"
+      },
+      "painSeverity": {
+        "0": "Keine",
+        "1": "Sehr leicht",
+        "2": "Leicht",
+        "3": "Mäßig",
+        "4": "Stark"
+      },
+      "nightPain": {
+        "0": "Keine Nächte",
+        "1": "Nur 1 oder 2 Nächte",
+        "2": "Einige Nächte",
+        "3": "Die meisten Nächte",
+        "4": "Jede Nacht"
+      },
+      "questions": {
+        "q1": "Ich habe Schmerzen in meinem Fuß/Knöchel",
+        "q2": "Ich vermeide es, längere Strecken zu laufen, wegen der Schmerzen in meinem Fuß/Knöchel",
+        "q3": "Ich ändere meine Art zu gehen wegen der Schmerzen in meinem Fuß/Knöchel",
+        "q4": "Ich gehe langsam wegen der Schmerzen in meinem Fuß/Knöchel",
+        "q5": "Ich muss anhalten und meinen Fuß/Knöchel ausruhen lassen wegen der Schmerzen",
+        "q6": "Ich vermeide harte oder unebene Oberflächen wegen der Schmerzen in meinem Fuß/Knöchel",
+        "q7": "Ich vermeide es, lange zu stehen, wegen der Schmerzen in meinem Fuß/Knöchel",
+        "q8": "Ich nehme den Bus oder das Auto anstatt zu laufen, wegen der Schmerzen in meinem Fuß/Knöchel",
+        "q9": "Ich bin unsicher wegen meines Fußes/Knöchels",
+        "q10": "Ich bin unsicher wegen der Schuhe, die ich tragen muss",
+        "q11": "Die Schmerzen in meinem Fuß/Knöchel sind abends stärker",
+        "q12": "Ich bekomme stechende Schmerzen in meinem Fuß/Knöchel",
+        "q13": "Die Schmerzen in meinem Fuß/Knöchel hindern mich daran, meine Arbeit/alltäglichen Tätigkeiten auszuführen",
+        "q14": "Ich kann nicht all meine sozialen oder Freizeitaktivitäten wegen der Schmerzen in meinem Fuß/Knöchel durchführen",
+        "q15": "Wie würden Sie in den letzten 4 Wochen die Schmerzen beschreiben, die Sie normalerweise in Ihrem Fuß/Knöchel haben? (bitte ein Kästchen ankreuzen)",
+        "q16": "Wurden Sie in den letzten 4 Wochen nachts im Bett von Schmerzen in Ihrem Fuß/Knöchel geplagt? (bitte ein Kästchen ankreuzen)"
+      },
+      "interpretation": {
+        "mild": "Geringer Einfluss",
+        "moderate": "Moderater Einfluss", 
+        "severe": "Starker Einfluss",
+        "verySevere": "Sehr starker Einfluss"
+      }
+    }
+  },
+  "backendImplementation": {
+    "database": {
+      "tables": {
+        "moxfq_responses": {
+          "fields": {
+            "id": "Primary key",
+            "patient_id": "Foreign key to patient",
+            "consultation_id": "Foreign key to consultation", 
+            "q1": "INTEGER (0-4)",
+            "q2": "INTEGER (0-4)",
+            "q3": "INTEGER (0-4)",
+            "q4": "INTEGER (0-4)",
+            "q5": "INTEGER (0-4)",
+            "q6": "INTEGER (0-4)",
+            "q7": "INTEGER (0-4)",
+            "q8": "INTEGER (0-4)",
+            "q9": "INTEGER (0-4)",
+            "q10": "INTEGER (0-4)",
+            "q11": "INTEGER (0-4)",
+            "q12": "INTEGER (0-4)",
+            "q13": "INTEGER (0-4)",
+            "q14": "INTEGER (0-4)",
+            "q15": "INTEGER (0-4)",
+            "q16": "INTEGER (0-4)",
+            "created_at": "TIMESTAMP",
+            "updated_at": "TIMESTAMP"
+          }
+        },
+        "moxfq_scores": {
+          "fields": {
+            "id": "Primary key",
+            "response_id": "Foreign key to moxfq_responses",
+            "total_raw_score": "INTEGER (0-64)",
+            "total_normalized_score": "DECIMAL(5,2) (0-100)",
+            "walking_standing_score": "DECIMAL(5,2) (0-100)",
+            "pain_score": "DECIMAL(5,2) (0-100)",
+            "social_interaction_score": "DECIMAL(5,2) (0-100)",
+            "interpretation": "VARCHAR(20) (mild|moderate|severe|verySevere)",
+            "is_complete": "BOOLEAN",
+            "completion_percentage": "INTEGER (0-100)",
+            "calculated_at": "TIMESTAMP"
+          }
+        }
+      }
+    },
+    "apiEndpoints": {
+      "POST /api/moxfq": {
+        "description": "Save MOXFQ response and calculate scores",
+        "payload": "Full moxfq object with q1-q16",
+        "response": "Saved response with calculated scores"
+      },
+      "GET /api/moxfq/{id}": {
+        "description": "Retrieve MOXFQ response with scores",
+        "response": "Complete response and scoring data"
+      },
+      "GET /api/patient/{id}/moxfq": {
+        "description": "Get all MOXFQ responses for a patient",
+        "response": "Array of responses with longitudinal data"
+      }
+    },
+    "scoringAlgorithm": {
+      "pseudocode": [
+        "1. Validate all questions answered (q1-q16)",
+        "2. Calculate raw subscale scores:",
+        "   - walkingStanding = sum(q1-q8)",
+        "   - pain = sum(q9, q11, q12, q15)",
+        "   - socialInteraction = sum(q10, q13, q14, q16)",
+        "3. Calculate total raw score = sum(all questions)",
+        "4. Normalize scores: (rawScore / maxScore) × 100",
+        "5. Determine interpretation based on normalized total score",
+        "6. Save to database with timestamp"
+      ]
+    }
+  },
+  "frontendIntegration": {
+    "components": {
+      "MoxfqTableComponent": "Enhanced table view with real-time scoring",
+      "JsonForms": "Standard form view compatible with JsonForms"
+    },
+    "events": {
+      "scoring-updated": "Emitted when scores change",
+      "update:modelValue": "Standard v-model compatibility"
+    },
+    "features": [
+      "Real-time score calculation",
+      "Progress tracking",
+      "Responsive design",
+      "Multi-language support",
+      "Clinical interpretation",
+      "Data export capabilities"
+    ]
+  },
+  "clinicalValidation": {
+    "references": [
+      "Dawson J, et al. Questionnaire on the perceptions of patients about total knee replacement. J Bone Joint Surg Br. 1998;80(1):63-69.",
+      "Morley D, et al. The Manchester-Oxford Foot Questionnaire (MOXFQ): development and validation of a summary index score. Bone Joint Res. 2013;2(4):66-69."
+    ],
+    "validatedSubscales": true,
+    "normativeData": "Available in clinical literature",
+    "minimumImportantDifference": "To be determined based on clinical studies"
+  },
+  "usage": {
+    "jsonFormsCompatible": true,
+    "framework": "Vue 3 + Vuetify + TypeScript",
+    "customRenderers": ["MoxfqTableRenderer"],
+    "dependencies": ["@jsonforms/vue", "@jsonforms/vue-vuetify", "vuetify"],
+    "installation": [
+      "1. Copy MoxfqTableComponent.vue to your components directory",
+      "2. Add translations to your i18n files",
+      "3. Import and use in your Vue application",
+      "4. Handle scoring-updated event for backend integration"
+    ],
+    "notes": [
+      "Questions 15 and 16 use different answer scales",
+      "All questions required for valid scoring",
+      "Supports both table and standard form views",
+      "Real-time scoring with clinical interpretation"
+    ]
+  }
+}
