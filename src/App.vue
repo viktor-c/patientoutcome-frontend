@@ -3,6 +3,7 @@ import { RouterLink, RouterView, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { ref, computed } from 'vue'
 import LanguageSelector from '@/components/LanguageSelector.vue'
+import RoleSwitcher from '@/components/RoleSwitcher.vue'
 import { useNotifierStore, useUserStore } from '@/stores/'
 
 import AppAlert from '@/components/AppAlert.vue'
@@ -27,6 +28,10 @@ const router = useRouter()
 const showEditUserSettingsKey = ref(0);
 
 const shouldShowNavBar = computed(() => userStore.isAuthenticated() && !userStore.isKioskUser())
+const isKioskOrDoctor = computed(() => {
+  const roles = userStore.roles || []
+  return roles.includes('kiosk') || roles.includes('doctor')
+})
 
 // Format time based on locale
 function formatDateTime(DateTime: string) {
@@ -68,6 +73,18 @@ const logout = async () => {
               </template>
               <v-list-item-title>{{ t('dashboard.kioskAssignments') }}</v-list-item-title>
             </v-list-item>
+            <v-list-item v-if="userStore.hasRole('developer')" :to="{ name: 'activitylog' }">
+              <template #prepend>
+                <v-icon>mdi-text-box-multiple</v-icon>
+              </template>
+              <v-list-item-title>Activity Log</v-list-item-title>
+            </v-list-item>
+            <v-list-item v-if="userStore.hasRole('developer')" :to="{ name: 'statistics', params: { caseId: '677da5d8cb4569ad1c65515f' } }">
+              <template #prepend>
+                <v-icon>mdi-chart-line</v-icon>
+              </template>
+              <v-list-item-title>GFFC Statistics</v-list-item-title>
+            </v-list-item>
           </v-list>
         </v-menu>
 
@@ -105,10 +122,21 @@ const logout = async () => {
 
         <!-- Language selector component (shows current language + flag) -->
         <!-- The interactive menu moved into LanguageSelector.vue -->
-        <v-btn icon slim @click="logout"><v-icon>mdi-logout</v-icon></v-btn>
+        
+        <!-- Show role switcher for kiosk/doctor users, logout for others -->
+        <role-switcher v-if="isKioskOrDoctor" class="ml-2" />
+        <v-btn v-else icon slim @click="logout"><v-icon>mdi-logout</v-icon></v-btn>
 
       </v-app-bar>
     </template>
+
+    <!-- For kiosk users without navbar, show role switcher in top-right corner -->
+    <div
+      v-if="userStore.isAuthenticated() && userStore.isKioskUser()"
+      class="kiosk-role-switcher"
+    >
+      <role-switcher />
+    </div>
 
     <v-main>
       <RouterView />
@@ -126,5 +154,12 @@ const logout = async () => {
     right: 0;
     z-index: 1000;
   }
+}
+
+.kiosk-role-switcher {
+  position: fixed;
+  top: 16px;
+  right: 16px;
+  z-index: 1000;
 }
 </style>

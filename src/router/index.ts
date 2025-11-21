@@ -15,6 +15,8 @@ import KioskForm from '@/views/KioskForm.vue'
 import KioskListView from '@/views/Kiosk/KioskListView.vue'
 import LogoutView from '@/views/LogoutView.vue'
 import TechPresentation from '@/gffc-presentation/TechPresentation.vue'
+import ActivityLogView from '@/views/ActivityLogView.vue'
+import StatisticsView from '@/views/StatisticsView.vue'
 import { useUserStore } from '@/stores/userStore'
 
 const routes = [
@@ -26,6 +28,8 @@ const routes = [
   { path: '/:pathMatch(.*)*', name: 'NotFound', component: NotFound, meta: { titleKey: 'pageTitles.notFound' } },
 
   { path: '/dashboard', name: 'dashboard', component: DashboardView, meta: { titleKey: 'pageTitles.dashboard' } },
+  { path: '/activity-log', name: 'activitylog', component: ActivityLogView, meta: { titleKey: 'pageTitles.activityLog', requiredRole: 'developer' } },
+  { path: '/statistics/:caseId', name: 'statistics', component: StatisticsView, props: true, meta: { titleKey: 'pageTitles.statistics' } },
   { path: '/case/:caseId', name: 'patientcaselanding', component: () => import('@/views/Patient/PatientCaseLanding.vue'), props: true, meta: { titleKey: 'pageTitles.patientCaseLanding' } },
   // disabled patients view for now, this should be accessed via dashboard
   //{ path: '/patients', name: 'patients', component: PatientView, meta: { titleKey: 'pageTitles.patients' } },

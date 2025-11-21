@@ -678,6 +678,8 @@ export default {
     register: 'Register',
     logout: 'Logout',
     dashboard: 'Dashboard',
+    activityLog: 'Activity Log',
+    statistics: 'Statistics',
     patients: 'Patients',
     patientOverview: 'Patient Overview',
     cases: 'Patient Cases',
