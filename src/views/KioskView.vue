@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import LanguageSelector from '@/components/LanguageSelector.vue'
+import PostopWeekBanner from '@/components/PostopWeekBanner.vue'
 import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
 import { useDateFormat } from '@/composables/useDateFormat'
@@ -118,6 +119,9 @@ onMounted(() => {
   <v-container class="pa-6 kiosk-container">
     <v-row justify="center">
       <v-col cols="12" md="10" lg="8">
+        <!-- Postop Week Banner -->
+        <PostopWeekBanner />
+        
         <!-- Header -->
         <v-card class="mb-6" elevation="2">
           <v-card-title

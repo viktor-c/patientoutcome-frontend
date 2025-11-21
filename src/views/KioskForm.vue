@@ -53,6 +53,7 @@ const processFormData = (newFormData: FormData) => {
 // Handle form submission
 const handleSubmitForm = () => {
   console.log('Form submitted successfully')
+  
   // Navigate back to kiosk view
   router.push({ name: 'kiosk' })
 }
