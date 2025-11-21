@@ -18,50 +18,102 @@ const username = ref('')
 const password = ref('')
 const isLoading = ref(false)
 
-// Computed: are both fields filled?
+// Check if username starts with "kiosk" for kiosk mode
+const isKioskMode = computed(() => {
+  return username.value.trim().startsWith('kiosk')
+})
+
+// Computed: check if form is ready to submit
 const canSubmit = computed(() => {
+  // For kiosk mode, only username is required
+  if (isKioskMode.value) {
+    return username.value.trim() !== ''
+  }
+  // For normal mode, both fields are required
   return username.value.trim() !== '' && password.value.trim() !== ''
 })
 
 
 const login = async () => {
-  if (!username.value || !password.value) {
-    notifierStore.notify('Please fill in both username and password.', 'error')
+  if (!username.value) {
+    notifierStore.notify('Please enter a username.', 'error')
     return
   }
 
-  isLoading.value = true
-  try {
-    const response = await userApi.loginUser({ loginUserRequest: { username: username.value, password: password.value } })
-    if (response.responseObject && response.success && response.statusCode == 200) {
-      userStore.setSession({
-        username: username.value,
-        department: response.responseObject.department,
-        belongsToCenter: response.responseObject.belongsToCenter,
-        email: response.responseObject.email || '', // Ensure email is set, default to empty string if not provided
-        roles: (response.responseObject as LoginUser200ResponseResponseObject & { roles?: string[] }).roles || [] // Will be populated when backend provides roles field
+  // Check if kiosk mode
+  if (isKioskMode.value) {
+    // Kiosk login (passwordless)
+    isLoading.value = true
+    try {
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:40001'}/user/kiosk-login`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+        body: JSON.stringify({ username: username.value }),
       })
-      notifierStore.notify(t('login.loginSuccessfull'), 'success')
-      // Redirect to intended route if present, otherwise let router guard decide based on role
-      const redirect = router.currentRoute.value.query.redirect as string | undefined
-      if (redirect) {
-        router.push(redirect)
+      
+      const data = await response.json()
+      
+      if (data.responseObject && data.success && data.statusCode === 200) {
+        userStore.setSession({
+          username: username.value,
+          department: data.responseObject.department,
+          belongsToCenter: data.responseObject.belongsToCenter,
+          email: data.responseObject.email || '',
+          roles: data.responseObject.roles || [],
+          postopWeek: data.responseObject.postopWeek
+        })
+        notifierStore.notify('Kiosk login successful!', 'success')
+        router.push('/kiosk')
       } else {
-        // Let the router guard redirect based on user role
-        router.push('/dashboard')
+        notifierStore.notify(data.message || 'Kiosk login failed', 'error')
       }
-    } else {
-      notifierStore.notify('Invalid username or password.', 'error')
+    } catch (error: unknown) {
+      console.error('Kiosk login error:', error)
+      notifierStore.notify('An error occurred during kiosk login.', 'error')
+    } finally {
+      isLoading.value = false
     }
-  } catch (error: unknown) {
-    let errorMessage = 'An unexpected error occurred'
-    if (error instanceof ResponseError) {
-      errorMessage = (await error.response.json()).message
+  } else {
+    // Normal login with password
+    if (!password.value) {
+      notifierStore.notify('Please fill in both username and password.', 'error')
+      return
     }
-    console.error('Login error:', errorMessage)
-    notifierStore.notify('An error occurred during login.', errorMessage === 'Invalid credentials' ? 'error' : 'info')
-  } finally {
-    isLoading.value = false
+
+    isLoading.value = true
+    try {
+      const response = await userApi.loginUser({ loginUserRequest: { username: username.value, password: password.value } })
+      if (response.responseObject && response.success && response.statusCode == 200) {
+        userStore.setSession({
+          username: username.value,
+          department: response.responseObject.department,
+          belongsToCenter: response.responseObject.belongsToCenter,
+          email: response.responseObject.email || '',
+          roles: (response.responseObject as LoginUser200ResponseResponseObject & { roles?: string[] }).roles || []
+        })
+        notifierStore.notify(t('login.loginSuccessfull'), 'success')
+        const redirect = router.currentRoute.value.query.redirect as string | undefined
+        if (redirect) {
+          router.push(redirect)
+        } else {
+          router.push('/dashboard')
+        }
+      } else {
+        notifierStore.notify('Invalid username or password.', 'error')
+      }
+    } catch (error: unknown) {
+      let errorMessage = 'An unexpected error occurred'
+      if (error instanceof ResponseError) {
+        errorMessage = (await error.response.json()).message
+      }
+      console.error('Login error:', errorMessage)
+      notifierStore.notify('An error occurred during login.', errorMessage === 'Invalid credentials' ? 'error' : 'info')
+    } finally {
+      isLoading.value = false
+    }
   }
 }
 onMounted(() => {
@@ -81,10 +133,17 @@ onMounted(() => {
     <v-card>
       <v-card-title>{{ t('login.title') }}</v-card-title>
       <v-card-text>
+        <!-- Kiosk mode indicator -->
+        <v-alert v-if="isKioskMode" type="info" variant="tonal" class="mb-4" density="compact">
+          <v-icon icon="mdi-monitor-dashboard" class="mr-2"></v-icon>
+          Kiosk Mode - No password required
+        </v-alert>
+        
         <v-form @submit.prevent="login">
           <v-text-field v-model="username" :label="t('login.username')" outlined dense required
-                        autocomplete="username" autofocus></v-text-field>
-          <v-text-field v-model="password" :label="t('login.password')" type="password" outlined dense
+                        autocomplete="username" autofocus
+                        hint="Enter username starting with 'kiosk' for kiosk mode"></v-text-field>
+          <v-text-field v-if="!isKioskMode" v-model="password" :label="t('login.password')" type="password" outlined dense
                         required autocomplete="current-password"></v-text-field>
           <div class="d-flex justify-center">
             <v-tooltip v-if="!canSubmit" location="top">
@@ -97,10 +156,10 @@ onMounted(() => {
                        color="primary"
                        type="submit"
                        :disabled="!canSubmit">
-                  {{ t('login.loginButton') }}
+                  {{ isKioskMode ? 'Kiosk Login' : t('login.loginButton') }}
                 </v-btn>
               </template>
-              <span>{{ t('login.fillFields') }}</span>
+              <span>{{ isKioskMode ? 'Enter kiosk username' : t('login.fillFields') }}</span>
             </v-tooltip>
 
             <template v-else>
@@ -110,11 +169,11 @@ onMounted(() => {
                      :loading="isLoading"
                      color="primary"
                      type="submit">
-                {{ t('login.loginButton') }}
+                {{ isKioskMode ? 'Kiosk Login' : t('login.loginButton') }}
               </v-btn>
             </template>
           </div>
-          <div class="text-center mt-2 text-caption text-grey" v-if="!canSubmit">{{ t('login.fillFields') }}</div>
+          <div class="text-center mt-2 text-caption text-grey" v-if="!canSubmit">{{ isKioskMode ? 'Enter kiosk username' : t('login.fillFields') }}</div>
         </v-form>
         <v-divider class="mt-4"></v-divider>
         <div class="text-center mt-4">
