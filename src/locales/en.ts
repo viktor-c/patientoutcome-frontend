@@ -92,26 +92,7 @@ export default {
         socialInteraction: 'Social Interaction'
       }
     },
-    // Form-specific translations can be added here for AOFAS, EFAS, MOXFQ, etc.
-    aofas: {
-      title: 'AOFAS Rating',
-      notApplicable: 'Not applicable'
-    },
-    efas: {
-      notApplicable: 'nicht zutreffend'
-    },
-    moxfq: {
-      title: {
-        description: 'Manchester-Oxford Foot Questionnaire (MOXFQ)',
-        scoreAnalysis: 'MOXFQ Score Analysis'
-      },
-      interpretation: {
-        mild: 'Mild',
-        moderate: 'Moderate',
-        severe: 'Severe',
-        verySevere: 'Very Severe'
-      }
-    },
+    // Form-specific translations should live inside each form template's `translations` block
     patient: {
       addExternalId: 'Add External ID',
       removeExternalId: 'Remove External ID',

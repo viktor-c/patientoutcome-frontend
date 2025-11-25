@@ -113,26 +113,7 @@ export default {
         socialInteraction: 'Soziale Interaktion'
       }
     },
-    // Form-spezifische Übersetzungen für AOFAS, EFAS, MOXFQ, etc.
-    aofas: {
-      title: 'AOFAS Bewertung',
-      notApplicable: 'Nicht zutreffend'
-    },
-    efas: {
-      notApplicable: 'nicht zutreffend'
-    },
-    moxfq: {
-      title: {
-        description: 'Manchester-Oxford Fuß Fragebogen (MOXFQ)',
-        scoreAnalysis: 'MOXFQ Score-Analyse'
-      },
-      interpretation: {
-        mild: 'Leicht',
-        moderate: 'Mäßig',
-        severe: 'Schwer',
-        verySevere: 'Sehr schwer'
-      }
-    },
+    // Form-spezifische Übersetzungen sollten in den jeweiligen Formularvorlagen unter `translations` liegen
     patient: {
       addExternalId: 'Externe ID hinzufügen',
       removeExternalId: 'Externe ID entfernen',
