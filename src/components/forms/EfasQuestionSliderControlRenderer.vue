@@ -443,6 +443,15 @@ const showNoQuestions = ref(true)
   }
 }
 
+/* Smaller tick label on very small screens to avoid overflow */
+@media (max-width: 600px) {
+  ::v-deep .v-slider-track__tick-label {
+    font-size: 12px !important;
+    line-height: 1 !important;
+    white-space: nowrap;
+  }
+}
+
 /* Error state styling */
 .v-slider.v-input--error .v-slider-thumb {
   background-color: #f44336 !important;

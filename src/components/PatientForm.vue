@@ -318,35 +318,45 @@ const renderedMarkdownFooter = computed(() => {
   </v-container>
 
   <!-- Form Progress Card -->
-  <FormProgressCard
+  <!-- <FormProgressCard
                     v-if="formScoring"
                     :scoring="formScoring"
                     :title="t('forms.scoring.overallProgress')"
                     :showSubmitButton="isFormComplete"
-                    @submit="handleSubmit" />
+                    @submit="handleSubmit" /> -->
 
   <br />
-  <!-- Show regular save button if form is not complete, or if FormProgressCard is not shown -->
-  <!--<v-btn v-if="!isFormComplete" color="primary" @click="handleSubmit">
-    {{ t('forms.saveAndSubmitForm') }}
-  </v-btn>
--->
-
-  <v-btn
-         v-if="formArrayIdx > 0"
-         @click="() => handleSubmit(() => emit('gotoPreviousForm'))"
-         color="secondary"
-         class="ml-2">
-    {{ t('forms.previousForm') }}
-  </v-btn>
-
-  <v-btn
-         v-if="typeof formArrayIdx === 'number'"
-         @click="() => handleSubmit(() => emit('gotoNextForm'))"
-         color="primary"
-         class="ml-2">
-    {{ t('forms.nextForm') }}
-  </v-btn>
+  <!-- Navigation buttons -->
+  <v-row v-if="isFormComplete" class="mt-4">
+    <v-col cols="12" sm="auto">
+      <v-btn
+             v-if="formArrayIdx > 0"
+             @click="() => handleSubmit(() => emit('gotoPreviousForm'))"
+             color="secondary"
+             variant="outlined"
+             prepend-icon="mdi-arrow-left">
+        {{ t('forms.previousForm') }}
+      </v-btn>
+    </v-col>
+    <v-col cols="12" sm="auto">
+      <v-btn
+             @click="() => handleSubmit(() => emit('submitForm'))"
+             color="primary"
+             variant="outlined"
+             prepend-icon="mdi-content-save">
+        {{ t('forms.submitAndGoBack') }}
+      </v-btn>
+    </v-col>
+    <v-col cols="12" sm="auto">
+      <v-btn
+             v-if="typeof formArrayIdx === 'number'"
+             @click="() => handleSubmit(() => emit('gotoNextForm'))"
+             color="primary"
+             prepend-icon="mdi-arrow-right">
+        {{ t('forms.submitAndNextForm') }}
+      </v-btn>
+    </v-col>
+  </v-row>
 </template>
 <style scoped>
 @import '@jsonforms/vue-vuetify/lib/jsonforms-vue-vuetify.css';

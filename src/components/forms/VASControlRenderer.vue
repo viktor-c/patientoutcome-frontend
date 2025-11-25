@@ -41,7 +41,7 @@ const initializeLocalData = () => {
       }
     }
   }
-  
+
   console.debug('VAS: Initialized pain level:', localPainLevel.value)
 }
 
@@ -63,7 +63,7 @@ const currentPainFace = computed(() => {
   // Find the closest pain face
   let closest = painFaces[0]
   let minDiff = Math.abs(level - painFaces[0].value)
-  
+
   for (const face of painFaces) {
     const diff = Math.abs(level - face.value)
     if (diff < minDiff) {
@@ -71,7 +71,7 @@ const currentPainFace = computed(() => {
       closest = face
     }
   }
-  
+
   return closest
 })
 
@@ -87,12 +87,16 @@ const calculateScore = (painLevel: number): ScoringData => {
       }
     },
     total: {
+      name: 'VAS Score',
       rawScore,
       normalizedScore,
-      maxScore: 10,
-      minScore: 0
+      maxPossibleScore: 10,
+      answeredQuestions: 1,
+      totalQuestions: 1,
+      completionPercentage: 100,
+      isComplete: true
     },
-    subscales: []
+    subscales: {}
   }
 }
 
@@ -140,18 +144,17 @@ const sliderColor = computed(() => {
         <v-col cols="12">
           <div class="px-4">
             <v-slider
-              v-model="localPainLevel"
-              :color="sliderColor"
-              :thumb-label="true"
-              :min="0"
-              :max="10"
-              :step="0.1"
-              :ticks="painFaces.map(f => f.value)"
-              show-ticks="always"
-              :tick-size="4"
-              track-size="8"
-              thumb-size="24"
-            >
+                      v-model="localPainLevel"
+                      :color="sliderColor"
+                      :thumb-label="true"
+                      :min="0"
+                      :max="10"
+                      :step="0.1"
+                      :ticks="painFaces.map(f => f.value)"
+                      show-ticks="always"
+                      :tick-size="4"
+                      track-size="8"
+                      thumb-size="24">
               <template #prepend>
                 <span class="text-caption">0</span>
               </template>
@@ -173,12 +176,11 @@ const sliderColor = computed(() => {
             <v-card-text>
               <div class="pain-faces-grid">
                 <div
-                  v-for="face in painFaces"
-                  :key="face.value"
-                  class="pain-face-item"
-                  :class="{ 'active': Math.abs(localPainLevel - face.value) < 1 }"
-                  @click="localPainLevel = face.value"
-                >
+                     v-for="face in painFaces"
+                     :key="face.value"
+                     class="pain-face-item"
+                     :class="{ 'active': Math.abs(localPainLevel - face.value) < 1 }"
+                     @click="localPainLevel = face.value">
                   <div class="face-emoji" :style="{ color: face.color }">{{ face.emoji }}</div>
                   <div class="face-value">{{ face.value }}</div>
                   <div class="face-label text-caption">{{ face.label }}</div>
@@ -194,7 +196,7 @@ const sliderColor = computed(() => {
         <v-col cols="12">
           <v-alert type="info" variant="tonal" density="compact">
             <div class="text-body-2">
-              <strong>Anleitung:</strong> Bewegen Sie den Schieberegler oder klicken Sie auf ein Gesicht, 
+              <strong>Anleitung:</strong> Bewegen Sie den Schieberegler oder klicken Sie auf ein Gesicht,
               um Ihre aktuelle Schmerzintensität anzugeben.
             </div>
             <div class="text-caption mt-2">
@@ -224,9 +226,12 @@ const sliderColor = computed(() => {
 }
 
 @keyframes pulse {
-  0%, 100% {
+
+  0%,
+  100% {
     transform: scale(1);
   }
+
   50% {
     transform: scale(1.05);
   }
@@ -293,16 +298,16 @@ const sliderColor = computed(() => {
   .pain-emoji {
     font-size: 4rem;
   }
-  
+
   .pain-label {
     font-size: 1.2rem;
   }
-  
+
   .pain-faces-grid {
     grid-template-columns: repeat(3, 1fr);
     gap: 0.5rem;
   }
-  
+
   .face-emoji {
     font-size: 2rem;
   }
