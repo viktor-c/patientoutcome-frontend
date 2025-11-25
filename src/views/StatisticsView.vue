@@ -9,6 +9,24 @@
       </v-card-title>
 
       <v-card-text>
+        <!-- Reference Date Info -->
+        <v-row v-if="statistics && ((statistics as any).surgeryDate || (statistics as any).caseCreatedAt)" class="mb-4">
+          <v-col>
+            <v-alert type="info" variant="tonal" density="compact">
+              <template v-if="(statistics as any).surgeryDate">
+                <v-icon start>mdi-hospital-box</v-icon>
+                <strong>OP-Datum:</strong> {{ new Date((statistics as any).surgeryDate).toLocaleDateString('de-DE') }}
+                <span class="ml-2 text-caption">(Zeitlinie relativ zur Operation)</span>
+              </template>
+              <template v-else-if="(statistics as any).caseCreatedAt">
+                <v-icon start>mdi-folder-clock</v-icon>
+                <strong>Fall erstellt:</strong> {{ new Date((statistics as any).caseCreatedAt).toLocaleDateString('de-DE') }}
+                <span class="ml-2 text-caption">(Zeitlinie relativ zur Fallerstellung)</span>
+              </template>
+            </v-alert>
+          </v-col>
+        </v-row>
+
         <!-- Timeline Mode Toggle -->
         <v-row class="mb-4">
           <v-col>
@@ -132,6 +150,21 @@ const loading = ref(false);
 const error = ref<string | null>(null);
 const statistics = ref<GetCaseStatistics200ResponseResponseObject | null>(null);
 const scoreData = ref<GetScoreData200ResponseResponseObject | null>(null);
+
+// Calculate time since surgery or case creation
+const calculateTimeSinceReference = (consultationDate: Date, referenceDate: Date): string => {
+  const diffMs = consultationDate.getTime() - referenceDate.getTime();
+  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+  const diffWeeks = Math.floor(diffDays / 7);
+  const diffMonths = Math.floor(diffDays / 30);
+
+  // Show months when more than 12 weeks (3 months)
+  if (diffWeeks > 12) {
+    return `${diffMonths} Monate`;
+  } else {
+    return `${diffWeeks} Wochen`;
+  }
+};
 // Mapping of formTemplateId -> category key. Replace the placeholder ids with your real template ids.
 const TEMPLATE_ID_TO_CATEGORY: Record<string, "aofas" | "efas" | "moxfq"> = {
   '67b4e612d0feb4ad99ae2e84': 'aofas',
@@ -248,8 +281,22 @@ const chartData = computed<ChartData<"line"> | null>(() => {
   if (!data || data.length === 0) return null;
 
   // Extract labels based on mode
+  // Include time since surgery/case creation in labels
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const stats = statistics.value as any; // Type will be updated after OpenAPI regeneration
   const labels = timelineMode.value === "realTime"
-    ? (data as GetScoreData200ResponseResponseObjectRealTimeInner[]).map(point => new Date(point.date ?? 0))
+    ? (data as GetScoreData200ResponseResponseObjectRealTimeInner[]).map(point => {
+        const date = new Date(point.date ?? 0);
+        // Add time since reference if available
+        if (stats?.surgeryDate) {
+          const timeSince = calculateTimeSinceReference(date, new Date(stats.surgeryDate));
+          return `${date.toLocaleDateString()} (${timeSince})`;
+        } else if (stats?.caseCreatedAt) {
+          const timeSince = calculateTimeSinceReference(date, new Date(stats.caseCreatedAt));
+          return `${date.toLocaleDateString()} (${timeSince})`;
+        }
+        return date;
+      })
     : data.map((_, index) => `Visit ${index + 1}`);
 
   return {

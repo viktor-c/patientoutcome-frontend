@@ -9,6 +9,7 @@ import { consultationApi } from '@/api'
 import { patientCaseApi } from '@/api'
 import { useUserStore } from '@/stores/userStore'
 const userStore = useUserStore()
+
 const selectedDate = ref([new Date().setDate(new Date().getDate() - Number(userStore.daysBeforeConsultations || 7)), new Date().setDate(new Date().getDate() + 7)]) // Default to today and 1 week in the future
 
 const { t, locale } = useI18n()
