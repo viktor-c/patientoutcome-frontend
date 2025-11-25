@@ -15,6 +15,7 @@ import FormProgressCard from '@/components/FormProgressCard.vue'
 import { entry as EfasQuestionSliderControlRenderer } from './forms/EfasQuestionSliderControlRenderer.entry'
 import { entry as AofasControlRenderer } from './forms/AofasControlRenderer.entry'
 import { entry as MoxfqTableRenderer } from './forms/MoxfqTableRenderer.entry'
+import { entry as VASControlRenderer } from './forms/VASControlRenderer.entry'
 
 import type { ScoringData } from '@/types'
 
@@ -33,6 +34,7 @@ const renderers = markRaw([
   EfasQuestionSliderControlRenderer,
   AofasControlRenderer,
   MoxfqTableRenderer,
+  VASControlRenderer,
   // additional custom renderers can be added here in form of plugins
   // which can then be dynamically imported based on form type
 ])

@@ -16,13 +16,15 @@ import { formApi } from '@/api'
 import { entry as EfasQuestionSliderControlRenderer } from '@/components/forms/EfasQuestionSliderControlRenderer.entry'
 import { entry as AofasControlRenderer } from '@/components/forms/AofasControlRenderer.entry'
 import { entry as MoxfqTableRenderer } from '@/components/forms/MoxfqTableRenderer.entry'
+import { entry as VASControlRenderer } from '@/components/forms/VASControlRenderer.entry'
 
 // JsonForms setup
 const renderers = markRaw([
   ...extendedVuetifyRenderers,
   EfasQuestionSliderControlRenderer,
   AofasControlRenderer,
-  MoxfqTableRenderer
+  MoxfqTableRenderer,
+  VASControlRenderer
 ])
 
 const componentName = 'ReviewFormAnswers.vue'
