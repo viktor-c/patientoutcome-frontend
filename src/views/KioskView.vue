@@ -9,10 +9,46 @@ import { kioskApi } from '@/api'
 import type { CreateConsultation201Response } from '@/api'
 import { useNotifierStore } from '@/stores/notifierStore'
 
-const { t } = useI18n()
+const { t, te } = useI18n()
 const router = useRouter()
 const notifier = useNotifierStore()
 const { formatLocalizedDate } = useDateFormat()
+
+// Localise a single reason entry (string or object). Falls back to raw value.
+const localizeReason = (r: unknown) => {
+  if (r === null || typeof r === 'undefined') return ''
+
+  // simple string codes
+  if (typeof r === 'string') {
+    const key = `consultation.reasons.${r}`
+    return te(key) ? t(key) : r
+  }
+
+  // objects: try common fields
+  if (typeof r === 'object') {
+    const obj = r as Record<string, unknown>
+    if (obj.id && typeof obj.id === 'string') {
+      const key = `consultation.reasons.${obj.id}`
+      return te(key) ? t(key) : String(obj.id)
+    }
+    if (obj.code && typeof obj.code === 'string') {
+      const key = `consultation.reasons.${obj.code}`
+      return te(key) ? t(key) : String(obj.code)
+    }
+    if (obj.label && typeof obj.label === 'string') {
+      const key = `consultation.reasons.${obj.label}`
+      return te(key) ? t(key) : String(obj.label)
+    }
+    // fallback: stringify
+    try {
+      return JSON.stringify(obj)
+    } catch (e) {
+      return String(obj)
+    }
+  }
+
+  return String(r)
+}
 
 // Start surveys: navigate to the first incomplete form for this consultation
 const startSurveys = () => {
@@ -205,7 +241,16 @@ onMounted(() => {
                     {{ t('consultation.reasonForConsultation') }}:
                   </div>
                   <div class="text-body-1">
-                    {{ consultation.responseObject.reasonForConsultation }}
+                    <template v-if="Array.isArray(consultation.responseObject.reasonForConsultation)">
+                      <ul>
+                        <li v-for="(r, idx) in consultation.responseObject.reasonForConsultation" :key="idx">
+                          {{ localizeReason(r) }}
+                        </li>
+                      </ul>
+                    </template>
+                    <template v-else>
+                      {{ localizeReason(consultation.responseObject.reasonForConsultation) || 'N/A' }}
+                    </template>
                   </div>
                 </v-col>
               </v-row>

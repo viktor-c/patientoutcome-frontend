@@ -91,6 +91,8 @@ export default {
     untitledForm: 'Unbenanntes Formular',
     saveAndSubmitForm: 'Speichern und zum nächsten Formular',
     submitCompletedForm: 'Vollständiges Formular absenden',
+    submitAndNextForm: 'Absenden und nächstes Formular',
+    submitAndGoBack: 'Absenden und zurück',
     completionTime: 'Bearbeitungszeit: {seconds} Sekunden',
     scoring: {
       overallProgress: 'Gesamtfortschritt',
@@ -279,6 +281,18 @@ export default {
   },
   consultation: {
     title: 'Neue Konsultation hinzufügen',
+    reasons: {
+      pain: 'Schmerz',
+      follow_up: 'Nachsorge',
+      postop: 'Postoperativ',
+      preop: 'Präoperativ',
+      new_patient: 'Neuer Patient',
+      revision: 'Revisionsoperation',
+      checkup: 'Kontrolle',
+      imaging: 'Bildgebung erforderlich',
+      medication: 'Medikationsproblem',
+      other: 'Andere',
+    },
     createBatch: '{count} Konsultationen erstellen',
     createFromBlueprint: 'Konsultationen aus Vorlage erstellen',
     referenceDate: 'Referenzdatum',

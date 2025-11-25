@@ -18,9 +18,9 @@ const username = ref('')
 const password = ref('')
 const isLoading = ref(false)
 
-// Check if username starts with "kiosk" for kiosk mode
+// Check if username starts with "kiosk" for kiosk mode (case-insensitive)
 const isKioskMode = computed(() => {
-  return username.value.trim().startsWith('kiosk')
+  return username.value.trim().toLowerCase().startsWith('kiosk')
 })
 
 // Computed: check if form is ready to submit
@@ -42,33 +42,24 @@ const login = async () => {
 
   // Check if kiosk mode
   if (isKioskMode.value) {
-    // Kiosk login (passwordless)
+    // Kiosk login (passwordless) using generated API
     isLoading.value = true
     try {
-      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:40001'}/user/kiosk-login`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        credentials: 'include',
-        body: JSON.stringify({ username: username.value }),
-      })
-      
-      const data = await response.json()
-      
-      if (data.responseObject && data.success && data.statusCode === 200) {
+      const response = await userApi.kioskLoginUser({ kioskLoginUserRequest: { username: username.value.trim().toLowerCase() } })
+
+      if (response.responseObject && response.success && response.statusCode === 200) {
         userStore.setSession({
-          username: username.value,
-          department: data.responseObject.department,
-          belongsToCenter: data.responseObject.belongsToCenter,
-          email: data.responseObject.email || '',
-          roles: data.responseObject.roles || [],
-          postopWeek: data.responseObject.postopWeek
+          username: response.responseObject.username,
+          department: response.responseObject.department,
+          belongsToCenter: response.responseObject.belongsToCenter,
+          email: response.responseObject.email || '',
+          roles: response.responseObject.roles || [],
+          postopWeek: response.responseObject.postopWeek
         })
         notifierStore.notify('Kiosk login successful!', 'success')
         router.push('/kiosk')
       } else {
-        notifierStore.notify(data.message || 'Kiosk login failed', 'error')
+        notifierStore.notify(response.message || 'Kiosk login failed', 'error')
       }
     } catch (error: unknown) {
       console.error('Kiosk login error:', error)
@@ -138,12 +129,13 @@ onMounted(() => {
           <v-icon icon="mdi-monitor-dashboard" class="mr-2"></v-icon>
           Kiosk Mode - No password required
         </v-alert>
-        
+
         <v-form @submit.prevent="login">
           <v-text-field v-model="username" :label="t('login.username')" outlined dense required
                         autocomplete="username" autofocus
                         hint="Enter username starting with 'kiosk' for kiosk mode"></v-text-field>
-          <v-text-field v-if="!isKioskMode" v-model="password" :label="t('login.password')" type="password" outlined dense
+          <v-text-field v-if="!isKioskMode" v-model="password" :label="t('login.password')" type="password" outlined
+                        dense
                         required autocomplete="current-password"></v-text-field>
           <div class="d-flex justify-center">
             <v-tooltip v-if="!canSubmit" location="top">
@@ -173,7 +165,9 @@ onMounted(() => {
               </v-btn>
             </template>
           </div>
-          <div class="text-center mt-2 text-caption text-grey" v-if="!canSubmit">{{ isKioskMode ? 'Enter kiosk username' : t('login.fillFields') }}</div>
+          <div class="text-center mt-2 text-caption text-grey" v-if="!canSubmit">{{ isKioskMode ? 'Enter kiosk username'
+            :
+            t('login.fillFields') }}</div>
         </v-form>
         <v-divider class="mt-4"></v-divider>
         <div class="text-center mt-4">
