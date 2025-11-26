@@ -14,7 +14,8 @@ const router = useRouter()
 const userStore = useUserStore()
 const notifierStore = useNotifierStore()
 
-const username = ref('')
+// Prefill the username with `kiosk` so kiosk mode is ready on page load
+const username = ref('kiosk')
 const password = ref('')
 const isLoading = ref(false)
 
