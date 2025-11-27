@@ -61,6 +61,18 @@ export default {
     showingAllFutureConsultations: 'Zeigt alle zukünftigen Konsultationen ab {start} an',
     selectDateRange: 'Datum oder Bereich auswählen'
   },
+  dashboardSearch: {
+    title: 'Suche',
+    placeholder: 'Patienten und Fälle suchen...',
+    searchLabel: 'Patienten-ID, Fall-ID oder externe ID eingeben',
+    searchHint: 'Suche in Patienten und Patientenfällen',
+    resultsFound: '{count} Ergebnis(se) gefunden',
+    noResults: 'Keine Ergebnisse gefunden. Versuchen Sie einen anderen Suchbegriff.',
+    patientsFound: 'Patienten ({count})',
+    casesFound: 'Patientenfälle ({count})',
+    consultationsFound: 'Konsultationen ({count})',
+    case: 'Fall',
+  },
   flow: {
     greeting: 'Willkommen im Patientenportal',
     advice: 'Bitte geben Sie Ihren Patientencode unten ein.',
@@ -415,6 +427,7 @@ export default {
     error_match: 'Passwörter stimmen nicht überein.',
   },
   common: {
+    dashboard: 'Dashboard',
     cancel: 'Abbrechen',
     continue: 'Weiter',
     save: 'Speichern',

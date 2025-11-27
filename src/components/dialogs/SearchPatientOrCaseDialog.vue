@@ -78,9 +78,10 @@ const searchPatientOrCase = async () => {
   // Use sanitized for API calls and routing
   const sanitizedSearchQuery = sanitized
   try {
-    const response = await patientApi.getPatientByExternalId({ id: sanitizedSearchQuery })
-    if (response.responseObject == undefined) {
+    const response = await patientApi.findPatientsByExternalId({ searchQuery: sanitizedSearchQuery })
+    if (response.responseObject == undefined || response.responseObject.length === 0) {
       console.debug('no Patient by external id found')
+      searchResultsPatients.value = []
     } else {
       searchResultsPatients.value = response.responseObject as unknown as Patient[]
       console.log('Search result:', response.responseObject)
@@ -97,8 +98,9 @@ const searchPatientOrCase = async () => {
   //use patientCaseApi to search for cases, specifically searchCasesById
   try {
     const response = await patientCaseApi.searchCasesByExternalId({ searchQuery: sanitizedSearchQuery })
-    if (response.responseObject == undefined) {
+    if (response.responseObject == undefined || response.responseObject.length === 0) {
       console.debug('no Case by id found')
+      searchResultsCases.value = []
     } else {
       searchResultsCases.value = response.responseObject as unknown as PatientCase[]
       console.log('Search result:', response.responseObject)

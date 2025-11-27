@@ -21,7 +21,8 @@ const props = defineProps<{
 // Emits
 const emit = defineEmits<{
   'open-consultation': [consultationId: string | null | undefined],
-  'update-consultations': []
+  'update-consultations': [],
+  'create-consultation': []
 }>()
 
 // State
@@ -142,18 +143,27 @@ defineExpose({
 <template>
   <v-card variant="outlined">
     <v-card-title class="text-h6">
-      <v-icon class="me-2">mdi-calendar-multiple</v-icon>
-      {{ t('patientOverview.consultations') }}
-      <v-chip size="small" class="ms-2">{{ consultations.length }}</v-chip>
-      <v-spacer />
-      <v-btn
-             icon="mdi-refresh"
-             variant="text"
-             size="small"
-             :loading="loading"
-             @click="refreshConsultations"
-             class="ms-2">
-      </v-btn>
+      <div class="d-flex align-center w-100">
+        <v-icon class="me-2">mdi-calendar-multiple</v-icon>
+        {{ t('patientOverview.consultations') }}
+        <v-chip size="small" class="ms-2">{{ consultations.length }}</v-chip>
+        <v-spacer />
+        <v-btn
+               icon="mdi-plus"
+               variant="text"
+               size="small"
+               @click="$emit('create-consultation')"
+               class="ms-2">
+        </v-btn>
+        <v-btn
+               icon="mdi-refresh"
+               variant="text"
+               size="small"
+               :loading="loading"
+               @click="refreshConsultations"
+               class="ms-2">
+        </v-btn>
+      </div>
     </v-card-title>
 
     <v-card-text>

@@ -20,7 +20,8 @@
               </template>
               <template v-else-if="(statistics as any).caseCreatedAt">
                 <v-icon start>mdi-folder-clock</v-icon>
-                <strong>Fall erstellt:</strong> {{ new Date((statistics as any).caseCreatedAt).toLocaleDateString('de-DE') }}
+                <strong>Fall erstellt:</strong> {{ new Date((statistics as
+                  any).caseCreatedAt).toLocaleDateString('de-DE') }}
                 <span class="ml-2 text-caption">(Zeitlinie relativ zur Fallerstellung)</span>
               </template>
             </v-alert>
@@ -57,7 +58,7 @@
 
         <!-- Chart Display -->
         <v-row v-if="!loading && !error && chartData">
-          <v-col cols="12">
+          <v-col cols="6">
             <Line :data="chartData" :options="chartOptions" />
           </v-col>
         </v-row>
@@ -75,18 +76,46 @@
           <v-col>
             <v-card variant="outlined">
               <v-card-text>
-                <div class="d-flex flex-wrap gap-4">
-                  <v-chip color="green" variant="flat">
+                <div class="d-flex flex-wrap gap-2">
+                  <v-chip
+                          :color="visibleSeries.aofas ? 'green' : 'grey'"
+                          :variant="visibleSeries.aofas ? 'flat' : 'outlined'"
+                          clickable
+                          @click="toggleSeriesVisibility('aofas')"
+                          class="cursor-pointer">
                     <v-icon start>mdi-chart-line</v-icon>
                     {{ aofasLabel }}
+                    <v-icon end>{{ visibleSeries.aofas ? 'mdi-eye' : 'mdi-eye-off' }}</v-icon>
                   </v-chip>
-                  <v-chip color="blue" variant="flat">
+                  <v-chip
+                          :color="visibleSeries.efas ? 'blue' : 'grey'"
+                          :variant="visibleSeries.efas ? 'flat' : 'outlined'"
+                          clickable
+                          @click="toggleSeriesVisibility('efas')"
+                          class="cursor-pointer">
                     <v-icon start>mdi-chart-line</v-icon>
                     {{ efasLabel }}
+                    <v-icon end>{{ visibleSeries.efas ? 'mdi-eye' : 'mdi-eye-off' }}</v-icon>
                   </v-chip>
-                  <v-chip color="purple" variant="flat">
+                  <v-chip
+                          :color="visibleSeries.moxfq ? 'purple' : 'grey'"
+                          :variant="visibleSeries.moxfq ? 'flat' : 'outlined'"
+                          clickable
+                          @click="toggleSeriesVisibility('moxfq')"
+                          class="cursor-pointer">
                     <v-icon start>mdi-chart-line</v-icon>
                     {{ moxfqLabel }}
+                    <v-icon end>{{ visibleSeries.moxfq ? 'mdi-eye' : 'mdi-eye-off' }}</v-icon>
+                  </v-chip>
+                  <v-chip
+                          :color="visibleSeries.vas ? 'orange' : 'grey'"
+                          :variant="visibleSeries.vas ? 'flat' : 'outlined'"
+                          clickable
+                          @click="toggleSeriesVisibility('vas')"
+                          class="cursor-pointer">
+                    <v-icon start>mdi-chart-line</v-icon>
+                    {{ vasLabel }}
+                    <v-icon end>{{ visibleSeries.vas ? 'mdi-eye' : 'mdi-eye-off' }}</v-icon>
                   </v-chip>
                 </div>
               </v-card-text>
@@ -116,6 +145,7 @@ import {
   TimeScale,
 } from "chart.js";
 import "chartjs-adapter-date-fns";
+import zoomPlugin from "chartjs-plugin-zoom";
 import { useNotifierStore } from "@/stores/notifierStore";
 import { statisticsApi } from '@/api'
 import type {
@@ -136,7 +166,8 @@ ChartJS.register(
   Title,
   Tooltip,
   Legend,
-  TimeScale
+  TimeScale,
+  zoomPlugin
 );
 
 // Use generated model types from the OpenAPI client
@@ -150,6 +181,9 @@ const loading = ref(false);
 const error = ref<string | null>(null);
 const statistics = ref<GetCaseStatistics200ResponseResponseObject | null>(null);
 const scoreData = ref<GetScoreData200ResponseResponseObject | null>(null);
+
+// Store actual acquisition dates for tooltip display
+const acquisitionDates = ref<Date[]>([]);
 
 // Calculate time since surgery or case creation
 const calculateTimeSinceReference = (consultationDate: Date, referenceDate: Date): string => {
@@ -166,16 +200,31 @@ const calculateTimeSinceReference = (consultationDate: Date, referenceDate: Date
   }
 };
 // Mapping of formTemplateId -> category key. Replace the placeholder ids with your real template ids.
-const TEMPLATE_ID_TO_CATEGORY: Record<string, "aofas" | "efas" | "moxfq"> = {
+const TEMPLATE_ID_TO_CATEGORY: Record<string, "aofas" | "efas" | "moxfq" | "vas"> = {
   '67b4e612d0feb4ad99ae2e84': 'aofas',
   '67b4e612d0feb4ad99ae2e83': 'efas',
   '67b4e612d0feb4ad99ae2e85': 'moxfq',
+  '67b4e612d0feb4ad99ae2e86': 'vas', // VAS template ID
 };
 
 // Labels for each category; these will be updated from prom titles when available
 const aofasLabel = ref("AOFAS");
 const efasLabel = ref("EFAS");
 const moxfqLabel = ref("MOXFQ");
+const vasLabel = ref("VAS");
+
+// Track which series are visible in the chart
+const visibleSeries = ref<Record<string, boolean>>({
+  aofas: true,
+  efas: true,
+  moxfq: true,
+  vas: true,
+});
+
+// Toggle series visibility
+const toggleSeriesVisibility = (series: string) => {
+  visibleSeries.value[series] = !visibleSeries.value[series];
+};
 
 // Local helper type that extends the generated prom type with the new formTemplateId
 type PromWithTemplate = GetCaseStatistics200ResponseResponseObjectConsultationsInnerPromsInner & {
@@ -189,17 +238,18 @@ const computeScoreDataFromConsultations = (consultations: GetCaseStatistics200Re
 
   const realTime: GetScoreData200ResponseResponseObjectRealTimeInner[] = [];
   const fixedInterval: GetScoreData200ResponseResponseObjectRealTimeInner[] = [];
+  const dates: Date[] = [];
 
   consultations.forEach((consultation, idx) => {
     // Determine a sensible date for the consultation: prefer the first prom that has scoring
     const firstPromWithScore = consultation.proms && consultation.proms.length > 0
       ? (consultation.proms as GetCaseStatistics200ResponseResponseObjectConsultationsInnerPromsInner[]).find(
-          p => p.scoring && (p.scoring as PromScoring).total != null,
-        )
+        p => p.scoring && (p.scoring as PromScoring).total != null,
+      )
       : null;
     const dateStr = (firstPromWithScore?.createdAt ?? new Date()).toString();
-
-    // Default scores
+    const acquisitionDate = new Date(dateStr);
+    dates.push(acquisitionDate);    // Default scores
     let aofasScore: number | null = null;
     let efasScore: number | null = null;
     let moxfqScore: number | null = null;
@@ -208,8 +258,8 @@ const computeScoreDataFromConsultations = (consultations: GetCaseStatistics200Re
     if (consultation.proms && Array.isArray(consultation.proms)) {
       for (const promRaw of consultation.proms as GetCaseStatistics200ResponseResponseObjectConsultationsInnerPromsInner[]) {
         const prom = promRaw as PromWithTemplate;
-  // Skip proms that have no scoring or no total score
-  const hasTotal = !!prom.scoring && (prom.scoring as PromScoring).total != null;
+        // Skip proms that have no scoring or no total score
+        const hasTotal = !!prom.scoring && (prom.scoring as PromScoring).total != null;
         if (!hasTotal) continue;
 
         const tplId = prom.formTemplateId ? String(prom.formTemplateId) : null;
@@ -222,6 +272,7 @@ const computeScoreDataFromConsultations = (consultations: GetCaseStatistics200Re
             if (cat === "aofas") aofasLabel.value = prom.title;
             if (cat === "efas") efasLabel.value = prom.title;
             if (cat === "moxfq") moxfqLabel.value = prom.title;
+            if (cat === "vas") vasLabel.value = prom.title;
           }
 
           if (cat === "aofas" && score != null) aofasScore = score;
@@ -231,22 +282,48 @@ const computeScoreDataFromConsultations = (consultations: GetCaseStatistics200Re
       }
     }
 
-    realTime.push({
+    let vasScore: number | null = null;
+
+    // Check if any prom is VAS (pain scale)
+    if (consultation.proms && Array.isArray(consultation.proms)) {
+      for (const promRaw of consultation.proms as GetCaseStatistics200ResponseResponseObjectConsultationsInnerPromsInner[]) {
+        const prom = promRaw as PromWithTemplate;
+        const hasTotal = !!prom.scoring && (prom.scoring as PromScoring).total != null;
+        if (!hasTotal) continue;
+
+        // Check if this is a VAS form (pain scale) by looking at title or structure
+        if (prom.scoring?.total?.normalizedScore !== undefined) {
+          const score = prom.scoring.total.normalizedScore;
+          // VAS has a specific structure, check if rawData contains painScale
+          const rawData = (prom.scoring?.rawData as Record<string, unknown>) ?? {};
+          if ((rawData as Record<string, unknown>)?.painScale !== undefined) {
+            vasScore = score;
+          }
+        }
+      }
+    }
+
+    (realTime as unknown as Array<Record<string, unknown>>).push({
       date: dateStr,
       dateIndex: idx,
       aofasScore,
       efasScore,
       moxfqScore,
+      vasScore,
     });
 
-    fixedInterval.push({
+    (fixedInterval as unknown as Array<Record<string, unknown>>).push({
       date: dateStr,
       dateIndex: idx + 1,
       aofasScore,
       efasScore,
       moxfqScore,
+      vasScore,
     });
   });
+
+  // Store the acquisition dates for tooltip display
+  acquisitionDates.value = dates;
 
   return { realTime, fixedInterval } as GetScoreData200ResponseResponseObject;
 };
@@ -257,9 +334,9 @@ const fetchStatistics = async () => {
   error.value = null;
 
   try {
-  const resp = await statisticsApi.getCaseStatistics({ caseId: caseId.value });
-  // API wraps the payload in a response object
-  statistics.value = resp.responseObject ?? null;
+    const resp = await statisticsApi.getCaseStatistics({ caseId: caseId.value });
+    // API wraps the payload in a response object
+    statistics.value = resp.responseObject ?? null;
   } catch (err) {
     error.value = err instanceof Error ? err.message : String(err);
     notifierStore.error(error.value);
@@ -274,59 +351,89 @@ const fetchStatistics = async () => {
 const chartData = computed<ChartData<"line"> | null>(() => {
   if (!scoreData.value) return null;
 
-  const data = timelineMode.value === "realTime" 
-    ? scoreData.value.realTime 
+  const data = timelineMode.value === "realTime"
+    ? scoreData.value.realTime
     : scoreData.value.fixedInterval;
 
   if (!data || data.length === 0) return null;
 
-  // Extract labels based on mode
-  // Include time since surgery/case creation in labels
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const stats = statistics.value as any; // Type will be updated after OpenAPI regeneration
-  const labels = timelineMode.value === "realTime"
-    ? (data as GetScoreData200ResponseResponseObjectRealTimeInner[]).map(point => {
-        const date = new Date(point.date ?? 0);
-        // Add time since reference if available
-        if (stats?.surgeryDate) {
-          const timeSince = calculateTimeSinceReference(date, new Date(stats.surgeryDate));
-          return `${date.toLocaleDateString()} (${timeSince})`;
-        } else if (stats?.caseCreatedAt) {
-          const timeSince = calculateTimeSinceReference(date, new Date(stats.caseCreatedAt));
-          return `${date.toLocaleDateString()} (${timeSince})`;
-        }
-        return date;
-      })
+  // For realTime mode, we use {x, y} format for proper time scale
+  // For fixedInterval mode, we use simple labels
+  const isRealTime = timelineMode.value === "realTime";
+
+  const labels = isRealTime
+    ? [] // Not used for time scale with {x, y} data
     : data.map((_, index) => `Visit ${index + 1}`);
+
+  const datasets = [];
+
+  if (visibleSeries.value.aofas) {
+    datasets.push({
+      label: aofasLabel.value,
+      data: isRealTime
+        ? data.map(point => ({
+          x: new Date(point.date ?? 0).getTime(),
+          y: point.aofasScore
+        }))
+        : data.map(point => point.aofasScore),
+      borderColor: "rgb(76, 175, 80)",
+      backgroundColor: "rgba(76, 175, 80, 0.1)",
+      tension: 0.1,
+      spanGaps: true,
+    });
+  }
+
+  if (visibleSeries.value.efas) {
+    datasets.push({
+      label: efasLabel.value,
+      data: isRealTime
+        ? data.map(point => ({
+          x: new Date(point.date ?? 0).getTime(),
+          y: point.efasScore
+        }))
+        : data.map(point => point.efasScore),
+      borderColor: "rgb(33, 150, 243)",
+      backgroundColor: "rgba(33, 150, 243, 0.1)",
+      tension: 0.1,
+      spanGaps: true,
+    });
+  }
+
+  if (visibleSeries.value.moxfq) {
+    datasets.push({
+      label: moxfqLabel.value,
+      data: isRealTime
+        ? data.map(point => ({
+          x: new Date(point.date ?? 0).getTime(),
+          y: point.moxfqScore
+        }))
+        : data.map(point => point.moxfqScore),
+      borderColor: "rgb(156, 39, 176)",
+      backgroundColor: "rgba(156, 39, 176, 0.1)",
+      tension: 0.1,
+      spanGaps: true,
+    });
+  }
+
+  if (visibleSeries.value.vas) {
+    datasets.push({
+      label: vasLabel.value,
+      data: isRealTime
+        ? data.map(point => ({
+          x: new Date(point.date ?? 0).getTime(),
+          y: (point as Record<string, unknown>).vasScore as number | null
+        }))
+        : data.map(point => (point as Record<string, unknown>).vasScore as number | null),
+      borderColor: "rgb(255, 152, 0)",
+      backgroundColor: "rgba(255, 152, 0, 0.1)",
+      tension: 0.1,
+      spanGaps: true,
+    });
+  }
 
   return {
     labels,
-    datasets: [
-      {
-        label: aofasLabel.value,
-        data: data.map(point => point.aofasScore),
-        borderColor: "rgb(76, 175, 80)",
-        backgroundColor: "rgba(76, 175, 80, 0.1)",
-        tension: 0.1,
-        spanGaps: true,
-      },
-      {
-        label: efasLabel.value,
-        data: data.map(point => point.efasScore),
-        borderColor: "rgb(33, 150, 243)",
-        backgroundColor: "rgba(33, 150, 243, 0.1)",
-        tension: 0.1,
-        spanGaps: true,
-      },
-      {
-        label: moxfqLabel.value,
-        data: data.map(point => point.moxfqScore),
-        borderColor: "rgb(156, 39, 176)",
-        backgroundColor: "rgba(156, 39, 176, 0.1)",
-        tension: 0.1,
-        spanGaps: true,
-      },
-    ],
+    datasets,
   };
 });
 
@@ -349,6 +456,21 @@ const chartOptions = computed<ChartOptions<"line">>(() => {
         mode: "index",
         intersect: false,
       },
+      zoom: {
+        pan: {
+          enabled: true,
+          mode: "xy",
+        },
+        zoom: {
+          wheel: {
+            enabled: true,
+          },
+          pinch: {
+            enabled: true,
+          },
+          mode: "xy",
+        },
+      },
     },
     scales: {
       y: {
@@ -363,21 +485,60 @@ const chartOptions = computed<ChartOptions<"line">>(() => {
   };
 
   if (timelineMode.value === "realTime") {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const stats = statistics.value as any;
+
+    // Calculate x-axis bounds
+    const surgeryDate = stats?.surgeryDate ? new Date(stats.surgeryDate) : null;
+    const caseCreatedAt = stats?.caseCreatedAt ? new Date(stats.caseCreatedAt) : null;
+    const referenceDate = surgeryDate || caseCreatedAt || new Date();
+
+    // BUG FIX (gffc branch): Use last consultation date instead of current date
+    // This allows the chart to show future consultation dates in the gffc branch
+    // TODO: Remove this change when merging to main branch - revert to: const now = new Date();
+    const lastConsultationDate = acquisitionDates.value.length > 0
+      ? new Date(Math.max(...acquisitionDates.value.map(d => d.getTime())))
+      : new Date();
+    // BUG FIX END
+
     return {
       ...baseOptions,
+      plugins: {
+        ...baseOptions.plugins,
+        tooltip: {
+          mode: "index",
+          intersect: false,
+          callbacks: {
+            title: (context) => {
+              if (context.length === 0) return "";
+              const dataIndex = context[0].dataIndex;
+              const date = acquisitionDates.value[dataIndex];
+              if (date && referenceDate) {
+                const timeSince = calculateTimeSinceReference(date, referenceDate);
+                return `${date.toLocaleDateString('de-DE')} (${timeSince} nach ${surgeryDate ? 'OP' : 'Fallerstellung'})`;
+              }
+              return date ? date.toLocaleDateString('de-DE') : '';
+            },
+          },
+        },
+      },
       scales: {
         ...baseOptions.scales,
         x: {
           type: "time",
+          min: referenceDate.getTime(),
+          max: lastConsultationDate.getTime(), // BUG FIX (gffc): was now.getTime()
           time: {
-            unit: "day",
+            unit: "week",
             displayFormats: {
-              day: "MMM dd, yyyy",
+              week: "dd MMM yyyy",
+              day: "dd MMM yyyy",
+              month: "MMM yyyy",
             },
           },
           title: {
             display: true,
-            text: "Date",
+            text: surgeryDate ? "Zeit seit OP" : "Zeit seit Fallerstellung",
           },
         },
       },
@@ -385,6 +546,24 @@ const chartOptions = computed<ChartOptions<"line">>(() => {
   } else {
     return {
       ...baseOptions,
+      plugins: {
+        ...baseOptions.plugins,
+        tooltip: {
+          mode: "index",
+          intersect: false,
+          callbacks: {
+            title: (context) => {
+              if (context.length === 0) return "";
+              const dataIndex = context[0].dataIndex;
+              const date = acquisitionDates.value[dataIndex];
+              if (date) {
+                return `Visit on ${date.toLocaleDateString('de-DE')} ${date.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })}`;
+              }
+              return `Visit ${dataIndex + 1}`;
+            },
+          },
+        },
+      },
       scales: {
         ...baseOptions.scales,
         x: {
@@ -417,7 +596,15 @@ onMounted(async () => {
 </script>
 
 <style scoped>
+.gap-2 {
+  gap: 0.5rem;
+}
+
 .gap-4 {
   gap: 1rem;
+}
+
+.cursor-pointer {
+  cursor: pointer;
 }
 </style>

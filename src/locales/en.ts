@@ -40,6 +40,18 @@ export default {
     showingAllFutureConsultations: 'Showing all future consultations from {start} onwards',
     selectDateRange: 'Select date or range'
   },
+  dashboardSearch: {
+    title: 'Search',
+    placeholder: 'Search patients and cases ...',
+    searchLabel: 'Enter patient ID, case ID, or external ID',
+    searchHint: 'Search across patients and patient cases',
+    resultsFound: '{count} result(s) found',
+    noResults: 'No results found. Try a different search term.',
+    patientsFound: 'Patients ({count})',
+    casesFound: 'Patient Cases ({count})',
+    consultationsFound: 'Consultations ({count})',
+    case: 'Case',
+  },
   flow: {
     greeting: 'Welcome to the Patient Portal',
     advice: 'Please enter your patient code below.',
@@ -414,6 +426,7 @@ export default {
     error_match: 'Passwords do not match.',
   },
   common: {
+    dashboard: 'Dashboard',
     cancel: 'Cancel',
     continue: 'Continue',
     save: 'Save',

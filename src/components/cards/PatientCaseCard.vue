@@ -105,11 +105,6 @@ const handleOpenConsultation = (consultationId: string | null | undefined) => {
             <v-card-text>
               <v-list density="compact">
                 <v-list-item>
-                  <v-list-item-title>{{ t('patientOverview.caseId') }}</v-list-item-title>
-                  <v-list-item-subtitle>{{ patientCase.id }}</v-list-item-subtitle>
-                </v-list-item>
-
-                <v-list-item>
                   <v-list-item-title>{{ t('patientOverview.externalId') }}</v-list-item-title>
                   <v-list-item-subtitle>{{ patientCase.externalId || t('common.notAvailable') }}</v-list-item-subtitle>
                 </v-list-item>
@@ -220,9 +215,10 @@ const handleOpenConsultation = (consultationId: string | null | undefined) => {
             </v-card-text>
           </v-card>
         </v-col>
-      </v-row><v-row>
+      </v-row>
+      <v-row>
         <!-- Consultations -->
-        <v-col cols="6" lg="6">
+        <v-col cols="12" lg="6">
           <ConsultationCard
                             :case-id="patientCase.id"
                             :patient-id="patientId"

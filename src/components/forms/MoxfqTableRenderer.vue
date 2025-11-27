@@ -382,6 +382,8 @@ const calculateMoxfqScore = (data: questions): ScoringData => {
   display: none;
   width: 100%;
   padding: 0;
+  /* Ensure content is not clipped */
+  overflow: visible;
 }
 
 .question-card {
@@ -391,6 +393,8 @@ const calculateMoxfqScore = (data: questions): ScoringData => {
   padding: 16px;
   margin-bottom: 16px;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+  /* Ensure card expands to fit all radio options */
+  overflow: visible;
 }
 
 .question-card:nth-child(15),
@@ -428,20 +432,31 @@ const calculateMoxfqScore = (data: questions): ScoringData => {
 
 .card-options {
   display: block;
-  padding: 0;
+  padding: 8px 0;
+  /* Ensure all options are visible - no overflow clipping */
+  overflow: visible;
 }
-
 
 .mobile-radio-group {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 8px;
   padding: 0;
+  /* Ensure the radio group doesn't clip content */
+  overflow: visible;
+}
+
+/* Override Vuetify's default radio group input container */
+.mobile-radio-group :deep(.v-selection-control-group) {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
 }
 
 .mobile-radio {
   /* make sure radio uses the label prop and sits left with a small gap */
   margin: 0;
+  min-height: 32px;
 }
 
 /* Tweak Vuetify internal radio layout inside cards for left alignment */
@@ -453,6 +468,15 @@ const calculateMoxfqScore = (data: questions): ScoringData => {
 
 .question-card :deep(.v-radio__label) {
   margin-left: 8px;
+  /* Ensure long labels wrap properly */
+  white-space: normal;
+  word-wrap: break-word;
+}
+
+/* Ensure v-card-text doesn't clip the radio options */
+.question-card :deep(.v-card-text) {
+  overflow: visible;
+  padding-bottom: 12px;
 }
 
 .option-label {

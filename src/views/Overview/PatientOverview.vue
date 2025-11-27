@@ -239,14 +239,7 @@ const refreshCases = async () => {
             {{ t('patientOverview.title') }}
           </div>
 
-          <v-btn
-                 color="primary"
-                 variant="elevated"
-                 @click="openCreateCaseDialog"
-                 class="ml-auto">
-            <v-icon class="me-2">mdi-plus</v-icon>
-            {{ t('buttons.createNewCase') }}
-          </v-btn>
+          <!-- create new case button moved into empty-state area when there are no cases -->
         </v-card-title>
 
         <v-card-text>
@@ -255,14 +248,6 @@ const refreshCases = async () => {
             <v-col cols="12" md="6">
               <h3>{{ t('patientOverview.patientDetails') }}</h3>
               <v-list density="compact">
-                <v-list-item>
-                  <template #prepend>
-                    <v-icon>mdi-identifier</v-icon>
-                  </template>
-                  <v-list-item-title>{{ t('patientOverview.patientId') }}</v-list-item-title>
-                  <v-list-item-subtitle>{{ patient.id || t('common.notAvailable') }}</v-list-item-subtitle>
-                </v-list-item>
-
                 <v-list-item>
                   <template #prepend>
                     <v-icon>mdi-card-account-details</v-icon>
@@ -319,6 +304,16 @@ const refreshCases = async () => {
         <v-icon color="grey" size="64">mdi-folder-open</v-icon>
         <h3 class="mt-4">{{ t('patientOverview.noCases') }}</h3>
         <p class="text-medium-emphasis">{{ t('patientOverview.noCasesDescription') }}</p>
+
+        <!-- Move create button here so users can add a case directly from the empty state -->
+        <v-btn
+               color="primary"
+               variant="elevated"
+               @click="openCreateCaseDialog"
+               class="mt-4">
+          <v-icon class="me-2">mdi-plus</v-icon>
+          {{ t('buttons.createNewCase') }}
+        </v-btn>
       </div>
 
       <v-expansion-panels

@@ -67,6 +67,12 @@ const logout = async () => {
             </v-btn>
           </template>
           <v-list>
+            <v-list-item :to="{ name: 'dashboard' }">
+              <template #prepend>
+                <v-icon>mdi-home</v-icon>
+              </template>
+              <v-list-item-title>{{ t('common.dashboard') || 'Dashboard' }}</v-list-item-title>
+            </v-list-item>
             <v-list-item :to="{ name: 'kioskassignments' }">
               <template #prepend>
                 <v-icon>mdi-monitor-dashboard</v-icon>
@@ -88,13 +94,14 @@ const logout = async () => {
           </v-list>
         </v-menu>
 
-        <v-toolbar-title>
-          <RouterLink to="/">Patient Outcome</RouterLink>
-        </v-toolbar-title>
-        <!-- <RouterLink to="/patients">Patients</RouterLink> -->
-        <template v-if="isDev">
-          <RouterLink to="/testing">Testing</RouterLink>
-        </template>
+        <!-- Logo and Title -->
+        <RouterLink to="/dashboard" class="navbar-brand">
+          <img src="https://www.gffc-akademie.de/files/theme/img/gffc_logo.png" alt="GFFC Logo" class="gffc-logo">
+          <div class="brand-text">
+            <span class="logo-text">Patient Outcome</span>
+            <span class="subtitle">Patient reported outcome measure</span>
+          </div>
+        </RouterLink>
         <v-spacer></v-spacer>
         <v-btn :prepend-icon="theme === 'light' ? 'mdi-weather-sunny' : 'mdi-weather-night'" text="" slim
                @click="toggleTheme"></v-btn>
@@ -161,5 +168,65 @@ const logout = async () => {
   top: 16px;
   right: 16px;
   z-index: 1000;
+}
+
+.navbar-brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-left: 12px;
+  text-decoration: none;
+  color: inherit;
+}
+
+.navbar-brand:hover {
+  opacity: 0.9;
+}
+
+.gffc-logo {
+  height: 40px;
+  width: auto;
+  object-fit: contain;
+  flex-shrink: 0;
+}
+
+.brand-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.logo-text {
+  font-size: 18px;
+  font-weight: 600;
+  color: white;
+  display: block;
+}
+
+.subtitle {
+  font-size: 12px;
+  font-weight: 300;
+  color: rgba(255, 255, 255, 0.8);
+  letter-spacing: 0.5px;
+  display: block;
+}
+
+/* Hide text on small screens, only show logo */
+@media (max-width: 599px) {
+  .navbar-brand {
+    display: none;
+  }
+}
+
+.logo-link {
+  font-size: 18px;
+  font-weight: 600;
+  color: white;
+  text-decoration: none;
+  display: block;
+}
+
+.logo-link:hover {
+  opacity: 0.9;
 }
 </style>

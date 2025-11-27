@@ -4,6 +4,7 @@ import { useRouter } from 'vue-router'
 import { ResponseError, type Consultation, type FindAllCodes200ResponseResponseObjectInnerConsultationId } from '@/api'
 import { useI18n } from 'vue-i18n'
 import { useDateFormat } from '@/composables/useDateFormat'
+import DashboardSearchDialog from '@/components/dialogs/DashboardSearchDialog.vue'
 
 import { consultationApi } from '@/api'
 import { patientCaseApi } from '@/api'
@@ -162,7 +163,7 @@ onMounted(async () => {
   <v-container>
     <h1>{{ t('dashboard.title') }}</h1>
 
-    <!-- Date Picker -->
+    <!-- Date Picker and Search -->
 
     <v-row class="align-center">
       <v-col cols="12" sm="6" md="4">
@@ -182,6 +183,9 @@ onMounted(async () => {
                        @update:model-value="fetchConsultations"
                        @cleared="fetchConsultations">
         </VueDatePicker>
+      </v-col>
+      <v-col cols="12" sm="6" md="4">
+        <DashboardSearchDialog />
       </v-col>
     </v-row>
 
