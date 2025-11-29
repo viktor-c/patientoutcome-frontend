@@ -1,3 +1,17 @@
+# PatientOutcome Frontend
+
+Vue.js Single Page Application for the PatientOutcome PROM (Patient Reported Outcome Measures) application.
+
+## Version
+
+**Current Version: 0.2**
+
+## License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+---
+
 # patientoutcome-frontend
 
 This template should help get you started developing with Vue 3 in Vite.

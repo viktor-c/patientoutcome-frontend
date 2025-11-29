@@ -11,10 +11,10 @@ FROM base AS deps
 WORKDIR /app
 
 # Copy only dependency-related files
-COPY package.json pnpm-lock.yaml ./
+COPY package.json ./
 
 # Install all dependencies (including dev dependencies for build)
-RUN --mount=type=cache,id=pnpm,target=/pnpm/store pnpm install --frozen-lockfile
+RUN --mount=type=cache,id=pnpm,target=/pnpm/store pnpm install --no-frozen-lockfile
 
 # Build stage
 FROM base AS build

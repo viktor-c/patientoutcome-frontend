@@ -8,6 +8,12 @@ src/api/**
 src/api/models/**/*
 src/api/apis/**/*
 src/api/**/*
+
+# Environment files
+.env
+.env.local
+.env.*.local
+
 # Logs
 logs
 *.log
