@@ -6,8 +6,8 @@
         <!-- Slide 1: Titel -->
         <section data-background-gradient="linear-gradient(to bottom, #1e3a8a, #3b82f6)">
           <h1>PatientOutcome</h1>
-          <h3>Technologie-Stack einer modernen Webanwendung</h3>
-          <p><small>Eine Full-Stack-Lösung für Patient Reported Outcome Measures (PROMs)</small></p>
+          <h1>Technologie-Stack einer modernen Webanwendung</h1>
+          <h2>Eine Full-Stack-Lösung für Patient Reported Outcome Measures (PROMs)</h2>
         </section>
 
         <!-- Slide 2: Projektübersicht -->
@@ -357,6 +357,9 @@ onMounted(async () => {
     margin: 0.1,
     minScale: 0.2,
     maxScale: 2.0,
+    controls: true,
+    progress: true,
+    slideNumber: true,
   })
 
   await Reveal.initialize()
@@ -372,13 +375,12 @@ onUnmounted(() => {
 <style scoped>
 /* Import Reveal.js CSS */
 @import 'reveal.js/dist/reveal.css';
-@import 'reveal.js/dist/theme/night.css';
-@import 'reveal.js/plugin/highlight/monokai.css';
+@import 'reveal.js/dist/theme/white.css';
+@import 'reveal.js/plugin/highlight/zenburn.css';
 
 .presentation-container {
   width: 100%;
   height: 100vh;
-  background: #000;
 }
 
 /* Ensure Reveal is centered inside the container */

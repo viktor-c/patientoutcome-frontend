@@ -1,362 +1,487 @@
 <!doctype html>
 <html lang="en">
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>GFFC Implementation - Summary</title>
 
-    <link rel="stylesheet" href="reveal/reveal.css">
-    <link rel="stylesheet" href="reveal/theme/night.css" id="theme">
-    <link rel="stylesheet" href="reveal/plugin/highlight/monokai.css">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>GFFC Implementation - Summary</title>
 
-    <style>
-      body, html {
-        height: 100%;
-        margin: 0;
-        background: #000;
-        font-family: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial;
-      }
-      .reveal { height: 100%; }
-      .reveal .slides { max-width: 1200px; }
-      
-      h1, h2, h3, h4 { margin: 0.5rem 0; }
-      .two-columns { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; text-align: left; }
-      .feature-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1rem; }
-      .feature-card { background: rgba(59, 130, 246, 0.15); padding: 1.2rem; border-radius: 8px; border-left: 4px solid #3b82f6; }
-      .tech-stack { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; font-size: 0.9em; }
-      .tech-item { background: rgba(255,255,255,0.05); padding: 0.8rem; border-radius: 6px; }
-      .highlight-box { background: rgba(34, 197, 94, 0.2); border: 2px solid rgba(34, 197, 94, 0.5); padding: 1rem; border-radius: 8px; margin: 1rem 0; }
-      .stat-box { text-align: center; background: rgba(255,255,255,0.05); padding: 1rem; border-radius: 8px; }
-      .emoji { font-size: 1.3em; margin-right: 0.5rem; }
-      .timeline { position: relative; padding-left: 2rem; }
-      .timeline-item { position: relative; padding-bottom: 1rem; }
-      .timeline-item::before { content: ''; position: absolute; left: -1.5rem; top: 0.3rem; width: 1rem; height: 1rem; background: #3b82f6; border-radius: 50%; }
-      code { background: rgba(255,255,255,0.1); padding: 0.2rem 0.4rem; border-radius: 3px; }
-    </style>
-  </head>
-  <body>
-    <div class="reveal">
-      <div class="slides">
+  <link rel="stylesheet" href="reveal/reveal.css">
+  <link rel="stylesheet" href="reveal/theme/night.css" id="theme">
+  <link rel="stylesheet" href="reveal/plugin/highlight/monokai.css">
 
-        <!-- Title Slide -->
-        <section data-background-gradient="linear-gradient(to bottom, #1e3a8a, #3b82f6)">
-          <h1>🚀 GFFC Implementation</h1>
-          <h2>Complete Feature Summary</h2>
-          <p><small>PatientOutcome Presentation Branch · November 2025</small></p>
-        </section>
+  <style>
+    body,
+    html {
+      height: 100%;
+      margin: 0;
+      background: #000;
+      font-family: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial;
+    }
 
-        <!-- Project Overview -->
-        <section>
-          <h2>📋 Project Overview</h2>
-          <div class="highlight-box">
-            <h3 style="text-align: center;">Special Presentation Branch for Controlled Conditions</h3>
+    .reveal {
+      width: 100%;
+      height: 100%;
+    }
+
+    .reveal .slides {
+      width: 100%;
+      height: 100%;
+    }
+
+    .reveal section {
+      width: 100%;
+      height: auto;
+      min-height: 100%;
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-start;
+      align-items: flex-start;
+      padding: 3rem !important;
+      overflow-y: auto;
+    }
+
+    h1,
+    h2,
+    h3,
+    h4 {
+      margin: 0.5rem 0;
+      text-align: left !important;
+      width: 100%;
+    }
+
+    .reveal h1 {
+      font-size: 2.2rem !important;
+    }
+
+    .reveal h2 {
+      font-size: 1.8rem !important;
+    }
+
+    .reveal h3 {
+      font-size: 1.4rem !important;
+    }
+
+    p,
+    li {
+      font-size: 0.95rem !important;
+      text-align: left !important;
+    }
+
+    .two-columns {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1.5rem;
+      text-align: left;
+      width: 100%;
+    }
+
+    .feature-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 1rem;
+      width: 100%;
+    }
+
+    .feature-card {
+      background: rgba(59, 130, 246, 0.15);
+      padding: 1.2rem;
+      border-radius: 8px;
+      border-left: 4px solid #3b82f6;
+      text-align: left !important;
+    }
+
+    .tech-stack {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1rem;
+      font-size: 0.9em;
+      width: 100%;
+    }
+
+    .tech-item {
+      background: rgba(255, 255, 255, 0.05);
+      padding: 0.8rem;
+      border-radius: 6px;
+    }
+
+    .highlight-box {
+      background: rgba(34, 197, 94, 0.2);
+      border: 2px solid rgba(34, 197, 94, 0.5);
+      padding: 1rem;
+      border-radius: 8px;
+      margin: 1rem 0;
+      width: 100%;
+      box-sizing: border-box;
+    }
+
+    .stat-box {
+      text-align: center;
+      background: rgba(255, 255, 255, 0.05);
+      padding: 1rem;
+      border-radius: 8px;
+    }
+
+    .emoji {
+      font-size: 1.3em;
+      margin-right: 0.5rem;
+    }
+
+    .timeline {
+      position: relative;
+      padding-left: 2rem;
+      text-align: left;
+      width: 100%;
+    }
+
+    .timeline-item {
+      position: relative;
+      padding-bottom: 1rem;
+    }
+
+    .timeline-item::before {
+      content: '';
+      position: absolute;
+      left: -1.5rem;
+      top: 0.3rem;
+      width: 1rem;
+      height: 1rem;
+      background: #3b82f6;
+      border-radius: 50%;
+    }
+
+    code {
+      background: rgba(255, 255, 255, 0.1);
+      padding: 0.2rem 0.4rem;
+      border-radius: 3px;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="reveal">
+    <div class="slides">
+
+      <!-- Title Slide -->
+      <section data-background-gradient="linear-gradient(to bottom, #1e3a8a, #3b82f6)">
+        <h1>🚀 GFFC Implementation</h1>
+        <h2>Complete Feature Summary</h2>
+        <p><small>PatientOutcome Presentation Branch · November 2025</small></p>
+      </section>
+
+      <!-- Project Overview -->
+      <section>
+        <h2>📋 Project Overview</h2>
+        <div class="highlight-box">
+          <h3 style="text-align: center;">Special Presentation Branch for Controlled Conditions</h3>
+        </div>
+        <div class="feature-grid" style="margin-top: 2rem;">
+          <div class="stat-box">
+            <h3 style="color: #3b82f6;">2,300+</h3>
+            <p>Lines of Code</p>
           </div>
-          <div class="feature-grid" style="margin-top: 2rem;">
-            <div class="stat-box">
-              <h3 style="color: #3b82f6;">2,300+</h3>
-              <p>Lines of Code</p>
-            </div>
-            <div class="stat-box">
-              <h3 style="color: #10b981;">13</h3>
-              <p>Files Created</p>
-            </div>
-            <div class="stat-box">
-              <h3 style="color: #f59e0b;">12</h3>
-              <p>Files Modified</p>
-            </div>
-            <div class="stat-box">
-              <h3 style="color: #8b5cf6;">10</h3>
-              <p>New API Endpoints</p>
-            </div>
-            <div class="stat-box">
-              <h3 style="color: #ec4899;">6</h3>
-              <p>Major Features</p>
-            </div>
-            <div class="stat-box">
-              <h3 style="color: #06b6d4;">5</h3>
-              <p>Documentation Files</p>
+          <div class="stat-box">
+            <h3 style="color: #10b981;">13</h3>
+            <p>Files Created</p>
+          </div>
+          <div class="stat-box">
+            <h3 style="color: #f59e0b;">12</h3>
+            <p>Files Modified</p>
+          </div>
+          <div class="stat-box">
+            <h3 style="color: #8b5cf6;">10</h3>
+            <p>New API Endpoints</p>
+          </div>
+          <div class="stat-box">
+            <h3 style="color: #ec4899;">6</h3>
+            <p>Major Features</p>
+          </div>
+          <div class="stat-box">
+            <h3 style="color: #06b6d4;">5</h3>
+            <p>Documentation Files</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- Features Overview -->
+      <section>
+        <h2>✨ Implemented Features</h2>
+        <div class="two-columns">
+          <div class="feature-card">
+            <h3><span class="emoji">🔐</span>Passwordless Auth</h3>
+            <ul style="font-size: 0.85em;">
+              <li>Kiosk username pattern</li>
+              <li>Collision handling</li>
+              <li>No password required</li>
+              <li>Session management</li>
+            </ul>
+          </div>
+          <div class="feature-card">
+            <h3><span class="emoji">🏥</span>Auto-Consultation</h3>
+            <ul style="font-size: 0.85em;">
+              <li>Random dates & reasons</li>
+              <li>3 PROM forms applied</li>
+              <li>Doctor user creation</li>
+              <li>German notes</li>
+            </ul>
+          </div>
+          <div class="feature-card">
+            <h3><span class="emoji">📊</span>Activity Logging</h3>
+            <ul style="font-size: 0.85em;">
+              <li>Real-time SSE stream</li>
+              <li>Color-coded events</li>
+              <li>Virtual scrolling</li>
+              <li>Search & filter</li>
+            </ul>
+          </div>
+          <div class="feature-card">
+            <h3><span class="emoji">🔄</span>Role Switching</h3>
+            <ul style="font-size: 0.85em;">
+              <li>Dropdown component</li>
+              <li>Kiosk ↔ Doctor</li>
+              <li>No re-authentication</li>
+              <li>Visual feedback</li>
+            </ul>
+          </div>
+          <div class="feature-card">
+            <h3><span class="emoji">📈</span>Statistics View</h3>
+            <ul style="font-size: 0.85em;">
+              <li>Chart.js integration</li>
+              <li>Dual timeline modes</li>
+              <li>3 PROM score lines</li>
+              <li>Interactive tooltips</li>
+            </ul>
+          </div>
+          <div class="feature-card">
+            <h3><span class="emoji">📝</span>Form Tracking</h3>
+            <ul style="font-size: 0.85em;">
+              <li>Form open logging</li>
+              <li>Submit tracking</li>
+              <li>Dashboard access</li>
+              <li>Real-time updates</li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      <!-- Tech Stack -->
+      <section>
+        <h2>🛠️ Technology Stack</h2>
+        <div class="two-columns">
+          <div>
+            <h3>Backend</h3>
+            <div class="tech-stack">
+              <div class="tech-item">
+                <strong>Express.js</strong>
+                <p style="font-size: 0.85em; opacity: 0.8;">v4.21.2</p>
+              </div>
+              <div class="tech-item">
+                <strong>TypeScript</strong>
+                <p style="font-size: 0.85em; opacity: 0.8;">v5.9.2</p>
+              </div>
+              <div class="tech-item">
+                <strong>MongoDB</strong>
+                <p style="font-size: 0.85em; opacity: 0.8;">Mongoose 8.17.1</p>
+              </div>
+              <div class="tech-item">
+                <strong>Zod</strong>
+                <p style="font-size: 0.85em; opacity: 0.8;">Validation + OpenAPI</p>
+              </div>
             </div>
           </div>
-        </section>
+          <div>
+            <h3>Frontend</h3>
+            <div class="tech-stack">
+              <div class="tech-item">
+                <strong>Vue 3</strong>
+                <p style="font-size: 0.85em; opacity: 0.8;">Composition API</p>
+              </div>
+              <div class="tech-item">
+                <strong>Vuetify 3</strong>
+                <p style="font-size: 0.85em; opacity: 0.8;">Material Design</p>
+              </div>
+              <div class="tech-item">
+                <strong>Chart.js</strong>
+                <p style="font-size: 0.85em; opacity: 0.8;">v4.5.1 + Vue wrapper</p>
+              </div>
+              <div class="tech-item">
+                <strong>Pinia</strong>
+                <p style="font-size: 0.85em; opacity: 0.8;">State Management</p>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="highlight-box" style="margin-top: 1.5rem;">
+          <strong>Real-Time:</strong> Server-Sent Events (SSE) · <strong>Patterns:</strong> Service-Repository · MVC
+        </div>
+      </section>
 
-        <!-- Features Overview -->
-        <section>
-          <h2>✨ Implemented Features</h2>
-          <div class="two-columns">
-            <div class="feature-card">
-              <h3><span class="emoji">🔐</span>Passwordless Auth</h3>
+      <!-- Feature 1: Kiosk Auth -->
+      <section>
+        <h2>🔐 Feature 1: Passwordless Authentication</h2>
+        <div class="two-columns">
+          <div>
+            <h4>How It Works</h4>
+            <div class="timeline">
+              <div class="timeline-item">
+                <strong>1. User enters kiosk username</strong>
+                <p style="font-size: 0.85em; opacity: 0.8;">Pattern: <code>kiosk-*</code></p>
+              </div>
+              <div class="timeline-item">
+                <strong>2. Backend checks collision</strong>
+                <p style="font-size: 0.85em; opacity: 0.8;">Adds 2-char suffix if exists</p>
+              </div>
+              <div class="timeline-item">
+                <strong>3. Creates consultation</strong>
+                <p style="font-size: 0.85em; opacity: 0.8;">Case: 677da5d8cb4569ad1c65515f</p>
+              </div>
+              <div class="timeline-item">
+                <strong>4. Applies 3 PROM forms</strong>
+                <p style="font-size: 0.85em; opacity: 0.8;">AOFAS, EFAS, MOXFQ</p>
+              </div>
+              <div class="timeline-item">
+                <strong>5. Creates doctor user</strong>
+                <p style="font-size: 0.85em; opacity: 0.8;">Extracts suffix for username</p>
+              </div>
+              <div class="timeline-item">
+                <strong>6. Logs in user</strong>
+                <p style="font-size: 0.85em; opacity: 0.8;">Session + activity log</p>
+              </div>
+            </div>
+          </div>
+          <div>
+            <h4>Implementation</h4>
+            <div class="tech-item" style="margin-bottom: 1rem;">
+              <strong>Backend Files</strong>
               <ul style="font-size: 0.85em;">
-                <li>Kiosk username pattern</li>
-                <li>Collision handling</li>
-                <li>No password required</li>
-                <li>Session management</li>
+                <li><code>kioskService.ts</code></li>
+                <li><code>userController.ts</code></li>
+                <li><code>userRouter.ts</code></li>
               </ul>
             </div>
-            <div class="feature-card">
-              <h3><span class="emoji">🏥</span>Auto-Consultation</h3>
+            <div class="tech-item" style="margin-bottom: 1rem;">
+              <strong>Frontend Files</strong>
               <ul style="font-size: 0.85em;">
-                <li>Random dates & reasons</li>
-                <li>3 PROM forms applied</li>
-                <li>Doctor user creation</li>
-                <li>German notes</li>
+                <li><code>LoginView.vue</code></li>
               </ul>
             </div>
-            <div class="feature-card">
-              <h3><span class="emoji">📊</span>Activity Logging</h3>
+            <div class="tech-item">
+              <strong>Key Features</strong>
               <ul style="font-size: 0.85em;">
-                <li>Real-time SSE stream</li>
-                <li>Color-coded events</li>
-                <li>Virtual scrolling</li>
-                <li>Search & filter</li>
+                <li>Optional password field</li>
+                <li>Random date (0-30 days past)</li>
+                <li>Random consultation reason</li>
+                <li>German note generation</li>
               </ul>
             </div>
-            <div class="feature-card">
-              <h3><span class="emoji">🔄</span>Role Switching</h3>
+          </div>
+        </div>
+      </section>
+
+      <!-- Feature 2: Activity Logging -->
+      <section>
+        <h2>📊 Feature 2: Real-Time Activity Logging</h2>
+        <div class="two-columns">
+          <div>
+            <h4>Event Types</h4>
+            <table style="width: 100%; font-size: 0.85em;">
+              <tr style="background: rgba(76, 175, 80, 0.2);">
+                <td>🔐</td>
+                <td><strong>Login</strong></td>
+                <td>Green</td>
+              </tr>
+              <tr style="background: rgba(33, 150, 243, 0.2);">
+                <td>🔄</td>
+                <td><strong>Role Switch</strong></td>
+                <td>Blue</td>
+              </tr>
+              <tr style="background: rgba(255, 152, 0, 0.2);">
+                <td>📊</td>
+                <td><strong>Dashboard</strong></td>
+                <td>Orange</td>
+              </tr>
+              <tr style="background: rgba(156, 39, 176, 0.2);">
+                <td>📝</td>
+                <td><strong>Form Open</strong></td>
+                <td>Purple</td>
+              </tr>
+              <tr style="background: rgba(0, 188, 212, 0.2);">
+                <td>✅</td>
+                <td><strong>Form Submit</strong></td>
+                <td>Cyan</td>
+              </tr>
+            </table>
+          </div>
+          <div>
+            <h4>Technical Details</h4>
+            <div class="tech-item" style="margin-bottom: 1rem;">
+              <strong>SSE Infrastructure</strong>
               <ul style="font-size: 0.85em;">
-                <li>Dropdown component</li>
-                <li>Kiosk ↔ Doctor</li>
-                <li>No re-authentication</li>
-                <li>Visual feedback</li>
+                <li>Server-Sent Events stream</li>
+                <li>In-memory storage (1000 limit)</li>
+                <li>Auto-reconnect logic</li>
+                <li>Developer/admin access only</li>
               </ul>
             </div>
-            <div class="feature-card">
-              <h3><span class="emoji">📈</span>Statistics View</h3>
+            <div class="tech-item">
+              <strong>Features</strong>
               <ul style="font-size: 0.85em;">
-                <li>Chart.js integration</li>
-                <li>Dual timeline modes</li>
-                <li>3 PROM score lines</li>
-                <li>Interactive tooltips</li>
-              </ul>
-            </div>
-            <div class="feature-card">
-              <h3><span class="emoji">📝</span>Form Tracking</h3>
-              <ul style="font-size: 0.85em;">
-                <li>Form open logging</li>
-                <li>Submit tracking</li>
-                <li>Dashboard access</li>
+                <li>Virtual scrolling for performance</li>
+                <li>Search & filter by type</li>
+                <li>Auto-scroll toggle</li>
                 <li>Real-time updates</li>
               </ul>
             </div>
           </div>
-        </section>
+        </div>
+      </section>
 
-        <!-- Tech Stack -->
-        <section>
-          <h2>🛠️ Technology Stack</h2>
-          <div class="two-columns">
-            <div>
-              <h3>Backend</h3>
-              <div class="tech-stack">
-                <div class="tech-item">
-                  <strong>Express.js</strong>
-                  <p style="font-size: 0.85em; opacity: 0.8;">v4.21.2</p>
-                </div>
-                <div class="tech-item">
-                  <strong>TypeScript</strong>
-                  <p style="font-size: 0.85em; opacity: 0.8;">v5.9.2</p>
-                </div>
-                <div class="tech-item">
-                  <strong>MongoDB</strong>
-                  <p style="font-size: 0.85em; opacity: 0.8;">Mongoose 8.17.1</p>
-                </div>
-                <div class="tech-item">
-                  <strong>Zod</strong>
-                  <p style="font-size: 0.85em; opacity: 0.8;">Validation + OpenAPI</p>
-                </div>
-              </div>
-            </div>
-            <div>
-              <h3>Frontend</h3>
-              <div class="tech-stack">
-                <div class="tech-item">
-                  <strong>Vue 3</strong>
-                  <p style="font-size: 0.85em; opacity: 0.8;">Composition API</p>
-                </div>
-                <div class="tech-item">
-                  <strong>Vuetify 3</strong>
-                  <p style="font-size: 0.85em; opacity: 0.8;">Material Design</p>
-                </div>
-                <div class="tech-item">
-                  <strong>Chart.js</strong>
-                  <p style="font-size: 0.85em; opacity: 0.8;">v4.5.1 + Vue wrapper</p>
-                </div>
-                <div class="tech-item">
-                  <strong>Pinia</strong>
-                  <p style="font-size: 0.85em; opacity: 0.8;">State Management</p>
-                </div>
-              </div>
+      <!-- Feature 3: Statistics -->
+      <section>
+        <h2>📈 Feature 3: Statistics Dashboard</h2>
+        <div class="two-columns">
+          <div>
+            <h4>Chart Features</h4>
+            <ul>
+              <li><strong style="color: #4CAF50;">AOFAS</strong> - Green line</li>
+              <li><strong style="color: #2196F3;">EFAS</strong> - Blue line</li>
+              <li><strong style="color: #9C27B0;">MOXFQ</strong> - Purple line</li>
+            </ul>
+            <div class="tech-item" style="margin-top: 1rem;">
+              <strong>Timeline Modes</strong>
+              <p style="font-size: 0.85em; margin: 0.5rem 0;"><strong>Real Date & Time:</strong> Chronological view with
+                actual consultation dates</p>
+              <p style="font-size: 0.85em;"><strong>Fixed Intervals:</strong> Visit 1, Visit 2, etc. (evenly spaced)</p>
             </div>
           </div>
-          <div class="highlight-box" style="margin-top: 1.5rem;">
-            <strong>Real-Time:</strong> Server-Sent Events (SSE) · <strong>Patterns:</strong> Service-Repository · MVC
-          </div>
-        </section>
-
-        <!-- Feature 1: Kiosk Auth -->
-        <section>
-          <h2>🔐 Feature 1: Passwordless Authentication</h2>
-          <div class="two-columns">
-            <div>
-              <h4>How It Works</h4>
-              <div class="timeline">
-                <div class="timeline-item">
-                  <strong>1. User enters kiosk username</strong>
-                  <p style="font-size: 0.85em; opacity: 0.8;">Pattern: <code>kiosk-*</code></p>
-                </div>
-                <div class="timeline-item">
-                  <strong>2. Backend checks collision</strong>
-                  <p style="font-size: 0.85em; opacity: 0.8;">Adds 2-char suffix if exists</p>
-                </div>
-                <div class="timeline-item">
-                  <strong>3. Creates consultation</strong>
-                  <p style="font-size: 0.85em; opacity: 0.8;">Case: 677da5d8cb4569ad1c65515f</p>
-                </div>
-                <div class="timeline-item">
-                  <strong>4. Applies 3 PROM forms</strong>
-                  <p style="font-size: 0.85em; opacity: 0.8;">AOFAS, EFAS, MOXFQ</p>
-                </div>
-                <div class="timeline-item">
-                  <strong>5. Creates doctor user</strong>
-                  <p style="font-size: 0.85em; opacity: 0.8;">Extracts suffix for username</p>
-                </div>
-                <div class="timeline-item">
-                  <strong>6. Logs in user</strong>
-                  <p style="font-size: 0.85em; opacity: 0.8;">Session + activity log</p>
-                </div>
-              </div>
-            </div>
-            <div>
-              <h4>Implementation</h4>
-              <div class="tech-item" style="margin-bottom: 1rem;">
-                <strong>Backend Files</strong>
-                <ul style="font-size: 0.85em;">
-                  <li><code>kioskService.ts</code></li>
-                  <li><code>userController.ts</code></li>
-                  <li><code>userRouter.ts</code></li>
-                </ul>
-              </div>
-              <div class="tech-item" style="margin-bottom: 1rem;">
-                <strong>Frontend Files</strong>
-                <ul style="font-size: 0.85em;">
-                  <li><code>LoginView.vue</code></li>
-                </ul>
-              </div>
-              <div class="tech-item">
-                <strong>Key Features</strong>
-                <ul style="font-size: 0.85em;">
-                  <li>Optional password field</li>
-                  <li>Random date (0-30 days past)</li>
-                  <li>Random consultation reason</li>
-                  <li>German note generation</li>
-                </ul>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        <!-- Feature 2: Activity Logging -->
-        <section>
-          <h2>📊 Feature 2: Real-Time Activity Logging</h2>
-          <div class="two-columns">
-            <div>
-              <h4>Event Types</h4>
-              <table style="width: 100%; font-size: 0.85em;">
-                <tr style="background: rgba(76, 175, 80, 0.2);">
-                  <td>🔐</td>
-                  <td><strong>Login</strong></td>
-                  <td>Green</td>
-                </tr>
-                <tr style="background: rgba(33, 150, 243, 0.2);">
-                  <td>🔄</td>
-                  <td><strong>Role Switch</strong></td>
-                  <td>Blue</td>
-                </tr>
-                <tr style="background: rgba(255, 152, 0, 0.2);">
-                  <td>📊</td>
-                  <td><strong>Dashboard</strong></td>
-                  <td>Orange</td>
-                </tr>
-                <tr style="background: rgba(156, 39, 176, 0.2);">
-                  <td>📝</td>
-                  <td><strong>Form Open</strong></td>
-                  <td>Purple</td>
-                </tr>
-                <tr style="background: rgba(0, 188, 212, 0.2);">
-                  <td>✅</td>
-                  <td><strong>Form Submit</strong></td>
-                  <td>Cyan</td>
-                </tr>
-              </table>
-            </div>
-            <div>
-              <h4>Technical Details</h4>
-              <div class="tech-item" style="margin-bottom: 1rem;">
-                <strong>SSE Infrastructure</strong>
-                <ul style="font-size: 0.85em;">
-                  <li>Server-Sent Events stream</li>
-                  <li>In-memory storage (1000 limit)</li>
-                  <li>Auto-reconnect logic</li>
-                  <li>Developer/admin access only</li>
-                </ul>
-              </div>
-              <div class="tech-item">
-                <strong>Features</strong>
-                <ul style="font-size: 0.85em;">
-                  <li>Virtual scrolling for performance</li>
-                  <li>Search & filter by type</li>
-                  <li>Auto-scroll toggle</li>
-                  <li>Real-time updates</li>
-                </ul>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        <!-- Feature 3: Statistics -->
-        <section>
-          <h2>📈 Feature 3: Statistics Dashboard</h2>
-          <div class="two-columns">
-            <div>
-              <h4>Chart Features</h4>
-              <ul>
-                <li><strong style="color: #4CAF50;">AOFAS</strong> - Green line</li>
-                <li><strong style="color: #2196F3;">EFAS</strong> - Blue line</li>
-                <li><strong style="color: #9C27B0;">MOXFQ</strong> - Purple line</li>
+          <div>
+            <h4>Implementation</h4>
+            <div class="tech-item" style="margin-bottom: 1rem;">
+              <strong>Backend API</strong>
+              <ul style="font-size: 0.85em;">
+                <li><code>GET /statistics/case/:caseId</code></li>
+                <li><code>GET /statistics/case/:caseId/scores</code></li>
+                <li>Extracts scores from <code>form.scoring.total.value</code></li>
               </ul>
-              <div class="tech-item" style="margin-top: 1rem;">
-                <strong>Timeline Modes</strong>
-                <p style="font-size: 0.85em; margin: 0.5rem 0;"><strong>Real Date & Time:</strong> Chronological view with actual consultation dates</p>
-                <p style="font-size: 0.85em;"><strong>Fixed Intervals:</strong> Visit 1, Visit 2, etc. (evenly spaced)</p>
-              </div>
             </div>
-            <div>
-              <h4>Implementation</h4>
-              <div class="tech-item" style="margin-bottom: 1rem;">
-                <strong>Backend API</strong>
-                <ul style="font-size: 0.85em;">
-                  <li><code>GET /statistics/case/:caseId</code></li>
-                  <li><code>GET /statistics/case/:caseId/scores</code></li>
-                  <li>Extracts scores from <code>form.scoring.total.value</code></li>
-                </ul>
-              </div>
-              <div class="tech-item">
-                <strong>Frontend</strong>
-                <ul style="font-size: 0.85em;">
-                  <li>Chart.js v4.5.1</li>
-                  <li>vue-chartjs v5.3.3</li>
-                  <li>Interactive tooltips</li>
-                  <li>Timeline toggle button</li>
-                </ul>
-              </div>
+            <div class="tech-item">
+              <strong>Frontend</strong>
+              <ul style="font-size: 0.85em;">
+                <li>Chart.js v4.5.1</li>
+                <li>vue-chartjs v5.3.3</li>
+                <li>Interactive tooltips</li>
+                <li>Timeline toggle button</li>
+              </ul>
             </div>
           </div>
-        </section>
+        </div>
+      </section>
 
-        <!-- Architecture -->
-        <section>
-          <h2>🏗️ System Architecture</h2>
-          <div style="font-size: 0.75em;">
-            <pre style="background: rgba(255,255,255,0.05); padding: 1rem; border-radius: 8px; text-align: left;"><code>
+      <!-- Architecture -->
+      <section>
+        <h2>🏗️ System Architecture</h2>
+        <div style="font-size: 0.75em;">
+          <pre style="background: rgba(255,255,255,0.05); padding: 1rem; border-radius: 8px; text-align: left;"><code>
 ┌─────────────────────────────────────────────────────────────┐
 │                  Frontend (Vue 3 + Vuetify)                 │
 │  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐     │
@@ -391,316 +516,324 @@
                    │   MongoDB       │
                    └─────────────────┘
             </code></pre>
-          </div>
-        </section>
+        </div>
+      </section>
 
-        <!-- API Endpoints -->
-        <section>
-          <h2>🔌 New API Endpoints (10 total)</h2>
-          <div class="two-columns" style="font-size: 0.8em;">
-            <div>
-              <h4>Authentication & User</h4>
-              <ul>
-                <li><code>POST /user/kiosk-login</code></li>
-                <li><code>POST /user/role-switch</code></li>
-              </ul>
-              <h4 style="margin-top: 1rem;">Activity Logging</h4>
-              <ul>
-                <li><code>GET /activitylog/stream</code> (SSE)</li>
-                <li><code>GET /activitylog/recent</code></li>
-                <li><code>DELETE /activitylog/clear</code></li>
-                <li><code>GET /activitylog/stats</code></li>
-              </ul>
-            </div>
-            <div>
-              <h4>Activity Events</h4>
-              <ul>
-                <li><code>POST /activitylog/dashboard-access</code></li>
-                <li><code>POST /activitylog/form-open</code></li>
-                <li><code>POST /activitylog/form-submit</code></li>
-              </ul>
-              <h4 style="margin-top: 1rem;">Statistics</h4>
-              <ul>
-                <li><code>GET /statistics/case/:caseId</code></li>
-                <li><code>GET /statistics/case/:caseId/scores</code></li>
-              </ul>
-            </div>
+      <!-- API Endpoints -->
+      <section>
+        <h2>🔌 New API Endpoints (10 total)</h2>
+        <div class="two-columns" style="font-size: 0.8em;">
+          <div>
+            <h4>Authentication & User</h4>
+            <ul>
+              <li><code>POST /user/kiosk-login</code></li>
+              <li><code>POST /user/role-switch</code></li>
+            </ul>
+            <h4 style="margin-top: 1rem;">Activity Logging</h4>
+            <ul>
+              <li><code>GET /activitylog/stream</code> (SSE)</li>
+              <li><code>GET /activitylog/recent</code></li>
+              <li><code>DELETE /activitylog/clear</code></li>
+              <li><code>GET /activitylog/stats</code></li>
+            </ul>
           </div>
-          <div class="highlight-box" style="margin-top: 1rem;">
-            <strong>All endpoints documented via OpenAPI</strong> - Available at <code>/api-docs</code>
+          <div>
+            <h4>Activity Events</h4>
+            <ul>
+              <li><code>POST /activitylog/dashboard-access</code></li>
+              <li><code>POST /activitylog/form-open</code></li>
+              <li><code>POST /activitylog/form-submit</code></li>
+            </ul>
+            <h4 style="margin-top: 1rem;">Statistics</h4>
+            <ul>
+              <li><code>GET /statistics/case/:caseId</code></li>
+              <li><code>GET /statistics/case/:caseId/scores</code></li>
+            </ul>
           </div>
-        </section>
+        </div>
+        <div class="highlight-box" style="margin-top: 1rem;">
+          <strong>All endpoints documented via OpenAPI</strong> - Available at <code>/api-docs</code>
+        </div>
+      </section>
 
-        <!-- File Summary -->
-        <section>
-          <h2>📁 Files Created & Modified</h2>
-          <div class="two-columns" style="font-size: 0.75em;">
-            <div>
-              <h4>Backend - Created (7 files)</h4>
-              <ul>
-                <li><code>kioskService.ts</code></li>
-                <li><code>activityLogService.ts</code></li>
-                <li><code>activityLogController.ts</code></li>
-                <li><code>activityLogRouter.ts</code></li>
-                <li><code>statisticsService.ts</code></li>
-                <li><code>statisticsController.ts</code></li>
-                <li><code>statisticsRouter.ts</code></li>
-              </ul>
-              <h4 style="margin-top: 0.5rem;">Backend - Modified (5 files)</h4>
-              <ul>
-                <li><code>userController.ts</code></li>
-                <li><code>userRouter.ts</code></li>
-                <li><code>session-user-custom-field.d.ts</code></li>
-                <li><code>server.ts</code></li>
-                <li><code>openAPIDocumentGenerator.ts</code></li>
-              </ul>
-            </div>
-            <div>
-              <h4>Frontend - Created (3 files)</h4>
-              <ul>
-                <li><code>ActivityLogView.vue</code></li>
-                <li><code>StatisticsView.vue</code></li>
-                <li><code>RoleSwitcher.vue</code></li>
-              </ul>
-              <h4 style="margin-top: 0.5rem;">Frontend - Modified (7 files)</h4>
-              <ul>
-                <li><code>LoginView.vue</code></li>
-                <li><code>App.vue</code></li>
-                <li><code>router/index.ts</code></li>
-                <li><code>locales/en.ts</code></li>
-                <li><code>DashboardView.vue</code></li>
-                <li><code>KioskView.vue</code></li>
-                <li><code>KioskForm.vue</code></li>
-              </ul>
-              <h4 style="margin-top: 0.5rem;">Documentation (5 files)</h4>
-              <ul>
-                <li><code>GFFC_IMPLEMENTATION.md</code></li>
-                <li><code>STATISTICS_IMPLEMENTATION.md</code></li>
-                <li><code>GFFC_TEST_PLAN.md</code></li>
-                <li><code>GFFC_FINAL_SUMMARY.md</code></li>
-                <li><code>GFFC_QUICK_START.md</code></li>
-              </ul>
-            </div>
+      <!-- File Summary -->
+      <section>
+        <h2>📁 Files Created & Modified</h2>
+        <div class="two-columns" style="font-size: 0.75em;">
+          <div>
+            <h4>Backend - Created (7 files)</h4>
+            <ul>
+              <li><code>kioskService.ts</code></li>
+              <li><code>activityLogService.ts</code></li>
+              <li><code>activityLogController.ts</code></li>
+              <li><code>activityLogRouter.ts</code></li>
+              <li><code>statisticsService.ts</code></li>
+              <li><code>statisticsController.ts</code></li>
+              <li><code>statisticsRouter.ts</code></li>
+            </ul>
+            <h4 style="margin-top: 0.5rem;">Backend - Modified (5 files)</h4>
+            <ul>
+              <li><code>userController.ts</code></li>
+              <li><code>userRouter.ts</code></li>
+              <li><code>session-user-custom-field.d.ts</code></li>
+              <li><code>server.ts</code></li>
+              <li><code>openAPIDocumentGenerator.ts</code></li>
+            </ul>
           </div>
-        </section>
+          <div>
+            <h4>Frontend - Created (3 files)</h4>
+            <ul>
+              <li><code>ActivityLogView.vue</code></li>
+              <li><code>StatisticsView.vue</code></li>
+              <li><code>RoleSwitcher.vue</code></li>
+            </ul>
+            <h4 style="margin-top: 0.5rem;">Frontend - Modified (7 files)</h4>
+            <ul>
+              <li><code>LoginView.vue</code></li>
+              <li><code>App.vue</code></li>
+              <li><code>router/index.ts</code></li>
+              <li><code>locales/en.ts</code></li>
+              <li><code>DashboardView.vue</code></li>
+              <li><code>KioskView.vue</code></li>
+              <li><code>KioskForm.vue</code></li>
+            </ul>
+            <h4 style="margin-top: 0.5rem;">Documentation (5 files)</h4>
+            <ul>
+              <li><code>GFFC_IMPLEMENTATION.md</code></li>
+              <li><code>STATISTICS_IMPLEMENTATION.md</code></li>
+              <li><code>GFFC_TEST_PLAN.md</code></li>
+              <li><code>GFFC_FINAL_SUMMARY.md</code></li>
+              <li><code>GFFC_QUICK_START.md</code></li>
+            </ul>
+          </div>
+        </div>
+      </section>
 
-        <!-- Testing -->
-        <section>
-          <h2>🧪 Testing & Quality</h2>
-          <div class="feature-grid">
-            <div class="stat-box">
-              <h3 style="color: #3b82f6;">23</h3>
-              <p>Test Cases</p>
-            </div>
-            <div class="stat-box">
-              <h3 style="color: #10b981;">8</h3>
-              <p>Test Scenarios</p>
-            </div>
-            <div class="stat-box">
-              <h3 style="color: #f59e0b;">0</h3>
-              <p>TypeScript Errors</p>
-            </div>
+      <!-- Testing -->
+      <section>
+        <h2>🧪 Testing & Quality</h2>
+        <div class="feature-grid">
+          <div class="stat-box">
+            <h3 style="color: #3b82f6;">23</h3>
+            <p>Test Cases</p>
           </div>
-          <div class="two-columns" style="margin-top: 2rem; font-size: 0.85em;">
-            <div>
-              <h4>Test Categories</h4>
-              <ul>
-                <li>Kiosk Authentication (2 cases)</li>
-                <li>Activity Logging (5 cases)</li>
-                <li>Role Switching (3 cases)</li>
-                <li>Statistics View (4 cases)</li>
-                <li>Form Completion (2 cases)</li>
-                <li>Edge Cases (4 cases)</li>
-                <li>Integration Tests (1 case)</li>
-                <li>Performance Tests (2 cases)</li>
-              </ul>
-            </div>
-            <div>
-              <h4>Quality Metrics</h4>
-              <ul>
-                <li>✅ Type-safe TypeScript throughout</li>
-                <li>✅ Service-Repository pattern</li>
-                <li>✅ OpenAPI documentation</li>
-                <li>✅ Error handling & edge cases</li>
-                <li>✅ Responsive UI design</li>
-                <li>✅ Virtual scrolling optimization</li>
-                <li>✅ Real-time updates via SSE</li>
-                <li>✅ Zero technical debt</li>
-              </ul>
-            </div>
+          <div class="stat-box">
+            <h3 style="color: #10b981;">8</h3>
+            <p>Test Scenarios</p>
           </div>
-        </section>
+          <div class="stat-box">
+            <h3 style="color: #f59e0b;">0</h3>
+            <p>TypeScript Errors</p>
+          </div>
+        </div>
+        <div class="two-columns" style="margin-top: 2rem; font-size: 0.85em;">
+          <div>
+            <h4>Test Categories</h4>
+            <ul>
+              <li>Kiosk Authentication (2 cases)</li>
+              <li>Activity Logging (5 cases)</li>
+              <li>Role Switching (3 cases)</li>
+              <li>Statistics View (4 cases)</li>
+              <li>Form Completion (2 cases)</li>
+              <li>Edge Cases (4 cases)</li>
+              <li>Integration Tests (1 case)</li>
+              <li>Performance Tests (2 cases)</li>
+            </ul>
+          </div>
+          <div>
+            <h4>Quality Metrics</h4>
+            <ul>
+              <li>✅ Type-safe TypeScript throughout</li>
+              <li>✅ Service-Repository pattern</li>
+              <li>✅ OpenAPI documentation</li>
+              <li>✅ Error handling & edge cases</li>
+              <li>✅ Responsive UI design</li>
+              <li>✅ Virtual scrolling optimization</li>
+              <li>✅ Real-time updates via SSE</li>
+              <li>✅ Zero technical debt</li>
+            </ul>
+          </div>
+        </div>
+      </section>
 
-        <!-- Key Achievements -->
-        <section>
-          <h2>🏆 Key Achievements</h2>
-          <div class="feature-grid">
-            <div class="feature-card">
-              <h3><span class="emoji">⚡</span>Fast Development</h3>
-              <p style="font-size: 0.85em;">3 hours AI-assisted vs 60-70 hours traditional = <strong>20x faster</strong></p>
-            </div>
-            <div class="feature-card">
-              <h3><span class="emoji">💎</span>High Quality</h3>
-              <p style="font-size: 0.85em;">Clean code, full typing, comprehensive docs, zero debt</p>
-            </div>
-            <div class="feature-card">
-              <h3><span class="emoji">🔄</span>Real-Time</h3>
-              <p style="font-size: 0.85em;">SSE-based activity monitoring with instant updates</p>
-            </div>
-            <div class="feature-card">
-              <h3><span class="emoji">📊</span>Data Viz</h3>
-              <p style="font-size: 0.85em;">Interactive charts with dual timeline modes</p>
-            </div>
-            <div class="feature-card">
-              <h3><span class="emoji">🔐</span>Secure</h3>
-              <p style="font-size: 0.85em;">Session-based auth, role checks, access control</p>
-            </div>
-            <div class="feature-card">
-              <h3><span class="emoji">📚</span>Documented</h3>
-              <p style="font-size: 0.85em;">5 comprehensive docs + 23 test cases</p>
-            </div>
-          </div>
-        </section>
-
-        <!-- Demo Flow -->
-        <section>
-          <h2>🎬 Demo Flow (10 minutes)</h2>
-          <div class="timeline">
-            <div class="timeline-item">
-              <strong>Part 1: Kiosk Login (2 min)</strong>
-              <p style="font-size: 0.85em; opacity: 0.8;">Username: <code>kiosk-demo-presentation</code> · No password · Auto-consultation created</p>
-            </div>
-            <div class="timeline-item">
-              <strong>Part 2: Activity Monitoring (2 min)</strong>
-              <p style="font-size: 0.85em; opacity: 0.8;">Open Activity Log as developer · Watch real-time updates · Color-coded events</p>
-            </div>
-            <div class="timeline-item">
-              <strong>Part 3: Role Switching (2 min)</strong>
-              <p style="font-size: 0.85em; opacity: 0.8;">Click role switcher · Switch to doctor · View dashboard · Switch back to kiosk</p>
-            </div>
-            <div class="timeline-item">
-              <strong>Part 4: Form Completion (2 min)</strong>
-              <p style="font-size: 0.85em; opacity: 0.8;">Open AOFAS form · Fill questions · Submit · Watch activity log update</p>
-            </div>
-            <div class="timeline-item">
-              <strong>Part 5: Statistics (2 min)</strong>
-              <p style="font-size: 0.85em; opacity: 0.8;">Navigate to stats · Show consultation count · Toggle timeline · Hover tooltips</p>
-            </div>
-          </div>
-        </section>
-
-        <!-- Access URLs -->
-        <section>
-          <h2>🌐 Access Information</h2>
-          <div class="two-columns">
-            <div>
-              <h4>Development URLs</h4>
-              <div class="tech-item" style="margin-bottom: 0.5rem;">
-                <strong>Frontend</strong>
-                <p style="font-size: 0.9em;"><code>http://localhost:5173</code></p>
-              </div>
-              <div class="tech-item" style="margin-bottom: 0.5rem;">
-                <strong>Backend API</strong>
-                <p style="font-size: 0.9em;"><code>http://localhost:40001</code></p>
-              </div>
-              <div class="tech-item">
-                <strong>API Docs</strong>
-                <p style="font-size: 0.9em;"><code>http://localhost:40001/api-docs</code></p>
-              </div>
-            </div>
-            <div>
-              <h4>Test Users</h4>
-              <table style="width: 100%; font-size: 0.85em;">
-                <tr>
-                  <th style="text-align: left;">Username</th>
-                  <th>Password</th>
-                  <th>Role</th>
-                </tr>
-                <tr>
-                  <td><code>victor</code></td>
-                  <td>Set</td>
-                  <td>Developer</td>
-                </tr>
-                <tr>
-                  <td><code>kiosk-*</code></td>
-                  <td>None</td>
-                  <td>Kiosk</td>
-                </tr>
-                <tr>
-                  <td><code>user*</code></td>
-                  <td>None</td>
-                  <td>Doctor</td>
-                </tr>
-              </table>
-            </div>
-          </div>
-          <div class="highlight-box" style="margin-top: 1.5rem; text-align: center;">
-            <strong>Quick Test:</strong> Login as <code>kiosk-test123</code> (no password)
-          </div>
-        </section>
-
-        <!-- Summary Stats -->
-        <section data-background-gradient="linear-gradient(to bottom, #065f46, #10b981)">
-          <h2>📊 Implementation Summary</h2>
-          <div style="display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 1rem; margin: 2rem 0;">
-            <div class="stat-box" style="background: rgba(255,255,255,0.1);">
-              <h2 style="color: #10b981;">2,300+</h2>
-              <p>Lines of Code</p>
-            </div>
-            <div class="stat-box" style="background: rgba(255,255,255,0.1);">
-              <h2 style="color: #10b981;">25</h2>
-              <p>Total Files</p>
-            </div>
-            <div class="stat-box" style="background: rgba(255,255,255,0.1);">
-              <h2 style="color: #10b981;">10</h2>
-              <p>API Endpoints</p>
-            </div>
-            <div class="stat-box" style="background: rgba(255,255,255,0.1);">
-              <h2 style="color: #10b981;">6</h2>
-              <p>Major Features</p>
-            </div>
-          </div>
-          <div class="highlight-box" style="background: rgba(255,255,255,0.1); border-color: rgba(255,255,255,0.3); margin-top: 2rem;">
-            <h3>Market Value: $4,500 - $5,500</h3>
-            <p style="font-size: 1.2em; margin-top: 1rem;">
-              <strong>Development Time:</strong> ~3 hours (AI-assisted) vs 60-70 hours (traditional)
-            </p>
-            <p style="font-size: 1.3em; margin-top: 1rem; color: #10b981;">
-              <strong>Efficiency Gain: 20x faster 🚀</strong>
+      <!-- Key Achievements -->
+      <section>
+        <h2>🏆 Key Achievements</h2>
+        <div class="feature-grid">
+          <div class="feature-card">
+            <h3><span class="emoji">⚡</span>Fast Development</h3>
+            <p style="font-size: 0.85em;">3 hours AI-assisted vs 60-70 hours traditional = <strong>20x faster</strong>
             </p>
           </div>
-        </section>
-
-        <!-- Thank You -->
-        <section data-background-gradient="linear-gradient(to bottom, #1e3a8a, #3b82f6)">
-          <h1>🎉 Implementation Complete!</h1>
-          <h3>GFFC Presentation Branch Ready</h3>
-          <div style="margin-top: 3rem;">
-            <p style="font-size: 1.2em;"><strong>✅ All features implemented</strong></p>
-            <p style="font-size: 1.2em;"><strong>✅ Comprehensive documentation</strong></p>
-            <p style="font-size: 1.2em;"><strong>✅ Ready for demonstration</strong></p>
+          <div class="feature-card">
+            <h3><span class="emoji">💎</span>High Quality</h3>
+            <p style="font-size: 0.85em;">Clean code, full typing, comprehensive docs, zero debt</p>
           </div>
-          <div style="margin-top: 3rem; padding: 2rem; background: rgba(255,255,255,0.1); border-radius: 8px;">
-            <p><strong>Start Development Servers:</strong></p>
-            <p style="font-family: monospace; font-size: 0.9em; margin-top: 1rem;">
-              Backend: <code>cd patientoutcome-backend && pnpm run dev</code><br>
-              Frontend: <code>cd patientoutcome-frontend && pnpm dev</code>
-            </p>
+          <div class="feature-card">
+            <h3><span class="emoji">🔄</span>Real-Time</h3>
+            <p style="font-size: 0.85em;">SSE-based activity monitoring with instant updates</p>
           </div>
-          <p style="margin-top: 2rem; opacity: 0.7;"><small>November 2025 · PatientOutcome GFFC Branch</small></p>
-        </section>
+          <div class="feature-card">
+            <h3><span class="emoji">📊</span>Data Viz</h3>
+            <p style="font-size: 0.85em;">Interactive charts with dual timeline modes</p>
+          </div>
+          <div class="feature-card">
+            <h3><span class="emoji">🔐</span>Secure</h3>
+            <p style="font-size: 0.85em;">Session-based auth, role checks, access control</p>
+          </div>
+          <div class="feature-card">
+            <h3><span class="emoji">📚</span>Documented</h3>
+            <p style="font-size: 0.85em;">5 comprehensive docs + 23 test cases</p>
+          </div>
+        </div>
+      </section>
 
-      </div>
+      <!-- Demo Flow -->
+      <section>
+        <h2>🎬 Demo Flow (10 minutes)</h2>
+        <div class="timeline">
+          <div class="timeline-item">
+            <strong>Part 1: Kiosk Login (2 min)</strong>
+            <p style="font-size: 0.85em; opacity: 0.8;">Username: <code>kiosk-demo-presentation</code> · No password ·
+              Auto-consultation created</p>
+          </div>
+          <div class="timeline-item">
+            <strong>Part 2: Activity Monitoring (2 min)</strong>
+            <p style="font-size: 0.85em; opacity: 0.8;">Open Activity Log as developer · Watch real-time updates ·
+              Color-coded events</p>
+          </div>
+          <div class="timeline-item">
+            <strong>Part 3: Role Switching (2 min)</strong>
+            <p style="font-size: 0.85em; opacity: 0.8;">Click role switcher · Switch to doctor · View dashboard · Switch
+              back to kiosk</p>
+          </div>
+          <div class="timeline-item">
+            <strong>Part 4: Form Completion (2 min)</strong>
+            <p style="font-size: 0.85em; opacity: 0.8;">Open AOFAS form · Fill questions · Submit · Watch activity log
+              update</p>
+          </div>
+          <div class="timeline-item">
+            <strong>Part 5: Statistics (2 min)</strong>
+            <p style="font-size: 0.85em; opacity: 0.8;">Navigate to stats · Show consultation count · Toggle timeline ·
+              Hover tooltips</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- Access URLs -->
+      <section>
+        <h2>🌐 Access Information</h2>
+        <div class="two-columns">
+          <div>
+            <h4>Development URLs</h4>
+            <div class="tech-item" style="margin-bottom: 0.5rem;">
+              <strong>Frontend</strong>
+              <p style="font-size: 0.9em;"><code>http://localhost:5173</code></p>
+            </div>
+            <div class="tech-item" style="margin-bottom: 0.5rem;">
+              <strong>Backend API</strong>
+              <p style="font-size: 0.9em;"><code>http://localhost:40001</code></p>
+            </div>
+            <div class="tech-item">
+              <strong>API Docs</strong>
+              <p style="font-size: 0.9em;"><code>http://localhost:40001/api-docs</code></p>
+            </div>
+          </div>
+          <div>
+            <h4>Test Users</h4>
+            <table style="width: 100%; font-size: 0.85em;">
+              <tr>
+                <th style="text-align: left;">Username</th>
+                <th>Password</th>
+                <th>Role</th>
+              </tr>
+              <tr>
+                <td><code>victor</code></td>
+                <td>Set</td>
+                <td>Developer</td>
+              </tr>
+              <tr>
+                <td><code>kiosk-*</code></td>
+                <td>None</td>
+                <td>Kiosk</td>
+              </tr>
+              <tr>
+                <td><code>user*</code></td>
+                <td>None</td>
+                <td>Doctor</td>
+              </tr>
+            </table>
+          </div>
+        </div>
+        <div class="highlight-box" style="margin-top: 1.5rem; text-align: center;">
+          <strong>Quick Test:</strong> Login as <code>kiosk-test123</code> (no password)
+        </div>
+      </section>
+
+      <!-- Summary Stats -->
+      <section data-background-gradient="linear-gradient(to bottom, #065f46, #10b981)">
+        <h2>📊 Implementation Summary</h2>
+        <div style="display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 1rem; margin: 2rem 0;">
+          <div class="stat-box" style="background: rgba(255,255,255,0.1);">
+            <h2 style="color: #10b981;">2,300+</h2>
+            <p>Lines of Code</p>
+          </div>
+          <div class="stat-box" style="background: rgba(255,255,255,0.1);">
+            <h2 style="color: #10b981;">25</h2>
+            <p>Total Files</p>
+          </div>
+          <div class="stat-box" style="background: rgba(255,255,255,0.1);">
+            <h2 style="color: #10b981;">10</h2>
+            <p>API Endpoints</p>
+          </div>
+          <div class="stat-box" style="background: rgba(255,255,255,0.1);">
+            <h2 style="color: #10b981;">6</h2>
+            <p>Major Features</p>
+          </div>
+        </div>
+        <div class="highlight-box"
+             style="background: rgba(255,255,255,0.1); border-color: rgba(255,255,255,0.3); margin-top: 2rem;">
+          <h3>Market Value: $4,500 - $5,500</h3>
+          <p style="font-size: 1.2em; margin-top: 1rem;">
+            <strong>Development Time:</strong> ~3 hours (AI-assisted) vs 60-70 hours (traditional)
+          </p>
+          <p style="font-size: 1.3em; margin-top: 1rem; color: #10b981;">
+            <strong>Efficiency Gain: 20x faster 🚀</strong>
+          </p>
+        </div>
+      </section>
+
+      <!-- Thank You -->
+      <section data-background-gradient="linear-gradient(to bottom, #1e3a8a, #3b82f6)">
+        <h1>🎉 Implementation Complete!</h1>
+        <h3>GFFC Presentation Branch Ready</h3>
+        <div style="margin-top: 3rem;">
+          <p style="font-size: 1.2em;"><strong>✅ All features implemented</strong></p>
+          <p style="font-size: 1.2em;"><strong>✅ Comprehensive documentation</strong></p>
+          <p style="font-size: 1.2em;"><strong>✅ Ready for demonstration</strong></p>
+        </div>
+        <div style="margin-top: 3rem; padding: 2rem; background: rgba(255,255,255,0.1); border-radius: 8px;">
+          <p><strong>Start Development Servers:</strong></p>
+          <p style="font-family: monospace; font-size: 0.9em; margin-top: 1rem;">
+            Backend: <code>cd patientoutcome-backend && pnpm run dev</code><br>
+            Frontend: <code>cd patientoutcome-frontend && pnpm dev</code>
+          </p>
+        </div>
+        <p style="margin-top: 2rem; opacity: 0.7;"><small>November 2025 · PatientOutcome GFFC Branch</small></p>
+      </section>
+
     </div>
+  </div>
 
-    <script src="reveal/reveal.js"></script>
-    <script src="reveal/plugin/highlight/highlight.js"></script>
-    <script>
-      Reveal.initialize({
-        hash: true,
-        transition: 'slide',
-        plugins: [ RevealHighlight ]
-      });
-    </script>
-  </body>
+  <script src="reveal/reveal.js"></script>
+  <script src="reveal/plugin/highlight/highlight.js"></script>
+  <script>
+    Reveal.initialize({
+      hash: true,
+      transition: 'slide',
+      plugins: [RevealHighlight]
+    });
+  </script>
+</body>
+
 </html>
