@@ -24,6 +24,7 @@ const routes = [
   { path: '/register', name: 'register', component: () => import('@/views/RegisterView.vue'), meta: { titleKey: 'pageTitles.register' } },
   { path: '/logout', name: 'logout', component: LogoutView, meta: { titleKey: 'pageTitles.logout' } },
   { path: '/about', name: 'about', component: () => import('@/views/Misc/AboutView.vue'), meta: { titleKey: 'pageTitles.about' } },
+  { path: '/feedback', name: 'feedback', component: () => import('@/views/FeedbackView.vue'), meta: { titleKey: 'pageTitles.feedback' } },
   { path: '/presentation', name: 'presentation', component: TechPresentation, meta: { titleKey: 'pageTitles.presentation' } },
   { path: '/:pathMatch(.*)*', name: 'NotFound', component: NotFound, meta: { titleKey: 'pageTitles.notFound' } },
 
@@ -58,7 +59,7 @@ const router = createRouter({
 // Add a global navigation guard to check authentication
 router.beforeEach((to, from, next) => {
   const userStore = useUserStore()
-  const allowedUnauthenticatedRoutes = ['Login', 'register', 'about', 'logout', 'presentation']
+  const allowedUnauthenticatedRoutes = ['Login', 'register', 'about', 'logout', 'presentation', 'feedback']
 
   if (!allowedUnauthenticatedRoutes.includes(String(to.name)) && !userStore.isAuthenticated()) {
     next({ name: 'Login', query: { redirect: to.fullPath } })

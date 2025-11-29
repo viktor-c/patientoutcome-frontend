@@ -4,6 +4,7 @@ import { useI18n } from 'vue-i18n'
 import { ref, computed } from 'vue'
 import LanguageSelector from '@/components/LanguageSelector.vue'
 import RoleSwitcher from '@/components/RoleSwitcher.vue'
+import AppFooter from '@/components/AppFooter.vue'
 import { useNotifierStore, useUserStore } from '@/stores/'
 
 import AppAlert from '@/components/AppAlert.vue'
@@ -85,7 +86,8 @@ const logout = async () => {
               </template>
               <v-list-item-title>Activity Log</v-list-item-title>
             </v-list-item>
-            <v-list-item v-if="userStore.hasRole('developer')" :to="{ name: 'statistics', params: { caseId: '677da5d8cb4569ad1c65515f' } }">
+            <v-list-item v-if="userStore.hasRole('developer')"
+                         :to="{ name: 'statistics', params: { caseId: '677da5d8cb4569ad1c65515f' } }">
               <template #prepend>
                 <v-icon>mdi-chart-line</v-icon>
               </template>
@@ -121,7 +123,7 @@ const logout = async () => {
             </v-list-item>
             <v-list-item>
               <v-btn color="error" @click="notifierStore.clearNotifications">{{ t('appBar.clear_notifications')
-                }}</v-btn>
+              }}</v-btn>
             </v-list-item>
           </v-list>
         </v-menu>
@@ -129,7 +131,7 @@ const logout = async () => {
 
         <!-- Language selector component (shows current language + flag) -->
         <!-- The interactive menu moved into LanguageSelector.vue -->
-        
+
         <!-- Show role switcher for kiosk/doctor users, logout for others -->
         <role-switcher v-if="isKioskOrDoctor" class="ml-2" />
         <v-btn v-else icon slim @click="logout"><v-icon>mdi-logout</v-icon></v-btn>
@@ -139,20 +141,28 @@ const logout = async () => {
 
     <!-- For kiosk users without navbar, show role switcher in top-right corner -->
     <div
-      v-if="userStore.isAuthenticated() && userStore.isKioskUser()"
-      class="kiosk-role-switcher"
-    >
+         v-if="userStore.isAuthenticated() && userStore.isKioskUser()"
+         class="kiosk-role-switcher">
       <role-switcher />
     </div>
 
-    <v-main>
+    <v-main class="app-main-content">
       <RouterView />
     </v-main>
+
+    <!-- App Footer -->
+    <AppFooter />
   </v-app>
   <EditUserSettingsDialog :key="showEditUserSettingsKey" v-model:show="showEditUserSettings" />
 </template>
 
 <style scoped>
+.app-main-content {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+}
+
 @media (min-width: 1024px) {
   .v-app-bar {
     position: fixed;

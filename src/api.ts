@@ -1,11 +1,11 @@
-import { Configuration, UserApi, FormApi, PatientApi, PatientCaseApi, ConsultationApi, CodeApi, FormtemplateApi, KioskApi, SurgeryApi, BlueprintApi, StatisticsApi } from '@/api/';
+import { Configuration, UserApi, FormApi, PatientApi, PatientCaseApi, ConsultationApi, CodeApi, FormtemplateApi, KioskApi, SurgeryApi, BlueprintApi, StatisticsApi, FeedbackApi } from '@/api/';
 import { authMiddleware } from '@/middleware/authMiddleware';
 
 // Create a new configuration with a custom basePath and auth middleware
 // In dev, prefer the local proxy path (`/api`) so requests are same-origin and cookies work
 const defaultBase = import.meta.env.DEV
   ? (import.meta.env.VITE_API_URL || '/api')
-  : (import.meta.env.VITE_API_URL || 'https://prom-api.cighir.de');
+  : (import.meta.env.VITE_API_URL || 'https://prom.example.com');
 
 const apiConfig = new Configuration({
   basePath: defaultBase,
@@ -25,5 +25,6 @@ export const kioskApi = new KioskApi(apiConfig)
 export const surgeryApi = new SurgeryApi(apiConfig)
 export const blueprintApi = new BlueprintApi(apiConfig)
 export const statisticsApi = new StatisticsApi(apiConfig)
+export const feedbackApi = new FeedbackApi(apiConfig)
 
 export * from '@/api/index'; // Export all APIs and models from the index file
