@@ -66,6 +66,6 @@ npm run lint
 ## Update API from backend Regenerate Frontend API from backend
 
 ```sh
-cd /home/victor/apps/DEV/patientoutcome/patientoutcome-frontend && rm -rf src/api && npx @openapitools/openapi-generator-cli generate -i http://localhost:40001/openapi/v1/swagger.json -g typescript-fetch -o src/api
+cd ~/apps/DEV/patientoutcome/patientoutcome-frontend && rm -rf src/api && npx @openapitools/openapi-generator-cli generate -i http://localhost:40001/openapi/v1/swagger.json -g typescript-fetch -o src/api
 ```
 
