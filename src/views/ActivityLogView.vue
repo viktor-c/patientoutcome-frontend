@@ -11,9 +11,8 @@
             <div class="d-flex align-center">
               <v-chip :color="isConnected ? 'success' : 'error'" variant="flat" class="mr-2">
                 <v-icon
-                  :icon="isConnected ? 'mdi-lan-connect' : 'mdi-lan-disconnect'"
-                  start
-                ></v-icon>
+                        :icon="isConnected ? 'mdi-lan-connect' : 'mdi-lan-disconnect'"
+                        start></v-icon>
                 {{ isConnected ? 'Connected' : 'Disconnected' }}
               </v-chip>
               <v-chip color="info" variant="flat" class="mr-2">
@@ -21,19 +20,17 @@
                 {{ logs.length }} logs
               </v-chip>
               <v-btn
-                icon="mdi-refresh"
-                size="small"
-                variant="text"
-                @click="reconnect"
-                :disabled="isConnected"
-              ></v-btn>
+                     icon="mdi-refresh"
+                     size="small"
+                     variant="text"
+                     @click="reconnect"
+                     :disabled="isConnected"></v-btn>
               <v-btn
-                icon="mdi-delete"
-                size="small"
-                variant="text"
-                color="error"
-                @click="clearLogs"
-              ></v-btn>
+                     icon="mdi-delete"
+                     size="small"
+                     variant="text"
+                     color="error"
+                     @click="clearLogs"></v-btn>
             </div>
           </v-card-title>
 
@@ -43,51 +40,46 @@
               <v-row class="pa-3 bg-grey-lighten-4" no-gutters>
                 <v-col cols="12" md="4">
                   <v-text-field
-                    v-model="searchQuery"
-                    label="Search"
-                    prepend-inner-icon="mdi-magnify"
-                    clearable
-                    dense
-                    hide-details
-                  ></v-text-field>
+                                v-model="searchQuery"
+                                label="Search"
+                                prepend-inner-icon="mdi-magnify"
+                                clearable
+                                dense
+                                hide-details></v-text-field>
                 </v-col>
                 <v-col cols="12" md="4" class="pl-md-2">
                   <v-select
-                    v-model="selectedTypes"
-                    :items="logTypes"
-                    label="Filter by type"
-                    multiple
-                    chips
-                    clearable
-                    dense
-                    hide-details
-                  ></v-select>
+                            v-model="selectedTypes"
+                            :items="logTypes"
+                            label="Filter by type"
+                            multiple
+                            chips
+                            clearable
+                            dense
+                            hide-details></v-select>
                 </v-col>
                 <v-col cols="12" md="4" class="pl-md-2 d-flex align-center">
                   <v-switch
-                    v-model="autoScroll"
-                    label="Auto-scroll"
-                    color="primary"
-                    hide-details
-                    density="comfortable"
-                  ></v-switch>
+                            v-model="autoScroll"
+                            label="Auto-scroll"
+                            color="primary"
+                            hide-details
+                            density="comfortable"></v-switch>
                 </v-col>
               </v-row>
 
               <!-- Log display area -->
               <v-virtual-scroll
-                :items="filteredLogs"
-                height="600"
-                item-height="80"
-                ref="logScroll"
-                class="log-container"
-              >
+                                :items="filteredLogs"
+                                height="600"
+                                item-height="80"
+                                ref="logScroll"
+                                class="log-container">
                 <template v-slot:default="{ item }">
                   <v-list-item
-                    :key="item.timestamp"
-                    class="log-item"
-                    :class="`log-${item.type}`"
-                  >
+                               :key="item.timestamp"
+                               class="log-item"
+                               :class="`log-${item.type}`">
                     <template v-slot:prepend>
                       <v-avatar :color="item.color" size="40">
                         <v-icon :icon="getIconForType(item.type)" color="white"></v-icon>
@@ -221,7 +213,7 @@ function connectToEventStream() {
       const data = JSON.parse(event.data)
       if (data.type !== 'connected') {
         logs.value.push(data as ActivityLog)
-        
+
         // Auto-scroll to bottom if enabled
         if (autoScroll.value) {
           nextTick(() => {
@@ -242,8 +234,8 @@ function connectToEventStream() {
   eventSource.onerror = (error) => {
     console.error('SSE error:', error)
     isConnected.value = false
-    notifierStore.notify('Connection to activity log lost. Retrying...', 'warning')
-    
+    notifierStore.notify('Connection to activity log lost. Retrying...', 'info')
+
     // Reconnect after 5 seconds
     setTimeout(() => {
       if (eventSource) {
