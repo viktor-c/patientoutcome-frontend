@@ -10,8 +10,8 @@ export default defineConfig(({ mode }) => {
   // load .env files and provide VITE_API_URL (or fallback) safely in Node context
   const env = loadEnv(mode, process.cwd())
   const apiTarget = env.VITE_API_TARGET || 'http://localhost:40001'
-  // Allowed hosts for dev server (comma-separated). Example: VITE_ALLOWED_HOSTS=localhost,prom.cighir.de
-  const allowedHosts = (env.VITE_ALLOWED_HOSTS || 'prom.cighir.de,localhost')
+  // Allowed hosts for dev server (comma-separated). Example: VITE_ALLOWED_HOSTS=localhost,prom.example.com
+  const allowedHosts = (env.VITE_ALLOWED_HOSTS || 'localhost')
     .split(',')
     .map(h => h.trim())
     .filter(Boolean)
@@ -43,7 +43,7 @@ export default defineConfig(({ mode }) => {
     server: {
       // allow access from LAN IPs (so dev server is reachable via 192.168.x.x)
       host: true,
-      // allow proxied hostnames (e.g. prom.cighir.de) to access the dev server
+      // allow proxied hostnames (e.g. prom.example.com) to access the dev server
       // https://vitejs.dev/config/server-options.html
       allowedHosts,
       // configure HMR host when proxied (optional)
