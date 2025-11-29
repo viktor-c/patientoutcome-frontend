@@ -362,11 +362,11 @@ const renderedMarkdownFooter = computed(() => {
 @import '@jsonforms/vue-vuetify/lib/jsonforms-vue-vuetify.css';
 
 /* Ensure any question-card's title can wrap across multiple lines for current and future renderers.
-   Use ::v-deep so the rule applies through child component boundaries (scoped style).
+  Use :deep(...) so the rule applies through child component boundaries (scoped style).
 */
-::v-deep(.question-card) .v-card-title,
-::v-deep(.question-card) .v-card__title,
-::v-deep(.question-card) .wrap-title {
+:deep(.question-card) .v-card-title,
+:deep(.question-card) .v-card__title,
+:deep(.question-card) .wrap-title {
   white-space: normal !important;
   overflow: visible !important;
   text-overflow: clip !important;
@@ -375,9 +375,9 @@ const renderedMarkdownFooter = computed(() => {
 
 @media (max-width: 600px) {
 
-  ::v-deep(.question-card) .v-card-title,
-  ::v-deep(.question-card) .v-card__title,
-  ::v-deep(.question-card) .wrap-title {
+  :deep(.question-card) .v-card-title,
+  :deep(.question-card) .v-card__title,
+  :deep(.question-card) .wrap-title {
     font-size: 1rem;
     line-height: 1.2;
   }
