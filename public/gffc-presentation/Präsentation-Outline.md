@@ -146,9 +146,6 @@
   ### Administration
     - frontend user management (CreateReadUpdateDelete)
 
+# Feedback
 
 Deployment
-I want to create a public repository on github for the database, frontend and backend. Using this repository I want to deploy the app as version 0.2 on a Hetzner virtual server.  A bash script should be created to facilitate deployment, the script will ask
-- on which domain the app will run; 
-- if the database should be populated with demo data
-- if default (mock data) users should be created, or even better ask directly for an admin.
