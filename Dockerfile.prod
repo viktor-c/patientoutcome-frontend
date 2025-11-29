@@ -30,7 +30,9 @@ COPY --from=deps /app/node_modules /app/node_modules
 # Copy source code and build configuration
 COPY . .
 
-# Build the application
+# Build the application with limited memory to prevent OOM on small VPS
+# Increase max-old-space-size if build fails, decrease if server runs out of RAM
+ENV NODE_OPTIONS="--max-old-space-size=1536"
 RUN pnpm run build
 
 # Production stage with nginx
