@@ -17,10 +17,12 @@ import LogoutView from '@/views/LogoutView.vue'
 import TechPresentation from '@/gffc-presentation/TechPresentation.vue'
 import ActivityLogView from '@/views/ActivityLogView.vue'
 import StatisticsView from '@/views/StatisticsView.vue'
+import SetupView from '@/views/SetupView.vue'
 import { useUserStore } from '@/stores/userStore'
 
 const routes = [
   { path: '/', name: 'Login', component: LoginView, meta: { titleKey: 'pageTitles.login' } },
+  { path: '/setup', name: 'setup', component: SetupView, meta: { titleKey: 'pageTitles.setup' } },
   { path: '/register', name: 'register', component: () => import('@/views/RegisterView.vue'), meta: { titleKey: 'pageTitles.register' } },
   { path: '/logout', name: 'logout', component: LogoutView, meta: { titleKey: 'pageTitles.logout' } },
   { path: '/about', name: 'about', component: () => import('@/views/Misc/AboutView.vue'), meta: { titleKey: 'pageTitles.about' } },
@@ -59,7 +61,7 @@ const router = createRouter({
 // Add a global navigation guard to check authentication
 router.beforeEach((to, from, next) => {
   const userStore = useUserStore()
-  const allowedUnauthenticatedRoutes = ['Login', 'register', 'about', 'logout', 'presentation', 'feedback']
+  const allowedUnauthenticatedRoutes = ['Login', 'setup', 'register', 'about', 'logout', 'presentation', 'feedback']
 
   if (!allowedUnauthenticatedRoutes.includes(String(to.name)) && !userStore.isAuthenticated()) {
     next({ name: 'Login', query: { redirect: to.fullPath } })

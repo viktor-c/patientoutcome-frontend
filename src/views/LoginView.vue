@@ -14,10 +14,52 @@ const router = useRouter()
 const userStore = useUserStore()
 const notifierStore = useNotifierStore()
 
+// API base URL from environment
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000'
+
 // Prefill the username with `kiosk` so kiosk mode is ready on page load
 const username = ref('kiosk')
 const password = ref('')
 const isLoading = ref(false)
+const checkingSetup = ref(true)
+
+// Check if initial setup is required or user is already authenticated
+onMounted(async () => {
+  // First check if user is already authenticated
+  if (userStore.isAuthenticated()) {
+    // Redirect based on role
+    if (userStore.isKioskUser()) {
+      router.push('/kiosk')
+    } else {
+      router.push('/dashboard')
+    }
+    return
+  }
+  
+  // Then check setup status
+  await checkSetupStatus()
+})
+
+async function checkSetupStatus() {
+  checkingSetup.value = true
+  try {
+    const response = await fetch(`${API_URL}/setup/status`, {
+      credentials: 'include'
+    })
+    const data = await response.json()
+    
+    if (data.success && data.responseObject?.setupRequired) {
+      // Redirect to setup wizard
+      router.push('/setup')
+      return
+    }
+  } catch (error) {
+    // If we can't check setup status, continue to login
+    console.error('Failed to check setup status:', error)
+  } finally {
+    checkingSetup.value = false
+  }
+}
 
 // Check if username starts with "kiosk" for kiosk mode (case-insensitive)
 const isKioskMode = computed(() => {
@@ -108,21 +150,20 @@ const login = async () => {
     }
   }
 }
-onMounted(() => {
-  if (userStore.isAuthenticated()) {
-    // Let the router guard redirect based on user role
-    if (userStore.isKioskUser()) {
-      router.push('/kiosk')
-    } else {
-      router.push('/dashboard')
-    }
-  }
-})
 </script>
 
 <template>
   <v-container class="login-view">
-    <v-card>
+    <!-- Loading state while checking setup -->
+    <v-card v-if="checkingSetup" class="text-center py-8">
+      <v-card-text>
+        <v-progress-circular indeterminate color="primary" size="48" />
+        <div class="mt-4">Checking system status...</div>
+      </v-card-text>
+    </v-card>
+    
+    <!-- Login form -->
+    <v-card v-else>
       <v-card-title>{{ t('login.title') }}</v-card-title>
       <v-card-text>
         <!-- Kiosk mode indicator -->
