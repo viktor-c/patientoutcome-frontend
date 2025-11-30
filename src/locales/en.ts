@@ -854,4 +854,53 @@ export default {
     },
     language: 'Language',
   },
+
+  about: {
+    title: 'About Patient Outcome',
+    subtitle: 'An open-source platform for Patient Reported Outcome Measures (PROMs)',
+    description: 'Patient Outcome is a modern web application designed to collect, manage, and analyze patient-reported outcome measures. It helps healthcare providers track patient progress over time using standardized questionnaires.',
+    technologies: {
+      title: 'Technologies Used',
+      frontend: 'Frontend',
+      backend: 'Backend',
+    },
+    links: {
+      title: 'Source Code & Resources',
+      frontendRepo: 'Frontend Repository',
+      backendRepo: 'Backend Repository',
+      license: 'MIT License',
+    },
+    license: {
+      title: 'Open Source License',
+      description: 'This project is licensed under the MIT License, which allows you to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the software freely, provided the original copyright notice is included.',
+    },
+    version: 'Version {version}',
+  },
+
+  statistics: {
+    title: 'Patient Case Statistics',
+    consultations: 'Consultations',
+    surgeryDate: 'Surgery Date',
+    caseCreatedAt: 'Case Created',
+    timelineRelativeToSurgery: 'Timeline relative to surgery',
+    timelineRelativeToCase: 'Timeline relative to case creation',
+    timelineMode: {
+      realTime: 'Real Date & Time',
+      fixedInterval: 'Fixed Intervals',
+    },
+    loading: 'Loading statistics...',
+    noData: 'No score data available',
+    chartTitle: 'Patient Reported Outcome Measures (PROMs) Over Time',
+    score: 'Score',
+    visitNumber: 'Visit Number',
+    timeSinceSurgery: 'Time since surgery',
+    timeSinceCase: 'Time since case creation',
+    weeks: '{count} weeks',
+    months: '{count} months',
+    visit: 'Visit {number}',
+    visitOn: 'Visit on',
+    after: 'after',
+    surgery: 'surgery',
+    caseCreation: 'case creation',
+  },
 }

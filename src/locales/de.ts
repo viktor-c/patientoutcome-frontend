@@ -852,4 +852,53 @@ export default {
     },
     language: 'Sprache',
   },
+
+  about: {
+    title: 'Über Patient Outcome',
+    subtitle: 'Eine Open-Source-Plattform für patientenberichtete Ergebnismessungen (PROMs)',
+    description: 'Patient Outcome ist eine moderne Webanwendung zur Erfassung, Verwaltung und Analyse von patientenberichteten Ergebnismessungen. Sie hilft Gesundheitsdienstleistern, den Fortschritt der Patienten im Zeitverlauf anhand standardisierter Fragebögen zu verfolgen.',
+    technologies: {
+      title: 'Verwendete Technologien',
+      frontend: 'Frontend',
+      backend: 'Backend',
+    },
+    links: {
+      title: 'Quellcode & Ressourcen',
+      frontendRepo: 'Frontend Repository',
+      backendRepo: 'Backend Repository',
+      license: 'MIT-Lizenz',
+    },
+    license: {
+      title: 'Open-Source-Lizenz',
+      description: 'Dieses Projekt ist unter der MIT-Lizenz lizenziert, die es Ihnen erlaubt, die Software frei zu nutzen, zu kopieren, zu modifizieren, zusammenzuführen, zu veröffentlichen, zu verteilen, zu unterlizenzieren und/oder zu verkaufen, sofern der ursprüngliche Urheberrechtshinweis enthalten ist.',
+    },
+    version: 'Version {version}',
+  },
+
+  statistics: {
+    title: 'Patientenfall-Statistiken',
+    consultations: 'Konsultationen',
+    surgeryDate: 'OP-Datum',
+    caseCreatedAt: 'Fall erstellt',
+    timelineRelativeToSurgery: 'Zeitlinie relativ zur Operation',
+    timelineRelativeToCase: 'Zeitlinie relativ zur Fallerstellung',
+    timelineMode: {
+      realTime: 'Echtes Datum & Zeit',
+      fixedInterval: 'Feste Intervalle',
+    },
+    loading: 'Statistiken werden geladen...',
+    noData: 'Keine Score-Daten verfügbar',
+    chartTitle: 'Patientenberichtete Ergebnismessungen (PROMs) im Zeitverlauf',
+    score: 'Score',
+    visitNumber: 'Besuchsnummer',
+    timeSinceSurgery: 'Zeit seit OP',
+    timeSinceCase: 'Zeit seit Fallerstellung',
+    weeks: '{count} Wochen',
+    months: '{count} Monate',
+    visit: 'Besuch {number}',
+    visitOn: 'Besuch am',
+    after: 'nach',
+    surgery: 'OP',
+    caseCreation: 'Fallerstellung',
+  },
 }
