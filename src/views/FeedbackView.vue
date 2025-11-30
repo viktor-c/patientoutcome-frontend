@@ -124,7 +124,7 @@ import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
 import { feedbackApi } from '@/api'
 
-const { t } = useI18n()
+const { t, locale } = useI18n()
 const router = useRouter()
 
 const formRef = ref()
@@ -208,6 +208,7 @@ const submitFeedback = async () => {
         message: form.message,
         captchaId: captchaId.value,
         captchaAnswer: form.captchaAnswer,
+        locale: locale.value,
       },
     })
 
