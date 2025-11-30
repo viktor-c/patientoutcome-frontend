@@ -86,7 +86,7 @@ const logout = async () => {
               </template>
               <v-list-item-title>Activity Log</v-list-item-title>
             </v-list-item>
-            <v-list-item v-if="userStore.hasRole('developer')"
+            <v-list-item v-if="!userStore.isKioskUser()"
                          :to="{ name: 'statistics', params: { caseId: '677da5d8cb4569ad1c65515f' } }">
               <template #prepend>
                 <v-icon>mdi-chart-line</v-icon>
