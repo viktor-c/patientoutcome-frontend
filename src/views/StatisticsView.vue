@@ -2,9 +2,9 @@
   <v-container fluid class="pa-4">
     <v-card>
       <v-card-title class="d-flex align-center justify-space-between">
-        <span>📊 Patient Case Statistics</span>
+        <span>📊 {{ t('statistics.title') }}</span>
         <v-chip v-if="statistics" color="primary" variant="elevated">
-          {{ statistics.totalConsultations }} Consultations
+          {{ statistics.totalConsultations }} {{ t('statistics.consultations') }}
         </v-chip>
       </v-card-title>
 
@@ -15,14 +15,14 @@
             <v-alert type="info" variant="tonal" density="compact">
               <template v-if="(statistics as any).surgeryDate">
                 <v-icon start>mdi-hospital-box</v-icon>
-                <strong>OP-Datum:</strong> {{ new Date((statistics as any).surgeryDate).toLocaleDateString('de-DE') }}
-                <span class="ml-2 text-caption">(Zeitlinie relativ zur Operation)</span>
+                <strong>{{ t('statistics.surgeryDate') }}:</strong> {{ new Date((statistics as any).surgeryDate).toLocaleDateString(currentLocale) }}
+                <span class="ml-2 text-caption">({{ t('statistics.timelineRelativeToSurgery') }})</span>
               </template>
               <template v-else-if="(statistics as any).caseCreatedAt">
                 <v-icon start>mdi-folder-clock</v-icon>
-                <strong>Fall erstellt:</strong> {{ new Date((statistics as
-                  any).caseCreatedAt).toLocaleDateString('de-DE') }}
-                <span class="ml-2 text-caption">(Zeitlinie relativ zur Fallerstellung)</span>
+                <strong>{{ t('statistics.caseCreatedAt') }}:</strong> {{ new Date((statistics as
+                  any).caseCreatedAt).toLocaleDateString(currentLocale) }}
+                <span class="ml-2 text-caption">({{ t('statistics.timelineRelativeToCase') }})</span>
               </template>
             </v-alert>
           </v-col>
@@ -34,11 +34,11 @@
             <v-btn-toggle v-model="timelineMode" color="primary" mandatory>
               <v-btn value="realTime">
                 <v-icon start>mdi-calendar-clock</v-icon>
-                Real Date & Time
+                {{ t('statistics.timelineMode.realTime') }}
               </v-btn>
               <v-btn value="fixedInterval">
                 <v-icon start>mdi-chart-timeline-variant</v-icon>
-                Fixed Intervals
+                {{ t('statistics.timelineMode.fixedInterval') }}
               </v-btn>
             </v-btn-toggle>
           </v-col>
@@ -58,8 +58,10 @@
 
         <!-- Chart Display -->
         <v-row v-if="!loading && !error && chartData">
-          <v-col cols="6">
-            <Line :data="chartData" :options="chartOptions" />
+          <v-col cols="12" md="8" lg="6">
+            <div class="chart-container">
+              <Line :data="chartData" :options="chartOptions" />
+            </div>
           </v-col>
         </v-row>
 
@@ -67,7 +69,7 @@
         <v-row v-if="!loading && !error && !chartData">
           <v-col cols="12" class="text-center">
             <v-icon size="64" color="grey-lighten-1">mdi-chart-line-variant</v-icon>
-            <p class="text-grey-darken-1 mt-2">No score data available</p>
+            <p class="text-grey-darken-1 mt-2">{{ t('statistics.noData') }}</p>
           </v-col>
         </v-row>
 
@@ -130,6 +132,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from "vue";
 import { useRoute } from "vue-router";
+import { useI18n } from "vue-i18n";
 import { Line } from "vue-chartjs";
 import {
   Chart as ChartJS,
@@ -173,7 +176,11 @@ ChartJS.register(
 // Use generated model types from the OpenAPI client
 
 const route = useRoute();
+const { t, locale } = useI18n();
 const notifierStore = useNotifierStore();
+
+// Computed locale string for date formatting
+const currentLocale = computed(() => locale.value === 'de' ? 'de-DE' : 'en-US');
 
 const caseId = computed(() => route.params.caseId as string);
 const timelineMode = ref<"realTime" | "fixedInterval">("realTime");
@@ -194,9 +201,9 @@ const calculateTimeSinceReference = (consultationDate: Date, referenceDate: Date
 
   // Show months when more than 12 weeks (3 months)
   if (diffWeeks > 12) {
-    return `${diffMonths} Monate`;
+    return t('statistics.months', { count: diffMonths });
   } else {
-    return `${diffWeeks} Wochen`;
+    return t('statistics.weeks', { count: diffWeeks });
   }
 };
 // Mapping of formTemplateId -> category key. Replace the placeholder ids with your real template ids.
@@ -363,7 +370,7 @@ const chartData = computed<ChartData<"line"> | null>(() => {
 
   const labels = isRealTime
     ? [] // Not used for time scale with {x, y} data
-    : data.map((_, index) => `Visit ${index + 1}`);
+    : data.map((_, index) => t('statistics.visit', { number: index + 1 }));
 
   const datasets = [];
 
@@ -441,8 +448,7 @@ const chartData = computed<ChartData<"line"> | null>(() => {
 const chartOptions = computed<ChartOptions<"line">>(() => {
   const baseOptions: ChartOptions<"line"> = {
     responsive: true,
-    maintainAspectRatio: true,
-    aspectRatio: 2,
+    maintainAspectRatio: false,
     plugins: {
       legend: {
         display: true,
@@ -450,7 +456,7 @@ const chartOptions = computed<ChartOptions<"line">>(() => {
       },
       title: {
         display: true,
-        text: "Patient Reported Outcome Measures (PROMs) Over Time",
+        text: t('statistics.chartTitle'),
       },
       tooltip: {
         mode: "index",
@@ -478,7 +484,7 @@ const chartOptions = computed<ChartOptions<"line">>(() => {
         max: 100,
         title: {
           display: true,
-          text: "Score",
+          text: t('statistics.score'),
         },
       },
     },
@@ -515,9 +521,11 @@ const chartOptions = computed<ChartOptions<"line">>(() => {
               const date = acquisitionDates.value[dataIndex];
               if (date && referenceDate) {
                 const timeSince = calculateTimeSinceReference(date, referenceDate);
-                return `${date.toLocaleDateString('de-DE')} (${timeSince} nach ${surgeryDate ? 'OP' : 'Fallerstellung'})`;
+                const afterText = t('statistics.after');
+                const referenceText = surgeryDate ? t('statistics.surgery') : t('statistics.caseCreation');
+                return `${date.toLocaleDateString(currentLocale.value)} (${timeSince} ${afterText} ${referenceText})`;
               }
-              return date ? date.toLocaleDateString('de-DE') : '';
+              return date ? date.toLocaleDateString(currentLocale.value) : '';
             },
           },
         },
@@ -538,7 +546,7 @@ const chartOptions = computed<ChartOptions<"line">>(() => {
           },
           title: {
             display: true,
-            text: surgeryDate ? "Zeit seit OP" : "Zeit seit Fallerstellung",
+            text: surgeryDate ? t('statistics.timeSinceSurgery') : t('statistics.timeSinceCase'),
           },
         },
       },
@@ -557,9 +565,9 @@ const chartOptions = computed<ChartOptions<"line">>(() => {
               const dataIndex = context[0].dataIndex;
               const date = acquisitionDates.value[dataIndex];
               if (date) {
-                return `Visit on ${date.toLocaleDateString('de-DE')} ${date.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })}`;
+                return `${t('statistics.visitOn')} ${date.toLocaleDateString(currentLocale.value)} ${date.toLocaleTimeString(currentLocale.value, { hour: '2-digit', minute: '2-digit' })}`;
               }
-              return `Visit ${dataIndex + 1}`;
+              return t('statistics.visit', { number: dataIndex + 1 });
             },
           },
         },
@@ -569,7 +577,7 @@ const chartOptions = computed<ChartOptions<"line">>(() => {
         x: {
           title: {
             display: true,
-            text: "Visit Number",
+            text: t('statistics.visitNumber'),
           },
         },
       },
@@ -606,5 +614,21 @@ onMounted(async () => {
 
 .cursor-pointer {
   cursor: pointer;
+}
+
+.chart-container {
+  position: relative;
+  width: 100%;
+  min-height: 300px;
+  height: 50vh;
+  max-height: 500px;
+}
+
+@media (max-width: 600px) {
+  .chart-container {
+    min-height: 250px;
+    height: 60vh;
+    max-height: 400px;
+  }
 }
 </style>
