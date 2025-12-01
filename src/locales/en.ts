@@ -68,6 +68,7 @@ export default {
   },
   forms: {
     externalId: 'External Id',
+    externalPatientCaseId: 'External Patient Case ID',
     age: 'Age',
     sex: 'Sex',
     submit: 'Submit',
@@ -112,6 +113,7 @@ export default {
       removeExternalId: 'Remove External ID',
       externalIdRequired: 'External ID is required',
       externalId: 'Patient id',
+      sex: 'Sex',
       age: 'Age',
       addNewPatient: 'Add New Patient',
       sex: {
@@ -204,6 +206,7 @@ export default {
     patient: {
       created: 'New patient was created successfully and it is now selected!',
       creationFailed: 'Failed to create patient.',
+      loadFailed: 'Failed to load patient.',
       searchFailed: 'Failed to search for patients.',
       noneFound: 'No patients found.',
     },
@@ -293,6 +296,7 @@ export default {
     timeDelta: 'Time Offset',
     selectBlueprintToStart: 'Select a blueprint to start',
     selectBlueprintHint: 'Choose a consultation blueprint to automatically schedule multiple consultations',
+    createManual: 'Create Manual Consultation',
     dateAndTime: 'Date and Time',
     reasonForConsultation: 'Reason for Consultation',
     notes: 'Notes',
@@ -472,6 +476,7 @@ export default {
     step3Title: 'Step 3: Create Surgery',
     step4Title: 'Step 4: Create Consultation',
     patientCreated: 'Patient created successfully!',
+    patientLoaded: 'Patient loaded successfully!',
     caseCreated: 'Case created successfully!',
     surgeryCreated: 'Surgery created successfully!',
     consultationCreated: 'Consultation created successfully!',

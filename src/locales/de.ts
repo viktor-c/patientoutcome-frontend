@@ -89,6 +89,7 @@ export default {
   },
   forms: {
     externalId: 'Externe ID',
+    externalPatientCaseId: 'Externe Patientenfallnummer',
     age: 'Alter',
     sex: 'Geschlecht',
     submit: 'Einreichen',
@@ -133,6 +134,7 @@ export default {
       removeExternalId: 'Externe ID entfernen',
       externalIdRequired: 'Externe ID ist erforderlich',
       externalId: 'Patient Id',
+      sex: 'Geschlecht',
       age: 'Alter',
       addNewPatient: 'Neuen Patienten hinzufügen',
       sex: {
@@ -225,6 +227,7 @@ export default {
     patient: {
       created: 'Neuer Patient wurde erstellt und wird angezeigt!',
       creationFailed: 'Fehler beim Erstellen des Patienten.',
+      loadFailed: 'Fehler beim Laden des Patienten.',
       searchFailed: 'Fehler bei der Patientensuche.',
       noneFound: 'Keine Patienten gefunden.',
     },
@@ -314,6 +317,7 @@ export default {
     timeDelta: 'Zeitversatz',
     selectBlueprintToStart: 'Wählen Sie eine Vorlage zum Starten',
     selectBlueprintHint: 'Wählen Sie eine Konsultationsvorlage, um automatisch mehrere Konsultationen zu planen',
+    createManual: 'Manuelle Konsultation erstellen',
     dateAndTime: 'Konsultationsdatum',
     reasonForConsultation: 'Grund für die Konsultation',
     notes: 'Notizen',
@@ -473,6 +477,7 @@ export default {
     step3Title: 'Schritt 3: Operation erstellen',
     step4Title: 'Schritt 4: Konsultation erstellen',
     patientCreated: 'Patient erfolgreich erstellt!',
+    patientLoaded: 'Patient erfolgreich geladen!',
     caseCreated: 'Fall erfolgreich erstellt!',
     surgeryCreated: 'Operation erfolgreich erstellt!',
     consultationCreated: 'Konsultation erfolgreich erstellt!',
@@ -625,7 +630,7 @@ export default {
     loadError: 'Fehler beim Laden der Patientendaten',
   },
   patientCaseLanding: {
-    title: 'Patientenfall Landung',
+    title: 'Patientenfall',
     loading: 'Falldaten werden geladen...',
     errorTitle: 'Fehler beim Laden des Falls',
     invalidParams: 'Ungültige Fall- oder Patientenparameter',

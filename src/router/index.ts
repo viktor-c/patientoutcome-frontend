@@ -2,7 +2,7 @@ import { createRouter, createWebHistory } from 'vue-router'
 import i18n from '@/plugins/i18n'
 
 // import PatientView from '@/views/Patient/PatientView.vue' // Import the new view
-import CasesView from '@/views/Patient/PatientCaseView.vue'
+// import CasesView from '@/views/Patient/PatientCaseView.vue' // Disabled for now
 import ConsultationView from '@/views/Patient/ConsultationView.vue'
 import PatientCaseCreationFlowView from '@/views/Patient/PatientCaseCreationFlowView.vue'
 import NotFound from '@/views/Misc/NotFound.vue' // Ensure this file exists at the specified path
@@ -41,12 +41,13 @@ const routes = [
   { path: '/kiosk', name: 'kiosk', component: KioskView, meta: { titleKey: 'pageTitles.kiosk' } },
   { path: '/kiosk/form/:formId', name: 'kioskform', component: KioskForm, meta: { titleKey: 'pageTitles.kioskForm' } },
   { path: '/kiosk-assignments', name: 'kioskassignments', component: KioskListView, meta: { titleKey: 'pageTitles.kioskList', requiredRole: 'mfa' } },
+  // patient flow, the patient can give the code he was assigned to at registration and begin the flow
   { path: '/flow/', name: 'patientflow', component: BeginPatientFlowView, meta: { titleKey: 'pageTitles.patientFlow' } },
   { path: '/creation-flow', name: 'creation-flow', component: PatientCaseCreationFlowView, meta: { titleKey: 'pageTitles.creationFlow' } },
   { path: '/consultation/patient/:patientId/case/:caseId/consultation/:consultationId', name: 'consultation', component: ConsultationView, meta: { titleKey: 'pageTitles.consultation' } },
   { path: '/consultation/forms/external-code/:externalCode', name: 'showConsultationForms', component: ShowConsultationForms, props: true, meta: { titleKey: 'pageTitles.consultationForms' } },
   { path: '/consultation/forms/consultation/:consultationId', name: 'showInternalConsultationForms', component: ShowConsultationForms, props: true, meta: { titleKey: 'pageTitles.consultationForms' } },
-  { path: '/cases/patient/:patientId', name: 'cases', component: CasesView, props: true, meta: { titleKey: 'pageTitles.cases' } },
+  // { path: '/cases/patient/:patientId', name: 'cases', component: CasesView, props: true, meta: { titleKey: 'pageTitles.cases' } }, // Disabled for now
   { path: '/formview/consultation/:consultationId', name: 'formview', component: () => import('@/views/FormView.vue'), meta: { titleKey: 'pageTitles.formView' } },
   { path: '/review-form/:formId', name: 'reviewform', component: () => import('@/views/Overview/ReviewFormAnswers.vue'), meta: { titleKey: 'pageTitles.reviewForm' } },
   { path: '/consultation-overview/:consultationId', name: 'consultationoverview', component: () => import('@/views/Overview/ConsultationOverview.vue'), meta: { titleKey: 'pageTitles.consultationOverview' } },
