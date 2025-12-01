@@ -52,6 +52,12 @@ const getTodayDateString = (): string => {
   return new Date().toISOString().split('T')[0]
 }
 
+// Helper function to get today's date at 10:00 UTC as ISO datetime
+const getTodayAt10UTC = (): string => {
+  const today = dayjs().utc().startOf('day').add(10, 'hours')
+  return today.toISOString()
+}
+
 // Create form data with proper typing
 const form = ref<Surgery & { formTemplates?: string[] }>({
   id: null,
@@ -152,15 +158,16 @@ function openDateDialog() {
   // Initialize tempDate and tempTime from the current surgeryDate
   const raw = form.value.surgeryDate
   if (raw) {
-    // Use dayjs for locale support
-    const localDate = dayjs(raw).local()
-    tempDate.value = localDate.format('YYYY-MM-DD')
-    tempTime.value = localDate.format('HH:mm')
+    // Parse as UTC
+    const utcDate = dayjs.utc(raw)
+    // Store as dayjs object - v-date-picker expects this format
+    tempDate.value = utcDate
+    tempTime.value = utcDate.format('HH:mm')
   } else {
-    tempDate.value = getTodayDateString()
-    tempTime.value = '08:00'
+    tempDate.value = dayjs.utc()
+    tempTime.value = '10:00'
   }
-  console.debug('Initialized tempDate:', tempDate.value, 'tempTime:', tempTime.value)
+  console.debug('Initialized tempDate:', tempDate.value?.format('YYYY-MM-DD'), 'tempTime:', tempTime.value)
   dateDialog.value = true
 }
 
@@ -169,13 +176,39 @@ function cancelDateDialog() {
 }
 
 function saveDateFromDialog() {
-  console.debug('Saving date from dialog (raw):', tempDate.value, tempTime.value)
+  console.debug('Saving date from dialog - raw types:', typeof tempDate.value, typeof tempTime.value)
+  console.debug('Saving date from dialog - raw values:', tempDate.value, tempTime.value)
 
-  const day = safeFormatDate(tempDate.value).split(' ')[0]
-  const time = tempTime.value || '08:00'
-  // create utc datetime using dayjs for locale support using day and time
-  const utcDateTime = dayjs(`${day} ${time}`, 'DD.MM.YYYY HH:mm').utc()
-  console.debug('Constructed UTC datetime:', utcDateTime.toISOString())
+  if (!tempDate.value) {
+    notifierStore.notify('Date is required', 'error')
+    return
+  }
+
+  // tempDate is a dayjs object from v-date-picker, so format it explicitly
+  const dateString = tempDate.value.format('YYYY-MM-DD')
+
+  // Handle time - v-time-picker returns string in HH:mm format
+  const timeString = (tempTime.value || '10:00').toString().trim()
+  
+  console.debug('Normalized components - Date:', dateString, 'Time:', timeString)
+  
+  // Ensure dateString is in YYYY-MM-DD format
+  if (!dateString.match(/^\d{4}-\d{2}-\d{2}$/)) {
+    console.error('Invalid date format:', dateString)
+    notifierStore.notify('Invalid date format', 'error')
+    return
+  }
+  
+  // Construct UTC datetime - parse as UTC to avoid timezone issues
+  const utcDateTime = dayjs.utc(`${dateString} ${timeString}`, 'YYYY-MM-DD HH:mm')
+  
+  if (!utcDateTime.isValid()) {
+    console.error('Failed to parse date/time:', dateString, timeString)
+    notifierStore.notify('Invalid date or time', 'error')
+    return
+  }
+  
+  console.debug('Final UTC datetime:', utcDateTime.format(), 'ISO:', utcDateTime.toISOString())
 
   form.value.surgeryDate = utcDateTime.toISOString()
   dateDialog.value = false
@@ -413,7 +446,7 @@ onMounted(async () => {
       // Extract just the date part if it's an ISO datetime string
       form.value.surgeryDate = props.surgery.surgeryDate
     } else {
-      form.value.surgeryDate = getTodayDateString()
+      form.value.surgeryDate = getTodayAt10UTC()
     }
 
     // Handle existing anaesthesia type data
@@ -423,8 +456,8 @@ onMounted(async () => {
       }
     }
   } else {
-    // Ensure surgeryDate is properly set for new surgeries
-    form.value.surgeryDate = getTodayDateString()
+    // Ensure surgeryDate is properly set for new surgeries with 10:00 default time
+    form.value.surgeryDate = getTodayAt10UTC()
 
     // Initialize diagnosis fields from case data when creating a new surgery
     if (props.patientCaseData) {
@@ -746,7 +779,7 @@ defineExpose({
 
         <!-- Surgery Details -->
         <v-row>
-          <v-col cols="12" md="4">
+          <v-col cols="12" md="3">
             <v-text-field
                           v-model.number="form.surgeryTime"
                           :label="t('surgery.surgeryTime')"
@@ -755,7 +788,7 @@ defineExpose({
                           outlined
                           dense></v-text-field>
           </v-col>
-          <v-col cols="12" md="4">
+          <v-col cols="12" md="3">
             <v-text-field
                           v-model.number="form.tourniquet"
                           :label="t('surgery.tourniquet')"
@@ -764,7 +797,7 @@ defineExpose({
                           outlined
                           dense></v-text-field>
           </v-col>
-          <v-col cols="12" md="4">
+          <v-col cols="12" md="6">
             <v-autocomplete
                             v-model="selectedAnaesthesiaTypeIds"
                             :items="availableAnaesthesiaTypes"
