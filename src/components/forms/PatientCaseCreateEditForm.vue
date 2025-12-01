@@ -90,12 +90,13 @@ watch(
   { immediate: true }
 )
 
-// Watch formCase changes and emit updates when used with v-model
+// Watch formCase changes and emit updates only when used standalone (not in flow)
 watch(
   formCase,
   (newValue) => {
     // Only emit modelValue updates if modelValue prop is actually being used
-    if (props.modelValue !== undefined) {
+    // and we're not being used within a parent that manages the state
+    if (props.modelValue !== undefined && props.showButtons !== false) {
       emit('update:modelValue', newValue as CreateCaseSchema)
     }
   },
@@ -169,6 +170,9 @@ const applyBlueprint = (blueprint: Blueprint) => {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const content = blueprint.content as any
 
+  // Store the current externalPatientCaseId before applying the blueprint
+  const currentExternalId = formCase.value.externalId
+
   // Apply the blueprint content to form fields
   if (content.mainDiagnosis) {
     formCase.value.mainDiagnosis = Array.isArray(content.mainDiagnosis)
@@ -216,6 +220,9 @@ const applyBlueprint = (blueprint: Blueprint) => {
 
   // Set patient to current patient
   formCase.value.patient = props.patientId
+
+  // Restore the externalId so it doesn't get overwritten by the blueprint
+  formCase.value.externalId = currentExternalId
 
   selectedBlueprint.value = blueprint
 
@@ -360,7 +367,7 @@ loadDefaultBlueprints()
     <v-form @submit.prevent="submit">
       <v-text-field
                     v-model="formCase.externalId"
-                    :label="t('forms.externalId')"></v-text-field>
+                    :label="t('forms.externalPatientCaseId')"></v-text-field>
 
       <v-textarea
                   v-model="formCase.medicalHistory"
