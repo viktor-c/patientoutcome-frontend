@@ -2,6 +2,7 @@
 import { ref, onMounted, watch, computed, onUnmounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useDateFormat } from '@/composables/useDateFormat'
+import type { Dayjs } from 'dayjs'
 import {
   type Surgery,
   type CreateSurgerySchema,
@@ -88,7 +89,7 @@ const timeOfDay = ref<string | null>(null)
 
 // Date picker dialog state and temporary date/time used inside the picker
 const dateDialog = ref(false)
-const tempDate = ref<string | null>(null)
+const tempDate = ref<Dayjs | null>(null)
 const tempTime = ref<string | null>(null)
 
 // Responsive fullscreen for very small devices
