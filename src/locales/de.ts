@@ -134,7 +134,6 @@ export default {
       removeExternalId: 'Externe ID entfernen',
       externalIdRequired: 'Externe ID ist erforderlich',
       externalId: 'Patient Id',
-      sex: 'Geschlecht',
       age: 'Alter',
       addNewPatient: 'Neuen Patienten hinzufügen',
       sex: {

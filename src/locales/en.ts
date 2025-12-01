@@ -113,7 +113,6 @@ export default {
       removeExternalId: 'Remove External ID',
       externalIdRequired: 'External ID is required',
       externalId: 'Patient id',
-      sex: 'Sex',
       age: 'Age',
       addNewPatient: 'Add New Patient',
       sex: {
