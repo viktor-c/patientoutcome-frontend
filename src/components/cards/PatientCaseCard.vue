@@ -156,7 +156,7 @@ const handleOpenConsultation = (consultationId: string | null | undefined) => {
                 <v-list-item>
                   <v-list-item-title>{{ t('patientOverview.medicalHistory') }}</v-list-item-title>
                   <v-list-item-subtitle>{{ patientCase.medicalHistory || t('common.notAvailable')
-                    }}</v-list-item-subtitle>
+                  }}</v-list-item-subtitle>
                 </v-list-item>
 
                 <v-list-item v-if="patientCase.supervisors?.length">

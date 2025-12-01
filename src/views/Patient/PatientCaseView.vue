@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import {
   type PatientCase,
@@ -29,6 +29,7 @@ interface ExtendedPatientCase extends GetAllPatientCases200ResponseResponseObjec
 
 const { t } = useI18n()
 const route = useRoute()
+const router = useRouter()
 
 // Accept patientId as an optional prop to avoid "extraneous non-props attributes" warnings
 const props = defineProps<{
@@ -41,6 +42,8 @@ const patientId = (props.patientId as string) || (route.params.patientId as stri
 const cases = ref<ExtendedPatientCase[]>([])
 const selectedCase = ref<PatientCase | null>(null)
 const createNewCase = ref(false)
+// Controls visibility of the create/edit case dialog
+const caseDialogVisible = ref(false)
 
 // Blueprint creation flow state
 const showCreateFlow = ref(false)
@@ -136,6 +139,8 @@ const clickEditCase = (caseItem: ExtendedPatientCase) => {
   }
   selectedCase.value = { ...patientCase }
   createNewCase.value = false
+  // Open the dialog for editing
+  caseDialogVisible.value = true
 }
 
 // Delete a case
@@ -245,6 +250,26 @@ const submitCaseForm = async () => {
   if (caseFormRef.value) {
     await caseFormRef.value.submit()
   }
+}
+
+// Open the creation flow for a new case (preselect patient)
+const openCreateCase = () => {
+  // Navigate to the centralized creation flow and pass patientId as query param
+  router.push({ name: 'creation-flow', query: { patientId } })
+}
+
+// Handlers for dialog submit/cancel to close modal and reset state
+const handleDialogSubmit = async () => {
+  selectedCase.value = null
+  createNewCase.value = false
+  caseDialogVisible.value = false
+  await fetchCases()
+}
+
+const handleDialogCancel = () => {
+  selectedCase.value = null
+  createNewCase.value = false
+  caseDialogVisible.value = false
 }
 
 // Reference to the surgery form for external submission
@@ -370,7 +395,7 @@ onMounted(() => {
                    v-if="!createNewCase && !showCreateFlow"
                    prepend-icon="mdi-plus"
                    color="success"
-                   @click="createNewCase = true">
+                   @click="openCreateCase">
               {{ t('buttons.createNewCase') }}
             </v-btn>
 
@@ -388,16 +413,20 @@ onMounted(() => {
     </tbody>
   </v-table>
 
-  <!-- Create or Edit Case Form -->
-  <template v-if="selectedCase || createNewCase">
-    <PatientCaseCreateEditForm
-                               :selectedCase="selectedCase"
-                               :createNewCase="createNewCase"
-                               :patientId="patientId"
-                               :showButtons="true"
-                               @submit="selectedCase = null; createNewCase = false; fetchCases();"
-                               @cancel="selectedCase = null; createNewCase = false;" />
-  </template>
+  <!-- Create or Edit Case Form (modal) -->
+  <v-dialog v-model="caseDialogVisible" max-width="900px">
+    <v-card>
+      <v-card-text>
+        <PatientCaseCreateEditForm
+                                   :selectedCase="selectedCase"
+                                   :createNewCase="createNewCase"
+                                   :patientId="patientId"
+                                   :showButtons="true"
+                                   @submit="handleDialogSubmit"
+                                   @cancel="handleDialogCancel" />
+      </v-card-text>
+    </v-card>
+  </v-dialog>
 
   <!-- Blueprint Creation Flow -->
   <v-dialog v-model="showCreateFlow" max-width="1200px">

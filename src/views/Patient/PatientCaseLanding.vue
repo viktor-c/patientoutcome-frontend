@@ -317,7 +317,7 @@ onMounted(() => {
                   </template>
                   <v-list-item-title>{{ t('patientCaseLanding.createdAt') }}</v-list-item-title>
                   <v-list-item-subtitle>{{ safeFormatDate(patientCase.createdAt, dateFormats.isoDate)
-                  }}</v-list-item-subtitle>
+                    }}</v-list-item-subtitle>
                 </v-list-item>
 
                 <v-list-item v-if="patientCase?.mainDiagnosis">
@@ -520,24 +520,7 @@ onMounted(() => {
             {{ t('patientCaseLanding.pastConsultations') }}
             <v-chip class="ml-2" color="success">{{ pastConsultations.length }}</v-chip>
           </div>
-          <div class="d-flex gap-2">
-            <v-btn
-                   color="primary"
-                   variant="text"
-                   size="small"
-                   @click="openCreateConsultationDialog"
-                   prepend-icon="mdi-calendar-plus">
-              {{ t('patientCaseLanding.addSingleConsultation') }}
-            </v-btn>
-            <v-btn
-                   color="secondary"
-                   variant="text"
-                   size="small"
-                   @click="openBatchConsultationDialog"
-                   prepend-icon="mdi-calendar-multiple">
-              {{ t('patientCaseLanding.addFromBlueprint') }}
-            </v-btn>
-          </div>
+          <!-- No buttons for past consultations - they are archived -->
         </v-card-title>
         <v-card-text>
           <v-list>
