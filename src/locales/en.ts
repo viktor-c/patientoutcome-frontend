@@ -872,7 +872,16 @@ export default {
     },
     license: {
       title: 'Open Source License',
-      description: 'This project is licensed under the MIT License, which allows you to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the software freely, provided the original copyright notice is included.',
+      description: 'This project is licensed under the MIT License - one of the most permissive and widely-used open source licenses. It allows anyone to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of this software.',
+      permissions: 'The only requirement is that the original copyright notice and license text must be included in all copies or substantial portions of the software. There are no restrictions on commercial use.',
+    },
+    contribute: {
+      title: 'Help Us Improve',
+      description: 'We encourage you to test the application, explore its features, and report any issues or bugs you encounter. Your feedback is invaluable in making this software better for everyone.',
+      howToHelp: 'Found a bug? Have a suggestion? Please open an issue on our GitHub repository or submit a pull request. Every contribution, no matter how small, helps improve this project!',
+      reportIssue: 'Report an Issue',
+      or: 'or',
+      contactUs: 'Contact Us',
     },
     version: 'Version {version}',
   },

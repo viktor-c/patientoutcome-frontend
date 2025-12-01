@@ -870,7 +870,16 @@ export default {
     },
     license: {
       title: 'Open-Source-Lizenz',
-      description: 'Dieses Projekt ist unter der MIT-Lizenz lizenziert, die es Ihnen erlaubt, die Software frei zu nutzen, zu kopieren, zu modifizieren, zusammenzuführen, zu veröffentlichen, zu verteilen, zu unterlizenzieren und/oder zu verkaufen, sofern der ursprüngliche Urheberrechtshinweis enthalten ist.',
+      description: 'Dieses Projekt ist unter der MIT-Lizenz lizenziert - einer der freizügigsten und am weitesten verbreiteten Open-Source-Lizenzen. Sie erlaubt es jedem, die Software zu nutzen, zu kopieren, zu ändern, zusammenzuführen, zu veröffentlichen, zu verteilen, zu unterlizenzieren und/oder zu verkaufen.',
+      permissions: 'Die einzige Anforderung ist, dass der ursprüngliche Urheberrechtshinweis und der Lizenztext in allen Kopien oder wesentlichen Teilen der Software enthalten sein müssen. Es gibt keine Einschränkungen für die kommerzielle Nutzung.',
+    },
+    contribute: {
+      title: 'Helfen Sie uns zu verbessern',
+      description: 'Wir ermutigen Sie, die Anwendung zu testen, ihre Funktionen zu erkunden und alle Probleme oder Fehler zu melden, die Sie finden. Ihr Feedback ist von unschätzbarem Wert, um diese Software für alle zu verbessern.',
+      howToHelp: 'Einen Fehler gefunden? Haben Sie einen Vorschlag? Bitte eröffnen Sie ein Issue in unserem GitHub-Repository oder reichen Sie einen Pull Request ein. Jeder Beitrag, egal wie klein, hilft dieses Projekt zu verbessern!',
+      reportIssue: 'Problem melden',
+      or: 'oder',
+      contactUs: 'Kontaktieren Sie uns',
     },
     version: 'Version {version}',
   },

@@ -165,7 +165,41 @@
 
         <v-alert type="success" variant="tonal" class="mb-4">
           <p class="mb-2"><strong>MIT License</strong></p>
-          <p class="text-body-2 mb-0">{{ t('about.license.description') }}</p>
+          <p class="text-body-2 mb-3">{{ t('about.license.description') }}</p>
+          <p class="text-body-2 mb-0">{{ t('about.license.permissions') }}</p>
+        </v-alert>
+
+        <!-- Contribute Section -->
+        <h3 class="text-h6 mb-4">
+          <v-icon class="mr-2">mdi-hand-heart</v-icon>
+          {{ t('about.contribute.title') }}
+        </h3>
+
+        <v-alert type="warning" variant="tonal" class="mb-4">
+          <p class="text-body-2 mb-2">{{ t('about.contribute.description') }}</p>
+          <p class="text-body-2 mb-3">{{ t('about.contribute.howToHelp') }}</p>
+          <div class="d-flex flex-wrap gap-2">
+            <v-btn
+              href="https://github.com/viktor-2021/patientoutcome-frontend/issues/new"
+              target="_blank"
+              variant="tonal"
+              color="warning"
+              size="small"
+            >
+              <v-icon start>mdi-bug</v-icon>
+              {{ t('about.contribute.reportIssue') }}
+            </v-btn>
+            <span class="align-self-center text-body-2">{{ t('about.contribute.or') }}</span>
+            <v-btn
+              :to="{ name: 'feedback' }"
+              variant="tonal"
+              color="primary"
+              size="small"
+            >
+              <v-icon start>mdi-email-outline</v-icon>
+              {{ t('about.contribute.contactUs') }}
+            </v-btn>
+          </div>
         </v-alert>
 
         <!-- Version Info -->
@@ -188,11 +222,12 @@
 
 <script setup lang="ts">
 import { useI18n } from 'vue-i18n'
+import packageJson from '../../../package.json'
 
 const { t } = useI18n()
 
 const currentYear = new Date().getFullYear()
-const appVersion = '1.0.0' // Could be imported from package.json
+const appVersion = packageJson.version
 </script>
 
 <style scoped>

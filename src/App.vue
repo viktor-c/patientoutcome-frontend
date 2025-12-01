@@ -108,10 +108,10 @@ const logout = async () => {
         <v-btn :prepend-icon="theme === 'light' ? 'mdi-weather-sunny' : 'mdi-weather-night'" text="" slim
                @click="toggleTheme"></v-btn>
         <LanguageSelector />
-        <!-- Notifications Dropdown -->
-        <v-menu>
+        <!-- Notifications Dropdown - only show when there are notifications -->
+        <v-menu v-if="notifierStore.notifications.length > 0">
           <template #activator="{ props }">
-            <v-btn icon v-bind="props" :disabled="notifierStore.notifications.length ? false : true">
+            <v-btn icon v-bind="props">
               <v-icon>mdi-bell</v-icon>
             </v-btn>
           </template>
