@@ -217,3 +217,54 @@
   - Anstatt zu fragen "Wird künstliche Intelligenz Softwareentwickler/Ärzte ersetzen?" sollte man fragen
     - "Wie wird KI die Softwareentwicklung umformen" oder "Wie wird sie die Patientenbehandlung verändern?"
     - KI entscheidet sich oft für rohe, Brechstangenlösungen, wo ein menschlicher Entwickler einen effizienteren Ansatz wählen würde
+
+
+
+
+## Still having problems
+Patient Case, Surgery and Consultation workflow are looking excellent. But I still have some problems. After creating a surgery, the form shows me the create surgery form again. Then I can correctly select the consultation blueprints, but after that the dialog does not move to the next step.
+
+### Claude Sonnet 4:
+Now I can see the issues:
+
+Problem 1: After surgery creation, the step is not being advanced. The handleSurgerySubmit function should advance to step 3, but it's not doing that.
+
+Problem 2: The consultation blueprint selection dialog is separate from the stepper flow, so when it's confirmed, it should advance the stepper step.
+
+## Further on
+__Prompt on the backend__
+A surgery blueprint should also have a field called "consultations". This holds the ids for consultation blueprints, which should then be selected by default when using the surgery blueprint in the frontend.
+__Claude Sonnet 4__
+Now I can see the surgery blueprint content. I need to add a "consultations" field to the surgery blueprint that holds IDs for consultation blueprints. Looking at the current MICA Surgery template (ID: "68c08903290365a33d085fcc"), I'll add the consultations field with references to the consultation blueprint IDs.
+This will allow the frontend to automatically select these consultation templates when a user chooses to use the MICA Surgery blueprint, providing a complete workflow that includes the surgery and all the planned follow-up consultations.
+
+The change is now ready and should help streamline the process of creating surgery cases with their associated consultation schedules.
+
+## On the frontend:
+__Prompt on the frontend__
+The surgery blueprint can have a property "content.consultations". This contains an array of id's for consultation blueprints, which should be selected by default when adding consultations on step 3 of the workflow.
+
+__Claude Sonnet 4:__
+I understand. You want to modify the surgery blueprint handling so that when a surgery blueprint contains content.consultations (an array of consultation blueprint IDs), those consultation blueprints should be pre-selected in step 3 of the workflow.
+Let me first check the current PatientCaseView to understand how the consultation blueprint selection is currently handled, then implement this feature.
+
+__Prompt on the frontend__
+#file:ConsultationBlueprintSelectionDialog.vue seems to be mounted before processing of consultation ids from surgery blueprint is done, so it has no knowledge of blueprints it should already select.
+
+__Claude sonnet 4__
+You're right! The issue is that ConsultationBlueprintSelectionDialog.vue is mounted and loads blueprints before it receives the consultation blueprint IDs from the surgery blueprint processing. Let me check how the consultation blueprint IDs are passed to this dialog and fix the timing issue.
+
+
+
+# Funny
+
++ Thank you! I have to go to sleep, can we continue later?
+
++ Of course! Have a good night's sleep! 😴
+
+- When you return, we'll have the blueprint functionality fully implemented for both the patient case and surgery forms. The system is now ready for you to:
+
+  - Test the blueprint dropdown in the surgery dialog
+  - Verify the integration between patient case → surgery blueprint flow
+  - Continue with the consultation blueprint implementation if needed
+Everything should be working smoothly when you get back. Sweet dreams! 🌙
