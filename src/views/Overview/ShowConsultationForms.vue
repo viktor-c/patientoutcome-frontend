@@ -194,14 +194,14 @@ const isSmallScreen = computed(() => window.innerWidth < 1200)
 </script>
 
 <template>
+  <!-- Fixed Language Selector -->
+  <div class="language-selector-floating">
+    <LanguageSelector />
+  </div>
   <v-container v-if="isLoading" class="loading-container">
     <v-progress-circular indeterminate color="primary" size="64"></v-progress-circular>
   </v-container>
   <v-container v-else :class="isSmallScreen ? 'w-100' : 'w-75'">
-    <!-- Language Selector Header -->
-    <v-row justify="end" class="mb-4">
-      <LanguageSelector />
-    </v-row>
     <v-container class="progress-bar-container">
       <v-progress-linear color="green" :model-value="formFillProgress" :height="8"></v-progress-linear>
     </v-container>
@@ -302,6 +302,16 @@ const isSmallScreen = computed(() => window.innerWidth < 1200)
   z-index: 1;
   display: flex;
   justify-content: center;
+}
+
+.language-selector-floating {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  z-index: 10;
+  background: white;
+  border-radius: 4px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
 }
 
 .small-container {
