@@ -199,3 +199,21 @@
     - Verify the integration between patient case → surgery blueprint flow
     - Continue with the consultation blueprint implementation if needed
   Everything should be working smoothly when you get back. Sweet dreams! 🌙
+
+# Victor beim Debuggen nach 4 Stunden
+  - funny image with burning head
+
+
+# Vive coding
+ - Vibe Coding, Steve Yegge, Gene Kim
+• We need fast feedback loops— faster than ever—to match AI-accelerated code generation.
+• We need to work within software architectures that give us independence of action more than ever, we need to be able to develop, test, and deploy software independently.
+• We need a climate for learning, especially given the idiosyncratic nature of AI and its rapid rate of advance.
+- DORA - DevOps Research and Assessment group
+  - 90% adoption
+  - 30% vertrauen AI Code nicht
+# AI Halluzinationen
+  - Der Begriff "Halluzination" nimmt in der künstlichen Intelligenz (KI) eine neue und spannende Bedeutung an. Im Gegensatz zu seiner Bedeutung in der menschlichen Psychologie, wo er sich auf irreführende Sinneswahrnehmungen bezieht, bezieht sich die KI-Halluzination auf KI-Systeme, die imaginative, _neuartige_ oder unerwartete Ausgaben generieren
+  - Anstatt zu fragen "Wird künstliche Intelligenz Softwareentwickler/Ärzte ersetzen?" sollte man fragen
+    - "Wie wird KI die Softwareentwicklung umformen" oder "Wie wird sie die Patientenbehandlung verändern?"
+    - KI entscheidet sich oft für rohe, Brechstangenlösungen, wo ein menschlicher Entwickler einen effizienteren Ansatz wählen würde
