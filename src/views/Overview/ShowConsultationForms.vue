@@ -2,6 +2,7 @@
 import { ref, onMounted, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
+import LanguageSelector from '@/components/LanguageSelector.vue'
 import PatientForm from '@/components/PatientForm.vue'
 import { ResponseError } from '@/api'
 import { mapApiFormsToForms } from '@/adapters/apiAdapters'
@@ -25,7 +26,7 @@ console.debug(`external code ${externalCode}, consultation ID ${consultationId}`
 const router = useRouter()
 
 // Use centralized API instance
-import { consultationApi } from '@/api'
+import { consultationApi, codeApi } from '@/api'
 
 // State for forms
 const forms = ref<Form[]>([])
@@ -36,6 +37,11 @@ const isLoading = ref(true)
 const errorMessage = ref<string | null>(null)
 const showSuccessMessage = ref(false)
 const countdownProgress = ref(100) // Countdown progress for redirection
+const showReviewOption = ref(false) // Show review option after all forms are filled
+const completedForms = ref<Form[]>([]) // Forms that were already completed before
+const allForms = ref<Form[]>([]) // All forms including completed ones for review
+const isReviewMode = ref(false) // True when reviewing completed forms
+const isFinalized = ref(false) // True after code is deactivated
 
 const notifierStore = useNotifierStore()
 
@@ -53,7 +59,20 @@ onMounted(async () => {
 
     // Fetch forms for the consultation
     // Map API-generated forms to our internal Form shape using adapter
-    forms.value = mapApiFormsToForms(consultationResponse.responseObject.proms || [])
+    const mappedForms = mapApiFormsToForms(consultationResponse.responseObject.proms || [])
+    allForms.value = mappedForms
+
+    // Separate completed forms from pending forms
+    completedForms.value = mappedForms.filter(f => f.formFillStatus === 'completed')
+    forms.value = mappedForms.filter(f => f.formFillStatus !== 'completed')
+
+    console.debug(`Found ${completedForms.value.length} completed forms and ${forms.value.length} pending forms`)
+
+    // If all forms are already completed, show review option directly
+    if (forms.value.length === 0 && completedForms.value.length > 0) {
+      showReviewOption.value = true
+    }
+
     currentFormIndex.value = 0 // Reset to the first form
   } catch (error: unknown) {
     let errorMessage = 'An unexpected error occurred'
@@ -64,9 +83,9 @@ onMounted(async () => {
     // errorMessage.value = t('alerts.consultation.fetchFormsFailed');
   } finally {
     isLoading.value = false
-    if (forms.value.length === 0) {
+    if (forms.value.length === 0 && completedForms.value.length === 0) {
       router.go(-1)
-      notifierStore.notify('Keine Formulare zur Verfügung für diesen Fall', 'error')
+      notifierStore.notify(t('flow.noFormsAvailable'), 'error')
     }
   }
 })
@@ -86,9 +105,14 @@ const submitForm = () => {
     currentFormIndex.value++
     // Reset scroll position for the next form
     y.value = 0
+  } else if (isReviewMode.value) {
+    // In review mode, go to review complete screen
+    currentFormIndex.value++
+    y.value = 0
   } else {
-    showSuccessMessage.value = true
-    startCountdown()
+    // All new forms are filled, show review option
+    showReviewOption.value = true
+    y.value = 0
   }
 }
 
@@ -102,6 +126,41 @@ const startCountdown = () => {
       router.push('/')
     }
   }, 1000)
+}
+
+// Start reviewing previously completed forms
+const startReview = () => {
+  isReviewMode.value = true
+  // Combine completed forms with newly filled forms for review
+  forms.value = allForms.value
+  currentFormIndex.value = 0
+  showReviewOption.value = false
+  y.value = 0
+}
+
+// Finalize and deactivate the code
+const finalizeAndClose = async () => {
+  try {
+    if (externalCode) {
+      await codeApi.deactivateCode({ code: externalCode })
+      console.debug(`Code ${externalCode} deactivated successfully`)
+    }
+    isFinalized.value = true
+    showSuccessMessage.value = true
+    showReviewOption.value = false
+    startCountdown()
+  } catch (error) {
+    console.error('Error deactivating code:', error)
+    // Still show success even if deactivation fails - forms are saved
+    showSuccessMessage.value = true
+    showReviewOption.value = false
+    startCountdown()
+  }
+}
+
+// Skip review and finalize directly
+const skipReviewAndFinalize = () => {
+  finalizeAndClose()
 }
 
 const currentForm = computed(() => {
@@ -139,6 +198,10 @@ const isSmallScreen = computed(() => window.innerWidth < 1200)
     <v-progress-circular indeterminate color="primary" size="64"></v-progress-circular>
   </v-container>
   <v-container v-else :class="isSmallScreen ? 'w-100' : 'w-75'">
+    <!-- Language Selector Header -->
+    <v-row justify="end" class="mb-4">
+      <LanguageSelector />
+    </v-row>
     <v-container class="progress-bar-container">
       <v-progress-linear color="green" :model-value="formFillProgress" :height="8"></v-progress-linear>
     </v-container>
@@ -147,11 +210,62 @@ const isSmallScreen = computed(() => window.innerWidth < 1200)
         <v-card v-if="errorMessage">
           <v-card-text class="error">{{ errorMessage }}</v-card-text>
         </v-card>
-        <v-card v-else-if="showSuccessMessage">
+        <v-card v-else-if="showSuccessMessage" class="pa-6">
           <h1 class="success-message">{{ t('flow.allFormsFilled') }}</h1>
-          <v-progress-linear :model-value="countdownProgress" color="blue" :height="8"></v-progress-linear>
+          <p class="text-center text-grey mt-2">{{ t('flow.redirectingMessage') }}</p>
+          <v-progress-linear :model-value="countdownProgress" color="blue" :height="8" class="mt-4"></v-progress-linear>
         </v-card>
-        <v-card v-else v-scroll="onScroll" ref="formContainer">
+        <v-card v-else-if="showReviewOption" class="pa-6">
+          <v-card-title class="text-h5 text-center">
+            {{ t('flow.formsCompleted') }}
+          </v-card-title>
+          <v-card-text class="text-center">
+            <p v-if="completedForms.length > 0" class="mb-4">
+              {{ t('flow.previouslyFilledForms', { count: completedForms.length }) }}
+            </p>
+            <p class="mb-4">{{ t('flow.reviewQuestion') }}</p>
+          </v-card-text>
+          <v-card-actions class="justify-center flex-wrap ga-4">
+            <v-btn
+                   color="primary"
+                   variant="outlined"
+                   size="large"
+                   @click="startReview">
+              <v-icon start>mdi-eye</v-icon>
+              {{ t('flow.reviewAnswers') }}
+            </v-btn>
+            <v-btn
+                   color="success"
+                   variant="flat"
+                   size="large"
+                   @click="skipReviewAndFinalize">
+              <v-icon start>mdi-check</v-icon>
+              {{ t('flow.finishWithoutReview') }}
+            </v-btn>
+          </v-card-actions>
+        </v-card>
+        <v-card v-else-if="isReviewMode && currentFormIndex >= forms.length" class="pa-6">
+          <v-card-title class="text-h5 text-center">
+            {{ t('flow.reviewComplete') }}
+          </v-card-title>
+          <v-card-text class="text-center">
+            <p>{{ t('flow.reviewCompleteMessage') }}</p>
+          </v-card-text>
+          <v-card-actions class="justify-center">
+            <v-btn
+                   color="success"
+                   variant="flat"
+                   size="large"
+                   @click="finalizeAndClose">
+              <v-icon start>mdi-check</v-icon>
+              {{ t('flow.finishAndClose') }}
+            </v-btn>
+          </v-card-actions>
+        </v-card>
+        <v-card v-else-if="currentForm" v-scroll="onScroll" ref="formContainer">
+          <v-chip v-if="isReviewMode" color="info" class="ma-2" size="small">
+            {{ t('flow.reviewModeLabel') }}
+          </v-chip>
           <PatientForm
                        :markdownHeader="currentForm.markdownHeader || ''"
                        :markdownFooter="currentForm.markdownFooter || ''"
