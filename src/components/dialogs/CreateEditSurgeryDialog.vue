@@ -2,6 +2,7 @@
 import { ref, onMounted, watch, computed, onUnmounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useDateFormat } from '@/composables/useDateFormat'
+import { useFormValidation } from '@/composables/useFormValidation'
 import type { Dayjs } from 'dayjs'
 import {
   type Surgery,
@@ -38,6 +39,22 @@ const emit = defineEmits(['submit', 'cancel', 'consultation-blueprints'])
 const { t } = useI18n()
 const notifierStore = useNotifierStore()
 const { formatLocalizedCustomDate } = useDateFormat()
+const { errors, validateForm, clearAllErrors, clearFieldError, hasError, getError, touchField, isFieldTouched, resetFormState } = useFormValidation()
+
+// Helper to determine if we should show error for a field
+const shouldShowError = (fieldName: string): boolean => {
+  return formSubmitted.value || isFieldTouched(fieldName)
+}
+
+// Helper to get error message (only if field should show error)
+const getErrorIfNeeded = (fieldName: string): string => {
+  return shouldShowError(fieldName) ? errors[fieldName] || '' : ''
+}
+
+// Helper to determine if field has error (only if field should show error)
+const hasErrorIfNeeded = (fieldName: string): boolean => {
+  return shouldShowError(fieldName) && !!errors[fieldName]
+}
 
 // Helper function to safely format dates
 const safeFormatDate = (date: string | null | undefined, format: string = 'DD.MM.YYYY HH:mm'): string => {
@@ -83,6 +100,7 @@ const users = ref<User[]>([])
 const userStore = useUserStore()
 const editingNoteIndex = ref<number | null>(null)
 const editedNote = ref<string>('')
+const formSubmitted = ref(false)
 
 // Time of day for the surgery (HH:mm)
 const timeOfDay = ref<string | null>(null)
@@ -190,25 +208,25 @@ function saveDateFromDialog() {
 
   // Handle time - v-time-picker returns string in HH:mm format
   const timeString = (tempTime.value || '10:00').toString().trim()
-  
+
   console.debug('Normalized components - Date:', dateString, 'Time:', timeString)
-  
+
   // Ensure dateString is in YYYY-MM-DD format
   if (!dateString.match(/^\d{4}-\d{2}-\d{2}$/)) {
     console.error('Invalid date format:', dateString)
     notifierStore.notify('Invalid date format', 'error')
     return
   }
-  
+
   // Construct UTC datetime - parse as UTC to avoid timezone issues
   const utcDateTime = dayjs.utc(`${dateString} ${timeString}`, 'YYYY-MM-DD HH:mm')
-  
+
   if (!utcDateTime.isValid()) {
     console.error('Failed to parse date/time:', dateString, timeString)
     notifierStore.notify('Invalid date or time', 'error')
     return
   }
-  
+
   console.debug('Final UTC datetime:', utcDateTime.format(), 'ISO:', utcDateTime.toISOString())
 
   form.value.surgeryDate = utcDateTime.toISOString()
@@ -433,6 +451,25 @@ watch(
   }
 )
 
+// Clear field errors when values change
+watch(() => form.value.side, (newVal) => {
+  if (newVal && newVal !== 'none') {
+    clearFieldError('side')
+  }
+})
+
+watch(() => form.value.diagnosis, (newVal) => {
+  if (Array.isArray(newVal) && newVal.length > 0) {
+    clearFieldError('diagnosis')
+  }
+}, { deep: true })
+
+watch(() => form.value.surgeryDate, (newVal) => {
+  if (newVal) {
+    clearFieldError('surgeryDate')
+  }
+})
+
 onMounted(async () => {
   await fetchUsers()
   await loadDefaultBlueprints()
@@ -492,6 +529,30 @@ onMounted(async () => {
 
 const saveSurgery = async () => {
   try {
+    // Mark form as submitted so all fields show validation errors
+    formSubmitted.value = true
+
+    // Clear previous errors
+    clearAllErrors()
+
+    // Validate required fields
+    const validationRules = {
+      diagnosis: [
+        (v: unknown) => (Array.isArray(v) && v.length > 0 ? true : 'Diagnosis is required'),
+      ],
+      surgeryDate: [
+        (v: unknown) => (v ? true : 'Surgery date is required'),
+      ],
+      side: [
+        (v: unknown) => (v && v !== 'none' ? true : 'Side selection is required'),
+      ],
+    }
+
+    if (!validateForm(form.value, validationRules)) {
+      notifierStore.notify(t('alerts.validation.failed'), 'error')
+      return
+    }
+
     // Convert selected anaesthesia type IDs back to the proper format
     let anaesthesiaTypeForAPI = undefined
     if (selectedAnaesthesiaTypeIds.value.length > 0) {
@@ -633,7 +694,12 @@ function deleteNote(index: number) {
 
 // Expose function for external access
 defineExpose({
-  submit: saveSurgery
+  submit: saveSurgery,
+  resetFormState: () => {
+    clearAllErrors()
+    resetFormState()
+    formSubmitted.value = false
+  }
 })
 </script>
 
@@ -701,6 +767,10 @@ defineExpose({
                           outlined
                           dense
                           prepend-icon="mdi-calendar"
+                          :hint="t('forms.hints.required')"
+                          persistent-hint
+                          :error="hasError('surgeryDate')"
+                          :error-messages="hasError('surgeryDate') ? [getError('surgeryDate')] : []"
                           @focus="openDateDialog"
                           @click="openDateDialog" />
 
@@ -738,7 +808,11 @@ defineExpose({
                       :label="t('surgery.sideLabel')"
                       outlined
                       dense
-                      required></v-select>
+                      required
+                      :hint="t('forms.hints.required')"
+                      persistent-hint
+                      :error="hasError('side')"
+                      :error-messages="hasError('side') ? [getError('side')] : []"></v-select>
           </v-col>
         </v-row>
 
@@ -752,7 +826,11 @@ defineExpose({
                     dense
                     chips
                     clearable
-                    closable-chips></v-combobox>
+                    closable-chips
+                    :hint="t('forms.hints.required')"
+                    persistent-hint
+                    :error="hasError('diagnosis')"
+                    :error-messages="hasError('diagnosis') ? [getError('diagnosis')] : []"></v-combobox>
 
         <!-- ICD10 Diagnosis -->
         <v-combobox

@@ -3,6 +3,7 @@ import { ref, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useConsultationStore } from '@/stores/'
 import { useDateFormat } from '@/composables/useDateFormat'
+import { useFormValidation } from '@/composables/useFormValidation'
 import {
   type Consultation,
   type CreateConsultation,
@@ -27,6 +28,22 @@ const { t, locale } = useI18n()
 const notifierStore = useNotifierStore()
 const consultationStore = useConsultationStore()
 const { formatLocalizedCustomDate, getLocalizedDayjs, dateFormats } = useDateFormat()
+const { errors, validateForm, clearAllErrors, hasError, getError, touchField, isFieldTouched, resetFormState } = useFormValidation()
+
+// Helper to determine if we should show error for a field
+const shouldShowError = (fieldName: string): boolean => {
+  return formSubmitted.value || isFieldTouched(fieldName)
+}
+
+// Helper to get error message (only if field should show error)
+const getErrorIfNeeded = (fieldName: string): string => {
+  return shouldShowError(fieldName) ? errors[fieldName] || '' : ''
+}
+
+// Helper to determine if field has error (only if field should show error)
+const hasErrorIfNeeded = (fieldName: string): boolean => {
+  return shouldShowError(fieldName) && !!errors[fieldName]
+}
 
 // Helper function to safely format dates
 const safeFormatDate = (date: string | null | undefined, format: string = dateFormats.isoDateTime): string => {
@@ -56,6 +73,7 @@ const editedNote = ref<string>('')
 const codes = ref<Code[]>([])
 const selectedCode = ref<Code | null>(null)
 const generatingCode = ref(false)
+const formSubmitted = ref(false)
 
 async function fetchUsers() {
   try {
@@ -130,6 +148,27 @@ onMounted(async () => {
 
 const saveConsultation = async () => {
   try {
+    // Mark form as submitted so all fields show validation errors
+    formSubmitted.value = true
+
+    // Clear previous errors
+    clearAllErrors()
+
+    // Validate required fields
+    const validationRules = {
+      dateAndTime: [
+        (v: unknown) => (v ? true : 'Date and time is required'),
+      ],
+      reasonForConsultation: [
+        (v: unknown) => (Array.isArray(v) && v.length > 0 ? true : 'At least one reason is required'),
+      ],
+    }
+
+    if (!validateForm(form.value, validationRules)) {
+      notifierStore.notify(t('alerts.validation.failed'), 'error')
+      return
+    }
+
     // Prepare the data for API call
     const consultationData: CreateConsultation = {
       patientCaseId: form.value.patientCaseId,
@@ -268,6 +307,16 @@ async function generateNewCode() {
 function deleteNote(index: number) {
   form.value.notes.splice(index, 1)
 }
+
+// Expose function for external access
+defineExpose({
+  submit: saveConsultation,
+  resetFormState: () => {
+    clearAllErrors()
+    resetFormState()
+    formSubmitted.value = false
+  }
+})
 </script>
 
 <template>
@@ -281,6 +330,10 @@ function deleteNote(index: number) {
                   v-model="form.reasonForConsultation"
                   :items="['planned', 'unplanned', 'emergency', 'pain', 'followup']"
                   :label="t('consultation.reasonForConsultation')"
+                  :hint="t('forms.hints.required')"
+                  persistent-hint
+                  :error="!!errors.reasonForConsultation"
+                  :error-messages="errors.reasonForConsultation ? [errors.reasonForConsultation] : []"
                   multiple
                   outlined
                   dense></v-select>
@@ -288,6 +341,7 @@ function deleteNote(index: number) {
           <v-col cols="8">
             <VueDatePicker
                            v-model="form.dateAndTime"
+                           :class="{ 'error-border': errors.dateAndTime }"
                            multi-calendars
                            :locale="locale"
                            week-num-name="Wo"
@@ -295,6 +349,11 @@ function deleteNote(index: number) {
                            week-numbers="iso"
                            :cancelText="t('buttons.cancelTimeDateText')"
                            :selectText="t('buttons.selectTimeDateText')" />
+            <v-text-field
+                          v-if="errors.dateAndTime"
+                          :error="true"
+                          :error-messages="[errors.dateAndTime]"
+                          hidden></v-text-field>
           </v-col>
           <v-col cols="4">
             <v-btn inline color="info" @click="form.dateAndTime = new Date().toISOString()">
@@ -389,3 +448,11 @@ function deleteNote(index: number) {
     </v-card-text>
   </v-card>
 </template>
+
+<style scoped>
+.error-border {
+  border: 2px solid red !important;
+  border-radius: 4px;
+  padding: 4px;
+}
+</style>

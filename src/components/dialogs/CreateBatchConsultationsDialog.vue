@@ -301,15 +301,21 @@ async function fetchAvailableCodes() {
 
 // Create all consultations
 const createConsultations = async () => {
-  if (consultationsToCreate.value.length === 0) {
-    notifierStore.notify(t('alerts.consultation.noConsultationsToCreate'), 'info')
-    return
-  }
-
-  creating.value = true
-  const createdConsultations: Consultation[] = []
-
   try {
+    if (consultationsToCreate.value.length === 0) {
+      notifierStore.notify(t('alerts.consultation.noConsultationsToCreate'), 'info')
+      return
+    }
+
+    // Validate that blueprint was selected
+    if (!selectedBlueprint.value) {
+      notifierStore.notify(t('alerts.blueprint.required'), 'error')
+      return
+    }
+
+    creating.value = true
+    const createdConsultations: Consultation[] = []
+
     // Create consultations sequentially to avoid rate limiting
     for (const consultationData of consultationsToCreate.value) {
       // Remove extra properties that are not part of CreateConsultation

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, watch, computed } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { useFormValidation } from '@/composables/useFormValidation'
 import {
   type CreateCaseSchema,
   type PatientCase,
@@ -19,6 +20,7 @@ import { useNotifierStore } from '@/stores/notifierStore'
 const notifierStore = useNotifierStore()
 
 const { t } = useI18n()
+const { errors, validateForm, clearAllErrors, hasError, getError, touchField, isFieldTouched, resetFormState } = useFormValidation()
 
 // Props
 const props = defineProps<{
@@ -68,6 +70,22 @@ const blueprints = ref<Blueprint[]>([])
 const selectedBlueprint = ref<Blueprint | null>(null)
 const blueprintSearchQuery = ref('')
 const loadingBlueprints = ref(false)
+const formSubmitted = ref(false)
+
+// Helper to determine if we should show error for a field
+const shouldShowError = (fieldName: string): boolean => {
+  return formSubmitted.value || isFieldTouched(fieldName)
+}
+
+// Helper to get error message (only if field should show error)
+const getErrorIfNeeded = (fieldName: string): string => {
+  return shouldShowError(fieldName) ? errors[fieldName] || '' : ''
+}
+
+// Helper to determine if field has error (only if field should show error)
+const hasErrorIfNeeded = (fieldName: string): boolean => {
+  return shouldShowError(fieldName) && !!errors[fieldName]
+}
 
 // Initialize form data on mount or when props change
 watch(
@@ -237,8 +255,26 @@ loadDefaultBlueprints()
 
 // Create a new case
 const submit = async () => {
-  if (isCreating.value) {
-    try {
+  try {
+    // Mark form as submitted so all fields show validation errors
+    formSubmitted.value = true
+
+    // Clear previous errors
+    clearAllErrors()
+
+    // Validate required fields
+    const validationRules = {
+      mainDiagnosis: [
+        (v: unknown) => (Array.isArray(v) && v.length > 0 ? true : 'Main diagnosis is required'),
+      ],
+    }
+
+    if (!validateForm(formCase.value, validationRules)) {
+      notifierStore.notify(t('alerts.validation.failed'), 'error')
+      return
+    }
+
+    if (isCreating.value) {
       const response = await patientCaseApi.createPatientCase({
         createCaseSchema: formCase.value as CreateCaseSchema,
         patientId: props.patientId
@@ -249,17 +285,8 @@ const submit = async () => {
       }
       // show success message
       notifierStore.notify(t('alerts.case.created'), 'success')
-    } catch (error: unknown) {
-      let errorMessage = 'An unexpected error occurred'
-      if (error instanceof ResponseError) {
-        errorMessage = (await error.response.json()).message
-      }
-      console.error('Error creating case', errorMessage)
-      notifierStore.notify(t('alerts.case.creationFailed'), 'error')
-    }
-  } else {
-    if (!props.selectedCase || !props.selectedCase.id) return
-    try {
+    } else {
+      if (!props.selectedCase || !props.selectedCase.id) return
       // Update the selected case with the new data
       const updateRequest = {
         ...formCase.value,
@@ -283,16 +310,16 @@ const submit = async () => {
       if (response.responseObject) {
         emit('submit', response.responseObject)
       }
-    } catch (error: unknown) {
-      let errorMessage = 'An unexpected error occurred'
-      if (error instanceof ResponseError) {
-        errorMessage = (await error.response.json()).message
-      }
-      // Show error message
-      console.error('Error updating case:', errorMessage)
-      notifierStore.notify(t('alerts.case.updateFailed'), 'error')
-      emit('cancel')
     }
+  } catch (error: unknown) {
+    let errorMessage = 'An unexpected error occurred'
+    if (error instanceof ResponseError) {
+      errorMessage = (await error.response.json()).message
+    }
+    // Show error message
+    console.error('Error updating case:', errorMessage)
+    notifierStore.notify(t('alerts.case.updateFailed'), 'error')
+    emit('cancel')
   }
 }
 
@@ -300,6 +327,24 @@ const submit = async () => {
 const submitAndNextStep = async () => {
   if (isCreating.value) {
     try {
+      // Mark form as submitted so all fields show validation errors
+      formSubmitted.value = true
+
+      // Clear previous errors
+      clearAllErrors()
+
+      // Validate required fields
+      const validationRules = {
+        mainDiagnosis: [
+          (v: unknown) => (Array.isArray(v) && v.length > 0 ? true : 'Main diagnosis is required'),
+        ],
+      }
+
+      if (!validateForm(formCase.value, validationRules)) {
+        notifierStore.notify(t('alerts.validation.failed'), 'error')
+        return
+      }
+
       const response = await patientCaseApi.createPatientCase({
         createCaseSchema: formCase.value as CreateCaseSchema,
         patientId: props.patientId
@@ -324,7 +369,12 @@ const submitAndNextStep = async () => {
 // Expose the functions for external use
 defineExpose({
   submit,
-  submitAndNextStep
+  submitAndNextStep,
+  resetFormState: () => {
+    clearAllErrors()
+    resetFormState()
+    formSubmitted.value = false
+  }
 })
 
 // Load blueprints on component mount
@@ -383,7 +433,12 @@ loadDefaultBlueprints()
                   dense
                   chips
                   clearable
-                  closable-chips></v-combobox>
+                  closable-chips
+                  :hint="t('forms.hints.required')"
+                  persistent-hint
+                  :error="hasErrorIfNeeded('mainDiagnosis')"
+                  :error-messages="[getErrorIfNeeded('mainDiagnosis')]"
+                  @blur="touchField('mainDiagnosis')"></v-combobox>
 
       <v-combobox
                   :label="t('forms.patientCase.mainDiagnosisICD10')"
