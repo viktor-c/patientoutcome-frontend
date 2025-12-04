@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import {
@@ -54,7 +54,7 @@ const createdConsultations = ref<Consultation[]>([])
 
 // Blueprint-related state
 const selectedConsultationBlueprints = ref<Blueprint[]>([])
-const showConsultationBlueprintSelection = ref(false)
+const showConsultationBlueprintSelectionInStep = ref(true) // Always show in stepper
 const surgeryBlueprintConsultations = ref<string[]>([])
 
 // Use centralized API instances
@@ -195,39 +195,31 @@ const handleSurgerySubmit = async (surgery: Surgery) => {
   createdSurgery.value = surgery
   notifierStore.notify(t('creationFlow.surgeryCreated'), 'success')
 
-  // Move to next step first
+  // Move to next step (consultation blueprint selection)
   currentFlowStep.value = 3
-
-  // Show consultation blueprint selection dialog
-  // Pre-selected blueprints will be handled by the dialog based on surgeryBlueprintConsultations
-  showConsultationBlueprintSelection.value = true
 }
 
-// Handle consultation blueprint selection
-const handleConsultationBlueprintCancel = () => {
-  showConsultationBlueprintSelection.value = false
-  selectedConsultationBlueprints.value = []
-  // Complete the flow and proceed
-  completeCreateFlow()
+// Handle consultation blueprint selection cancel in flow
+const handleConsultationBlueprintCancelInFlow = () => {
+  // Move to completion step
+  currentFlowStep.value = 4
 }
 
-const handleConsultationsCreated = (consultations: Consultation[]) => {
-  console.log('Consultations created:', consultations)
+// Handle consultations created in flow
+const handleConsultationsCreatedInFlow = (consultations: Consultation[]) => {
+  console.log('Consultations created in flow:', consultations)
+  createdConsultations.value = consultations
 
-  // Close the dialog and finish the flow
-  showConsultationBlueprintSelection.value = false
-  selectedConsultationBlueprints.value = []
-
-  // Complete the creation flow
-  completeCreateFlow()
+  // Move to completion step
+  currentFlowStep.value = 4
 
   notifierStore.notify(t('consultation.creationCompleteMessage', { count: consultations.length }), 'success')
 }
 
 // Handle surgery dialog cancel
 const handleSurgeryCancel = () => {
-  // Complete the flow without creating surgery
-  completeCreateFlow()
+  // Go back to previous step
+  currentFlowStep.value = 2
 }
 
 // Handle consultation blueprint IDs from surgery blueprint
@@ -282,12 +274,44 @@ const submitSurgeryForm = async () => {
   }
 }
 
-// Complete the creation flow
+// Watch currentFlowStep to reset form errors when navigating between steps
+watch(currentFlowStep, (newStep, oldStep) => {
+  if (newStep !== oldStep) {
+    // Reset form state when moving to a different step
+    if (caseFormRef.value?.resetFormState) {
+      caseFormRef.value.resetFormState()
+    }
+    if (surgeryFormRef.value?.resetFormState) {
+      surgeryFormRef.value.resetFormState()
+    }
+  }
+})
+
+// Complete the creation flow and navigate to the newly created case
 const completeCreateFlow = () => {
   showCreateFlow.value = false
+  
+  // Reset flow state
+  const caseIdToNavigateTo = createdCase.value?.id
   currentFlowStep.value = 1
+  createdCase.value = null
+  createdSurgery.value = null
+  createdConsultations.value = []
+  selectedConsultationBlueprints.value = []
+  
   notifierStore.notify(t('creationFlow.flowCompleted'), 'success')
-  fetchCases() // Refresh the cases list
+  
+  // Auto-redirect to the newly created case
+  if (caseIdToNavigateTo) {
+    setTimeout(() => {
+      router.push({
+        name: 'patientcaselanding',
+        params: { caseId: caseIdToNavigateTo }
+      })
+    }, 500) // Small delay to show success message
+  } else {
+    fetchCases() // Refresh the cases list if navigation didn't happen
+  }
 }
 
 // Fetch cases on component mount
@@ -456,6 +480,13 @@ onMounted(() => {
                           :complete="currentFlowStep > 3"
                           :value="3"
                           :title="t('creationFlow.step4Title')"></v-stepper-item>
+
+          <v-divider></v-divider>
+
+          <v-stepper-item
+                          :complete="currentFlowStep > 4"
+                          :value="4"
+                          :title="t('creationFlow.completedTitle')"></v-stepper-item>
         </v-stepper-header>
 
         <v-stepper-window v-model="currentFlowStep">
@@ -486,8 +517,26 @@ onMounted(() => {
                                      @consultation-blueprints="handleConsultationBlueprints" />
           </v-stepper-window-item>
 
-          <!-- Step 3: Summary -->
+          <!-- Step 3: Consultation Blueprint Selection -->
           <v-stepper-window-item :value="3">
+            <v-alert v-if="createdSurgery" type="success" class="mb-4">
+              {{ t('creationFlow.surgeryCreated') }} - ID: {{ createdSurgery.id }}
+            </v-alert>
+
+            <ConsultationBlueprintSelectionDialog
+                                                  v-if="createdCase && createdCase.id"
+                                                  v-model="selectedConsultationBlueprints"
+                                                  v-model:show="showConsultationBlueprintSelectionInStep"
+                                                  :surgery-date="createdSurgery?.surgeryDate || undefined"
+                                                  :patient-id="patientId"
+                                                  :case-id="createdCase.id!"
+                                                  :pre-selected-blueprint-ids="surgeryBlueprintConsultations"
+                                                  @consultations-created="handleConsultationsCreatedInFlow"
+                                                  @cancel="handleConsultationBlueprintCancelInFlow" />
+          </v-stepper-window-item>
+
+          <!-- Step 4: Summary/Completion -->
+          <v-stepper-window-item :value="4">
             <v-alert v-if="createdSurgery" type="success" class="mb-4">
               {{ t('creationFlow.surgeryCreated') }} - ID: {{ createdSurgery.id }}
             </v-alert>
@@ -535,6 +584,14 @@ onMounted(() => {
 
           <v-btn
                  v-if="currentFlowStep === 3"
+                 color="primary"
+                 variant="elevated"
+                 @click="currentFlowStep = 4">
+            {{ t('buttons.next') }}
+          </v-btn>
+
+          <v-btn
+                 v-if="currentFlowStep === 4"
                  color="success"
                  variant="elevated"
                  @click="completeCreateFlow">
@@ -545,17 +602,7 @@ onMounted(() => {
     </v-card>
   </v-dialog>
 
-  <!-- Consultation Blueprint Selection Dialog -->
-  <ConsultationBlueprintSelectionDialog
-                                        v-if="createdCase && createdCase.id"
-                                        v-model="selectedConsultationBlueprints"
-                                        v-model:show="showConsultationBlueprintSelection"
-                                        :surgery-date="createdSurgery?.surgeryDate || undefined"
-                                        :patient-id="patientId"
-                                        :case-id="createdCase.id!"
-                                        :pre-selected-blueprint-ids="surgeryBlueprintConsultations"
-                                        @consultations-created="handleConsultationsCreated"
-                                        @cancel="handleConsultationBlueprintCancel" />
+
 </template>
 
 <style scoped>

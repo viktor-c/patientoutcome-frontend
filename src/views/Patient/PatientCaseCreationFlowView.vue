@@ -39,10 +39,10 @@ const patientData = ref<CreatePatientRequest>({
 const caseData = ref<CreateCaseSchema>({
   patient: '',
   externalId: '', // This is the externalPatientCaseId - unique identifier for the patient case
-  mainDiagnosis: [''],
-  mainDiagnosisICD10: [''],
-  otherDiagnosis: [''],
-  otherDiagnosisICD10: [''],
+  mainDiagnosis: [],
+  mainDiagnosisICD10: [],
+  otherDiagnosis: [],
+  otherDiagnosisICD10: [],
   surgeries: [],
   supervisors: [],
   notes: [],
@@ -65,9 +65,27 @@ const surgeryBlueprintId = ref<string | null>(null)
 
 // Form refs for external submission
 const caseFormRef = ref<InstanceType<typeof PatientCaseCreateEditForm> | null>(null)
+const surgeryFormRef = ref<InstanceType<typeof CreateEditSurgeryDialog> | null>(null)
+
+// Duplicate patient handling
+const showDuplicatePatientDialog = ref(false)
+const duplicateExternalId = ref<string>('')
 
 // Loading states
 const isLoading = ref(false)
+
+// Watch currentStep to reset form errors when navigating between steps
+watch(currentStep, (newStep, oldStep) => {
+  if (newStep !== oldStep) {
+    // Reset form state when moving to a different step
+    if (caseFormRef.value?.resetFormState) {
+      caseFormRef.value.resetFormState()
+    }
+    if (surgeryFormRef.value?.resetFormState) {
+      surgeryFormRef.value.resetFormState()
+    }
+  }
+})
 
 // Use centralized API instance
 import { patientApi } from '@/api'
@@ -128,14 +146,67 @@ const createPatient = async () => {
     }
   } catch (error: unknown) {
     let errorMessage = 'An unexpected error occurred'
+    let errorCode = ''
+
     if (error instanceof ResponseError) {
-      errorMessage = (await error.response.json()).message
+      const errorBody = await error.response.json()
+      errorMessage = errorBody.message
+      errorCode = errorBody.code
     }
     console.error('Error creating patient:', errorMessage)
-    notifierStore.notify(t('alerts.patient.creationFailed'), 'error')
+
+    // Check if it's a duplicate external ID error
+    if (errorCode === 'DUPLICATE_EXTERNAL_ID' || errorMessage.toLowerCase().includes('external')) {
+      // Extract external ID from the first field
+      duplicateExternalId.value = patientData.value.externalPatientId[0]
+      showDuplicatePatientDialog.value = true
+      notifierStore.notify(t('alerts.patient.duplicateExternalId'), 'info')
+    } else {
+      notifierStore.notify(t('alerts.patient.creationFailed'), 'error')
+    }
   } finally {
     isLoading.value = false
   }
+}
+
+// Search for patient by external ID and load it
+const loadPatientByExternalId = async (externalId: string) => {
+  isLoading.value = true
+  try {
+    // Get patient by external ID
+    const response = await patientApi.getPatientByExternalId({ id: externalId })
+
+    if (response.responseObject) {
+      createdPatient.value = response.responseObject
+      caseData.value.patient = response.responseObject.id || null
+      currentStep.value = 2
+      showDuplicatePatientDialog.value = false
+      notifierStore.notify(t('creationFlow.patientLoaded'), 'success')
+      return
+    }
+
+    notifierStore.notify(t('alerts.patient.notFound'), 'error')
+  } catch (error: unknown) {
+    let errorMessage = 'An unexpected error occurred'
+    if (error instanceof ResponseError) {
+      errorMessage = (await error.response.json()).message
+    }
+    console.error('Error searching for patient:', errorMessage)
+    notifierStore.notify(t('alerts.patient.searchFailed'), 'error')
+  } finally {
+    isLoading.value = false
+  }
+}
+
+// Handle user choice to continue with existing patient
+const handleContinueWithExistingPatient = async () => {
+  await loadPatientByExternalId(duplicateExternalId.value)
+}
+
+// Handle user choice to cancel and try again
+const handleCancelDuplicateDialog = () => {
+  showDuplicatePatientDialog.value = false
+  // Keep user on step 1 to try again
 }
 
 // Handle case creation from embedded form
@@ -215,17 +286,17 @@ const completeCreationFlow = () => {
   // We're already on step 4, just mark as completed and navigate
   notifierStore.notify(t('creationFlow.flowCompleted'), 'success')
 
-  // Navigate to the patient's cases view
-  if (createdPatient.value) {
+  // Navigate to the patient case landing view
+  if (createdCase.value) {
     setTimeout(() => {
       notifierStore.notify(t('creationFlow.navigatingToCases'), 'info')
     }, 1000)
 
     setTimeout(() => {
       router.push({
-        name: 'cases',
+        name: 'patientcaselanding',
         params: {
-          patientId: createdPatient.value!.id
+          caseId: createdCase.value!.id
         }
       })
     }, 2000)
@@ -489,6 +560,37 @@ onMounted(async () => {
                                           :reference-date="createdSurgery?.surgeryDate || undefined"
                                           @submit="handleConsultationsSubmit"
                                           @cancel="() => { }" />
+
+          <!-- Duplicate Patient Dialog -->
+          <v-dialog v-model="showDuplicatePatientDialog" max-width="400">
+            <v-card>
+              <v-card-title>{{ t('creationFlow.duplicatePatientTitle') }}</v-card-title>
+              <v-card-text>
+                <p class="mb-4">
+                  {{ t('creationFlow.duplicatePatientMessage', { externalId: duplicateExternalId }) }}
+                </p>
+                <v-alert type="info">
+                  {{ t('creationFlow.duplicatePatientQuestion') }}
+                </v-alert>
+              </v-card-text>
+              <v-card-actions>
+                <v-spacer></v-spacer>
+                <v-btn
+                       @click="handleCancelDuplicateDialog"
+                       color="grey"
+                       variant="outlined">
+                  {{ t('buttons.no') }}
+                </v-btn>
+                <v-btn
+                       @click="handleContinueWithExistingPatient"
+                       color="primary"
+                       variant="elevated"
+                       :loading="isLoading">
+                  {{ t('buttons.yes') }}
+                </v-btn>
+              </v-card-actions>
+            </v-card>
+          </v-dialog>
 
           <!-- Action buttons -->
           <v-card-actions class="justify-space-between pa-4">

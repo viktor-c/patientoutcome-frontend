@@ -21,7 +21,13 @@ const emit = defineEmits<{
   'open-case': [caseId: string | null | undefined]
   'open-consultation': [consultationId: string | null | undefined]
   'update-consultations': []
+  'create-consultation': [caseId: string | null | undefined]
 }>()
+
+// Handler for creating consultation
+const handleCreateConsultation = () => {
+  emit('create-consultation', props.patientCase.id)
+}
 
 // Helper function to safely format dates
 const safeFormatDate = (date: string | null | undefined, format: string = 'DD.MM.YYYY HH:mm'): string => {
@@ -156,7 +162,7 @@ const handleOpenConsultation = (consultationId: string | null | undefined) => {
                 <v-list-item>
                   <v-list-item-title>{{ t('patientOverview.medicalHistory') }}</v-list-item-title>
                   <v-list-item-subtitle>{{ patientCase.medicalHistory || t('common.notAvailable')
-                  }}</v-list-item-subtitle>
+                    }}</v-list-item-subtitle>
                 </v-list-item>
 
                 <v-list-item v-if="patientCase.supervisors?.length">
@@ -223,7 +229,8 @@ const handleOpenConsultation = (consultationId: string | null | undefined) => {
                             :case-id="patientCase.id"
                             :patient-id="patientId"
                             @open-consultation="handleOpenConsultation"
-                            @update-consultations="$emit('update-consultations')" />
+                            @update-consultations="$emit('update-consultations')"
+                            @create-consultation="handleCreateConsultation" />
         </v-col>
       </v-row>
     </v-expansion-panel-text>

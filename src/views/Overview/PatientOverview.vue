@@ -14,6 +14,8 @@ import { patientApi, patientCaseApi } from '@/api'
 
 // Import components
 import PatientCaseCard from '@/components/cards/PatientCaseCard.vue'
+import CreateEditConsultationDialog from '@/components/dialogs/CreateEditConsultationDialog.vue'
+import type { Consultation } from '@/api'
 
 const componentName = 'PatientOverview.vue'
 const { t } = useI18n()
@@ -31,11 +33,9 @@ const cases = ref<PatientCaseWithDetails[]>([])
 const loading = ref(true)
 const expandedCases = ref<string[]>([])
 
-// Dialog states are no longer needed since we navigate to creation flow
-// Keeping for backward compatibility but not used
-const showCreateCaseDialog = ref(false)
+// Dialog states
 const showCreateConsultationDialog = ref(false)
-const createdCaseId = ref<string | null>(null)
+const selectedCaseIdForConsultation = ref<string | null>(null)
 
 // Helper function to safely format dates
 const safeFormatDate = (date: unknown, format: string = 'DD.MM.YYYY HH:mm'): string => {
@@ -107,6 +107,27 @@ const goBack = () => {
 
 // Helper functions
 
+// Handle create consultation - open dialog
+const handleCreateConsultation = (caseId: string | null | undefined) => {
+  if (caseId) {
+    selectedCaseIdForConsultation.value = caseId
+    showCreateConsultationDialog.value = true
+  }
+}
+
+// Handle consultation created
+const handleConsultationCreated = async () => {
+  showCreateConsultationDialog.value = false
+  selectedCaseIdForConsultation.value = null
+  await refreshCases()
+  notifierStore.notify(t('alerts.consultation.created'), 'success')
+}
+
+// Cancel consultation dialog
+const cancelConsultationDialog = () => {
+  showCreateConsultationDialog.value = false
+  selectedCaseIdForConsultation.value = null
+}
 
 // Case creation dialog functions
 const openCreateCaseDialog = () => {
@@ -267,7 +288,8 @@ const refreshCases = async () => {
                          :patient-id="patientId"
                          @open-case="openCase"
                          @open-consultation="openConsultation"
-                         @update-consultations="refreshCases" />
+                         @update-consultations="refreshCases"
+                         @create-consultation="handleCreateConsultation" />
       </v-expansion-panels>
 
       <div v-if="cases.length > 0" class="text-center mt-4">
@@ -280,6 +302,18 @@ const refreshCases = async () => {
         </v-btn>
       </div>
     </div>
+
+    <!-- Create Consultation Dialog -->
+    <v-dialog
+              v-model="showCreateConsultationDialog"
+              max-width="800px">
+      <CreateEditConsultationDialog
+                                    v-if="selectedCaseIdForConsultation"
+                                    :patient-id="patientId"
+                                    :case-id="selectedCaseIdForConsultation"
+                                    @submit="handleConsultationCreated"
+                                    @cancel="cancelConsultationDialog" />
+    </v-dialog>
   </v-container>
 </template>
 

@@ -62,16 +62,20 @@ const patientDisplayName = computed(() => {
 })
 
 const pastConsultations = computed(() => {
-  const now = new Date()
+  // Get start of today (midnight) - consultations from today should NOT be considered past
+  const startOfToday = new Date()
+  startOfToday.setHours(0, 0, 0, 0)
   return consultations.value
-    .filter(consultation => new Date(consultation.dateAndTime || '') < now)
+    .filter(consultation => new Date(consultation.dateAndTime || '') < startOfToday)
     .sort((a, b) => new Date(b.dateAndTime || '').getTime() - new Date(a.dateAndTime || '').getTime())
 })
 
 const futureConsultations = computed(() => {
-  const now = new Date()
+  // Get start of today (midnight) - consultations from today onwards are considered future/current
+  const startOfToday = new Date()
+  startOfToday.setHours(0, 0, 0, 0)
   return consultations.value
-    .filter(consultation => new Date(consultation.dateAndTime || '') >= now)
+    .filter(consultation => new Date(consultation.dateAndTime || '') >= startOfToday)
     .sort((a, b) => new Date(a.dateAndTime || '').getTime() - new Date(b.dateAndTime || '').getTime())
 })
 
@@ -317,7 +321,7 @@ onMounted(() => {
                   </template>
                   <v-list-item-title>{{ t('patientCaseLanding.createdAt') }}</v-list-item-title>
                   <v-list-item-subtitle>{{ safeFormatDate(patientCase.createdAt, dateFormats.isoDate)
-                    }}</v-list-item-subtitle>
+                  }}</v-list-item-subtitle>
                 </v-list-item>
 
                 <v-list-item v-if="patientCase?.mainDiagnosis">

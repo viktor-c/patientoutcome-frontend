@@ -307,7 +307,7 @@ const isSmallScreen = computed(() => window.innerWidth < 1200)
 .language-selector-floating {
   position: fixed;
   top: 20px;
-  right: 30%;
+  right: 15%;
   z-index: 10;
   background: white;
   border-radius: 4px;
