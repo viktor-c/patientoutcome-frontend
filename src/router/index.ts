@@ -42,7 +42,7 @@ const routes = [
   { path: '/kiosk/form/:formId', name: 'kioskform', component: KioskForm, meta: { titleKey: 'pageTitles.kioskForm' } },
   { path: '/kiosk-assignments', name: 'kioskassignments', component: KioskListView, meta: { titleKey: 'pageTitles.kioskList', requiredRole: 'mfa' } },
   // patient flow, the patient can give the code he was assigned to at registration and begin the flow
-  { path: '/flow/', name: 'patientflow', component: BeginPatientFlowView, meta: { titleKey: 'pageTitles.patientFlow' } },
+  { path: '/flow/:code?', name: 'patientflow', component: BeginPatientFlowView, props: true, meta: { titleKey: 'pageTitles.patientFlow' } },
   { path: '/creation-flow', name: 'creation-flow', component: PatientCaseCreationFlowView, meta: { titleKey: 'pageTitles.creationFlow' } },
   { path: '/consultation/patient/:patientId/case/:caseId/consultation/:consultationId', name: 'consultation', component: ConsultationView, meta: { titleKey: 'pageTitles.consultation' } },
   { path: '/consultation/forms/external-code/:externalCode', name: 'showConsultationForms', component: ShowConsultationForms, props: true, meta: { titleKey: 'pageTitles.consultationForms' } },
@@ -62,7 +62,7 @@ const router = createRouter({
 // Add a global navigation guard to check authentication
 router.beforeEach((to, from, next) => {
   const userStore = useUserStore()
-  const allowedUnauthenticatedRoutes = ['Login', 'setup', 'register', 'about', 'logout', 'presentation', 'feedback']
+  const allowedUnauthenticatedRoutes = ['Login', 'setup', 'register', 'about', 'logout', 'presentation', 'feedback', 'patientflow', 'showConsultationForms', 'showInternalConsultationForms', 'formview']
 
   if (!allowedUnauthenticatedRoutes.includes(String(to.name)) && !userStore.isAuthenticated()) {
     next({ name: 'Login', query: { redirect: to.fullPath } })
