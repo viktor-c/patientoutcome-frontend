@@ -1,0 +1,105 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1920 1080" style="background-color: #f8f9fa;">
+  <defs>
+    <style>
+      .box { fill: #ffffff; stroke: #333333; stroke-width: 3; }
+      .primary-box { fill: #e3f2fd; stroke: #1976d2; stroke-width: 3; }
+      .secondary-box { fill: #fff3e0; stroke: #f57c00; stroke-width: 3; }
+      .success-box { fill: #e8f5e9; stroke: #388e3c; stroke-width: 3; }
+      .text { font-family: Arial, sans-serif; font-size: 26px; fill: #333333; }
+      .text-bold { font-family: Arial, sans-serif; font-size: 30px; font-weight: bold; fill: #333333; }
+      .text-small { font-family: Arial, sans-serif; font-size: 22px; fill: #666666; }
+      .text-title { font-family: Arial, sans-serif; font-size: 42px; font-weight: bold; fill: #1976d2; }
+      .arrow { stroke: #333333; stroke-width: 4; fill: none; marker-end: url(#arrowhead); }
+    </style>
+    <marker id="arrowhead" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto">
+      <polygon points="0 0, 10 3, 0 6" fill="#333333" />
+    </marker>
+  </defs>
+
+  <!-- Title -->
+  <text x="960" y="70" class="text-title" text-anchor="middle">Admin Workflow: Create Patient, Case and Consultation</text>
+
+  <!-- System Architecture -->
+  <text x="960" y="160" class="text-bold" text-anchor="middle">System Architecture</text>
+  
+  <!-- Frontend Box -->
+  <rect x="200" y="200" width="450" height="140" class="primary-box" rx="10"/>
+  <text x="425" y="250" class="text-bold" text-anchor="middle">Frontend</text>
+  <text x="425" y="285" class="text-small" text-anchor="middle">Vue.js Application</text>
+  <text x="425" y="315" class="text-small" text-anchor="middle">Admin Interface</text>
+  
+  <!-- Arrow to API -->
+  <path d="M 650 270 L 780 270" class="arrow"/>
+  <text x="715" y="255" class="text-small" text-anchor="middle">HTTP</text>
+  <text x="715" y="280" class="text-small" text-anchor="middle">API Calls</text>
+  
+  <!-- Backend API Box -->
+  <rect x="780" y="200" width="450" height="140" class="secondary-box" rx="10"/>
+  <text x="1005" y="250" class="text-bold" text-anchor="middle">Backend API</text>
+  <text x="1005" y="285" class="text-small" text-anchor="middle">Node.js / Express</text>
+  <text x="1005" y="315" class="text-small" text-anchor="middle">REST Endpoints</text>
+  
+  <!-- Arrow to Database -->
+  <path d="M 1230 270 L 1360 270" class="arrow"/>
+  <text x="1295" y="255" class="text-small" text-anchor="middle">Store /</text>
+  <text x="1295" y="280" class="text-small" text-anchor="middle">Retrieve</text>
+  
+  <!-- Database Box -->
+  <rect x="1360" y="200" width="360" height="140" class="box" rx="10"/>
+  <text x="1540" y="250" class="text-bold" text-anchor="middle">Database</text>
+  <text x="1540" y="285" class="text-small" text-anchor="middle">MongoDB</text>
+  <text x="1540" y="315" class="text-small" text-anchor="middle">Data Persistence</text>
+
+  <!-- Workflow Steps Title -->
+  <text x="960" y="430" class="text-bold" text-anchor="middle">Creation Workflow (4-Step Process)</text>
+
+  <!-- Step 1: Create Patient -->
+  <rect x="150" y="480" width="380" height="140" class="success-box" rx="10"/>
+  <text x="340" y="520" class="text-bold" text-anchor="middle">Step 1</text>
+  <text x="340" y="555" class="text" text-anchor="middle">Create Patient</text>
+  <text x="340" y="590" class="text-small" text-anchor="middle">POST /patient</text>
+
+  <!-- Arrow -->
+  <path d="M 530 550 L 620 550" class="arrow"/>
+  
+  <!-- Step 2: Create Case -->
+  <rect x="620" y="480" width="400" height="140" class="success-box" rx="10"/>
+  <text x="820" y="520" class="text-bold" text-anchor="middle">Step 2</text>
+  <text x="820" y="555" class="text" text-anchor="middle">Create Case</text>
+  <text x="820" y="590" class="text-small" text-anchor="middle">POST /patient/&#58;id/case</text>
+
+  <!-- Arrow -->
+  <path d="M 1020 550 L 1110 550" class="arrow"/>
+  
+  <!-- Step 3: Create Surgery -->
+  <rect x="1110" y="480" width="380" height="140" class="success-box" rx="10"/>
+  <text x="1300" y="520" class="text-bold" text-anchor="middle">Step 3</text>
+  <text x="1300" y="555" class="text" text-anchor="middle">Create Surgery</text>
+  <text x="1300" y="590" class="text-small" text-anchor="middle">POST /surgery</text>
+
+  <!-- Arrow down from Step 2 -->
+  <path d="M 820 620 L 820 710" class="arrow"/>
+
+  <!-- Step 4: Create Consultation -->
+  <rect x="530" y="710" width="580" height="140" class="success-box" rx="10"/>
+  <text x="820" y="750" class="text-bold" text-anchor="middle">Step 4</text>
+  <text x="820" y="785" class="text" text-anchor="middle">Create Consultation(s)</text>
+  <text x="820" y="820" class="text-small" text-anchor="middle">POST /consultation/case/&#58;caseId</text>
+
+  <!-- Data Flow Description -->
+  <text x="960" y="930" class="text-bold" text-anchor="middle">Key Information</text>
+  
+  <rect x="150" y="960" width="1620" height="90" class="box" rx="8" style="fill: #fff8e1; stroke: #f57c00;"/>
+  <text x="960" y="995" class="text" text-anchor="middle">Each step creates a record in the database with unique ID</text>
+  <text x="960" y="1030" class="text" text-anchor="middle">Case links to Patient → Surgery links to Case → Consultation links to Case</text>
+
+  <!-- Legend -->
+  <rect x="1650" y="50" width="100" height="50" class="primary-box" rx="5"/>
+  <text x="1760" y="80" class="text-small">Frontend</text>
+  
+  <rect x="1650" y="110" width="100" height="50" class="secondary-box" rx="5"/>
+  <text x="1760" y="140" class="text-small">Backend</text>
+  
+  <rect x="1650" y="170" width="100" height="50" class="success-box" rx="5"/>
+  <text x="1760" y="200" class="text-small">Step</text>
+</svg>

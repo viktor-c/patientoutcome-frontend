@@ -2,7 +2,13 @@
   <v-container fluid class="pa-4">
     <v-card>
       <v-card-title class="d-flex align-center justify-space-between">
-        <span>📊 Patient Case Statistics</span>
+        <div class="d-flex align-center gap-2">
+          <v-btn
+                 icon="mdi-arrow-left"
+                 variant="text"
+                 @click="goToCaseDetails"></v-btn>
+          <span>📊 Patient Case Statistics</span>
+        </div>
         <v-chip v-if="statistics" color="primary" variant="elevated">
           {{ statistics.totalConsultations }} Consultations
         </v-chip>
@@ -129,7 +135,7 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from "vue";
-import { useRoute } from "vue-router";
+import { useRoute, useRouter } from "vue-router";
 import { Line } from "vue-chartjs";
 import {
   Chart as ChartJS,
@@ -173,6 +179,7 @@ ChartJS.register(
 // Use generated model types from the OpenAPI client
 
 const route = useRoute();
+const router = useRouter();
 const notifierStore = useNotifierStore();
 
 const caseId = computed(() => route.params.caseId as string);
@@ -224,6 +231,16 @@ const visibleSeries = ref<Record<string, boolean>>({
 // Toggle series visibility
 const toggleSeriesVisibility = (series: string) => {
   visibleSeries.value[series] = !visibleSeries.value[series];
+};
+
+// Navigate back to case landing
+const goToCaseDetails = () => {
+  if (caseId.value) {
+    router.push({
+      name: 'patientcaselanding',
+      params: { caseId: caseId.value }
+    })
+  }
 };
 
 // Local helper type that extends the generated prom type with the new formTemplateId

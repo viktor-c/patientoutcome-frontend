@@ -80,13 +80,14 @@ const logout = async () => {
               </template>
               <v-list-item-title>{{ t('dashboard.kioskAssignments') }}</v-list-item-title>
             </v-list-item>
-            <v-list-item v-if="userStore.hasRole('developer')" :to="{ name: 'activitylog' }">
+            <!-- BUG only allow this for GFFC,  -->
+            <v-list-item v-if="userStore.hasRole('admin') || userStore.hasRole('doctor')" :to="{ name: 'activitylog' }">
               <template #prepend>
                 <v-icon>mdi-text-box-multiple</v-icon>
               </template>
               <v-list-item-title>Activity Log</v-list-item-title>
             </v-list-item>
-            <v-list-item v-if="userStore.hasRole('developer')"
+            <v-list-item v-if="userStore.hasRole('admin') || userStore.hasRole('doctor')"
                          :to="{ name: 'statistics', params: { caseId: '677da5d8cb4569ad1c65515f' } }">
               <template #prepend>
                 <v-icon>mdi-chart-line</v-icon>

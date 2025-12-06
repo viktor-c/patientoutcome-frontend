@@ -1,0 +1,156 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1920 1080" style="background-color: #f8f9fa;">
+  <defs>
+    <style>
+      .box { fill: #ffffff; stroke: #333333; stroke-width: 3; }
+      .primary-box { fill: #e3f2fd; stroke: #1976d2; stroke-width: 3; }
+      .secondary-box { fill: #fff3e0; stroke: #f57c00; stroke-width: 3; }
+      .success-box { fill: #e8f5e9; stroke: #388e3c; stroke-width: 3; }
+      .kiosk-box { fill: #f3e5f5; stroke: #7b1fa2; stroke-width: 3; }
+      .text { font-family: Arial, sans-serif; font-size: 26px; fill: #333333; }
+      .text-bold { font-family: Arial, sans-serif; font-size: 30px; font-weight: bold; fill: #333333; }
+      .text-small { font-family: Arial, sans-serif; font-size: 22px; fill: #666666; }
+      .text-title { font-family: Arial, sans-serif; font-size: 42px; font-weight: bold; fill: #1976d2; }
+      .text-subtitle { font-family: Arial, sans-serif; font-size: 32px; font-weight: bold; fill: #7b1fa2; }
+      .arrow { stroke: #333333; stroke-width: 4; fill: none; marker-end: url(#arrowhead); }
+      .arrow-kiosk { stroke: #7b1fa2; stroke-width: 4; fill: none; marker-end: url(#arrowhead-kiosk); }
+      .arrow-code { stroke: #f57c00; stroke-width: 4; fill: none; marker-end: url(#arrowhead-code); }
+    </style>
+    <marker id="arrowhead" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto">
+      <polygon points="0 0, 10 3, 0 6" fill="#333333" />
+    </marker>
+    <marker id="arrowhead-kiosk" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto">
+      <polygon points="0 0, 10 3, 0 6" fill="#7b1fa2" />
+    </marker>
+    <marker id="arrowhead-code" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto">
+      <polygon points="0 0, 10 3, 0 6" fill="#f57c00" />
+    </marker>
+  </defs>
+
+  <!-- Title -->
+  <text x="960" y="70" class="text-title" text-anchor="middle">Patient Workflow: Form Completion Methods</text>
+
+  <!-- PATH A: Kiosk Mode -->
+  <text x="960" y="160" class="text-subtitle" text-anchor="middle">Method A: Kiosk Mode</text>
+  
+  <!-- Kiosk Terminal -->
+  <rect x="120" y="200" width="350" height="130" class="kiosk-box" rx="10"/>
+  <text x="295" y="245" class="text-bold" text-anchor="middle">Kiosk Terminal</text>
+  <text x="295" y="280" class="text-small" text-anchor="middle">Patient arrives</text>
+  <text x="295" y="310" class="text-small" text-anchor="middle">at clinic</text>
+  
+  <!-- Arrow -->
+  <path d="M 470 265 L 590 265" class="arrow-kiosk"/>
+  <text x="530" y="250" class="text-small" text-anchor="middle">Auto-login</text>
+  
+  <!-- Backend Auth -->
+  <rect x="590" y="200" width="350" height="130" class="secondary-box" rx="10"/>
+  <text x="765" y="245" class="text-bold" text-anchor="middle">Backend Auth</text>
+  <text x="765" y="280" class="text-small" text-anchor="middle">Kiosk user role</text>
+  <text x="765" y="310" class="text-small" text-anchor="middle">Session created</text>
+  
+  <!-- Arrow -->
+  <path d="M 940 265 L 1060 265" class="arrow-kiosk"/>
+  <text x="1000" y="250" class="text-small" text-anchor="middle">Fetch</text>
+  
+  <!-- Get Consultation -->
+  <rect x="1060" y="200" width="380" height="130" class="secondary-box" rx="10"/>
+  <text x="1250" y="245" class="text-bold" text-anchor="middle">Get Consultation</text>
+  <text x="1250" y="280" class="text-small" text-anchor="middle">GET /kiosk/consultation</text>
+  <text x="1250" y="310" class="text-small" text-anchor="middle">Assigned to kiosk</text>
+  
+  <!-- Arrow -->
+  <path d="M 1440 265 L 1560 265" class="arrow-kiosk"/>
+  
+  <!-- Display Forms -->
+  <rect x="1560" y="200" width="320" height="130" class="success-box" rx="10"/>
+  <text x="1720" y="245" class="text-bold" text-anchor="middle">Display Forms</text>
+  <text x="1720" y="280" class="text-small" text-anchor="middle">Patient fills</text>
+  <text x="1720" y="310" class="text-small" text-anchor="middle">questionnaires</text>
+
+  <!-- Divider -->
+  <line x1="80" y1="410" x2="1840" y2="410" stroke="#999999" stroke-width="3" stroke-dasharray="10,5"/>
+
+  <!-- PATH B: External Code -->
+  <text x="960" y="480" class="text-subtitle" text-anchor="middle">Method B: External Code (Remote)</text>
+  
+  <!-- Patient Device -->
+  <rect x="120" y="520" width="350" height="130" class="primary-box" rx="10"/>
+  <text x="295" y="565" class="text-bold" text-anchor="middle">Patient Device</text>
+  <text x="295" y="600" class="text-small" text-anchor="middle">Home / Mobile</text>
+  <text x="295" y="630" class="text-small" text-anchor="middle">Enters unique code</text>
+  
+  <!-- Arrow -->
+  <path d="M 470 585 L 590 585" class="arrow-code"/>
+  <text x="530" y="570" class="text-small" text-anchor="middle">Submit</text>
+  
+  <!-- Code Validation -->
+  <rect x="590" y="520" width="350" height="130" class="secondary-box" rx="10"/>
+  <text x="765" y="565" class="text-bold" text-anchor="middle">Code Validation</text>
+  <text x="765" y="600" class="text-small" text-anchor="middle">POST /code/validate</text>
+  <text x="765" y="630" class="text-small" text-anchor="middle">Verify authenticity</text>
+  
+  <!-- Arrow -->
+  <path d="M 940 585 L 1060 585" class="arrow-code"/>
+  <text x="1000" y="570" class="text-small" text-anchor="middle">Fetch</text>
+  
+  <!-- Get Consultation by Code -->
+  <rect x="1060" y="520" width="380" height="130" class="secondary-box" rx="10"/>
+  <text x="1250" y="565" class="text-bold" text-anchor="middle">Get Consultation</text>
+  <text x="1250" y="600" class="text-small" text-anchor="middle">GET /consultation/</text>
+  <text x="1250" y="630" class="text-small" text-anchor="middle">code/&#58;code</text>
+  
+  <!-- Arrow -->
+  <path d="M 1440 585 L 1560 585" class="arrow-code"/>
+  
+  <!-- Display Forms -->
+  <rect x="1560" y="520" width="320" height="130" class="success-box" rx="10"/>
+  <text x="1720" y="565" class="text-bold" text-anchor="middle">Display Forms</text>
+  <text x="1720" y="600" class="text-small" text-anchor="middle">Patient fills</text>
+  <text x="1720" y="630" class="text-small" text-anchor="middle">questionnaires</text>
+
+  <!-- Divider -->
+  <line x1="80" y1="730" x2="1840" y2="730" stroke="#cccccc" stroke-width="2"/>
+
+  <!-- Common: Form Submission -->
+  <text x="960" y="800" class="text-bold" text-anchor="middle">Common: Form Submission and Storage</text>
+
+  <!-- Form Renderer -->
+  <rect x="280" y="840" width="380" height="130" class="primary-box" rx="10"/>
+  <text x="470" y="885" class="text-bold" text-anchor="middle">Form Renderer</text>
+  <text x="470" y="920" class="text-small" text-anchor="middle">Dynamic form display</text>
+  <text x="470" y="950" class="text-small" text-anchor="middle">JSON-based structure</text>
+  
+  <!-- Arrow -->
+  <path d="M 660 905 L 780 905" class="arrow"/>
+  <text x="720" y="890" class="text-small" text-anchor="middle">Submit</text>
+  
+  <!-- Backend Process -->
+  <rect x="780" y="840" width="420" height="130" class="secondary-box" rx="10"/>
+  <text x="990" y="885" class="text-bold" text-anchor="middle">Backend Process</text>
+  <text x="990" y="920" class="text-small" text-anchor="middle">PUT /form/&#58;formId/</text>
+  <text x="990" y="950" class="text-small" text-anchor="middle">response</text>
+  
+  <!-- Arrow -->
+  <path d="M 1200 905 L 1320 905" class="arrow"/>
+  <text x="1260" y="890" class="text-small" text-anchor="middle">Store</text>
+  
+  <!-- Database -->
+  <rect x="1320" y="840" width="340" height="130" class="box" rx="10"/>
+  <text x="1490" y="885" class="text-bold" text-anchor="middle">Database</text>
+  <text x="1490" y="920" class="text-small" text-anchor="middle">MongoDB</text>
+  <text x="1490" y="950" class="text-small" text-anchor="middle">Form responses saved</text>
+
+  <!-- Key Differences Box -->
+  <rect x="150" y="1000" width="1620" height="60" class="box" rx="8" style="fill: #fff8e1; stroke: #f57c00;"/>
+  <text x="960" y="1040" class="text" text-anchor="middle">Both methods provide same form experience, different authentication mechanisms</text>
+
+  <!-- Legend -->
+  <rect x="80" y="40" width="100" height="40" class="kiosk-box" rx="5"/>
+  <text x="190" y="65" class="text-small">Kiosk</text>
+  
+  <rect x="280" y="40" width="100" height="40" class="secondary-box" rx="5"/>
+  <text x="390" y="65" class="text-small">Backend</text>
+  
+  <rect x="480" y="40" width="100" height="40" class="success-box" rx="5"/>
+  <text x="590" y="65" class="text-small">Forms</text>
+</svg>

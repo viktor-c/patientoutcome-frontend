@@ -1,6 +1,6 @@
 # Präsentation 
 
-## Warum Papierform
+<!-- ## Warum Papierform
   ### Pro
   - günstig, einfach
   ### Kontra
@@ -16,13 +16,13 @@
   ### Kontra
   - zusätzliche Forms müssen direkt eingebaut werden
     - aber nur ein Mal, Übersetzung kann direkt eingebaut werden
-    - alle Nutzer profitieren davon
+    - alle Nutzer profitieren davon -->
 
 ## Technologie-Stack - Opensource
-  - FILE: images/digitale-souveranität-merz.png
+  <!-- - FILE: images/digitale-souveranität-merz.png
   - Zentrum für Digitale Souveränität der öffentlichen Verwaltung
-  - FILE: images/analyse-abhaengigkeit-oeffentliche-verwaltung.png
-  ### Zusammenfassung
+  - FILE: images/analyse-abhaengigkeit-oeffentliche-verwaltung.png -->
+  <!-- ### Zusammenfassung
     - Vorteile werden aufgezählt
     - Zeitraum und Kosten werden genannt (2021)
     - Empfehlung für öffentliche Verwaltung
@@ -34,10 +34,11 @@
       - Gilt auch für Krankenhäuser / Gesundheitswesen
       - Aus Fehlern der Vergangenheit und Gegenwart lernen 
         - z.B. Telematikinfrastruktur
-        - Limux
+        - Limux -->
   ### Konkret
     ## 📊 Technologie-Stack (Warum diese Auswahl?) (KI)
 
+      <!--
       **Backend:** Express.js
       - Branchenstandard, bewährt
       - Verwendet von Netflix, PayPal, Uber
@@ -62,14 +63,15 @@
 
       **Versioning** Git/Github
 
-      **KI** ChatGPT-5-Mini, Claude-Sonnet-4
+      **KI** ChatGPT-5-Mini, Claude-Sonnet-4 
+      -->
 
-  ### Opensource Ausblick
+  <!-- ### Opensource Ausblick
     - Um die angedachte Brückenfunktion zwischen Öffentlicher Verwaltung und Akteuren des Open Source-Ökosystems auszufüllen, bedarf es einer ***agilen*** Organisation mit spezifischen Freiheitsgraden. Bund und Länder können und _sollen_ als Gesellschafter dieser neuen Organisation fungieren, kommunale Spitzenverbände sollen ebenfalls über entsprechende Governance-Strukturen eng eingebunden werden.
 
-    - Der Aufbau des Zentrums erfolgt unter der Schirmherrschaft des Beauftragten der Bundesregierung für Informationstechnik (BfIT). Die Einbindung weiterer Stakeholder wie Länder, kommunale Spitzenverbände und öffentliche IT-Dienstleister soll dabei fortlaufend sichergestellt werden.
+    - Der Aufbau des Zentrums erfolgt unter der Schirmherrschaft des Beauftragten der Bundesregierung für Informationstechnik (BfIT). Die Einbindung weiterer Stakeholder wie Länder, kommunale Spitzenverbände und öffentliche IT-Dienstleister soll dabei fortlaufend sichergestellt werden. -->
 
-  ### Codegröße: (KI)
+  <!-- ### Codegröße: (KI)
     #### Programmiersprache
     - Javascript + Typescript (Platz 1 & 3 auf Github)
     - 
@@ -86,9 +88,9 @@
     #### 3. Frontend-Testing braucht Verbesserung
     - Nur 3.128 Zeilen Test-Code
     - Test-Ratio von 0.15:1 ist zu niedrig
-    - Ziel sollte: mindestens 1:1 oder besser 0.5:1 sein
+    - Ziel sollte: mindestens 1:1 oder besser 0.5:1 sein -->
 
-  ### Kostenanalyse (KI)
+  ### Kostenanalyse (KI)+
 
   **Backend Entwicklung (14.857 LOC):**
   - Entwicklungszeit: 6-8 Wochen (1 Senior Dev)
@@ -104,7 +106,7 @@
   - Mit 2er Team (1 Senior + 1 Mid-Level): **€68.000 - €96.000**
   - Dauer: 8-10 Wochen parallel
   - Puffer (10%): €6.800 - €9.600
-
+<!-- 
 ## Zeitersparnis für die Entwicklung
   ### Eigenhändige Planung
     1. Festlegung der Schnittstellen (API)
@@ -120,7 +122,7 @@
     - nach 2 Monate klassicher Entwicklung wurde die Nutzung der KI
       - zu unersetzbarem Tool
       - Katalysator der Entwicklung
-      - Überblick über gesamten Code, blickt auch komplexe Zusammenhänge durch.
+      - Überblick über gesamten Code, blickt auch komplexe Zusammenhänge durch. -->
 
 ## Demo
 

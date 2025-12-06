@@ -170,6 +170,15 @@ const openPatientOverview = () => {
   }
 }
 
+const openStatistics = () => {
+  if (caseId) {
+    router.push({
+      name: 'statistics',
+      params: { caseId }
+    })
+  }
+}
+
 // Consultation management
 const openCreateConsultationDialog = () => {
   editingConsultation.value = null
@@ -288,13 +297,22 @@ onMounted(() => {
     <div v-else>
       <!-- Header -->
       <v-card class="mb-6">
-        <v-card-title class="d-flex align-center">
+        <v-card-title class="d-flex align-center justify-space-between">
+          <div class="d-flex align-center">
+            <v-btn
+                   icon="mdi-arrow-left"
+                   variant="text"
+                   @click="$router.back()"
+                   class="me-2"></v-btn>
+            {{ t('patientCaseLanding.title') }}
+          </div>
           <v-btn
-                 icon="mdi-arrow-left"
-                 variant="text"
-                 @click="$router.back()"
-                 class="me-2"></v-btn>
-          {{ t('patientCaseLanding.title') }}
+                 @click="openStatistics"
+                 color="primary"
+                 variant="tonal"
+                 prepend-icon="mdi-chart-line">
+            {{ t('patientCaseLanding.viewStatistics') }}
+          </v-btn>
         </v-card-title>
 
         <!-- Case and Patient Details -->
