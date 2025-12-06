@@ -1,18 +1,24 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRouter, useRoute } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { ResponseError } from '@/api'
 import { codeApi } from '@/api'
 
 const { t } = useI18n()
+const router = useRouter()
+const route = useRoute()
 
 const patientCode = ref('')
 const errorMessage = ref('')
 const showGreeting = ref(true) // Controls the visibility of the greeting message
 const showInput = ref(false) // Controls the visibility of the input field
 const showMessage = ref(false) // Controls the visibility of the success message
-const router = useRouter()
+
+// Accept code as a prop from the route
+const props = defineProps<{
+  code?: string | null
+}>()
 
 const validateCode = async () => {
   if (patientCode.value.length >= 5) {
@@ -55,15 +61,24 @@ const moveToTop = ref(false)
 const showH2 = ref(false)
 const showInput2 = ref(false)
 
-// Handle transitions
+// Handle transitions and auto-validate if code is in URL
 onMounted(() => {
-  setTimeout(() => {
-    moveToTop.value = true
+  // If code is provided in URL, pre-fill and auto-validate
+  if (props.code) {
+    patientCode.value = props.code
     setTimeout(() => {
-      showH2.value = true
-      showInput2.value = true
-    }, 100) // Delay for h2 and input to appear after h1 moves
-  }, 500) // 2 seconds delay for h1
+      validateCode()
+    }, 500)
+  } else {
+    // Otherwise show the normal greeting flow
+    setTimeout(() => {
+      moveToTop.value = true
+      setTimeout(() => {
+        showH2.value = true
+        showInput2.value = true
+      }, 100) // Delay for h2 and input to appear after h1 moves
+    }, 500) // 2 seconds delay for h1
+  }
 })
 </script>
 

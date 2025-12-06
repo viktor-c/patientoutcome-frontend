@@ -301,15 +301,21 @@ async function fetchAvailableCodes() {
 
 // Create all consultations
 const createConsultations = async () => {
-  if (consultationsToCreate.value.length === 0) {
-    notifierStore.notify(t('alerts.consultation.noConsultationsToCreate'), 'info')
-    return
-  }
-
-  creating.value = true
-  const createdConsultations: Consultation[] = []
-
   try {
+    if (consultationsToCreate.value.length === 0) {
+      notifierStore.notify(t('alerts.consultation.noConsultationsToCreate'), 'info')
+      return
+    }
+
+    // Validate that blueprint was selected
+    if (!selectedBlueprint.value) {
+      notifierStore.notify(t('alerts.blueprint.required'), 'error')
+      return
+    }
+
+    creating.value = true
+    const createdConsultations: Consultation[] = []
+
     // Create consultations sequentially to avoid rate limiting
     for (const consultationData of consultationsToCreate.value) {
       // Remove extra properties that are not part of CreateConsultation
@@ -353,6 +359,15 @@ const dialogTitle = computed(() => {
     return t('consultation.createBatch', { count: consultationsToCreate.value.length })
   }
   return t('consultation.createFromBlueprint')
+})
+
+const sortedConsultations = computed(() => {
+  const listOfSortedConsultations = [...consultationsToCreate.value].sort((a, b) => {
+    const dateA = dayjs(a.calculatedDate)
+    const dateB = dayjs(b.calculatedDate)
+    return dateA.isBefore(dateB) ? -1 : dateA.isAfter(dateB) ? 1 : 0
+  })
+  return listOfSortedConsultations
 })
 
 const canCreate = computed(() => {
@@ -427,7 +442,7 @@ onMounted(async () => {
         <v-card v-if="referenceDate" class="my-4" outlined>
           <v-card-text>
             <h4>{{ t('consultation.referenceDate') }}</h4>
-            <p>{{ safeFormatDate(referenceDate, dateFormats.isoDate) }}</p>
+            <p>{{ safeFormatDate(referenceDate, dateFormats.longDate) }}</p>
           </v-card-text>
         </v-card>
 
@@ -441,7 +456,7 @@ onMounted(async () => {
           <v-card-text>
             <v-list>
               <v-list-item
-                           v-for="(consultation, index) in consultationsToCreate"
+                           v-for="(consultation, index) in sortedConsultations"
                            :key="index">
                 <template v-slot:prepend>
                   <v-icon color="primary">mdi-calendar-clock</v-icon>

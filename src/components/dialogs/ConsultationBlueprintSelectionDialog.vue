@@ -14,6 +14,7 @@ import {
 import { useNotifierStore } from '@/stores/notifierStore'
 import { blueprintApi, consultationApi } from '@/api'
 import dayjs from 'dayjs'
+import CreateEditConsultationDialog from './CreateEditConsultationDialog.vue'
 
 const props = defineProps<{
   modelValue: Blueprint[]
@@ -52,6 +53,7 @@ const consultationsToCreate = ref<Array<CreateConsultation & {
 const createdConsultations = ref<(Consultation & { blueprintTitle?: string })[]>([])
 const creating = ref(false)
 const creationComplete = ref(false)
+const showManualConsultationDialog = ref(false)
 
 // Computed properties
 const filteredBlueprints = computed(() => {
@@ -70,8 +72,54 @@ const isSelected = (blueprint: Blueprint): boolean => {
   return selectedBlueprints.value.some(selected => selected.id === blueprint.id)
 }
 
+const calculateBlueprintDate = (timeDelta?: string): dayjs.Dayjs => {
+  if (!props.surgeryDate || !timeDelta) {
+    return dayjs()
+  }
+
+  const referenceDate = dayjs(props.surgeryDate)
+  const match = timeDelta.toLowerCase().match(/^([+-]?\d+)([dwmy])$/)
+
+  if (!match) {
+    return referenceDate
+  }
+
+  const amount = parseInt(match[1], 10)
+  const unit = match[2]
+
+  switch (unit) {
+    case 'd':
+      return referenceDate.add(amount, 'day')
+    case 'w':
+      return referenceDate.add(amount, 'week')
+    case 'm':
+      return referenceDate.add(amount, 'month')
+    case 'y':
+      return referenceDate.add(amount, 'year')
+    default:
+      return referenceDate
+  }
+}
+
+const sortedSelectedBlueprints = computed(() => {
+  const sortedSelectedBlueprintsArray = [...selectedBlueprints.value].sort((a, b) => {
+    const dateA = calculateBlueprintDate(a.timeDelta)
+    const dateB = calculateBlueprintDate(b.timeDelta)
+    return dateA.isBefore(dateB) ? -1 : dateA.isAfter(dateB) ? 1 : 0
+  })
+  return sortedSelectedBlueprintsArray
+})
+
 const canConfirm = computed(() => {
   return selectedBlueprints.value.length > 0 && !creating.value && !creationComplete.value
+})
+
+const sortedCreatedConsultations = computed(() => {
+  return [...createdConsultations.value].sort((a, b) => {
+    const dateA = new Date(a.dateAndTime || 0).getTime()
+    const dateB = new Date(b.dateAndTime || 0).getTime()
+    return dateA - dateB
+  })
 })
 
 // Actions
@@ -99,6 +147,13 @@ const createMoreConsultations = () => {
   creationComplete.value = false
   selectedBlueprints.value = []
   searchQuery.value = ''
+}
+
+const handleManualConsultationCreated = (consultation: Consultation) => {
+  // Add the manually created consultation to the list
+  createdConsultations.value.push({ ...consultation, blueprintTitle: 'Manual' })
+  showManualConsultationDialog.value = false
+  notifierStore.notify(t('alerts.consultation.created'), 'success')
 }
 
 const finishCreation = () => {
@@ -427,7 +482,8 @@ onMounted(() => {
             <v-card-title>{{ t('consultation.createdConsultations') }}</v-card-title>
             <v-card-text>
               <v-list dense>
-                <v-list-item v-for="(consultation, index) in createdConsultations" :key="consultation.id || index">
+                <v-list-item v-for="(consultation, index) in sortedCreatedConsultations"
+                             :key="consultation.id || index">
                   <template v-slot:prepend>
                     <v-icon color="success">mdi-check-circle</v-icon>
                   </template>
@@ -542,7 +598,7 @@ onMounted(() => {
 
               <v-list v-if="selectedBlueprints.length > 0" class="selected-list">
                 <v-list-item
-                             v-for="blueprint in selectedBlueprints"
+                             v-for="blueprint in sortedSelectedBlueprints"
                              :key="blueprint.id || blueprint.title"
                              class="selected-item">
                   <div>
@@ -576,7 +632,7 @@ onMounted(() => {
               <v-card v-if="surgeryDate" outlined class="mt-4">
                 <v-card-text>
                   <h4>{{ t('consultation.referenceDate') }}</h4>
-                  <p class="text-body-2">{{ surgeryDate }}</p>
+                  <p class="text-body-2">{{ formatLocalizedCustomDate(surgeryDate, dateFormats.longDate) }}</p>
                   <p class="text-caption text-grey">
                     {{ t('consultation.consultationTimesCalculated') }}
                   </p>
@@ -590,12 +646,18 @@ onMounted(() => {
       <!-- Action buttons -->
       <v-card-actions class="justify-space-between pa-4">
         <!-- Creation Complete State Actions -->
-        <div v-if="creationComplete" class="w-100 d-flex justify-end">
+        <div v-if="creationComplete" class="w-100 d-flex justify-end gap-2">
+          <v-btn
+                 color="info"
+                 @click="showManualConsultationDialog = true"
+                 variant="outlined">
+            <v-icon left>mdi-pencil</v-icon>
+            {{ t('consultation.createManual') }}
+          </v-btn>
           <v-btn
                  color="success"
                  @click="createMoreConsultations"
-                 variant="outlined"
-                 class="mr-2">
+                 variant="outlined">
             <v-icon left>mdi-plus</v-icon>
             {{ t('consultation.createMore') }}
           </v-btn>
@@ -643,6 +705,24 @@ onMounted(() => {
         </div>
       </v-card-actions>
     </v-card>
+
+    <!-- Manual Consultation Creation Dialog -->
+    <v-dialog
+              v-model="showManualConsultationDialog"
+              width="900"
+              persistent>
+      <v-card>
+        <v-card-title>{{ t('consultation.createManual') }}</v-card-title>
+        <v-card-text>
+          <CreateEditConsultationDialog
+                                        v-if="showManualConsultationDialog"
+                                        :patient-id="null"
+                                        :case-id="props.caseId"
+                                        @submit="handleManualConsultationCreated"
+                                        @cancel="showManualConsultationDialog = false" />
+        </v-card-text>
+      </v-card>
+    </v-dialog>
   </v-dialog>
 </template>
 

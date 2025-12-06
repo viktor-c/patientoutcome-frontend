@@ -62,16 +62,20 @@ const patientDisplayName = computed(() => {
 })
 
 const pastConsultations = computed(() => {
-  const now = new Date()
+  // Get start of today (midnight) - consultations from today should NOT be considered past
+  const startOfToday = new Date()
+  startOfToday.setHours(0, 0, 0, 0)
   return consultations.value
-    .filter(consultation => new Date(consultation.dateAndTime || '') < now)
+    .filter(consultation => new Date(consultation.dateAndTime || '') < startOfToday)
     .sort((a, b) => new Date(b.dateAndTime || '').getTime() - new Date(a.dateAndTime || '').getTime())
 })
 
 const futureConsultations = computed(() => {
-  const now = new Date()
+  // Get start of today (midnight) - consultations from today onwards are considered future/current
+  const startOfToday = new Date()
+  startOfToday.setHours(0, 0, 0, 0)
   return consultations.value
-    .filter(consultation => new Date(consultation.dateAndTime || '') >= now)
+    .filter(consultation => new Date(consultation.dateAndTime || '') >= startOfToday)
     .sort((a, b) => new Date(a.dateAndTime || '').getTime() - new Date(b.dateAndTime || '').getTime())
 })
 
@@ -538,24 +542,7 @@ onMounted(() => {
             {{ t('patientCaseLanding.pastConsultations') }}
             <v-chip class="ml-2" color="success">{{ pastConsultations.length }}</v-chip>
           </div>
-          <div class="d-flex gap-2">
-            <v-btn
-                   color="primary"
-                   variant="text"
-                   size="small"
-                   @click="openCreateConsultationDialog"
-                   prepend-icon="mdi-calendar-plus">
-              {{ t('patientCaseLanding.addSingleConsultation') }}
-            </v-btn>
-            <v-btn
-                   color="secondary"
-                   variant="text"
-                   size="small"
-                   @click="openBatchConsultationDialog"
-                   prepend-icon="mdi-calendar-multiple">
-              {{ t('patientCaseLanding.addFromBlueprint') }}
-            </v-btn>
-          </div>
+          <!-- No buttons for past consultations - they are archived -->
         </v-card-title>
         <v-card-text>
           <v-list>

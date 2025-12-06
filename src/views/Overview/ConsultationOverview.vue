@@ -12,7 +12,7 @@ import {
   type Note,
   type GetAllKioskUsers200ResponseResponseObjectInner
 } from '@/api'
-import { consultationApi, userApi, kioskApi } from '@/api'
+import { consultationApi, userApi, kioskApi, codeApi } from '@/api'
 import CreateEditConsultationDialog from '@/components/dialogs/CreateEditConsultationDialog.vue'
 
 const componentName = 'ConsultationOverview.vue'
@@ -37,6 +37,9 @@ const editedNote = ref<string>('')
 const kioskUsers = ref<GetAllKioskUsers200ResponseResponseObjectInner[]>([])
 const selectedKioskUser = ref<string | null>(null)
 const assigningKiosk = ref(false)
+const availableCodes = ref<any[]>([])
+const selectedCode = ref<string | null>(null)
+const assigningCode = ref(false)
 
 // Helper function to safely format dates
 const safeFormatDate = (date: string | null | undefined, format: string = 'DD.MM.YYYY HH:mm'): string => {
@@ -86,6 +89,9 @@ onMounted(async () => {
 
     // Fetch kiosk users for assignment dropdown
     await fetchKioskUsers()
+
+    // Fetch available codes for assignment
+    await fetchAvailableCodes()
 
     // For now, we'll skip loading previous consultations since we'd need the patientId
     // This can be added later if needed
@@ -387,6 +393,171 @@ const revokeKiosk = async () => {
     notifierStore.notify(t('consultationOverview.kioskRevokeError'), 'error')
   } finally {
     assigningKiosk.value = false
+  }
+}// Code management
+const fetchAvailableCodes = async () => {
+  try {
+    const response = await codeApi.getAllAvailableCodes()
+    availableCodes.value = response.responseObject || []
+  } catch (error: unknown) {
+    let errorMessage = 'An unexpected error occurred'
+    if (error instanceof ResponseError) {
+      try {
+        errorMessage = (await error.response.json()).message
+      } catch {
+        // ignore JSON parse error
+      }
+    }
+    console.error('Failed to fetch available codes:', errorMessage)
+    availableCodes.value = []
+  }
+}
+
+// Get the currently assigned code (if any)
+const assignedCode = computed(() => {
+  if (!consultation.value?.formAccessCode) return null
+
+  // The formAccessCode field is now populated by the backend
+  const code = consultation.value.formAccessCode as any
+
+  // If it's a string (ObjectId not populated), return it as-is
+  if (typeof code === 'string') {
+    return code
+  }
+
+  // If it's a populated object, extract the 'code' field (the actual code string like "NNn44")
+  return code?.code || null
+})
+
+// Get available (unassigned) codes
+const availableCodesForSelection = computed(() => {
+  // If there's an assigned code, filter it out from available codes
+  const currentAssignedCode = assignedCode.value
+  if (!currentAssignedCode) {
+    // No code assigned, all fetched codes are available
+    return availableCodes.value
+  }
+  // Filter out the currently assigned code
+  return availableCodes.value.filter(code => {
+    const codeStr = typeof code === 'string' ? code : code?.code || code?.id || code?._id
+    return codeStr !== currentAssignedCode
+  })
+})
+
+const assignCode = async () => {
+  if (!selectedCode.value || !consultation.value?.id) return
+
+  try {
+    assigningCode.value = true
+    await codeApi.activateCode({ code: selectedCode.value, consultationId: consultation.value.id })
+    notifierStore.notify(t('consultationOverview.codeAssigned'), 'success')
+    // Reset selected code first to prevent watch from re-triggering
+    selectedCode.value = null
+    // Refresh consultation to get updated code info
+    const resp = await consultationApi.getConsultationById({ consultationId })
+    consultation.value = resp.responseObject || null
+    // Refresh available codes
+    await fetchAvailableCodes()
+  } catch (error: unknown) {
+    let errorMessage = 'An unexpected error occurred'
+    if (error instanceof ResponseError) {
+      try {
+        errorMessage = (await error.response.json()).message
+      } catch {
+        errorMessage = error.response.statusText || errorMessage
+      }
+    } else if (error instanceof Error) {
+      errorMessage = error.message
+    }
+    console.error(`${componentName}: Failed to assign code:`, errorMessage)
+    notifierStore.notify(t('consultationOverview.codeAssignError'), 'error')
+  } finally {
+    assigningCode.value = false
+  }
+}
+
+// Special value for creating a new code
+const CREATE_NEW_CODE = '__CREATE_NEW_CODE__'
+
+// Create a new code and assign it to the consultation
+const createAndAssignNewCode = async () => {
+  if (!consultation.value?.id) return
+
+  try {
+    assigningCode.value = true
+    // Create a new code
+    const response = await codeApi.addCodes({ numberOfCodes: 1 })
+    const newCodes = response.responseObject || []
+    if (newCodes.length === 0) {
+      throw new Error('Failed to create new code')
+    }
+    const newCode = newCodes[0].code
+    
+    await codeApi.activateCode({ code: newCode, consultationId: consultation.value.id })
+    
+    notifierStore.notify(t('consultationOverview.codeCreatedAndAssigned'), 'success')
+    // Reset selected code first to prevent watch from re-triggering
+    selectedCode.value = null
+    // Refresh consultation to get updated code info
+    const resp = await consultationApi.getConsultationById({ consultationId })
+    consultation.value = resp.responseObject || null
+    // Refresh available codes
+    await fetchAvailableCodes()
+  } catch (error: unknown) {
+    let errorMessage = 'An unexpected error occurred'
+    if (error instanceof Error) {
+      errorMessage = error.message
+    }
+    console.error(`${componentName}: Failed to create and assign code:`, errorMessage)
+    notifierStore.notify(t('consultationOverview.codeCreateError'), 'error')
+  } finally {
+    assigningCode.value = false
+  }
+}
+
+// Automatically assign when a code is selected from the dropdown
+watch(selectedCode, async (newVal) => {
+  if (!newVal || assigningCode.value) return
+  if (newVal === CREATE_NEW_CODE) {
+    await createAndAssignNewCode()
+  } else {
+    // assignCode will clear selectedCode when done
+    await assignCode()
+  }
+})
+
+const revokeCode = async () => {
+  if (!consultation.value?.formAccessCode) return
+
+  try {
+    assigningCode.value = true
+    // Normalize code (could be string or populated object)
+    const codeVal = consultation.value.formAccessCode as unknown
+    const codeStr = typeof codeVal === 'string'
+      ? codeVal
+      : (codeVal && typeof codeVal === 'object')
+        ? ((codeVal as Record<string, unknown>)['code'] as string | undefined) ?? ((codeVal as Record<string, unknown>)['_id'] as string | undefined) ?? null
+        : null
+    if (!codeStr) {
+      throw new Error('No code available to revoke')
+    }
+    await codeApi.deactivateCode({ code: codeStr })
+    notifierStore.notify(t('consultationOverview.codeRevoked'), 'success')
+    // Refresh consultation
+    const resp = await consultationApi.getConsultationById({ consultationId })
+    consultation.value = resp.responseObject || null
+    selectedCode.value = null
+    // Refresh available codes list
+    await fetchAvailableCodes()
+  } catch (error: unknown) {
+    let errorMessage = 'An unexpected error occurred'
+    if (error instanceof ResponseError) {
+      errorMessage = (await error.response.json()).message
+    }
+    console.error(`${componentName}: Failed to revoke code:`, errorMessage)
+    notifierStore.notify(t('consultationOverview.codeRevokeError'), 'error')
+  } finally {
+    assigningCode.value = false
   }
 }// Get form scores
 const getFormScore = (form: FindAllCodes200ResponseResponseObjectInnerConsultationIdPromsInner): string => {
@@ -708,7 +879,7 @@ const getFormStatusColor = (status: string | undefined): string => {
               <h4 class="mb-3">{{ t('consultationOverview.assignAdditionalKiosk') }}</h4>
               <p class="text-caption text-medium-emphasis mt-2">{{
                 t('consultationOverview.selectionAssignsImmediately')
-                }}</p>
+              }}</p>
               <v-row>
                 <v-col cols="12" md="8">
                   <v-autocomplete
@@ -772,13 +943,94 @@ const getFormStatusColor = (status: string | undefined): string => {
                   </v-autocomplete>
                   <p class="text-caption text-medium-emphasis mt-2">{{
                     t('consultationOverview.selectionAssignsImmediately')
-                    }}</p>
+                  }}</p>
                 </v-col>
 
                 <v-col cols="12" md="4">
                 </v-col>
               </v-row>
             </div>
+          </div>
+        </v-card-text>
+      </v-card>
+
+      <!-- Code Assignment -->
+      <v-card class="mb-6">
+        <v-card-title>
+          <v-icon class="me-2">mdi-barcode</v-icon>
+          {{ t('consultationOverview.codeAssignment') }}
+        </v-card-title>
+        <v-card-text>
+          <!-- List of assigned code -->
+          <div v-if="assignedCode" class="mb-6">
+            <h4 class="mb-3">{{ t('consultationOverview.assignedCode') }}</h4>
+            <v-list>
+              <v-list-item class="border rounded-lg mb-2">
+                <template #prepend>
+                  <v-icon class="me-2">mdi-barcode</v-icon>
+                </template>
+                <v-list-item-title class="font-weight-medium">
+                  {{ assignedCode }}
+                </v-list-item-title>
+                <v-list-item-subtitle>
+                  <div class="text-caption">
+                    {{ t('consultationOverview.codeStatus') }}: {{ t('consultationOverview.active') }}
+                  </div>
+                </v-list-item-subtitle>
+                <template #append>
+                  <v-btn
+                         color="error"
+                         variant="tonal"
+                         icon="mdi-delete"
+                         size="small"
+                         @click="revokeCode"
+                         :disabled="assigningCode"
+                         :loading="assigningCode"></v-btn>
+                </template>
+              </v-list-item>
+            </v-list>
+          </div>
+
+          <!-- Show dropdown to assign initial code (no code assigned yet) -->
+          <div v-else>
+            <p class="text-body-2 text-medium-emphasis mb-4">
+              {{ t('consultationOverview.noCodesAssigned') }}
+            </p>
+            <v-row>
+              <v-col cols="12" md="8">
+                <v-autocomplete
+                                v-model="selectedCode"
+                                :items="[{ code: CREATE_NEW_CODE, isCreateNew: true }, ...availableCodesForSelection]"
+                                :label="t('consultationOverview.selectCode')"
+                                item-title="code"
+                                item-value="code"
+                                variant="outlined"
+                                density="compact"
+                                :disabled="assigningCode"
+                                clearable>
+                  <template #item="{ props, item }">
+                    <v-list-item v-bind="props" :title="undefined">
+                      <template v-if="item.raw.isCreateNew">
+                        <v-list-item-title class="text-primary font-weight-medium">
+                          <v-icon class="me-2">mdi-plus</v-icon>
+                          {{ t('consultationOverview.createNewCode') }}
+                        </v-list-item-title>
+                      </template>
+                      <template v-else>
+                        <v-list-item-title>{{ item.raw.code }}</v-list-item-title>
+                      </template>
+                    </v-list-item>
+                  </template>
+                  <template #selection="{ item }">
+                    <span v-if="item.raw.isCreateNew">{{ t('consultationOverview.createNewCode') }}</span>
+                    <span v-else>{{ item.raw.code }}</span>
+                  </template>
+                </v-autocomplete>
+                <p class="text-caption text-medium-emphasis mt-2">{{
+                  t('consultationOverview.selectionAssignsImmediately')
+                }}</p>
+              </v-col>
+            </v-row>
           </div>
         </v-card-text>
       </v-card> <!-- Previous Consultations -->

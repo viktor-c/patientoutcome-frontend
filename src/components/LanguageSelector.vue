@@ -20,7 +20,7 @@ function setLocale(code: string) {
 <template>
   <v-menu>
     <template #activator="{ props: activatorProps }">
-      <v-btn v-bind="activatorProps" color="primary" flat icon title="Change language">
+      <v-btn v-bind="activatorProps" variant="text" icon title="Change language" class="language-btn">
         <span>{{ currentLocale.flag }}</span>
       </v-btn>
     </template>
@@ -35,4 +35,8 @@ function setLocale(code: string) {
   </v-menu>
 </template>
 
-<style scoped></style>
+<style scoped>
+.language-btn {
+  background-color: transparent !important;
+}
+</style>

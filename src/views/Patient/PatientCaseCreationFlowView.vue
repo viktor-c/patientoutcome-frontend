@@ -13,10 +13,14 @@ import type {
   GetAllPatientCases200ResponseResponseObjectInner
 } from '@/api'
 import { ResponseError } from '@/api'
-import CreateBatchConsultationsDialog from '@/components/dialogs/CreateBatchConsultationsDialog.vue'
-import ConsultationBlueprintSelectionDialog from '@/components/dialogs/ConsultationBlueprintSelectionDialog.vue'
-import CreateEditSurgeryDialog from '@/components/dialogs/CreateEditSurgeryDialog.vue'
+//step 1: create patient
+//step 2: create case
 import PatientCaseCreateEditForm from '@/components/forms/PatientCaseCreateEditForm.vue'
+//step 3: create surgery
+import CreateEditSurgeryDialog from '@/components/dialogs/CreateEditSurgeryDialog.vue'
+//step 4: create consultations (from surgery blueprint or manual selection)
+import ConsultationBlueprintSelectionDialog from '@/components/dialogs/ConsultationBlueprintSelectionDialog.vue'
+import CreateBatchConsultationsDialog from '@/components/dialogs/CreateBatchConsultationsDialog.vue'
 
 const { t } = useI18n()
 const router = useRouter()
@@ -34,11 +38,11 @@ const patientData = ref<CreatePatientRequest>({
 
 const caseData = ref<CreateCaseSchema>({
   patient: '',
-  externalId: '',
-  mainDiagnosis: [''],
-  mainDiagnosisICD10: [''],
-  otherDiagnosis: [''],
-  otherDiagnosisICD10: [''],
+  externalId: '', // This is the externalPatientCaseId - unique identifier for the patient case
+  mainDiagnosis: [],
+  mainDiagnosisICD10: [],
+  otherDiagnosis: [],
+  otherDiagnosisICD10: [],
   surgeries: [],
   supervisors: [],
   notes: [],
@@ -61,9 +65,27 @@ const surgeryBlueprintId = ref<string | null>(null)
 
 // Form refs for external submission
 const caseFormRef = ref<InstanceType<typeof PatientCaseCreateEditForm> | null>(null)
+const surgeryFormRef = ref<InstanceType<typeof CreateEditSurgeryDialog> | null>(null)
+
+// Duplicate patient handling
+const showDuplicatePatientDialog = ref(false)
+const duplicateExternalId = ref<string>('')
 
 // Loading states
 const isLoading = ref(false)
+
+// Watch currentStep to reset form errors when navigating between steps
+watch(currentStep, (newStep, oldStep) => {
+  if (newStep !== oldStep) {
+    // Reset form state when moving to a different step
+    if (caseFormRef.value?.resetFormState) {
+      caseFormRef.value.resetFormState()
+    }
+    if (surgeryFormRef.value?.resetFormState) {
+      surgeryFormRef.value.resetFormState()
+    }
+  }
+})
 
 // Use centralized API instance
 import { patientApi } from '@/api'
@@ -124,14 +146,67 @@ const createPatient = async () => {
     }
   } catch (error: unknown) {
     let errorMessage = 'An unexpected error occurred'
+    let errorCode = ''
+
     if (error instanceof ResponseError) {
-      errorMessage = (await error.response.json()).message
+      const errorBody = await error.response.json()
+      errorMessage = errorBody.message
+      errorCode = errorBody.code
     }
     console.error('Error creating patient:', errorMessage)
-    notifierStore.notify(t('alerts.patient.creationFailed'), 'error')
+
+    // Check if it's a duplicate external ID error
+    if (errorCode === 'DUPLICATE_EXTERNAL_ID' || errorMessage.toLowerCase().includes('external')) {
+      // Extract external ID from the first field
+      duplicateExternalId.value = patientData.value.externalPatientId[0]
+      showDuplicatePatientDialog.value = true
+      notifierStore.notify(t('alerts.patient.duplicateExternalId'), 'info')
+    } else {
+      notifierStore.notify(t('alerts.patient.creationFailed'), 'error')
+    }
   } finally {
     isLoading.value = false
   }
+}
+
+// Search for patient by external ID and load it
+const loadPatientByExternalId = async (externalId: string) => {
+  isLoading.value = true
+  try {
+    // Get patient by external ID
+    const response = await patientApi.getPatientByExternalId({ id: externalId })
+
+    if (response.responseObject) {
+      createdPatient.value = response.responseObject
+      caseData.value.patient = response.responseObject.id || null
+      currentStep.value = 2
+      showDuplicatePatientDialog.value = false
+      notifierStore.notify(t('creationFlow.patientLoaded'), 'success')
+      return
+    }
+
+    notifierStore.notify(t('alerts.patient.notFound'), 'error')
+  } catch (error: unknown) {
+    let errorMessage = 'An unexpected error occurred'
+    if (error instanceof ResponseError) {
+      errorMessage = (await error.response.json()).message
+    }
+    console.error('Error searching for patient:', errorMessage)
+    notifierStore.notify(t('alerts.patient.searchFailed'), 'error')
+  } finally {
+    isLoading.value = false
+  }
+}
+
+// Handle user choice to continue with existing patient
+const handleContinueWithExistingPatient = async () => {
+  await loadPatientByExternalId(duplicateExternalId.value)
+}
+
+// Handle user choice to cancel and try again
+const handleCancelDuplicateDialog = () => {
+  showDuplicatePatientDialog.value = false
+  // Keep user on step 1 to try again
 }
 
 // Handle case creation from embedded form
@@ -211,17 +286,17 @@ const completeCreationFlow = () => {
   // We're already on step 4, just mark as completed and navigate
   notifierStore.notify(t('creationFlow.flowCompleted'), 'success')
 
-  // Navigate to the patient's cases view
-  if (createdPatient.value) {
+  // Navigate to the patient case landing view
+  if (createdCase.value) {
     setTimeout(() => {
       notifierStore.notify(t('creationFlow.navigatingToCases'), 'info')
     }, 1000)
 
     setTimeout(() => {
       router.push({
-        name: 'cases',
+        name: 'patientcaselanding',
         params: {
-          patientId: createdPatient.value!.id
+          caseId: createdCase.value!.id
         }
       })
     }, 2000)
@@ -271,226 +346,285 @@ const removeExternalId = (index: number) => {
 }
 
 // Initialize data from route query if available
-onMounted(() => {
+onMounted(async () => {
   const externalId = route.query.externalId as string
   if (externalId && externalId.trim() !== '') {
     patientData.value.externalPatientId[0] = externalId
+  }
+
+  // Check if patientId is provided in route query - skip to step 2
+  const patientIdFromRoute = route.query.patientId as string
+  if (patientIdFromRoute && patientIdFromRoute.trim() !== '') {
+    try {
+      // Fetch patient data
+      const response = await patientApi.getPatientById({ id: patientIdFromRoute })
+      if (response.responseObject) {
+        createdPatient.value = response.responseObject
+        caseData.value.patient = response.responseObject.id || null
+        currentStep.value = 2
+        notifierStore.notify(t('creationFlow.patientLoaded'), 'info')
+      }
+    } catch (error: unknown) {
+      let errorMessage = 'An unexpected error occurred'
+      if (error instanceof ResponseError) {
+        errorMessage = (await error.response.json()).message
+      }
+      console.error('Error loading patient:', errorMessage)
+      notifierStore.notify(t('alerts.patient.loadFailed'), 'error')
+    }
   }
 })
 </script>
 
 <template>
   <v-container class="w-100">
-    <v-card>
-      <v-card-title class="text-h4">{{ t('creationFlow.title') }}</v-card-title>
+    <v-row justify="center">
+      <v-col cols="12" sm="12" md="12" lg="6" xl="6">
+        <v-card>
+          <v-card-title class="text-h4">{{ t('creationFlow.title') }}</v-card-title>
 
-      <!-- Stepper -->
-      <v-stepper
-                 v-model="currentStep"
-                 hide-actions
-                 class="mb-4">
+          <!-- Stepper -->
+          <v-stepper
+                     v-model="currentStep"
+                     hide-actions
+                     class="mb-4"
+                     vertical>
 
-        <v-stepper-header>
-          <v-stepper-item
-                          :complete="currentStep > 1"
-                          :value="1"
-                          :title="t('creationFlow.step1Title')"></v-stepper-item>
-          <v-divider></v-divider>
-          <v-stepper-item
-                          :complete="currentStep > 2"
-                          :value="2"
-                          :title="t('creationFlow.step2Title')"></v-stepper-item>
-          <v-divider></v-divider>
-          <v-stepper-item
-                          :complete="currentStep > 3"
-                          :value="3"
-                          :title="t('creationFlow.step3Title')"></v-stepper-item>
-          <v-divider></v-divider>
-          <v-stepper-item
-                          :complete="currentStep > 4"
-                          :value="4"
-                          :title="t('creationFlow.step4Title')"></v-stepper-item>
-        </v-stepper-header>
+            <v-stepper-header>
+              <v-stepper-item
+                              :complete="currentStep > 1"
+                              :value="1"
+                              :title="t('creationFlow.step1Title')"></v-stepper-item>
+              <v-divider></v-divider>
+              <v-stepper-item
+                              :complete="currentStep > 2"
+                              :value="2"
+                              :title="t('creationFlow.step2Title')"></v-stepper-item>
+              <v-divider></v-divider>
+              <v-stepper-item
+                              :complete="currentStep > 3"
+                              :value="3"
+                              :title="t('creationFlow.step3Title')"></v-stepper-item>
+              <v-divider></v-divider>
+              <v-stepper-item
+                              :complete="currentStep > 4"
+                              :value="4"
+                              :title="t('creationFlow.step4Title')"></v-stepper-item>
+            </v-stepper-header>
 
-        <v-stepper-window v-model="currentStep">
-          <!-- Step 1: Create Patient -->
-          <v-stepper-window-item :value="1">
+            <v-stepper-window v-model="currentStep">
+              <!-- Step 1: Create Patient -->
+              <v-stepper-window-item :value="1">
+                <v-card>
+                  <v-card-title>{{ t('creationFlow.step1Title') }}</v-card-title>
+                  <v-card-text>
+                    <v-form>
+                      <!-- External Patient IDs -->
+                      <div v-for="(externalId, index) in patientData.externalPatientId" :key="index" class="mb-2">
+                        <v-row align="center">
+                          <v-col cols="10">
+                            <v-text-field
+                                          v-model="patientData.externalPatientId[index]"
+                                          :label="t('forms.patient.externalId') + (index > 0 ? ' ' + (index + 1) : '')"
+                                          :rules="index === 0 ? [v => !!v || t('forms.patient.externalIdRequired')] : []"
+                                          required></v-text-field>
+                          </v-col>
+                          <v-col cols="2">
+                            <v-btn
+                                   v-if="index === patientData.externalPatientId.length - 1"
+                                   @click="addExternalId"
+                                   icon="mdi-plus"
+                                   size="small"
+                                   color="primary"
+                                   variant="text"
+                                   :title="t('forms.patient.addExternalId')"></v-btn>
+                            <v-btn
+                                   v-if="index > 0"
+                                   @click="removeExternalId(index)"
+                                   icon="mdi-minus"
+                                   size="small"
+                                   color="error"
+                                   variant="text"
+                                   :title="t('forms.patient.removeExternalId')"></v-btn>
+                          </v-col>
+                        </v-row>
+                      </div>
+
+                      <v-select
+                                v-model="patientData.sex"
+                                :label="t('forms.patient.sex')"
+                                :items="sexOptions"
+                                item-value="value"
+                                item-title="label"
+                                clearable></v-select>
+                    </v-form>
+                  </v-card-text>
+                </v-card>
+              </v-stepper-window-item>
+
+              <!-- Step 2: Create Case -->
+              <v-stepper-window-item :value="2">
+                <v-alert v-if="createdPatient" type="success" class="mb-4">
+                  {{ t('creationFlow.patientCreated') }} - ID: {{ createdPatient.id }}
+                </v-alert>
+
+                <!-- Embedded Case Form -->
+                <PatientCaseCreateEditForm
+                                           ref="caseFormRef"
+                                           v-if="createdPatient"
+                                           :patientId="createdPatient.id!"
+                                           :createNewCase="true"
+                                           :modelValue="caseData"
+                                           :showButtons="false"
+                                           @submit="handleCaseSubmit"
+                                           @cancel="handleCaseCancel"
+                                           @blueprint-applied="handleCaseBlueprintApplied" />
+              </v-stepper-window-item>
+
+              <!-- Step 3: Create Surgery -->
+              <v-stepper-window-item :value="3">
+                <v-alert v-if="createdCase" type="success" class="mb-4">
+                  {{ t('creationFlow.caseCreated') }} - ID: {{ createdCase.id }}
+                </v-alert>
+
+                <v-alert v-if="surgeryBlueprintId" type="info" class="mb-4">
+                  {{ t('creationFlow.surgeryBlueprintPrefilled') }}
+                </v-alert>
+
+                <!-- Embedded Surgery Form -->
+                <CreateEditSurgeryDialog
+                                         v-if="createdCase && createdCase.id"
+                                         :patientCaseId="createdCase.id"
+                                         :patient-case-data="createdCase"
+                                         :surgery-blueprint-ids="surgeryBlueprintId ? [surgeryBlueprintId] : undefined"
+                                         @submit="handleSurgerySubmit"
+                                         @cancel="handleSurgeryCancel"
+                                         @consultation-blueprints="handleConsultationBlueprints" />
+              </v-stepper-window-item>
+
+              <!-- Step 4: Create Consultation -->
+              <v-stepper-window-item :value="4">
+                <v-alert v-if="createdSurgery" type="success" class="mb-4">
+                  {{ t('creationFlow.surgeryCreated') }} - ID: {{ createdSurgery.id }}
+                </v-alert>
+
+                <!-- Consultation Creation Status -->
+                <v-card>
+                  <v-card-title>{{ t('creationFlow.step4Title') }}</v-card-title>
+                  <v-card-text>
+                    <div v-if="showConsultationBlueprintSelection">
+                      <p class="mb-4">{{ t('creationFlow.consultationBlueprintSelectionActive') }}</p>
+                      <v-alert type="info" class="mb-4">
+                        {{ t('creationFlow.consultationBlueprintSelectionHint') }}
+                      </v-alert>
+                    </div>
+
+                    <div v-else-if="createdConsultations.length > 0">
+                      <v-alert type="success" class="mb-4">
+                        {{ t('creationFlow.consultationsCreated', { count: createdConsultations.length }) }}
+                      </v-alert>
+                      <p>{{ t('creationFlow.consultationsCreatedMessage') }}</p>
+                    </div>
+
+                    <div v-else>
+                      <v-alert type="info" class="mb-4">
+                        {{ t('creationFlow.noConsultationsCreated') }}
+                      </v-alert>
+                      <p>{{ t('creationFlow.noConsultationsCreatedMessage') }}</p>
+                    </div>
+                  </v-card-text>
+                </v-card>
+              </v-stepper-window-item>
+            </v-stepper-window>
+          </v-stepper>
+
+          <!-- Consultation Blueprint Selection Dialog -->
+          <ConsultationBlueprintSelectionDialog
+                                                v-if="createdCase && createdCase.patient && createdCase.id"
+                                                v-model="selectedConsultationBlueprints"
+                                                v-model:show="showConsultationBlueprintSelection"
+                                                :surgery-date="createdSurgery?.surgeryDate || undefined"
+                                                :patient-id="createdCase.patient.id || ''"
+                                                :case-id="createdCase.id"
+                                                :pre-selected-blueprint-ids="surgeryBlueprintConsultations"
+                                                @consultations-created="handleConsultationsSubmit"
+                                                @cancel="handleConsultationBlueprintCancel" />
+
+          <!-- Batch Consultation Creation Dialog -->
+          <CreateBatchConsultationsDialog
+                                          v-if="createdCase && createdCase.patient && createdCase.id"
+                                          :show="false"
+                                          :consultation-blueprint-ids="selectedConsultationBlueprints.map(b => b.id!)"
+                                          :patient-id="createdCase.patient.id || ''"
+                                          :case-id="createdCase.id"
+                                          :reference-date="createdSurgery?.surgeryDate || undefined"
+                                          @submit="handleConsultationsSubmit"
+                                          @cancel="() => { }" />
+
+          <!-- Duplicate Patient Dialog -->
+          <v-dialog v-model="showDuplicatePatientDialog" max-width="400">
             <v-card>
-              <v-card-title>{{ t('creationFlow.step1Title') }}</v-card-title>
+              <v-card-title>{{ t('creationFlow.duplicatePatientTitle') }}</v-card-title>
               <v-card-text>
-                <v-form>
-                  <!-- External Patient IDs -->
-                  <div v-for="(externalId, index) in patientData.externalPatientId" :key="index" class="mb-2">
-                    <v-row align="center">
-                      <v-col cols="10">
-                        <v-text-field
-                                      v-model="patientData.externalPatientId[index]"
-                                      :label="t('forms.patient.externalId') + (index > 0 ? ' ' + (index + 1) : '')"
-                                      :rules="index === 0 ? [v => !!v || t('forms.patient.externalIdRequired')] : []"
-                                      required></v-text-field>
-                      </v-col>
-                      <v-col cols="2">
-                        <v-btn
-                               v-if="index === patientData.externalPatientId.length - 1"
-                               @click="addExternalId"
-                               icon="mdi-plus"
-                               size="small"
-                               color="primary"
-                               variant="text"
-                               :title="t('forms.patient.addExternalId')"></v-btn>
-                        <v-btn
-                               v-if="index > 0"
-                               @click="removeExternalId(index)"
-                               icon="mdi-minus"
-                               size="small"
-                               color="error"
-                               variant="text"
-                               :title="t('forms.patient.removeExternalId')"></v-btn>
-                      </v-col>
-                    </v-row>
-                  </div>
-
-                  <v-select
-                            v-model="patientData.sex"
-                            :label="t('forms.patient.sex')"
-                            :items="sexOptions"
-                            item-value="value"
-                            item-title="label"
-                            clearable></v-select>
-                </v-form>
+                <p class="mb-4">
+                  {{ t('creationFlow.duplicatePatientMessage', { externalId: duplicateExternalId }) }}
+                </p>
+                <v-alert type="info">
+                  {{ t('creationFlow.duplicatePatientQuestion') }}
+                </v-alert>
               </v-card-text>
+              <v-card-actions>
+                <v-spacer></v-spacer>
+                <v-btn
+                       @click="handleCancelDuplicateDialog"
+                       color="grey"
+                       variant="outlined">
+                  {{ t('buttons.no') }}
+                </v-btn>
+                <v-btn
+                       @click="handleContinueWithExistingPatient"
+                       color="primary"
+                       variant="elevated"
+                       :loading="isLoading">
+                  {{ t('buttons.yes') }}
+                </v-btn>
+              </v-card-actions>
             </v-card>
-          </v-stepper-window-item>
+          </v-dialog>
 
-          <!-- Step 2: Create Case -->
-          <v-stepper-window-item :value="2">
-            <v-alert v-if="createdPatient" type="success" class="mb-4">
-              {{ t('creationFlow.patientCreated') }} - ID: {{ createdPatient.id }}
-            </v-alert>
+          <!-- Action buttons -->
+          <v-card-actions class="justify-space-between pa-4">
+            <v-btn
+                   @click="cancel"
+                   color="grey"
+                   variant="outlined">
+              {{ t('buttons.cancel') }}
+            </v-btn>
 
-            <!-- Embedded Case Form -->
-            <PatientCaseCreateEditForm
-                                       ref="caseFormRef"
-                                       v-if="createdPatient"
-                                       :patientId="createdPatient.id!"
-                                       :createNewCase="true"
-                                       :showButtons="false"
-                                       @submit="handleCaseSubmit"
-                                       @cancel="handleCaseCancel"
-                                       @blueprint-applied="handleCaseBlueprintApplied" />
-          </v-stepper-window-item>
+            <div class="d-flex gap-2">
+              <v-btn
+                     v-if="currentStep >= 2 && currentStep <= 4"
+                     @click="previousStep"
+                     color="primary"
+                     variant="outlined">
+                {{ t('buttons.previous') }}
+              </v-btn>
 
-          <!-- Step 3: Create Surgery -->
-          <v-stepper-window-item :value="3">
-            <v-alert v-if="createdCase" type="success" class="mb-4">
-              {{ t('creationFlow.caseCreated') }} - ID: {{ createdCase.id }}
-            </v-alert>
-
-            <v-alert v-if="surgeryBlueprintId" type="info" class="mb-4">
-              {{ t('creationFlow.surgeryBlueprintPrefilled') }}
-            </v-alert>
-
-            <!-- Embedded Surgery Form -->
-            <CreateEditSurgeryDialog
-                                     v-if="createdCase && createdCase.id"
-                                     :patientCaseId="createdCase.id"
-                                     :patient-case-data="createdCase"
-                                     :surgery-blueprint-ids="surgeryBlueprintId ? [surgeryBlueprintId] : undefined"
-                                     @submit="handleSurgerySubmit"
-                                     @cancel="handleSurgeryCancel"
-                                     @consultation-blueprints="handleConsultationBlueprints" />
-          </v-stepper-window-item>
-
-          <!-- Step 4: Create Consultation -->
-          <v-stepper-window-item :value="4">
-            <v-alert v-if="createdSurgery" type="success" class="mb-4">
-              {{ t('creationFlow.surgeryCreated') }} - ID: {{ createdSurgery.id }}
-            </v-alert>
-
-            <!-- Consultation Creation Status -->
-            <v-card>
-              <v-card-title>{{ t('creationFlow.step4Title') }}</v-card-title>
-              <v-card-text>
-                <div v-if="showConsultationBlueprintSelection">
-                  <p class="mb-4">{{ t('creationFlow.consultationBlueprintSelectionActive') }}</p>
-                  <v-alert type="info" class="mb-4">
-                    {{ t('creationFlow.consultationBlueprintSelectionHint') }}
-                  </v-alert>
-                </div>
-
-                <div v-else-if="createdConsultations.length > 0">
-                  <v-alert type="success" class="mb-4">
-                    {{ t('creationFlow.consultationsCreated', { count: createdConsultations.length }) }}
-                  </v-alert>
-                  <p>{{ t('creationFlow.consultationsCreatedMessage') }}</p>
-                </div>
-
-                <div v-else>
-                  <v-alert type="info" class="mb-4">
-                    {{ t('creationFlow.noConsultationsCreated') }}
-                  </v-alert>
-                  <p>{{ t('creationFlow.noConsultationsCreatedMessage') }}</p>
-                </div>
-              </v-card-text>
-            </v-card>
-          </v-stepper-window-item>
-        </v-stepper-window>
-      </v-stepper>
-
-      <!-- Consultation Blueprint Selection Dialog -->
-      <ConsultationBlueprintSelectionDialog
-                                            v-if="createdCase && createdCase.patient && createdCase.id"
-                                            v-model="selectedConsultationBlueprints"
-                                            v-model:show="showConsultationBlueprintSelection"
-                                            :surgery-date="createdSurgery?.surgeryDate || undefined"
-                                            :patient-id="createdCase.patient.id || ''"
-                                            :case-id="createdCase.id"
-                                            :pre-selected-blueprint-ids="surgeryBlueprintConsultations"
-                                            @consultations-created="handleConsultationsSubmit"
-                                            @cancel="handleConsultationBlueprintCancel" />
-
-      <!-- Batch Consultation Creation Dialog -->
-      <CreateBatchConsultationsDialog
-                                      v-if="createdCase && createdCase.patient && createdCase.id"
-                                      :show="false"
-                                      :consultation-blueprint-ids="selectedConsultationBlueprints.map(b => b.id!)"
-                                      :patient-id="createdCase.patient.id || ''"
-                                      :case-id="createdCase.id"
-                                      :reference-date="createdSurgery?.surgeryDate || undefined"
-                                      @submit="handleConsultationsSubmit"
-                                      @cancel="() => { }" />
-
-      <!-- Action buttons -->
-      <v-card-actions class="justify-space-between pa-4">
-        <v-btn
-               @click="cancel"
-               color="grey"
-               variant="outlined">
-          {{ t('buttons.cancel') }}
-        </v-btn>
-
-        <div class="d-flex gap-2">
-          <v-btn
-                 v-if="currentStep >= 2 && currentStep <= 4"
-                 @click="previousStep"
-                 color="primary"
-                 variant="outlined">
-            {{ t('buttons.previous') }}
-          </v-btn>
-
-          <v-btn
-                 v-if="currentStep <= 2"
-                 @click="nextStep"
-                 color="primary"
-                 variant="elevated"
-                 :loading="isLoading"
-                 :disabled="(currentStep === 1 && !canProceedFromStep1) ||
-                  (currentStep === 2 && !canProceedFromStep2)">
-            {{ t('buttons.next') }}
-          </v-btn>
-        </div>
-      </v-card-actions>
-    </v-card>
+              <v-btn
+                     v-if="currentStep <= 2"
+                     @click="nextStep"
+                     color="primary"
+                     variant="elevated"
+                     :loading="isLoading"
+                     :disabled="(currentStep === 1 && !canProceedFromStep1) ||
+                      (currentStep === 2 && !canProceedFromStep2)">
+                {{ t('buttons.next') }}
+              </v-btn>
+            </div>
+          </v-card-actions>
+        </v-card>
+      </v-col>
+    </v-row>
   </v-container>
 </template>
 

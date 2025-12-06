@@ -12,10 +12,10 @@ import {
 } from '@/api'
 import { patientApi, patientCaseApi } from '@/api'
 
-// Import dialog components for case creation
-import PatientCaseCreateEditForm from '@/components/forms/PatientCaseCreateEditForm.vue'
-import CreateEditConsultationDialog from '@/components/dialogs/CreateEditConsultationDialog.vue'
+// Import components
 import PatientCaseCard from '@/components/cards/PatientCaseCard.vue'
+import CreateEditConsultationDialog from '@/components/dialogs/CreateEditConsultationDialog.vue'
+import type { Consultation } from '@/api'
 
 const componentName = 'PatientOverview.vue'
 const { t } = useI18n()
@@ -33,16 +33,9 @@ const cases = ref<PatientCaseWithDetails[]>([])
 const loading = ref(true)
 const expandedCases = ref<string[]>([])
 
-// Dialog states for case creation flow
-const showCreateCaseDialog = ref(false)
+// Dialog states
 const showCreateConsultationDialog = ref(false)
-const createdCaseId = ref<string | null>(null)
-
-// Form refs for external submission
-const caseFormRef = ref<InstanceType<typeof PatientCaseCreateEditForm> | null>(null)
-
-// Loading states
-const isLoading = ref(false)
+const selectedCaseIdForConsultation = ref<string | null>(null)
 
 // Helper function to safely format dates
 const safeFormatDate = (date: unknown, format: string = 'DD.MM.YYYY HH:mm'): string => {
@@ -89,7 +82,7 @@ onMounted(async () => {
 // Navigation helpers
 const openCase = (caseId: string | null | undefined) => {
   if (caseId) {
-    router.push({ name: 'PatientCase', params: { patientId, caseId } })
+    router.push({ name: 'patientcaselanding', params: { caseId } })
   }
 }
 
@@ -114,85 +107,38 @@ const goBack = () => {
 
 // Helper functions
 
-
-// Case creation dialog functions
-const openCreateCaseDialog = () => {
-  showCreateCaseDialog.value = true
-}
-
-const closeCreateCaseDialog = () => {
-  showCreateCaseDialog.value = false
-  resetDialogState()
-}
-
-// Handle case form submission from external buttons
-const createCase = async () => {
-  if (caseFormRef.value) {
-    isLoading.value = true
-    await caseFormRef.value.submit()
-  }
-}
-
-const createCaseAndNext = async () => {
-  if (caseFormRef.value) {
-    isLoading.value = true
-    await caseFormRef.value.submitAndNextStep()
-  }
-}
-
-// Handle case creation success from embedded form
-const handleCaseCreated = async (caseData: PatientCaseWithDetails) => {
-  isLoading.value = false
-  createdCaseId.value = caseData.id || null
-  showCreateCaseDialog.value = false
-
-  // Refresh the cases list to show the new case
-  await refreshCases()
-
-  // Show success message (already shown by the form component)
-  notifierStore.notify(t('alerts.case.created'), 'success')
-}
-
-const handleCaseCreatedAndNext = async (caseData: PatientCaseWithDetails) => {
-  isLoading.value = false
-  createdCaseId.value = caseData.id || null
-  showCreateCaseDialog.value = false
-
-  // Refresh the cases list to show the new case
-  await refreshCases()
-
-  // Move directly to step 2: Create consultation for the new case
-  if (createdCaseId.value) {
+// Handle create consultation - open dialog
+const handleCreateConsultation = (caseId: string | null | undefined) => {
+  if (caseId) {
+    selectedCaseIdForConsultation.value = caseId
     showCreateConsultationDialog.value = true
   }
 }
 
-const handleCaseCreationCancelled = () => {
-  isLoading.value = false
-  closeCreateCaseDialog()
-}
-
+// Handle consultation created
 const handleConsultationCreated = async () => {
   showCreateConsultationDialog.value = false
-
-  // Refresh the cases list to show the new consultation
+  selectedCaseIdForConsultation.value = null
   await refreshCases()
-
-  resetDialogState()
-
-  // Show success message
-  notifierStore.notify(t('alerts.consultation.created'), 'success');
-
+  notifierStore.notify(t('alerts.consultation.created'), 'success')
 }
 
-const handleConsultationCreationCancelled = () => {
+// Cancel consultation dialog
+const cancelConsultationDialog = () => {
   showCreateConsultationDialog.value = false
-  resetDialogState()
+  selectedCaseIdForConsultation.value = null
 }
 
-const resetDialogState = () => {
-  createdCaseId.value = null
+// Case creation dialog functions
+const openCreateCaseDialog = () => {
+  // Navigate to creation flow with patientId
+  router.push({
+    name: 'creation-flow',
+    query: { patientId }
+  })
 }
+
+// Dialog handlers removed - we now navigate to creation flow instead
 
 // Helper function to refresh cases data
 const refreshCases = async () => {
@@ -245,7 +191,7 @@ const refreshCases = async () => {
         <v-card-text>
           <!-- Patient Info -->
           <v-row>
-            <v-col cols="12" md="6">
+            <v-col cols="12" md="4">
               <h3>{{ t('patientOverview.patientDetails') }}</h3>
               <v-list density="compact">
                 <v-list-item>
@@ -254,7 +200,7 @@ const refreshCases = async () => {
                   </template>
                   <v-list-item-title>{{ t('patientOverview.externalId') }}</v-list-item-title>
                   <v-list-item-subtitle>{{ patient.externalPatientId || t('common.notAvailable')
-                  }}</v-list-item-subtitle>
+                    }}</v-list-item-subtitle>
                 </v-list-item>
 
                 <v-list-item>
@@ -267,7 +213,7 @@ const refreshCases = async () => {
               </v-list>
             </v-col>
 
-            <v-col cols="12" md="6">
+            <v-col cols="12" md="4">
               <h3>{{ t('patientOverview.overview') }}</h3>
               <v-list density="compact">
                 <v-list-item>
@@ -294,6 +240,19 @@ const refreshCases = async () => {
                   <v-list-item-subtitle>{{ safeFormatDate((patient as any)?.updatedAt) }}</v-list-item-subtitle>
                 </v-list-item>
               </v-list>
+            </v-col>
+
+            <v-col cols="12" md="4" class="d-flex align-center justify-end">
+              <div>
+                <h3 class="mb-4">&nbsp;</h3>
+                <v-btn
+                       color="primary"
+                       variant="elevated"
+                       @click="openCreateCaseDialog">
+                  <v-icon class="me-2">mdi-plus</v-icon>
+                  {{ t('buttons.createNewCase') }}
+                </v-btn>
+              </div>
             </v-col>
           </v-row>
         </v-card-text>
@@ -329,74 +288,31 @@ const refreshCases = async () => {
                          :patient-id="patientId"
                          @open-case="openCase"
                          @open-consultation="openConsultation"
-                         @update-consultations="refreshCases" />
+                         @update-consultations="refreshCases"
+                         @create-consultation="handleCreateConsultation" />
       </v-expansion-panels>
+
+      <div v-if="cases.length > 0" class="text-center mt-4">
+        <v-btn
+               color="primary"
+               variant="elevated"
+               @click="openCreateCaseDialog">
+          <v-icon class="me-2">mdi-plus</v-icon>
+          {{ t('buttons.createNewCase') }}
+        </v-btn>
+      </div>
     </div>
 
-    <!-- Step 1: Create Case Dialog -->
-    <v-dialog v-model="showCreateCaseDialog" max-width="700">
-      <v-card>
-        <v-card-title class="d-flex align-center">
-          <v-icon class="me-2">mdi-folder-plus</v-icon>
-          {{ t('buttons.createNewCase') }}
-        </v-card-title>
-
-        <v-card-text>
-          <PatientCaseCreateEditForm
-                                     ref="caseFormRef"
-                                     v-if="patient?.id"
-                                     :createNewCase="true"
-                                     :patientId="patient.id"
-                                     :selectedCase="null"
-                                     :showButtons="false"
-                                     @submit="handleCaseCreated"
-                                     @next-step="handleCaseCreatedAndNext"
-                                     @cancel="handleCaseCreationCancelled" />
-        </v-card-text>
-
-        <v-card-actions>
-          <v-btn
-                 color="primary"
-                 variant="elevated"
-                 :loading="isLoading"
-                 @click="createCase">
-            {{ t('buttons.create') }}
-          </v-btn>
-          <v-btn
-                 color="secondary"
-                 variant="elevated"
-                 :loading="isLoading"
-                 @click="createCaseAndNext">
-            {{ t('buttons.createAndNext') }}
-          </v-btn>
-          <v-spacer></v-spacer>
-          <v-btn
-                 color="grey"
-                 variant="outlined"
-                 @click="closeCreateCaseDialog">
-            {{ t('buttons.cancel') }}
-          </v-btn>
-        </v-card-actions>
-      </v-card>
-    </v-dialog>
-
-    <!-- Step 2: Create Consultation Dialog -->
-    <v-dialog v-model="showCreateConsultationDialog" max-width="800">
-      <v-card>
-        <v-card-title class="d-flex align-center">
-          <v-icon class="me-2">mdi-calendar-plus</v-icon>
-          {{ t('buttons.consultation') }}
-        </v-card-title>
-
-        <v-card-text>
-          <CreateEditConsultationDialog
-                                        v-if="patient?.id && createdCaseId"
-                                        :patientId="patient.id"
-                                        :caseId="createdCaseId"
-                                        @submit="handleConsultationCreated"
-                                        @cancel="handleConsultationCreationCancelled" />
-        </v-card-text>
-      </v-card>
+    <!-- Create Consultation Dialog -->
+    <v-dialog
+              v-model="showCreateConsultationDialog"
+              max-width="800px">
+      <CreateEditConsultationDialog
+                                    v-if="selectedCaseIdForConsultation"
+                                    :patient-id="patientId"
+                                    :case-id="selectedCaseIdForConsultation"
+                                    @submit="handleConsultationCreated"
+                                    @cancel="cancelConsultationDialog" />
     </v-dialog>
   </v-container>
 </template>

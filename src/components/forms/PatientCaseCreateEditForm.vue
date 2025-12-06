@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, watch, computed } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { useFormValidation } from '@/composables/useFormValidation'
 import {
   type CreateCaseSchema,
   type PatientCase,
@@ -19,6 +20,7 @@ import { useNotifierStore } from '@/stores/notifierStore'
 const notifierStore = useNotifierStore()
 
 const { t } = useI18n()
+const { errors, validateForm, clearAllErrors, hasError, getError, touchField, isFieldTouched, resetFormState } = useFormValidation()
 
 // Props
 const props = defineProps<{
@@ -68,6 +70,22 @@ const blueprints = ref<Blueprint[]>([])
 const selectedBlueprint = ref<Blueprint | null>(null)
 const blueprintSearchQuery = ref('')
 const loadingBlueprints = ref(false)
+const formSubmitted = ref(false)
+
+// Helper to determine if we should show error for a field
+const shouldShowError = (fieldName: string): boolean => {
+  return formSubmitted.value || isFieldTouched(fieldName)
+}
+
+// Helper to get error message (only if field should show error)
+const getErrorIfNeeded = (fieldName: string): string => {
+  return shouldShowError(fieldName) ? errors[fieldName] || '' : ''
+}
+
+// Helper to determine if field has error (only if field should show error)
+const hasErrorIfNeeded = (fieldName: string): boolean => {
+  return shouldShowError(fieldName) && !!errors[fieldName]
+}
 
 // Initialize form data on mount or when props change
 watch(
@@ -90,12 +108,13 @@ watch(
   { immediate: true }
 )
 
-// Watch formCase changes and emit updates when used with v-model
+// Watch formCase changes and emit updates only when used standalone (not in flow)
 watch(
   formCase,
   (newValue) => {
     // Only emit modelValue updates if modelValue prop is actually being used
-    if (props.modelValue !== undefined) {
+    // and we're not being used within a parent that manages the state
+    if (props.modelValue !== undefined && props.showButtons !== false) {
       emit('update:modelValue', newValue as CreateCaseSchema)
     }
   },
@@ -169,6 +188,9 @@ const applyBlueprint = (blueprint: Blueprint) => {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const content = blueprint.content as any
 
+  // Store the current externalPatientCaseId before applying the blueprint
+  const currentExternalId = formCase.value.externalId
+
   // Apply the blueprint content to form fields
   if (content.mainDiagnosis) {
     formCase.value.mainDiagnosis = Array.isArray(content.mainDiagnosis)
@@ -217,6 +239,9 @@ const applyBlueprint = (blueprint: Blueprint) => {
   // Set patient to current patient
   formCase.value.patient = props.patientId
 
+  // Restore the externalId so it doesn't get overwritten by the blueprint
+  formCase.value.externalId = currentExternalId
+
   selectedBlueprint.value = blueprint
 
   // Emit blueprint applied event so parent can extract surgery blueprint info
@@ -230,8 +255,26 @@ loadDefaultBlueprints()
 
 // Create a new case
 const submit = async () => {
-  if (isCreating.value) {
-    try {
+  try {
+    // Mark form as submitted so all fields show validation errors
+    formSubmitted.value = true
+
+    // Clear previous errors
+    clearAllErrors()
+
+    // Validate required fields
+    const validationRules = {
+      mainDiagnosis: [
+        (v: unknown) => (Array.isArray(v) && v.length > 0 ? true : 'Main diagnosis is required'),
+      ],
+    }
+
+    if (!validateForm(formCase.value, validationRules)) {
+      notifierStore.notify(t('alerts.validation.failed'), 'error')
+      return
+    }
+
+    if (isCreating.value) {
       const response = await patientCaseApi.createPatientCase({
         createCaseSchema: formCase.value as CreateCaseSchema,
         patientId: props.patientId
@@ -242,17 +285,8 @@ const submit = async () => {
       }
       // show success message
       notifierStore.notify(t('alerts.case.created'), 'success')
-    } catch (error: unknown) {
-      let errorMessage = 'An unexpected error occurred'
-      if (error instanceof ResponseError) {
-        errorMessage = (await error.response.json()).message
-      }
-      console.error('Error creating case', errorMessage)
-      notifierStore.notify(t('alerts.case.creationFailed'), 'error')
-    }
-  } else {
-    if (!props.selectedCase || !props.selectedCase.id) return
-    try {
+    } else {
+      if (!props.selectedCase || !props.selectedCase.id) return
       // Update the selected case with the new data
       const updateRequest = {
         ...formCase.value,
@@ -276,16 +310,16 @@ const submit = async () => {
       if (response.responseObject) {
         emit('submit', response.responseObject)
       }
-    } catch (error: unknown) {
-      let errorMessage = 'An unexpected error occurred'
-      if (error instanceof ResponseError) {
-        errorMessage = (await error.response.json()).message
-      }
-      // Show error message
-      console.error('Error updating case:', errorMessage)
-      notifierStore.notify(t('alerts.case.updateFailed'), 'error')
-      emit('cancel')
     }
+  } catch (error: unknown) {
+    let errorMessage = 'An unexpected error occurred'
+    if (error instanceof ResponseError) {
+      errorMessage = (await error.response.json()).message
+    }
+    // Show error message
+    console.error('Error updating case:', errorMessage)
+    notifierStore.notify(t('alerts.case.updateFailed'), 'error')
+    emit('cancel')
   }
 }
 
@@ -293,6 +327,24 @@ const submit = async () => {
 const submitAndNextStep = async () => {
   if (isCreating.value) {
     try {
+      // Mark form as submitted so all fields show validation errors
+      formSubmitted.value = true
+
+      // Clear previous errors
+      clearAllErrors()
+
+      // Validate required fields
+      const validationRules = {
+        mainDiagnosis: [
+          (v: unknown) => (Array.isArray(v) && v.length > 0 ? true : 'Main diagnosis is required'),
+        ],
+      }
+
+      if (!validateForm(formCase.value, validationRules)) {
+        notifierStore.notify(t('alerts.validation.failed'), 'error')
+        return
+      }
+
       const response = await patientCaseApi.createPatientCase({
         createCaseSchema: formCase.value as CreateCaseSchema,
         patientId: props.patientId
@@ -317,7 +369,12 @@ const submitAndNextStep = async () => {
 // Expose the functions for external use
 defineExpose({
   submit,
-  submitAndNextStep
+  submitAndNextStep,
+  resetFormState: () => {
+    clearAllErrors()
+    resetFormState()
+    formSubmitted.value = false
+  }
 })
 
 // Load blueprints on component mount
@@ -360,7 +417,7 @@ loadDefaultBlueprints()
     <v-form @submit.prevent="submit">
       <v-text-field
                     v-model="formCase.externalId"
-                    :label="t('forms.externalId')"></v-text-field>
+                    :label="t('forms.externalPatientCaseId')"></v-text-field>
 
       <v-textarea
                   v-model="formCase.medicalHistory"
@@ -376,7 +433,12 @@ loadDefaultBlueprints()
                   dense
                   chips
                   clearable
-                  closable-chips></v-combobox>
+                  closable-chips
+                  :hint="t('forms.hints.required')"
+                  persistent-hint
+                  :error="hasErrorIfNeeded('mainDiagnosis')"
+                  :error-messages="[getErrorIfNeeded('mainDiagnosis')]"
+                  @blur="touchField('mainDiagnosis')"></v-combobox>
 
       <v-combobox
                   :label="t('forms.patientCase.mainDiagnosisICD10')"

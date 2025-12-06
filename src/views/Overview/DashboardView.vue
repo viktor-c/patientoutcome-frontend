@@ -57,6 +57,11 @@ const openConsultation = (id: string | null | undefined) => {
   }
 }
 
+// Navigate to creation flow to start a new patient/case/consultation
+const startCreationFlow = () => {
+  router.push({ name: 'creation-flow' })
+}
+
 // Called when a table row is clicked. We keep this separate so we can stop
 // propagation on individual action controls (icons/buttons) and still allow
 // clicking the row to open the consultation.
@@ -161,7 +166,7 @@ onMounted(async () => {
 
 <template>
   <v-container>
-    <h1>{{ t('dashboard.title') }}</h1>
+    <h1 class="mb-4">{{ t('dashboard.title') }}</h1>
 
     <!-- Date Picker and Search -->
 
@@ -186,6 +191,15 @@ onMounted(async () => {
       </v-col>
       <v-col cols="12" sm="6" md="4">
         <DashboardSearchDialog />
+      </v-col>
+      <v-col cols="12" sm="6" md="4" class="d-flex justify-end">
+        <v-btn
+               color="primary"
+               variant="elevated"
+               prepend-icon="mdi-creation"
+               @click="startCreationFlow">
+          {{ t('buttons.startCreationFlow') }}
+        </v-btn>
       </v-col>
     </v-row>
 
