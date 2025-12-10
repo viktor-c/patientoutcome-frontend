@@ -43,6 +43,7 @@ const localizeReason = (r: unknown) => {
     try {
       return JSON.stringify(obj)
     } catch (e) {
+      console.error('Error stringifying object:', e)
       return String(obj)
     }
   }
@@ -157,7 +158,7 @@ onMounted(() => {
       <v-col cols="12" md="10" lg="8">
         <!-- Postop Week Banner -->
         <PostopWeekBanner />
-        
+
         <!-- Header -->
         <v-card class="mb-6" elevation="2">
           <v-card-title
