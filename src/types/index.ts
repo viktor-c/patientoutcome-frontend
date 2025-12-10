@@ -43,9 +43,9 @@ export interface Form {
   description?: string
   markdownHeader?: string
   markdownFooter?: string
-  formSchema?: object
-  formSchemaUI?: object
-  formData?: FormData
+  formSchema?: Record<string, unknown>
+  formSchemaUI?: Record<string, unknown>
+  formData?: CustomFormData
   translations?: Record<string, Record<string, unknown>>
   caseId?: string | null
   consultationId?: string | null
@@ -116,12 +116,15 @@ export interface questions {
 //   [key: string]: questions;
 // };
 
-// Standard FormData type (matching backend Zod schema)
-export interface FormData {
-  [key: string]: {
-    [key: string]: string | number
-  }
-}
+// Standard FormData types (matching backend Zod schema)
+// Questionnaire represents a set of questions with numeric or null answers
+export type Questionnaire = Record<string, number | null>;
+
+// CustomFormData represents form data structured as sections containing questionnaires
+export type CustomFormData = Record<string, Questionnaire>;
+
+// FormData alias for backwards compatibility
+export type FormData = CustomFormData;
 
 // API Response types
 export interface ApiResponse<T = unknown> {
