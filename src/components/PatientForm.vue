@@ -10,7 +10,6 @@ import { useNotifierStore } from '@/stores/notifierStore'
 import type { ErrorObject } from 'ajv'
 
 import { useI18n } from 'vue-i18n'
-import FormProgressCard from '@/components/FormProgressCard.vue'
 
 import { entry as EfasQuestionSliderControlRenderer } from './forms/EfasQuestionSliderControlRenderer.entry'
 import { entry as AofasControlRenderer } from './forms/AofasControlRenderer.entry'
@@ -316,14 +315,6 @@ const renderedMarkdownFooter = computed(() => {
   <v-container v-if="renderedMarkdownFooter">
     <p v-html="renderedMarkdownFooter"></p>
   </v-container>
-
-  <!-- Form Progress Card -->
-  <!-- <FormProgressCard
-                    v-if="formScoring"
-                    :scoring="formScoring"
-                    :title="t('forms.scoring.overallProgress')"
-                    :showSubmitButton="isFormComplete"
-                    @submit="handleSubmit" /> -->
 
   <br />
   <!-- Navigation buttons -->

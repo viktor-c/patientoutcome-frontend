@@ -39,22 +39,8 @@ const emit = defineEmits(['submit', 'cancel', 'consultation-blueprints'])
 const { t } = useI18n()
 const notifierStore = useNotifierStore()
 const { formatLocalizedCustomDate } = useDateFormat()
-const { errors, validateForm, clearAllErrors, clearFieldError, hasError, getError, touchField, isFieldTouched, resetFormState } = useFormValidation()
+const { validateForm, clearAllErrors, clearFieldError, hasError, getError, resetFormState } = useFormValidation()
 
-// Helper to determine if we should show error for a field
-const shouldShowError = (fieldName: string): boolean => {
-  return formSubmitted.value || isFieldTouched(fieldName)
-}
-
-// Helper to get error message (only if field should show error)
-const getErrorIfNeeded = (fieldName: string): string => {
-  return shouldShowError(fieldName) ? errors[fieldName] || '' : ''
-}
-
-// Helper to determine if field has error (only if field should show error)
-const hasErrorIfNeeded = (fieldName: string): boolean => {
-  return shouldShowError(fieldName) && !!errors[fieldName]
-}
 
 // Helper function to safely format dates
 const safeFormatDate = (date: string | null | undefined, format: string = 'DD.MM.YYYY HH:mm'): string => {
@@ -64,11 +50,6 @@ const safeFormatDate = (date: string | null | undefined, format: string = 'DD.MM
 }
 
 const isEditMode = ref(!!(props.surgery && props.surgery.id))
-
-// Helper function to get today's date in YYYY-MM-DD format
-const getTodayDateString = (): string => {
-  return new Date().toISOString().split('T')[0]
-}
 
 // Helper function to get today's date at 10:00 UTC as ISO datetime
 const getTodayAt10UTC = (): string => {

@@ -15,7 +15,6 @@ import { patientApi, patientCaseApi } from '@/api'
 // Import components
 import PatientCaseCard from '@/components/cards/PatientCaseCard.vue'
 import CreateEditConsultationDialog from '@/components/dialogs/CreateEditConsultationDialog.vue'
-import type { Consultation } from '@/api'
 
 const componentName = 'PatientOverview.vue'
 const { t } = useI18n()

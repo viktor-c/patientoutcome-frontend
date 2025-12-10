@@ -28,22 +28,7 @@ const { t, locale } = useI18n()
 const notifierStore = useNotifierStore()
 const consultationStore = useConsultationStore()
 const { formatLocalizedCustomDate, getLocalizedDayjs, dateFormats } = useDateFormat()
-const { errors, validateForm, clearAllErrors, hasError, getError, touchField, isFieldTouched, resetFormState } = useFormValidation()
-
-// Helper to determine if we should show error for a field
-const shouldShowError = (fieldName: string): boolean => {
-  return formSubmitted.value || isFieldTouched(fieldName)
-}
-
-// Helper to get error message (only if field should show error)
-const getErrorIfNeeded = (fieldName: string): string => {
-  return shouldShowError(fieldName) ? errors[fieldName] || '' : ''
-}
-
-// Helper to determine if field has error (only if field should show error)
-const hasErrorIfNeeded = (fieldName: string): boolean => {
-  return shouldShowError(fieldName) && !!errors[fieldName]
-}
+const { errors, validateForm, clearAllErrors, resetFormState } = useFormValidation()
 
 // Helper function to safely format dates
 const safeFormatDate = (date: string | null | undefined, format: string = dateFormats.isoDateTime): string => {
