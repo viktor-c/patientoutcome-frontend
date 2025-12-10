@@ -111,5 +111,9 @@ This patient outcome frontend uses **Vue 3 Composition API** with TypeScript, Vu
 - `src/views/Misc/TestingView.vue`: Dev/test utilities
 - `DOCKER_README.md`: Docker/Nginx/deployment details
 
+## General prompts
+- "commit changes" is an alias for "commit changes to patientoutcome-frontend following best practices, logically group related changes into single commits; create multiple commits if necessary for clarity"
+
+
 ---
 If any section is unclear or missing project-specific details, please provide feedback for further refinement.
