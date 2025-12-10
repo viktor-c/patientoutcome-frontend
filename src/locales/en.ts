@@ -787,50 +787,7 @@ export default {
     notFound: 'Page Not Found',
     appName: 'Patient Outcome',
   },
-  about: {
-    title: 'About Patient Outcome',
-    description: 'An Open-Source Platform for patient-reported outcome measures (PROMs)',
-    subtitle: 'Patient Outcome is a modern web application for capturing, managing and analyzing patient-reported outcome measures. It helps healthcare providers track patient progress over time using standardized questionnaires.',
-    technologies: {
-      title: 'Technologies Used',
-      frontend: 'Frontend',
-      backend: 'Backend',
-    },
-    tech: {
-      vue: 'Vue.js 3 (Composition API)',
-      vuetify: 'Vuetify 3 (Material Design)',
-      typescript: 'TypeScript',
-      pinia: 'Pinia (State Management)',
-      vuei18n: 'Vue I18n (Internationalization)',
-      chartjs: 'Chart.js (Data Visualization)',
-      nodejs: 'Node.js / Express',
-      mongodb: 'MongoDB (Database)',
-      openapi: 'OpenAPI / Swagger',
-      zod: 'Zod (Schema Validation)',
-      docker: 'Docker (Containerization)',
-    },
-    sourceCode: {
-      title: 'Source Code & Resources',
-      frontendRepo: 'FRONTEND REPOSITORY',
-      backendRepo: 'BACKEND REPOSITORY',
-      mitLicense: 'MIT LICENSE',
-    },
-    license: {
-      title: 'Open-Source License',
-      mit: 'MIT License',
-      description: 'This project is licensed under the MIT License - one of the most permissive and widely used open-source licenses. It allows anyone to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the software.',
-      requirement: 'The only requirement is that the original copyright notice and license text must be included in all copies or substantial portions of the software. There are no restrictions on commercial use.',
-    },
-    helpImprove: {
-      title: 'Help Us Improve',
-      description: 'We encourage you to test the application, explore its features, and report any issues or bugs you find. Your feedback is invaluable in improving this software for everyone.',
-      foundBug: 'Found a bug? Have a suggestion? Please open an issue in our GitHub repository or submit a pull request. Every contribution, no matter how small, helps improve this project!',
-      reportIssue: 'REPORT ISSUE',
-      or: 'or',
-      contactUs: 'CONTACT US',
-    },
-    version: 'Version 0.2.0',
-  },
+
   kioskList: {
     title: 'Kiosk Assignments',
     kioskUser: 'Kiosk User',
@@ -948,24 +905,55 @@ export default {
 
   about: {
     title: 'About Patient Outcome',
-    subtitle: 'An open-source platform for Patient Reported Outcome Measures (PROMs)',
-    description: 'Patient Outcome is a modern web application designed to collect, manage, and analyze patient-reported outcome measures. It helps healthcare providers track patient progress over time using standardized questionnaires.',
+    description: 'An Open-Source Platform for patient-reported outcome measures (PROMs)',
+    subtitle: 'Patient Outcome is a modern web application for capturing, managing and analyzing patient-reported outcome measures. It helps healthcare providers track patient progress over time using standardized questionnaires.',
     technologies: {
       title: 'Technologies Used',
       frontend: 'Frontend',
       backend: 'Backend',
     },
+    tech: {
+      vue: 'Vue.js 3 (Composition API)',
+      vuetify: 'Vuetify 3 (Material Design)',
+      typescript: 'TypeScript',
+      pinia: 'Pinia (State Management)',
+      vuei18n: 'Vue I18n (Internationalization)',
+      chartjs: 'Chart.js (Data Visualization)',
+      nodejs: 'Node.js / Express',
+      mongodb: 'MongoDB (Database)',
+      openapi: 'OpenAPI / Swagger',
+      zod: 'Zod (Schema Validation)',
+      docker: 'Docker (Containerization)',
+    },
+    sourceCode: {
+      title: 'Source Code & Resources',
+      frontendRepo: 'FRONTEND REPOSITORY',
+      backendRepo: 'BACKEND REPOSITORY',
+      mitLicense: 'MIT LICENSE',
+    },
+    license: {
+      title: 'Open-Source License',
+      mit: 'MIT License',
+      description: 'This project is licensed under the MIT License - one of the most permissive and widely used open-source licenses. It allows anyone to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the software.',
+      requirement: 'The only requirement is that the original copyright notice and license text must be included in all copies or substantial portions of the software. There are no restrictions on commercial use.',
+    },
+    helpImprove: {
+      title: 'Help Us Improve',
+      description: 'We encourage you to test the application, explore its features, and report any issues or bugs you find. Your feedback is invaluable in improving this software for everyone.',
+      foundBug: 'Found a bug? Have a suggestion? Please open an issue in our GitHub repository or submit a pull request. Every contribution, no matter how small, helps improve this project!',
+      reportIssue: 'REPORT ISSUE',
+      or: 'or',
+      contactUs: 'CONTACT US',
+    },
+    version: 'Version 0.2.0',
+
     links: {
       title: 'Source Code & Resources',
       frontendRepo: 'Frontend Repository',
       backendRepo: 'Backend Repository',
       license: 'MIT License',
     },
-    license: {
-      title: 'Open Source License',
-      description: 'This project is licensed under the MIT License - one of the most permissive and widely-used open source licenses. It allows anyone to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of this software.',
-      permissions: 'The only requirement is that the original copyright notice and license text must be included in all copies or substantial portions of the software. There are no restrictions on commercial use.',
-    },
+
     contribute: {
       title: 'Help Us Improve',
       description: 'We encourage you to test the application, explore its features, and report any issues or bugs you encounter. Your feedback is invaluable in making this software better for everyone.',
@@ -974,7 +962,6 @@ export default {
       or: 'or',
       contactUs: 'Contact Us',
     },
-    version: 'Version {version}',
   },
 
   statistics: {
