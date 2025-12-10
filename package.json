@@ -17,9 +17,9 @@
   },
   "dependencies": {
     "@date-io/dayjs": "^3.2.0",
-    "@jsonforms/core": "3.7.0-alpha.3",
-    "@jsonforms/vue": "3.7.0-alpha.3",
-    "@jsonforms/vue-vuetify": "3.7.0-alpha.3",
+    "@jsonforms/core": "3.7.0",
+    "@jsonforms/vue": "3.7.0",
+    "@jsonforms/vue-vuetify": "3.7.0",
     "@mdi/font": "^7.4.47",
     "@vuepic/vue-datepicker": "^11.0.2",
     "@vueuse/components": "^13.3.0",
