@@ -2,7 +2,13 @@
   <v-container fluid class="pa-4">
     <v-card>
       <v-card-title class="d-flex align-center justify-space-between">
-        <span>📊 {{ t('statistics.title') }}</span>
+        <div class="d-flex align-center">
+          <v-btn variant="text" color="primary" class="mr-3" @click="goToCaseDetails" :title="t('goBack')">
+            <v-icon start>mdi-arrow-left</v-icon>
+            {{ t('goBack') }}
+          </v-btn>
+          <span>📊 {{ t('statistics.title') }}</span>
+        </div>
         <v-chip v-if="statistics" color="primary" variant="elevated">
           {{ statistics.totalConsultations }} {{ t('statistics.consultations') }}
         </v-chip>
@@ -15,7 +21,8 @@
             <v-alert type="info" variant="tonal" density="compact">
               <template v-if="(statistics as any).surgeryDate">
                 <v-icon start>mdi-hospital-box</v-icon>
-                <strong>{{ t('statistics.surgeryDate') }}:</strong> {{ new Date((statistics as any).surgeryDate).toLocaleDateString(currentLocale) }}
+                <strong>{{ t('statistics.surgeryDate') }}:</strong> {{ new Date((statistics as
+                  any).surgeryDate).toLocaleDateString(currentLocale) }}
                 <span class="ml-2 text-caption">({{ t('statistics.timelineRelativeToSurgery') }})</span>
               </template>
               <template v-else-if="(statistics as any).caseCreatedAt">
@@ -131,7 +138,7 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from "vue";
-import { useRoute } from "vue-router";
+import { useRoute, useRouter } from "vue-router";
 import { useI18n } from "vue-i18n";
 import { Line } from "vue-chartjs";
 import {
@@ -176,6 +183,7 @@ ChartJS.register(
 // Use generated model types from the OpenAPI client
 
 const route = useRoute();
+const router = useRouter();
 const { t, locale } = useI18n();
 const notifierStore = useNotifierStore();
 
