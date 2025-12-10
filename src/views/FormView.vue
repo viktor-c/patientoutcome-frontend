@@ -4,6 +4,7 @@ import { ref, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { ResponseError } from '@/api' // Import the API client
+import type { UISchemaElement } from '@jsonforms/core'
 
 import { type FormData, type Form } from '@/types/index'
 import { mapApiFormToForm } from '@/adapters/apiAdapters'
@@ -83,9 +84,9 @@ const handleGotoNextForm = (formIndex: number) => {
             <PatientForm
                          :markdown-header="(form as Form).markdownHeader || ''"
                          :markdown-footer="(form as Form).markdownFooter || ''"
-                         :form-schema="(form as Form).formSchema as any || {}"
-                         :form-schema-u-i="(form as Form).formSchemaUI as any || {}"
-                         :form-data="(form as Form).formData as any || {}"
+                         :form-schema="(form as Form).formSchema || {}"
+                         :form-schema-u-i="((form as Form).formSchemaUI as unknown as UISchemaElement) || {}"
+                         :form-data="(form as Form).formData || {}"
                          :translations="(form as Form).translations"
                          :form-id="(form as Form)._id || ''"
                          :form-array-idx="Number(index)"

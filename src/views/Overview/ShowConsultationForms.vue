@@ -94,8 +94,7 @@ onMounted(async () => {
 const processFormData = (formData: FormData, formIndex: number) => {
   console.debug(`Form data changed for form ${formIndex}:`, formData)
   // Store the form data  - scoring is now handled by the renderer
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  forms.value[formIndex].formData = formData as any
+  forms.value[formIndex].formData = formData
 }
 
 // Handle form submission
