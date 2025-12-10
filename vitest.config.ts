@@ -21,6 +21,19 @@ export default mergeConfig(
       environment: 'jsdom',
       exclude: [...configDefaults.exclude, 'e2e/**'],
       root: fileURLToPath(new URL('./', import.meta.url)),
+      css: {
+        // Mock CSS modules to avoid CSS import errors
+        modules: {
+          classNameStrategy: 'non-scoped',
+        },
+      },
+      // Add server configuration to handle CSS imports and dependencies
+      server: {
+        deps: {
+          inline: ['vuetify', '@jsonforms/vue-vuetify'],
+        },
+      },
+
     },
   }),
 )
