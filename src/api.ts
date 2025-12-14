@@ -28,3 +28,25 @@ export const statisticsApi = new StatisticsApi(apiConfig)
 export const feedbackApi = new FeedbackApi(apiConfig)
 
 export * from '@/api/index'; // Export all APIs and models from the index file
+
+/**
+ * Admin helper to update a user by username by calling the API path that includes the username.
+ * Fallback for cases where the standard update endpoint updates the current session user.
+ */
+export async function updateUserByUsername(username: string, payload: object) {
+  const base = apiConfig.basePath ?? '';
+  const url = `${base.replace(/\/$/, '')}/user/username/${encodeURIComponent(username)}`;
+  const res = await fetch(url, {
+    method: 'PUT',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    credentials: 'include',
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`Failed to update user by username: ${res.status} ${res.statusText}: ${text}`);
+  }
+  return await res.json();
+}
