@@ -18,6 +18,9 @@ import TechPresentation from '@/gffc-presentation/TechPresentation.vue'
 import ActivityLogView from '@/views/ActivityLogView.vue'
 import StatisticsView from '@/views/StatisticsView.vue'
 import SetupView from '@/views/SetupView.vue'
+import AdminLayout from '@/views/Admin/AdminLayout.vue'
+import UserManagement from '@/views/Admin/UserManagement.vue'
+import FormTemplatesTester from '@/views/Admin/FormTemplatesTester.vue'
 import { useUserStore } from '@/stores/userStore'
 
 const routes = [
@@ -52,6 +55,27 @@ const routes = [
   { path: '/review-form/:formId', name: 'reviewform', component: () => import('@/views/Overview/ReviewFormAnswers.vue'), meta: { titleKey: 'pageTitles.reviewForm' } },
   { path: '/consultation-overview/:consultationId', name: 'consultationoverview', component: () => import('@/views/Overview/ConsultationOverview.vue'), meta: { titleKey: 'pageTitles.consultationOverview' } },
   { path: '/testing', name: 'testing', component: () => import('@/views/Misc/TestingView.vue'), meta: { titleKey: 'pageTitles.testing' } },
+
+  // Admin routes
+  {
+    path: '/admin',
+    component: AdminLayout,
+    meta: { titleKey: 'pageTitles.admin', requiredRole: 'admin' },
+    children: [
+      {
+        path: 'users',
+        name: 'admin-users',
+        component: UserManagement,
+        meta: { titleKey: 'pageTitles.adminUsers', requiredRole: 'admin' }
+      },
+      {
+        path: 'form-templates',
+        name: 'admin-form-templates',
+        component: FormTemplatesTester,
+        meta: { titleKey: 'pageTitles.adminFormTemplates', requiredRole: 'admin' }
+      },
+    ]
+  },
 ]
 
 const router = createRouter({
@@ -78,6 +102,14 @@ router.beforeEach((to, from, next) => {
     const allowedKioskRoutes = ['kiosk', 'showConsultationForms', 'showInternalConsultationForms', 'formview', 'kioskform', 'reviewform', 'consultationoverview', 'patientoverview']
     if (!allowedKioskRoutes.includes(String(to.name))) {
       next({ name: 'kiosk' })
+    } else {
+      next()
+    }
+  } else if (to.meta.requiredRole && userStore.isAuthenticated()) {
+    // Check if user has the required role
+    const requiredRole = to.meta.requiredRole as string
+    if (!userStore.hasRole(requiredRole)) {
+      next({ name: 'dashboard' })
     } else {
       next()
     }

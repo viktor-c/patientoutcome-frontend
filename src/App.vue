@@ -94,6 +94,12 @@ const logout = async () => {
               </template>
               <v-list-item-title>GFFC Statistics</v-list-item-title>
             </v-list-item>
+            <v-list-item v-if="userStore.hasRole('admin')" :to="{ name: 'admin-users' }">
+              <template #prepend>
+                <v-icon>mdi-shield-account</v-icon>
+              </template>
+              <v-list-item-title>Admin Panel</v-list-item-title>
+            </v-list-item>
           </v-list>
         </v-menu>
 
