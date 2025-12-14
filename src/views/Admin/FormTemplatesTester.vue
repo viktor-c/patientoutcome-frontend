@@ -69,7 +69,7 @@ const loadTemplateDetails = async (templateId: string) => {
     loadingTemplate.value = true
     const response = await formtemplateApi.getFormTemplateById({ templateId })
     selectedTemplate.value = response.responseObject
-    
+
     // Use the formData from the template directly - it already has the correct structure
     if (response.responseObject?.formData) {
       testFormData.value = JSON.parse(JSON.stringify(response.responseObject.formData))
@@ -107,7 +107,7 @@ const translator = (key: string, defaultMessage?: string): string => {
   const backendTranslations = formTranslations.value as Record<string, Record<string, unknown>> | undefined
   if (backendTranslations) {
     const localeTranslations = backendTranslations['en'] || {}
-    
+
     let value: unknown = localeTranslations
     if (value && typeof value === 'object' && value !== null && key in value) {
       value = (value as Record<string, unknown>)[key]
@@ -142,7 +142,7 @@ const handleFormChange = (event: any) => {
 const calculateScoring = async () => {
   try {
     if (!selectedTemplateId.value || !testFormData.value) return
-    
+
     // TODO: Implement scoring calculation via backend API
     // For now, scoring is disabled until backend scoring endpoint is available
     console.warn('Scoring calculation not yet implemented for frontend')
@@ -178,21 +178,19 @@ const handleTemplateChange = () => {
           <v-card-title>Select Template</v-card-title>
           <v-card-text>
             <v-skeleton-loader
-              v-if="loading"
-              type="list-item-three-line@3"
-              class="mb-4"
-            ></v-skeleton-loader>
+                               v-if="loading"
+                               type="list-item-three-line@3"
+                               class="mb-4"></v-skeleton-loader>
             <v-select
-              v-else
-              v-model="selectedTemplateId"
-              :items="availableTemplates"
-              item-title="title"
-              item-value="id"
-              label="Choose a form template"
-              outlined
-              dense
-              @update:model-value="handleTemplateChange"
-            >
+                      v-else
+                      v-model="selectedTemplateId"
+                      :items="availableTemplates"
+                      item-title="title"
+                      item-value="id"
+                      label="Choose a form template"
+                      outlined
+                      dense
+                      @update:model-value="handleTemplateChange">
               <template #item="{ item, props }">
                 <v-list-item v-bind="props" :title="item.raw.title" :subtitle="item.raw.description" />
               </template>
@@ -211,27 +209,23 @@ const handleTemplateChange = () => {
         <v-card variant="outlined">
           <v-card-title>Actions</v-card-title>
           <v-card-text>
-            <v-button-group class="w-100" divided>
-              <v-btn
-                color="primary"
-                variant="outlined"
-                @click="resetForm"
-                block
-              >
-                <v-icon left>mdi-refresh</v-icon>
-                Reset Form
-              </v-btn>
-              <v-btn
-                color="secondary"
-                variant="outlined"
-                @click="calculateScoring"
-                block
-                :disabled="!testFormData || Object.keys(testFormData).length === 0"
-              >
-                <v-icon left>mdi-calculator</v-icon>
-                Calculate Score
-              </v-btn>
-            </v-button-group>
+            <v-btn
+                   color="primary"
+                   variant="outlined"
+                   @click="resetForm"
+                   block>
+              <v-icon left>mdi-refresh</v-icon>
+              Reset Form
+            </v-btn>
+            <v-btn
+                   color="secondary"
+                   variant="outlined"
+                   @click="calculateScoring"
+                   block
+                   :disabled="!testFormData || Object.keys(testFormData).length === 0">
+              <v-icon left>mdi-calculator</v-icon>
+              Calculate Score
+            </v-btn>
           </v-card-text>
         </v-card>
       </v-col>
@@ -246,20 +240,18 @@ const handleTemplateChange = () => {
           </v-card-title>
           <v-card-text class="pa-6">
             <v-skeleton-loader
-              v-if="loadingTemplate || !formSchema || !formSchemaUI"
-              type="article@5"
-            ></v-skeleton-loader>
+                               v-if="loadingTemplate || !formSchema || !formSchemaUI"
+                               type="article@5"></v-skeleton-loader>
             <JsonForms
-              v-else
-              :key="`form-${selectedTemplateId}`"
-              :data="testFormData"
-              :schema="formSchema"
-              :uischema="formSchemaUI"
-              :renderers="renderers"
-              :translations="formTranslations"
-              :i18n="{ translate: translator, locale: 'en' }"
-              @change="handleFormChange"
-            />
+                       v-else
+                       :key="`form-${selectedTemplateId}`"
+                       :data="testFormData"
+                       :schema="formSchema"
+                       :uischema="formSchemaUI"
+                       :renderers="renderers"
+                       :translations="formTranslations"
+                       :i18n="{ translate: translator, locale: 'en' }"
+                       @change="handleFormChange" />
           </v-card-text>
         </v-card>
       </v-col>
@@ -276,24 +268,22 @@ const handleTemplateChange = () => {
             <!-- Subscales -->
             <v-row class="mb-6">
               <v-col
-                v-for="(subscale, key) in scoring.subscales"
-                :key="key"
-                cols="12"
-                sm="6"
-                md="3"
-              >
+                     v-for="(subscale, key) in scoring.subscales"
+                     :key="key"
+                     cols="12"
+                     sm="6"
+                     md="3">
                 <v-card v-if="subscale" variant="tonal" color="primary" class="pa-4 h-100">
                   <div class="text-subtitle-2 font-weight-medium mb-1">{{ subscale.name }}</div>
                   <div class="text-h5 font-weight-bold mb-2">
                     {{ subscale.rawScore }}/{{ subscale.maxPossibleScore }}
                   </div>
                   <v-progress-linear
-                    :model-value="subscale.normalizedScore || 0"
-                    height="6"
-                    rounded
-                    color="white"
-                    class="mb-2"
-                  ></v-progress-linear>
+                                     :model-value="subscale.normalizedScore || 0"
+                                     height="6"
+                                     rounded
+                                     color="white"
+                                     class="mb-2"></v-progress-linear>
                   <div class="text-caption">
                     {{ subscale.completionPercentage }}% Complete
                   </div>
@@ -309,16 +299,16 @@ const handleTemplateChange = () => {
                 {{ scoring.total.rawScore }}/{{ scoring.total.maxPossibleScore }}
               </div>
               <v-progress-linear
-                :model-value="scoring.total.rawScore || 0"
-                :max="scoring.total.maxPossibleScore"
-                height="12"
-                rounded
-                color="white"
-                class="mb-4"
-              ></v-progress-linear>
+                                 :model-value="scoring.total.rawScore || 0"
+                                 :max="scoring.total.maxPossibleScore"
+                                 height="12"
+                                 rounded
+                                 color="white"
+                                 class="mb-4"></v-progress-linear>
               <div class="text-body2">{{ scoring.total.description }}</div>
               <div class="text-caption mt-2">
-                {{ scoring.total.completionPercentage }}% Complete ({{ scoring.total.answeredQuestions }}/{{ scoring.total.totalQuestions }} questions)
+                {{ scoring.total.completionPercentage }}% Complete ({{ scoring.total.answeredQuestions }}/{{
+                  scoring.total.totalQuestions }} questions)
               </div>
             </v-card>
           </v-card-text>
@@ -333,26 +323,23 @@ const handleTemplateChange = () => {
           <v-card-title>Form Data (JSON)</v-card-title>
           <v-card-text>
             <v-expansion-panels>
-              <v-expansion-panel title="View Raw Data">
-                <pre class="text-caption" style="overflow: auto;">{{ JSON.stringify(testFormData, null, 2) }}</pre>
+              <v-expansion-panel>
+                <v-expansion-panel-title>View Raw Data</v-expansion-panel-title>
+                <v-expansion-panel-text>
+                  <pre class="text-caption" style="overflow: auto;">{{ JSON.stringify(testFormData, null, 2) }}</pre>
+                </v-expansion-panel-text>
+              </v-expansion-panel>
+              <v-expansion-panel>
+                <v-expansion-panel-title>View Scoring Data</v-expansion-panel-title>
+                <v-expansion-panel-text>
+                  <pre class="text-caption" style="overflow: auto;">{{ JSON.stringify(scoring, null, 2) }}</pre>
+                </v-expansion-panel-text>
               </v-expansion-panel>
             </v-expansion-panels>
           </v-card-text>
         </v-card>
       </v-col>
 
-      <v-col cols="12" lg="6">
-        <v-card variant="outlined">
-          <v-card-title>Scoring Data (JSON)</v-card-title>
-          <v-card-text>
-            <v-expansion-panels>
-              <v-expansion-panel title="View Scoring Data">
-                <pre class="text-caption" style="overflow: auto;">{{ JSON.stringify(scoring, null, 2) }}</pre>
-              </v-expansion-panel>
-            </v-expansion-panels>
-          </v-card-text>
-        </v-card>
-      </v-col>
     </v-row>
   </div>
 </template>
