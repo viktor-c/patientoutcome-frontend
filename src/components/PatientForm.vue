@@ -15,6 +15,7 @@ import { entry as EfasQuestionSliderControlRenderer } from './forms/EfasQuestion
 import { entry as AofasControlRenderer } from './forms/AofasControlRenderer.entry'
 import { entry as MoxfqTableRenderer } from './forms/MoxfqTableRenderer.entry'
 import { entry as VASControlRenderer } from './forms/VASControlRenderer.entry'
+import { entry as VisaaControlRenderer } from './forms/VisaaControlRenderer.entry'
 
 import type { ScoringData } from '@/types'
 
@@ -34,6 +35,7 @@ const renderers = markRaw([
   AofasControlRenderer,
   MoxfqTableRenderer,
   VASControlRenderer,
+  VisaaControlRenderer,
   // additional custom renderers can be added here in form of plugins
   // which can then be dynamically imported based on form type
 ])

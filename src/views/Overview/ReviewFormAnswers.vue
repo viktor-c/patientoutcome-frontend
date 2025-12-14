@@ -17,6 +17,7 @@ import { entry as EfasQuestionSliderControlRenderer } from '@/components/forms/E
 import { entry as AofasControlRenderer } from '@/components/forms/AofasControlRenderer.entry'
 import { entry as MoxfqTableRenderer } from '@/components/forms/MoxfqTableRenderer.entry'
 import { entry as VASControlRenderer } from '@/components/forms/VASControlRenderer.entry'
+import { entry as VisaaControlRenderer } from '@/components/forms/VisaaControlRenderer.entry'
 
 // JsonForms setup
 const renderers = markRaw([
@@ -24,7 +25,8 @@ const renderers = markRaw([
   EfasQuestionSliderControlRenderer,
   AofasControlRenderer,
   MoxfqTableRenderer,
-  VASControlRenderer
+  VASControlRenderer,
+  VisaaControlRenderer
 ])
 
 const componentName = 'ReviewFormAnswers.vue'
