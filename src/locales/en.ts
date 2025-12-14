@@ -786,6 +786,10 @@ export default {
     testing: 'Testing',
     notFound: 'Page Not Found',
     appName: 'Patient Outcome',
+    admin: 'Admin Panel',
+    adminUsers: 'User Management',
+    adminFormTemplates: 'Form Templates Tester',
+    setup: 'Setup',
   },
 
   kioskList: {

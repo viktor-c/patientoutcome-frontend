@@ -784,6 +784,12 @@ export default {
     testing: 'Testing',
     notFound: 'Seite nicht gefunden',
     appName: 'Patient Outcome',
+    admin: 'Administrationspanel',
+    adminUsers: 'Benutzerverwaltung',
+    adminFormTemplates: 'Formularvorlagen-Tester',
+    setup: 'Einrichtung',
+    activityLog: 'Aktivitätsprotokoll',
+    statistics: 'Statistiken',
   },
   about: {
     technologies: {
