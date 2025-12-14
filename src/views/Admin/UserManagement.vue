@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { ref, onMounted, watch } from 'vue';
 import { useNotifierStore } from '@/stores/';
-import { userApi, updateUserByUsername } from '@/api';
-import type { UpdateUserRequest } from '@/api/models/UpdateUserRequest';
+import { userApi } from '@/api';
+import type { UpdateUserRequest } from '@/api/apis/UserApi';
 import { useUserStore } from '@/stores/userStore';
 import type { GetUsers200ResponseResponseObjectInner } from '@/api/models/GetUsers200ResponseResponseObjectInner';
 import EditUserDialog from '@/components/dialogs/EditUserDialog.vue';
@@ -10,6 +10,7 @@ import EditUserDialog from '@/components/dialogs/EditUserDialog.vue';
 const notifierStore = useNotifierStore();
 const users = ref<GetUsers200ResponseResponseObjectInner[]>([]);
 const loading = ref(false);
+const search = ref('');
 const showEditDialog = ref(false);
 const selectedUser = ref<GetUsers200ResponseResponseObjectInner | null>(null);
 const showDeleteConfirm = ref(false);
@@ -137,23 +138,25 @@ watch(showEditDialog, (isShown) => {
 <template>
   <v-container fluid class="pa-0">
     <v-row class="pa-0 ma-0">
-      <v-col cols="12" class="pa-0">
-        <div class="d-flex justify-space-between align-center mb-4">
+      <v-col cols="12">
+        <div class="d-flex justify-space-between align-center mb-2">
           <h1 class="text-h4">User Management</h1>
         </div>
         <v-card>
-          <v-card-title class="pa-0">
-            <v-row class="fill-height align-center pa-0" style="width:100%">
-              <v-col cols="10" class="pa-0">
+          <v-card-title>
+            <v-row class="align-start" style="width:100%">
+              <v-col cols="10">
                 <v-text-field
+                              v-model="search"
+                              aria-label="search-input"
                               label="Search users"
                               prepend-inner-icon="mdi-magnify"
                               variant="outlined"
-                              density="compact"
+                              q density="compact"
                               hide-details
                               class="mb-4" />
               </v-col>
-              <v-col cols="2" class="pa-0 d-flex justify-end align-center">
+              <v-col cols="2" class="d-flex justify-end align-start">
                 <v-btn
                        color="primary"
                        prepend-icon="mdi-plus"
@@ -168,6 +171,7 @@ watch(showEditDialog, (isShown) => {
           <v-data-table
                         :headers="headers"
                         :items="users"
+                        :search="search"
                         :loading="loading"
                         item-value="id"
                         class="elevation-1"
