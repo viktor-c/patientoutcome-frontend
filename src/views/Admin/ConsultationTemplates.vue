@@ -15,18 +15,16 @@
         <v-row class="mb-4">
           <v-col>
             <v-btn
-              color="primary"
-              @click="openCreateDialog"
-              prepend-icon="mdi-plus"
-              class="mr-2"
-            >
+                   color="primary"
+                   @click="openCreateDialog"
+                   prepend-icon="mdi-plus"
+                   class="mr-2">
               {{ t('consultationTemplates.addTemplate') }}
             </v-btn>
             <v-btn
-              :color="showArchived ? 'secondary' : 'default'"
-              @click="toggleShowArchived"
-              :prepend-icon="showArchived ? 'mdi-eye-off' : 'mdi-eye'"
-            >
+                   :color="showArchived ? 'secondary' : 'default'"
+                   @click="toggleShowArchived"
+                   :prepend-icon="showArchived ? 'mdi-eye-off' : 'mdi-eye'">
               {{ showArchived ? t('consultationTemplates.hideArchived') : t('consultationTemplates.showArchived') }}
             </v-btn>
           </v-col>
@@ -34,23 +32,21 @@
 
         <!-- Templates Table -->
         <v-data-table
-          :headers="headers"
-          :items="filteredTemplates"
-          :loading="loading"
-          :items-per-page="10"
-          class="elevation-1"
-          @click:row="handleRowClick"
-          hover
-        >
+                      :headers="headers"
+                      :items="filteredTemplates"
+                      :loading="loading"
+                      :items-per-page="10"
+                      class="elevation-1"
+                      @click:row="handleRowClick"
+                      hover>
           <template #[`item.title`]="{ item }">
             <div>
               <strong>{{ item.title }}</strong>
               <v-chip
-                v-if="item.isArchived"
-                size="x-small"
-                color="grey"
-                class="ml-2"
-              >
+                      v-if="item.isArchived"
+                      size="x-small"
+                      color="grey"
+                      class="ml-2">
                 {{ t('consultationTemplates.archived') }}
               </v-chip>
             </div>
@@ -65,12 +61,11 @@
           <template #[`item.formTemplates`]="{ item }">
             <div class="d-flex flex-wrap gap-1">
               <v-chip
-                v-for="formTemplateId in (item.content?.formTemplates || [])"
-                :key="formTemplateId"
-                size="small"
-                color="primary"
-                variant="tonal"
-              >
+                      v-for="formTemplateId in (item.content?.formTemplates || [])"
+                      :key="formTemplateId"
+                      size="small"
+                      color="primary"
+                      variant="tonal">
                 {{ getFormTemplateName(formTemplateId) }}
               </v-chip>
               <span v-if="!item.content?.formTemplates?.length" class="text-caption text-grey">
@@ -81,28 +76,25 @@
 
           <template #[`item.actions`]="{ item }">
             <v-btn
-              v-if="!item.isArchived"
-              icon="mdi-pencil"
-              size="small"
-              variant="text"
-              @click.stop="openEditDialog(item)"
-            />
+                   v-if="!item.isArchived"
+                   icon="mdi-pencil"
+                   size="small"
+                   variant="text"
+                   @click.stop="openEditDialog(item)" />
             <v-btn
-              v-if="item.isArchived"
-              icon="mdi-restore"
-              size="small"
-              variant="text"
-              color="success"
-              @click.stop="unarchiveTemplate(item)"
-            />
+                   v-if="item.isArchived"
+                   icon="mdi-restore"
+                   size="small"
+                   variant="text"
+                   color="success"
+                   @click.stop="unarchiveTemplate(item)" />
             <v-btn
-              v-if="!item.isArchived"
-              icon="mdi-delete"
-              size="small"
-              variant="text"
-              color="error"
-              @click.stop="confirmArchive(item)"
-            />
+                   v-if="!item.isArchived"
+                   icon="mdi-delete"
+                   size="small"
+                   variant="text"
+                   color="error"
+                   @click.stop="confirmArchive(item)" />
           </template>
         </v-data-table>
       </v-card-text>
@@ -117,74 +109,67 @@
 
         <v-card-text>
           <v-alert
-            v-if="formTemplatesChanged"
-            type="warning"
-            variant="tonal"
-            class="mb-4"
-            icon="mdi-alert"
-          >
+                   v-if="formTemplatesChanged"
+                   type="warning"
+                   variant="tonal"
+                   class="mb-4"
+                   icon="mdi-alert">
             {{ t('consultationTemplates.formTemplatesChangeWarning') }}
           </v-alert>
 
           <v-form ref="formRef">
             <v-text-field
-              v-model="editedTemplate.title"
-              :label="t('consultationTemplates.fields.name')"
-              :rules="[rules.required]"
-              required
-            />
+                          v-model="editedTemplate.title"
+                          :label="t('consultationTemplates.fields.name')"
+                          :rules="[rules.required]"
+                          required />
 
             <v-textarea
-              v-model="editedTemplate.description"
-              :label="t('consultationTemplates.fields.description')"
-              :rules="[rules.required]"
-              rows="3"
-              required
-            />
+                        v-model="editedTemplate.description"
+                        :label="t('consultationTemplates.fields.description')"
+                        :rules="[rules.required]"
+                        rows="3"
+                        required />
 
             <v-text-field
-              v-model="editedTemplate.timeDelta"
-              :label="t('consultationTemplates.fields.timeDelta')"
-              :rules="[rules.required, rules.timeDelta]"
-              :hint="t('consultationTemplates.fields.timeDeltaHint')"
-              persistent-hint
-              required
-            />
+                          v-model="editedTemplate.timeDelta"
+                          :label="t('consultationTemplates.fields.timeDelta')"
+                          :rules="[rules.required, rules.timeDelta]"
+                          :hint="t('consultationTemplates.fields.timeDeltaHint')"
+                          persistent-hint
+                          required />
 
             <v-autocomplete
-              v-model="selectedFormTemplates"
-              :items="formTemplates"
-              :label="t('consultationTemplates.fields.proms')"
-              :loading="loadingFormTemplates"
-              item-title="title"
-              item-value="id"
-              multiple
-              chips
-              closable-chips
-              :rules="[rules.required]"
-              required
-            >
+                            v-model="selectedFormTemplates"
+                            :items="formTemplates"
+                            :label="t('consultationTemplates.fields.proms')"
+                            :loading="loadingFormTemplates"
+                            item-title="title"
+                            item-value="id"
+                            multiple
+                            chips
+                            closable-chips
+                            :rules="[rules.required]"
+                            required>
               <template #prepend-item>
                 <v-text-field
-                  v-model="formTemplateSearch"
-                  :placeholder="t('consultationTemplates.searchProms')"
-                  prepend-inner-icon="mdi-magnify"
-                  variant="outlined"
-                  density="compact"
-                  hide-details
-                  clearable
-                  class="ma-2"
-                />
+                              v-model="formTemplateSearch"
+                              :placeholder="t('consultationTemplates.searchProms')"
+                              prepend-inner-icon="mdi-magnify"
+                              variant="outlined"
+                              density="compact"
+                              hide-details
+                              clearable
+                              class="ma-2" />
               </template>
             </v-autocomplete>
 
             <v-textarea
-              v-model="editedTemplate.notes"
-              :label="t('consultationTemplates.fields.notes')"
-              :hint="t('consultationTemplates.fields.notesHint')"
-              persistent-hint
-              rows="3"
-            />
+                        v-model="editedTemplate.notes"
+                        :label="t('consultationTemplates.fields.notes')"
+                        :hint="t('consultationTemplates.fields.notesHint')"
+                        persistent-hint
+                        rows="3" />
           </v-form>
         </v-card-text>
 
@@ -194,10 +179,9 @@
             {{ t('common.cancel') }}
           </v-btn>
           <v-btn
-            color="primary"
-            @click="saveTemplate"
-            :loading="saving"
-          >
+                 color="primary"
+                 @click="saveTemplate"
+                 :loading="saving">
             {{ t('common.save') }}
           </v-btn>
         </v-card-actions>
@@ -219,9 +203,8 @@
             {{ t('common.cancel') }}
           </v-btn>
           <v-btn
-            color="error"
-            @click="confirmArchiveSecondStep"
-          >
+                 color="error"
+                 @click="confirmArchiveSecondStep">
             {{ t('common.continue') }}
           </v-btn>
         </v-card-actions>
@@ -243,10 +226,9 @@
             {{ t('common.cancel') }}
           </v-btn>
           <v-btn
-            color="error"
-            @click="archiveTemplate"
-            :loading="deleting"
-          >
+                 color="error"
+                 @click="archiveTemplate"
+                 :loading="deleting">
             {{ t('consultationTemplates.archiveNow') }}
           </v-btn>
         </v-card-actions>
@@ -260,7 +242,7 @@ import { ref, computed, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { blueprintApi, formtemplateApi } from '@/api'
 import { useNotifierStore } from '@/stores/notifierStore'
-import type { 
+import type {
   GetFormTemplatesShortlist200ResponseResponseObjectInner
 } from '@/api'
 
@@ -371,7 +353,7 @@ const fetchTemplates = async () => {
       blueprintFor: 'consultation',
       limit: '100'
     })
-    
+
     if (response.responseObject) {
       templates.value = response.responseObject.blueprints.map((blueprint) => {
         const content = blueprint.content as TemplateContent
@@ -539,7 +521,7 @@ const archiveTemplate = async () => {
       throw new Error('Template ID is missing')
     }
     const updatedTags = [...(item.tags || []).filter((t: string) => t !== 'archived'), 'archived']
-    
+
     await blueprintApi.updateBlueprint({
       id: item.id,
       updateBlueprintRequest: {
@@ -568,7 +550,7 @@ const unarchiveTemplate = async (item: TemplateItem) => {
       throw new Error('Template ID is missing')
     }
     const updatedTags = (item.tags || []).filter((t: string) => t !== 'archived')
-    
+
     await blueprintApi.updateBlueprint({
       id: item.id,
       updateBlueprintRequest: {
@@ -590,10 +572,6 @@ const unarchiveTemplate = async (item: TemplateItem) => {
 
 const toggleShowArchived = () => {
   showArchived.value = !showArchived.value
-}
-
-const getFormTemplatesCount = (item: TemplateItem) => {
-  return item.content?.formTemplates?.length || 0
 }
 
 const getFormTemplateName = (formTemplateId: string) => {
