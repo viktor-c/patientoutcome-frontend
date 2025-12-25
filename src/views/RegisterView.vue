@@ -6,28 +6,74 @@
           <v-card-title>{{ t('register.title') }}</v-card-title>
           <v-card-text>
             <v-form @submit.prevent="onRegister" ref="formRef">
-              <v-text-field v-model="name" :label="t('register.name')" :rules="[rules.required]" required />
-              <v-text-field v-model="username" :label="t('register.username')" :rules="[rules.required]" required />
-              <v-text-field v-model="email" :label="t('register.email')" :rules="[rules.required, rules.email]"
-                            required />
+              <!-- Step 1: Name -->
+              <v-text-field 
+                v-model="name" 
+                :label="t('register.name')" 
+                :rules="[rules.required]" 
+                required 
+                @blur="suggestUsername"
+              />
+              
+              <!-- Step 2: Username with suggestion -->
+              <v-text-field 
+                v-model="username" 
+                :label="t('register.username')" 
+                :rules="[rules.required]" 
+                required
+                :hint="usernameSuggestion"
+                persistent-hint
+                @blur="checkUsername"
+              >
+                <template v-slot:append v-if="usernameAvailable === false">
+                  <v-tooltip location="top">
+                    <template v-slot:activator="{ props }">
+                      <v-icon v-bind="props" color="error">mdi-alert-circle</v-icon>
+                    </template>
+                    {{ t('register.usernameUnavailable') }}
+                  </v-tooltip>
+                </template>
+                <template v-slot:append v-if="usernameAvailable === true">
+                  <v-icon color="success">mdi-check-circle</v-icon>
+                </template>
+              </v-text-field>
+
+              <!-- Step 3: Email -->
+              <v-text-field 
+                v-model="email" 
+                :label="t('register.email')" 
+                :rules="[rules.required, rules.email]"
+                required 
+              />
+              
               <v-text-field
-                            v-model="password"
-                            :label="t('register.password')"
-                            :type="showPassword ? 'text' : 'password'"
-                            :append-icon="showPassword ? 'mdi-eye-off' : 'mdi-eye'"
-                            @click:append="showPassword = !showPassword"
-                            :rules="[rules.required, rules.min]"
-                            required />
+                v-model="password"
+                :label="t('register.password')"
+                :type="showPassword ? 'text' : 'password'"
+                :append-icon="showPassword ? 'mdi-eye-off' : 'mdi-eye'"
+                @click:append="showPassword = !showPassword"
+                :rules="[rules.required, rules.min]"
+                required 
+              />
+              
               <v-text-field
-                            v-model="confirmPassword"
-                            :label="t('register.confirmPassword')"
-                            :type="showPassword ? 'text' : 'password'"
-                            :append-icon="showPassword ? 'mdi-eye-off' : 'mdi-eye'"
-                            @click:append="showPassword = !showPassword"
-                            :rules="[rules.required, rules.match]"
-                            required />
-              <v-text-field v-model="registerCode" :label="t('register.registerCode')"
-                            :rules="[rules.required, rules.codeFormat]" required placeholder="abc-123-xyz" />
+                v-model="confirmPassword"
+                :label="t('register.confirmPassword')"
+                :type="showPassword ? 'text' : 'password'"
+                :append-icon="showPassword ? 'mdi-eye-off' : 'mdi-eye'"
+                @click:append="showPassword = !showPassword"
+                :rules="[rules.required, rules.match]"
+                required 
+              />
+              
+              <v-text-field 
+                v-model="registerCode" 
+                :label="t('register.registerCode')"
+                :rules="[rules.required, rules.codeFormat]" 
+                required 
+                placeholder="abc-123-xyz" 
+              />
+              
               <v-btn type="submit" color="primary" class="mt-4" :loading="loading">
                 {{ t('register.submit') }}
               </v-btn>
@@ -43,9 +89,9 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch } from 'vue'
+import { ref, watch, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { useRouter } from 'vue-router'
+import { useRouter, useRoute } from 'vue-router'
 import { ResponseError } from '@/api'
 import { userApi } from '@/api'
 import type { RegisterUserRequest } from '@/api'
@@ -53,6 +99,7 @@ import { useNotifierStore } from '@/stores/notifierStore'
 
 const { t } = useI18n()
 const router = useRouter()
+const route = useRoute()
 const notifierStore = useNotifierStore()
 
 const username = ref('')
@@ -65,12 +112,74 @@ const showPassword = ref(false)
 const loading = ref(false)
 const formRef = ref()
 
+const usernameAvailable = ref<boolean | null>(null)
+const usernameSuggestion = ref('')
+
 const rules = {
   required: (v: string) => !!v || t('register.required'),
   min: (v: string) => v.length >= 6 || t('register.passwordMin'),
   match: (v: string) => v === password.value || t('register.passwordMatch'),
   codeFormat: (v: string) => /^[a-zA-Z0-9]{3}-[a-zA-Z0-9]{3}-[a-zA-Z0-9]{3}$/.test(v) || t('register.codeFormat'),
   email: (v: string) => /.+@.+\..+/.test(v) || t('register.emailFormat'),
+}
+
+onMounted(() => {
+  // Pre-fill code from URL query parameter
+  if (route.query.code) {
+    registerCode.value = route.query.code as string
+  }
+})
+
+// Generate username suggestion based on name
+function suggestUsername() {
+  if (!name.value || name.value.length < 3) return
+  
+  const nameParts = name.value.trim().split(' ')
+  if (nameParts.length >= 2) {
+    const firstName = nameParts[0]
+    const lastName = nameParts[nameParts.length - 1]
+    const suggestion = `${firstName[0].toLowerCase()}-${lastName.toLowerCase()}`
+    
+    if (!username.value) {
+      username.value = suggestion
+      checkUsername()
+    } else {
+      usernameSuggestion.value = t('register.suggestedUsername', { username: suggestion })
+    }
+  }
+}
+
+// Check username availability
+async function checkUsername() {
+  if (!username.value || username.value.length < 3) {
+    usernameAvailable.value = null
+    return
+  }
+  
+  try {
+    const response = await fetch(
+      `${import.meta.env.VITE_API_URL}/user/check-username/${username.value}`,
+      {
+        credentials: 'include'
+      }
+    )
+    
+    const data = await response.json()
+    
+    if (data.success && data.responseObject) {
+      usernameAvailable.value = data.responseObject.available
+      
+      if (!data.responseObject.available && data.responseObject.suggestion) {
+        usernameSuggestion.value = t('register.usernameSuggestion', { 
+          username: data.responseObject.suggestion 
+        })
+      } else if (data.responseObject.available) {
+        usernameSuggestion.value = t('register.usernameAvailable')
+      }
+    }
+  } catch (error) {
+    console.error('Username check error:', error)
+  }
 }
 
 const onRegister = async () => {

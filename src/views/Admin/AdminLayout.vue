@@ -15,6 +15,16 @@ const adminMenuItems = [
     route: 'admin-users'
   },
   {
+    title: 'Department Management',
+    icon: 'mdi-domain',
+    route: 'admin-departments'
+  },
+  {
+    title: 'Batch User Creation',
+    icon: 'mdi-account-multiple-plus',
+    route: 'admin-batch-user-creation'
+  },
+  {
     title: 'Form Templates',
     icon: 'mdi-form-select',
     route: 'admin-form-templates'

@@ -21,6 +21,8 @@ import SetupView from '@/views/SetupView.vue'
 import AdminLayout from '@/views/Admin/AdminLayout.vue'
 import UserManagement from '@/views/Admin/UserManagement.vue'
 import FormTemplatesTester from '@/views/Admin/FormTemplatesTester.vue'
+import BatchUserCreation from '@/views/Admin/BatchUserCreation.vue'
+import DepartmentManagement from '@/views/Admin/DepartmentManagement.vue'
 import { useUserStore } from '@/stores/userStore'
 
 const routes = [
@@ -67,6 +69,18 @@ const routes = [
         name: 'admin-users',
         component: UserManagement,
         meta: { titleKey: 'pageTitles.adminUsers', requiredRole: 'admin' }
+      },
+      {
+        path: 'departments',
+        name: 'admin-departments',
+        component: DepartmentManagement,
+        meta: { titleKey: 'pageTitles.departmentManagement', requiredRole: 'admin' }
+      },
+      {
+        path: 'batch-user-creation',
+        name: 'admin-batch-user-creation',
+        component: BatchUserCreation,
+        meta: { titleKey: 'pageTitles.batchUserCreation', requiredRole: 'admin' }
       },
       {
         path: 'form-templates',
