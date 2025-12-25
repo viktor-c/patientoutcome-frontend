@@ -145,6 +145,15 @@ watch(activeTab, (newTab) => {
         <v-tabs-window v-model="activeTab">
           <v-tabs-window-item :value="'createPatient'">
             <v-alert
+              type="info"
+              variant="tonal"
+              class="mb-4"
+              density="compact"
+            >
+              {{ t('alerts.patient.optionalFieldsInfo') }}
+            </v-alert>
+            
+            <v-alert
               v-if="showExternalIdWarning"
               type="warning"
               variant="tonal"

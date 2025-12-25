@@ -228,6 +228,7 @@ export default {
       notFound: 'Patient not found.',
       duplicateExternalId: 'A patient with this external ID already exists.',
       noExternalIdWarning: 'Warning: Creating a patient without an external ID. If the external database loses the link to this patient, it will not be technically possible to link them back together later.',
+      optionalFieldsInfo: 'Both fields are optional. You can create a patient with minimal information.',
     },
     case: {
       fetchCasesFailed: 'Failed to fetch cases.',

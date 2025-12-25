@@ -365,6 +365,7 @@ export default {
       notFound: 'Patient nicht gefunden.',
       duplicateExternalId: 'Ein Patient mit dieser externen ID existiert bereits.',
       noExternalIdWarning: 'Warnung: Patient wird ohne externe ID erstellt. Falls die externe Datenbank die Verbindung zu diesem Patienten verliert, ist es später technisch nicht möglich, diese wieder herzustellen.',
+      optionalFieldsInfo: 'Beide Felder sind optional. Sie können einen Patienten mit minimalen Informationen erstellen.',
     },
     case: {
       fetchCasesFailed: 'Fehler beim Abrufen der Fälle.',
