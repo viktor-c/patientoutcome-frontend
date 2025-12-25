@@ -17,7 +17,7 @@ const cloneUser = (user: GetUsers200ResponseResponseObjectInner) => {
   try {
     // Use structuredClone if available for deep clone
     if (typeof structuredClone === 'function') return structuredClone(user);
-  } catch (e) {
+  } catch {
     // fallthrough to JSON clone
   }
   return JSON.parse(JSON.stringify(user));

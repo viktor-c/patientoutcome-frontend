@@ -37,7 +37,8 @@ const editedNote = ref<string>('')
 const kioskUsers = ref<GetAllKioskUsers200ResponseResponseObjectInner[]>([])
 const selectedKioskUser = ref<string | null>(null)
 const assigningKiosk = ref(false)
-const availableCodes = ref<any[]>([])
+type CodeItem = { _id?: string | null; id?: string | null; code: string; isCreateNew?: boolean }
+const availableCodes = ref<CodeItem[]>([])
 const selectedCode = ref<string | null>(null)
 const assigningCode = ref(false)
 
@@ -48,10 +49,15 @@ const safeFormatDate = (date: string | null | undefined, format: string = 'DD.MM
 }
 
 // Computed properties
-// Note: Using 'as any' for patientCaseId because API returns populated object despite type definition saying string
+// Note: Using type assertion for patientCaseId because API returns populated object despite type definition saying string
+type PopulatedPatientCase = {
+  patient?: { _id: string; externalPatientId?: string[] }
+  _id: string
+  externalId?: string | string[]
+}
 
 const patientId = computed(() => {
-  const patientCaseId = consultation.value?.patientCaseId as any
+  const patientCaseId = consultation.value?.patientCaseId as unknown as PopulatedPatientCase
   const ids = patientCaseId?.patient?.externalPatientId
   if (ids && Array.isArray(ids)) {
     return ids.join(', ')
@@ -59,7 +65,7 @@ const patientId = computed(() => {
   return t('common.notAvailable')
 })
 const caseId = computed(() => {
-  const patientCaseId = consultation.value?.patientCaseId as any
+  const patientCaseId = consultation.value?.patientCaseId as unknown as PopulatedPatientCase
   const ids = patientCaseId?.externalId
   if (ids && Array.isArray(ids)) {
     return ids.join(', ')
@@ -71,12 +77,12 @@ const caseId = computed(() => {
 
 // Route IDs for linking (extract internal ids when needed for navigation)
 const patientRouteId = computed(() => {
-  const patientCaseId = consultation.value?.patientCaseId as any
+  const patientCaseId = consultation.value?.patientCaseId as unknown as PopulatedPatientCase
   return patientCaseId?.patient?._id
 })
 
 const caseRouteId = computed(() => {
-  const patientCaseId = consultation.value?.patientCaseId as any
+  const patientCaseId = consultation.value?.patientCaseId as unknown as PopulatedPatientCase
   return patientCaseId?._id
 })
 
@@ -305,10 +311,11 @@ const fetchKioskUsers = async () => {
 }
 
 // Get the currently assigned kiosk user (if any)
+type PopulatedKiosk = { _id?: string; id?: string } | string
 const assignedKiosks = computed(() => {
   if (!consultation.value?.kioskId) return []
   // Normalize kiosk id (API sometimes returns a string or populated object)
-  const kid = consultation.value.kioskId as any
+  const kid = consultation.value.kioskId as PopulatedKiosk
   const kioskIdStr = typeof kid === 'string' ? kid : (kid?._id ?? kid?.id ?? null)
   if (!kioskIdStr) return []
   return kioskUsers.value.filter(user => user.id === kioskIdStr)
@@ -320,7 +327,7 @@ const availableKiosks = computed(() => {
     // No kiosk assigned, all fetched kiosks are available
     return kioskUsers.value
   }
-  const kid = consultation.value.kioskId as any
+  const kid = consultation.value.kioskId as PopulatedKiosk
   const kioskIdStr = typeof kid === 'string' ? kid : (kid?._id ?? kid?.id ?? null)
   if (!kioskIdStr) return kioskUsers.value
   return kioskUsers.value.filter(user => user.id !== kioskIdStr)
@@ -414,11 +421,12 @@ const fetchAvailableCodes = async () => {
 }
 
 // Get the currently assigned code (if any)
+type PopulatedCode = { code?: string; _id?: string; id?: string } | string
 const assignedCode = computed(() => {
   if (!consultation.value?.formAccessCode) return null
 
   // The formAccessCode field is now populated by the backend
-  const code = consultation.value.formAccessCode as any
+  const code = consultation.value.formAccessCode as PopulatedCode
 
   // If it's a string (ObjectId not populated), return it as-is
   if (typeof code === 'string') {

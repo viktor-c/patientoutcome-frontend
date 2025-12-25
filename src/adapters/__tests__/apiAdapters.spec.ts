@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { describe, it, expect } from 'vitest'
 import { mapApiFormToForm, mapApiFormsToForms, mapApiPatientCase, mapApiSurgeries } from '../apiAdapters'
 import type { FindAllCodes200ResponseResponseObjectInnerConsultationIdPromsInner as FormFromApi } from '@/api'

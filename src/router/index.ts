@@ -21,6 +21,11 @@ import SetupView from '@/views/SetupView.vue'
 import AdminLayout from '@/views/Admin/AdminLayout.vue'
 import UserManagement from '@/views/Admin/UserManagement.vue'
 import FormTemplatesTester from '@/views/Admin/FormTemplatesTester.vue'
+import BatchUserCreation from '@/views/Admin/BatchUserCreation.vue'
+import DepartmentManagement from '@/views/Admin/DepartmentManagement.vue'
+import ConsultationTemplates from '@/views/Admin/ConsultationTemplates.vue'
+import SurgeryBlueprints from '@/views/Admin/SurgeryBlueprints.vue'
+import CaseBlueprints from '@/views/Admin/CaseBlueprints.vue'
 import { useUserStore } from '@/stores/userStore'
 
 const routes = [
@@ -69,10 +74,40 @@ const routes = [
         meta: { titleKey: 'pageTitles.adminUsers', requiredRole: 'admin' }
       },
       {
+        path: 'departments',
+        name: 'admin-departments',
+        component: DepartmentManagement,
+        meta: { titleKey: 'pageTitles.departmentManagement', requiredRole: 'admin' }
+      },
+      {
+        path: 'batch-user-creation',
+        name: 'admin-batch-user-creation',
+        component: BatchUserCreation,
+        meta: { titleKey: 'pageTitles.batchUserCreation', requiredRole: 'admin' }
+      },
+      {
         path: 'form-templates',
         name: 'admin-form-templates',
         component: FormTemplatesTester,
         meta: { titleKey: 'pageTitles.adminFormTemplates', requiredRole: 'admin' }
+      },
+      {
+        path: 'consultation-templates',
+        name: 'admin-consultation-templates',
+        component: ConsultationTemplates,
+        meta: { titleKey: 'pageTitles.consultationTemplates', requiredRole: 'admin' }
+      },
+      {
+        path: 'surgery-blueprints',
+        name: 'admin-surgery-blueprints',
+        component: SurgeryBlueprints,
+        meta: { titleKey: 'pageTitles.surgeryBlueprints', requiredRole: 'admin' }
+      },
+      {
+        path: 'case-blueprints',
+        name: 'admin-case-blueprints',
+        component: CaseBlueprints,
+        meta: { titleKey: 'pageTitles.caseBlueprints', requiredRole: 'admin' }
       },
     ]
   },

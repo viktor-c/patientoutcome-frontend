@@ -22,6 +22,8 @@ const newPatient = ref({
   sex: '',
 })
 
+const showExternalIdWarning = ref(false)
+
 // Data for searching patients
 const searchQuery = ref('')
 const searchResults = ref<Patient[]>([])
@@ -42,20 +44,28 @@ const SEARCH_QUERY_MINIMUM_LENGTH = import.meta.env.VITE_SEARCH_QUERY_MINIMUM_LE
 
 // Function to create a new patient
 const createPatient = async () => {
+  // Show warning if external ID is missing
+  if (!newPatient.value.externalPatientId.trim()) {
+    showExternalIdWarning.value = true
+  }
+  
   // Validate the input
   try {
     // Transform the comma-separated externalPatientId into an array
-    const externalPatientIdArray = newPatient.value.externalPatientId.split(',').map((id) => id.trim())
+    const externalPatientIdArray = newPatient.value.externalPatientId
+      ? newPatient.value.externalPatientId.split(',').map((id) => id.trim()).filter(id => id)
+      : []
 
     const patientData = {
       ...newPatient.value,
-      externalPatientId: externalPatientIdArray,
+      externalPatientId: externalPatientIdArray.length > 0 ? externalPatientIdArray : undefined,
     }
 
     const response = await patientApi.createPatient({ createPatientRequest: patientData })
     console.log('Patient created successfully:', response)
     router.push({ path: `/cases/${response.responseObject?.id}` })
     newPatient.value = { externalPatientId: '', sex: '' }
+    showExternalIdWarning.value = false
     useNotifierStore().notify(t('alerts.patient.created'), 'success')
   } catch (error: unknown) {
     let errorMessage = 'An unexpected error occurred'
@@ -134,11 +144,44 @@ watch(activeTab, (newTab) => {
       <v-card-text>
         <v-tabs-window v-model="activeTab">
           <v-tabs-window-item :value="'createPatient'">
+            <v-alert
+              type="info"
+              variant="tonal"
+              class="mb-4"
+              density="compact"
+            >
+              {{ t('alerts.patient.optionalFieldsInfo') }}
+            </v-alert>
+            
+            <v-alert
+              v-if="showExternalIdWarning"
+              type="warning"
+              variant="tonal"
+              class="mb-4"
+              closable
+              @click:close="showExternalIdWarning = false"
+            >
+              {{ t('alerts.patient.noExternalIdWarning') }}
+            </v-alert>
+            
             <v-form @submit.prevent="createPatient">
-              <v-text-field :label="t('forms.externalId')" v-model="newPatient.externalPatientId"
-                            placeholder="Enter comma-separated IDs" required></v-text-field>
-              <v-select :label="t('forms.sex')" v-model="newPatient.sex" :items="sexOptions" item-value="value"
-                        item-title="label" outlined dense clearable></v-select>
+              <v-text-field 
+                :label="t('forms.externalId')" 
+                v-model="newPatient.externalPatientId"
+                placeholder="Enter comma-separated IDs"
+                :hint="t('forms.externalIdHint')"
+                persistent-hint
+              ></v-text-field>
+              <v-select 
+                :label="t('forms.sex')" 
+                v-model="newPatient.sex" 
+                :items="sexOptions" 
+                item-value="value"
+                item-title="label" 
+                outlined 
+                dense 
+                clearable
+              ></v-select>
               <v-btn color="success" @click="createPatient">{{ t('forms.submit') }}</v-btn>
             </v-form>
           </v-tabs-window-item>

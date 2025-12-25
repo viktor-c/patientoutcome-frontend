@@ -36,6 +36,8 @@ const patientData = ref<CreatePatientRequest>({
   sex: ''
 })
 
+const showExternalIdWarning = ref(false)
+
 const caseData = ref<CreateCaseSchema>({
   patient: '',
   externalId: '', // This is the externalPatientCaseId - unique identifier for the patient case
@@ -100,7 +102,8 @@ const sexOptions = [
 
 // Computed properties
 const canProceedFromStep1 = computed(() => {
-  return patientData.value.externalPatientId[0].trim() !== ''
+  // All fields are optional for GDPR compliance
+  return true
 })
 
 const canProceedFromStep2 = computed(() => {
@@ -132,16 +135,32 @@ const previousStep = () => {
 const createPatient = async () => {
   if (!canProceedFromStep1.value) return
 
+  // Show warning if external ID is missing
+  if (!patientData.value.externalPatientId[0] || !patientData.value.externalPatientId[0].trim()) {
+    showExternalIdWarning.value = true
+  }
+
   isLoading.value = true
   try {
+    // Filter out empty external IDs
+    const filteredExternalIds = patientData.value.externalPatientId
+      .map(id => id.trim())
+      .filter(id => id !== '')
+    
+    const patientDataToSend = {
+      ...patientData.value,
+      externalPatientId: filteredExternalIds.length > 0 ? filteredExternalIds : undefined
+    }
+
     const response = await patientApi.createPatient({
-      createPatientRequest: patientData.value
+      createPatientRequest: patientDataToSend
     })
 
     if (response.responseObject) {
       createdPatient.value = response.responseObject
       caseData.value.patient = response.responseObject.id || null
       currentStep.value = 2
+      showExternalIdWarning.value = false
       notifierStore.notify(t('creationFlow.patientCreated'), 'success')
     }
   } catch (error: unknown) {
@@ -418,6 +437,26 @@ onMounted(async () => {
                 <v-card>
                   <v-card-title>{{ t('creationFlow.step1Title') }}</v-card-title>
                   <v-card-text>
+                    <v-alert
+                      type="info"
+                      variant="tonal"
+                      class="mb-4"
+                      density="compact"
+                    >
+                      {{ t('alerts.patient.optionalFieldsInfo') }}
+                    </v-alert>
+                    
+                    <v-alert
+                      v-if="showExternalIdWarning"
+                      type="warning"
+                      variant="tonal"
+                      class="mb-4"
+                      closable
+                      @click:close="showExternalIdWarning = false"
+                    >
+                      {{ t('alerts.patient.noExternalIdWarning') }}
+                    </v-alert>
+                    
                     <v-form>
                       <!-- External Patient IDs -->
                       <div v-for="(externalId, index) in patientData.externalPatientId" :key="index" class="mb-2">
@@ -426,8 +465,8 @@ onMounted(async () => {
                             <v-text-field
                                           v-model="patientData.externalPatientId[index]"
                                           :label="t('forms.patient.externalId') + (index > 0 ? ' ' + (index + 1) : '')"
-                                          :rules="index === 0 ? [v => !!v || t('forms.patient.externalIdRequired')] : []"
-                                          required></v-text-field>
+                                          :hint="index === 0 ? t('forms.externalIdHint') : ''"
+                                          :persistent-hint="index === 0"></v-text-field>
                           </v-col>
                           <v-col cols="2">
                             <v-btn
@@ -452,7 +491,7 @@ onMounted(async () => {
 
                       <v-select
                                 v-model="patientData.sex"
-                                :label="t('forms.patient.sex')"
+                                :label="t('forms.sex')"
                                 :items="sexOptions"
                                 item-value="value"
                                 item-title="label"

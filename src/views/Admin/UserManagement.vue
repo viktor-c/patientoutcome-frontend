@@ -1,19 +1,22 @@
 <script setup lang="ts">
 import { ref, onMounted, watch } from 'vue';
 import { useNotifierStore } from '@/stores/';
-import { userApi, updateUserByUsername } from '@/api';
-import type { UpdateUserRequest } from '@/api/models/UpdateUserRequest';
+import { userApi, userDepartmentApi } from '@/api';
+import type { UpdateUserByIdRequest } from '@/api/models/UpdateUserByIdRequest';
 import { useUserStore } from '@/stores/userStore';
 import type { GetUsers200ResponseResponseObjectInner } from '@/api/models/GetUsers200ResponseResponseObjectInner';
+import type { UserDepartment } from '@/api/models/UserDepartment';
 import EditUserDialog from '@/components/dialogs/EditUserDialog.vue';
 
 const notifierStore = useNotifierStore();
 const users = ref<GetUsers200ResponseResponseObjectInner[]>([]);
 const loading = ref(false);
+const search = ref('');
 const showEditDialog = ref(false);
 const selectedUser = ref<GetUsers200ResponseResponseObjectInner | null>(null);
 const showDeleteConfirm = ref(false);
 const userToDelete = ref<GetUsers200ResponseResponseObjectInner | null>(null);
+const departments = ref<UserDepartment[]>([]);
 
 const headers = [
   { title: 'Username', key: 'username', sortable: true },
@@ -40,6 +43,17 @@ const loadUsers = async () => {
   }
 };
 
+const loadDepartments = async () => {
+  try {
+    const response = await userDepartmentApi.getAllDepartments();
+    if (response.success && response.responseObject) {
+      departments.value = response.responseObject;
+    }
+  } catch (error) {
+    console.error('Error loading departments:', error);
+  }
+};
+
 const cloneUser = (user: GetUsers200ResponseResponseObjectInner) => {
   // Use structuredClone where available for deep cloning, otherwise fall back to JSON clone
   // We only do this to avoid mutating objects referenced by the data table through Vue reactivity.
@@ -63,8 +77,7 @@ const saveUser = async (updatedUser: GetUsers200ResponseResponseObjectInner) => 
   console.debug('UserManagement.saveUser: updating user', updatedUser?.username, 'as admin', userStore.username);
   try {
     // Build the update payload
-    const updatePayload: UpdateUserRequest & { roles?: string[], password?: string } = {
-      username: updatedUser.username,
+    const updatePayload: UpdateUserByIdRequest & { roles?: string[], password?: string } = {
       name: updatedUser.name,
       email: updatedUser.email,
       department: updatedUser.department,
@@ -122,8 +135,14 @@ const formatDate = (date: Date | undefined) => {
   return new Date(date).toLocaleDateString();
 };
 
+const getDepartmentName = (departmentId: string) => {
+  const dept = departments.value.find(d => d.id === departmentId);
+  return dept?.name || departmentId;
+};
+
 onMounted(() => {
   loadUsers();
+  loadDepartments();
 });
 
 // Clear selectedUser when the edit dialog closes (either cancelled or closed)
@@ -137,23 +156,25 @@ watch(showEditDialog, (isShown) => {
 <template>
   <v-container fluid class="pa-0">
     <v-row class="pa-0 ma-0">
-      <v-col cols="12" class="pa-0">
-        <div class="d-flex justify-space-between align-center mb-4">
+      <v-col cols="12">
+        <div class="d-flex justify-space-between align-center mb-2">
           <h1 class="text-h4">User Management</h1>
         </div>
         <v-card>
-          <v-card-title class="pa-0">
-            <v-row class="fill-height align-center pa-0" style="width:100%">
-              <v-col cols="10" class="pa-0">
+          <v-card-title>
+            <v-row class="align-start" style="width:100%">
+              <v-col cols="10">
                 <v-text-field
+                              v-model="search"
+                              aria-label="search-input"
                               label="Search users"
                               prepend-inner-icon="mdi-magnify"
                               variant="outlined"
-                              density="compact"
+                              q density="compact"
                               hide-details
                               class="mb-4" />
               </v-col>
-              <v-col cols="2" class="pa-0 d-flex justify-end align-center">
+              <v-col cols="2" class="d-flex justify-end align-start">
                 <v-btn
                        color="primary"
                        prepend-icon="mdi-plus"
@@ -168,6 +189,7 @@ watch(showEditDialog, (isShown) => {
           <v-data-table
                         :headers="headers"
                         :items="users"
+                        :search="search"
                         :loading="loading"
                         item-value="id"
                         class="elevation-1"
@@ -186,6 +208,10 @@ watch(showEditDialog, (isShown) => {
 
             <template #[`item.lastLogin`]="{ item }">
               {{ formatDate(item.lastLogin) }}
+            </template>
+
+            <template #[`item.department`]="{ item }">
+              {{ getDepartmentName(item.department) }}
             </template>
 
             <template #[`item.actions`]="{ item }">

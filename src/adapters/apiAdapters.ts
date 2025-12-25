@@ -11,8 +11,8 @@ export function mapApiFormToForm(api: FormFromApi): Form {
     _id: api.id || '', // For backward compatibility 
     title: api.title || '',
     description: api.description || '',
-    formSchema: api.formSchema || {},
-    formSchemaUI: api.formSchemaUI || {},
+    formSchema: (api.formSchema || {}) as Record<string, unknown>,
+    formSchemaUI: (api.formSchemaUI || {}) as Record<string, unknown>,
     formData: (api.formData as FormData) || {},
     translations: api.translations as Record<string, Record<string, unknown>> | undefined,
     caseId: api.caseId || null,

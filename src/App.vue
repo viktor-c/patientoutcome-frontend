@@ -19,8 +19,6 @@ function toggleTheme() {
 
 // LanguageSelector component handles locales and flags
 
-const isDev = import.meta.env.MODE === 'development'
-
 // Access notifier store
 const notifierStore = useNotifierStore()
 const userStore = useUserStore()

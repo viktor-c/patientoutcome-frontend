@@ -113,7 +113,7 @@ This patient outcome frontend uses **Vue 3 Composition API** with TypeScript, Vu
 
 ## General prompts
 - "commit changes" is an alias for "commit changes to patientoutcome-frontend following best practices, logically group related changes into single commits; create multiple commits if necessary for clarity"
-
+- be careful to only insert code conforming with vuetify 3 and vue 3 composition api patterns, do not use options api, and do not use any deprecated vuetify, vuetify 2 or vue patterns
 
 ---
 If any section is unclear or missing project-specific details, please provide feedback for further refinement.
