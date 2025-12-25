@@ -208,8 +208,8 @@ const dialogTitle = computed(() => {
 })
 
 const rules = {
-  required: (v: any) => !!v || t('validation.required'),
-  email: (v: any) => !v || /.+@.+\..+/.test(v) || t('validation.email'),
+  required: (v: string | number | boolean | null | undefined) => !!v || t('validation.required'),
+  email: (v: string | null | undefined) => !v || /.+@.+\..+/.test(v) || t('validation.email'),
 }
 
 onMounted(() => {
@@ -223,8 +223,9 @@ async function loadDepartments() {
     if (response.success && response.responseObject) {
       departments.value = response.responseObject
     }
-  } catch (error: any) {
-    notifierStore.notify(error.message || t('departmentManagement.loadError'), 'error')
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : String(error)
+    notifierStore.notify(message || t('departmentManagement.loadError'), 'error')
   } finally {
     loading.value = false
   }
@@ -288,8 +289,10 @@ async function saveDepartment() {
         closeDialog()
       }
     }
-  } catch (error: any) {
-    notifierStore.notify(error.message || t('departmentManagement.saveError'), 'error')
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : String(error)
+    notifierStore.notify(message || t('departmentManagement.deleteError'), 'error')
+    notifierStore.notify(message || t('departmentManagement.saveError'), 'error')
   } finally {
     saving.value = false
   }
@@ -314,14 +317,15 @@ async function deleteDepartment() {
       deleteDialog.value = false
       departmentToDelete.value = null
     }
-  } catch (error: any) {
+  } catch (error: unknown) {
     deleteDialog.value = false
     
     // Check if error is due to users still assigned (409 Conflict)
-    if (error.message?.includes('409') || error.message?.includes('still assigned')) {
+    const message = error instanceof Error ? error.message : String(error)
+    if (message?.includes('409') || message?.includes('still assigned')) {
       usersAssignedDialog.value = true
     } else {
-      notifierStore.notify(error.message || t('departmentManagement.deleteError'), 'error')
+      notifierStore.notify(message || t('departmentManagement.deleteError'), 'error')
     }
   } finally {
     deleting.value = false

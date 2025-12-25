@@ -4,7 +4,6 @@ import { JsonForms } from '@jsonforms/vue'
 import { type JsonSchema, type UISchemaElement } from '@jsonforms/core'
 import { extendedVuetifyRenderers } from '@jsonforms/vue-vuetify'
 import { markRaw } from 'vue'
-import markdownit from 'markdown-it'
 
 import { entry as EfasQuestionSliderControlRenderer } from '@/components/forms/EfasQuestionSliderControlRenderer.entry'
 import { entry as AofasControlRenderer } from '@/components/forms/AofasControlRenderer.entry'
@@ -13,6 +12,7 @@ import { entry as VASControlRenderer } from '@/components/forms/VASControlRender
 import { entry as VisaaControlRenderer } from '@/components/forms/VisaaControlRenderer.entry'
 
 import { formtemplateApi } from '@/api'
+import type { FormTemplate } from '@/api/models/FormTemplate'
 import type { ScoringData } from '@/types'
 
 const renderers = markRaw([
@@ -24,20 +24,13 @@ const renderers = markRaw([
   VisaaControlRenderer,
 ])
 
-const md = markdownit({
-  html: true,
-  linkify: false,
-  typographer: true,
-  breaks: true,
-})
-
 // Available form templates to test
 const availableTemplates = ref<Array<{ id: string; title: string; description: string }>>([])
 const selectedTemplateId = ref<string | null>(null)
 const loading = ref(true)
 const testFormData = ref<Record<string, unknown>>({})
 const scoring = ref<ScoringData | null>(null)
-const selectedTemplate = ref<any>(null)
+const selectedTemplate = ref<FormTemplate | null>(null)
 const loadingTemplate = ref(false)
 
 // Load available templates on mount
@@ -68,7 +61,7 @@ const loadTemplateDetails = async (templateId: string) => {
   try {
     loadingTemplate.value = true
     const response = await formtemplateApi.getFormTemplateById({ templateId })
-    selectedTemplate.value = response.responseObject
+    selectedTemplate.value = response.responseObject || null
 
     // Use the formData from the template directly - it already has the correct structure
     if (response.responseObject?.formData) {
@@ -132,7 +125,7 @@ const resetForm = () => {
 }
 
 // Handle form changes - update without triggering recursion
-const handleFormChange = (event: any) => {
+const handleFormChange = (event: { data: Record<string, unknown> }) => {
   console.debug('Form data changed:', event.data)
   // Simply assign the data - JsonForms already handles reactivity
   testFormData.value = event.data as Record<string, unknown>

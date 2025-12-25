@@ -3,7 +3,7 @@ import { ref, computed } from 'vue';
 import { useI18n } from 'vue-i18n';
 import ChangePasswordDialog from './ChangePasswordDialog.vue';
 import { useUserStore } from '@/stores/userStore';
-import type { UpdateUserRequest } from '@/api/models/UpdateUserRequest';
+import type { UpdateUserByIdRequest } from '@/api/models/UpdateUserByIdRequest';
 
 const { t } = useI18n();
 
@@ -48,9 +48,8 @@ async function save() {
     return
   }
   try {
-    const payload: UpdateUserRequest = {
+    const payload: UpdateUserByIdRequest = {
       name: user.value.name,
-      username: user.value.username,
       email: user.value.email,
       department: user.value.department,
       belongsToCenter: user.value.belongsToCenter,

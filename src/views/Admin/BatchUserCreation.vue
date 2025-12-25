@@ -237,8 +237,8 @@ const selectedDepartmentName = computed(() => {
 })
 
 const rules = {
-  required: (v: any) => !!v || t('validation.required'),
-  requiredArray: (v: any[]) => (v && v.length > 0) || t('validation.required'),
+  required: (v: string | number | boolean | null | undefined) => !!v || t('validation.required'),
+  requiredArray: (v: unknown[]) => (v && v.length > 0) || t('validation.required'),
 }
 
 onMounted(() => {
@@ -252,8 +252,9 @@ async function loadDepartments() {
     if (response.success && response.responseObject) {
       departments.value = response.responseObject
     }
-  } catch (error: any) {
-    notifierStore.notify(error.message || t('departmentManagement.loadError'), 'error')
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : String(error)
+    notifierStore.notify(message || t('departmentManagement.loadError'), 'error')
   } finally {
     loadingDepartments.value = false
   }
@@ -272,7 +273,7 @@ async function createBatch() {
   try {
     // Build roles array with counts (only include roles with count > 0)
     const roles = Object.entries(form.value.roleCounts)
-      .filter(([_, count]) => count > 0)
+      .filter(([, count]) => count > 0)
       .map(([role, count]) => ({
         role,
         count,
@@ -331,14 +332,12 @@ async function generatePDF() {
     const boxWidth = (pageWidth - 3 * margin) / 2
     const boxHeight = (pageHeight - 5 * margin) / 2
 
-    let pageNumber = 0
     let itemsOnPage = 0
 
     for (const [role, codes] of Object.entries(generatedCodes.value)) {
       for (const code of codes) {
         if (itemsOnPage === 4) {
           doc.addPage()
-          pageNumber++
           itemsOnPage = 0
         }
 

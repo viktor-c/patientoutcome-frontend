@@ -71,8 +71,8 @@ const currentRouteName = computed(() => route.name as string | undefined);
                      :class="{ 'v-item--active': currentRouteName === item.route }"
                      ripple>
           <v-tooltip :open-on-hover="true" v-if="rail">
-            <template #activator="{ props }">
-              <v-icon>{{ item.icon }}</v-icon>
+            <template #activator="{ props: tooltipProps }">
+              <v-icon v-bind="tooltipProps">{{ item.icon }}</v-icon>
             </template>
             <span>{{ item.title }}</span>
           </v-tooltip>

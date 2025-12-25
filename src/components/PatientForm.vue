@@ -147,7 +147,7 @@ const validateActivity = (data: FormData) => {
   //for each object in data, check all the properties. If the property is null, set an error
   for (const [questionnaireName, answerValues] of Object.entries(data)) {
     for (const [question, answer] of Object.entries(answerValues)) {
-      if (answer === null || answer === undefined || answer === '') {
+      if (answer === null || answer === undefined || (typeof answer === 'string' && answer === '')) {
         console.debug(`Validation error for ${questionnaireName}/${question}: Answer is null or empty`)
         newErrors.push({
           instancePath: `/${questionnaireName}/${question}`,
@@ -184,7 +184,7 @@ const handleSubmit = async (afterSave?: () => void) => {
   const incompleteFields = []
   for (const [, answerValues] of Object.entries(formData.value)) {
     for (const [question, answer] of Object.entries(answerValues)) {
-      if (answer === null || answer === undefined || answer === '') {
+      if (answer === null || answer === undefined || (typeof answer === 'string' && answer === '')) {
         incompleteFields.push(question)
       }
     }

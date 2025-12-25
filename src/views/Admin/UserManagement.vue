@@ -1,10 +1,11 @@
 <script setup lang="ts">
 import { ref, onMounted, watch } from 'vue';
 import { useNotifierStore } from '@/stores/';
-import { userApi } from '@/api';
-import type { UpdateUserRequest } from '@/api/apis/UserApi';
+import { userApi, userDepartmentApi } from '@/api';
+import type { UpdateUserByIdRequest } from '@/api/models/UpdateUserByIdRequest';
 import { useUserStore } from '@/stores/userStore';
 import type { GetUsers200ResponseResponseObjectInner } from '@/api/models/GetUsers200ResponseResponseObjectInner';
+import type { UserDepartment } from '@/api/models/UserDepartment';
 import EditUserDialog from '@/components/dialogs/EditUserDialog.vue';
 
 const notifierStore = useNotifierStore();
@@ -15,6 +16,7 @@ const showEditDialog = ref(false);
 const selectedUser = ref<GetUsers200ResponseResponseObjectInner | null>(null);
 const showDeleteConfirm = ref(false);
 const userToDelete = ref<GetUsers200ResponseResponseObjectInner | null>(null);
+const departments = ref<UserDepartment[]>([]);
 
 const headers = [
   { title: 'Username', key: 'username', sortable: true },
@@ -41,6 +43,17 @@ const loadUsers = async () => {
   }
 };
 
+const loadDepartments = async () => {
+  try {
+    const response = await userDepartmentApi.getAllDepartments();
+    if (response.success && response.responseObject) {
+      departments.value = response.responseObject;
+    }
+  } catch (error) {
+    console.error('Error loading departments:', error);
+  }
+};
+
 const cloneUser = (user: GetUsers200ResponseResponseObjectInner) => {
   // Use structuredClone where available for deep cloning, otherwise fall back to JSON clone
   // We only do this to avoid mutating objects referenced by the data table through Vue reactivity.
@@ -64,8 +77,7 @@ const saveUser = async (updatedUser: GetUsers200ResponseResponseObjectInner) => 
   console.debug('UserManagement.saveUser: updating user', updatedUser?.username, 'as admin', userStore.username);
   try {
     // Build the update payload
-    const updatePayload: UpdateUserRequest & { roles?: string[], password?: string } = {
-      username: updatedUser.username,
+    const updatePayload: UpdateUserByIdRequest & { roles?: string[], password?: string } = {
       name: updatedUser.name,
       email: updatedUser.email,
       department: updatedUser.department,
@@ -123,8 +135,14 @@ const formatDate = (date: Date | undefined) => {
   return new Date(date).toLocaleDateString();
 };
 
+const getDepartmentName = (departmentId: string) => {
+  const dept = departments.value.find(d => d.id === departmentId);
+  return dept?.name || departmentId;
+};
+
 onMounted(() => {
   loadUsers();
+  loadDepartments();
 });
 
 // Clear selectedUser when the edit dialog closes (either cancelled or closed)
@@ -190,6 +208,10 @@ watch(showEditDialog, (isShown) => {
 
             <template #[`item.lastLogin`]="{ item }">
               {{ formatDate(item.lastLogin) }}
+            </template>
+
+            <template #[`item.department`]="{ item }">
+              {{ getDepartmentName(item.department) }}
             </template>
 
             <template #[`item.actions`]="{ item }">

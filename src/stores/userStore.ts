@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia'
 import { useLocalStorage } from '@vueuse/core'
-import type { UpdateUserRequest } from '@/api/models/UpdateUserRequest';
+import type { UpdateUserByIdRequest } from '@/api/models/UpdateUserByIdRequest';
 
 import { userApi } from '@/api';
 
@@ -66,8 +66,8 @@ export const useUserStore = defineStore('user', () => {
     return false
   }
 
-  const updateUser = async (update: UpdateUserRequest) => {
-    return await userApi.updateUser({ updateUserRequest: update });
+  const updateUser = async (update: UpdateUserByIdRequest) => {
+    return await userApi.updateUser({ updateUserByIdRequest: update });
   };
 
   const changePassword = async (currentPassword: string, newPassword: string, confirmPassword: string) => {

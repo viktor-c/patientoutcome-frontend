@@ -25,16 +25,14 @@
                 persistent-hint
                 @blur="checkUsername"
               >
-                <template v-slot:append v-if="usernameAvailable === false">
-                  <v-tooltip location="top">
+                <template #append>
+                  <v-tooltip v-if="usernameAvailable === false" location="top">
                     <template v-slot:activator="{ props }">
                       <v-icon v-bind="props" color="error">mdi-alert-circle</v-icon>
                     </template>
                     {{ t('register.usernameUnavailable') }}
                   </v-tooltip>
-                </template>
-                <template v-slot:append v-if="usernameAvailable === true">
-                  <v-icon color="success">mdi-check-circle</v-icon>
+                  <v-icon v-else-if="usernameAvailable === true" color="success">mdi-check-circle</v-icon>
                 </template>
               </v-text-field>
 

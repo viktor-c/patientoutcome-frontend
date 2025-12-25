@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { mount } from '@vue/test-utils'
 import { createVuetify } from 'vuetify'
@@ -15,7 +16,6 @@ describe('UserManagement.vue', () => {
     vuetify = createVuetify({ components, directives })
     // Mock ResizeObserver for JSDOM environment used by Vitest
     // Vuetify uses ResizeObserver in some components
-    // @ts-ignore
     global.ResizeObserver = class {
       observe() { }
       unobserve() { }

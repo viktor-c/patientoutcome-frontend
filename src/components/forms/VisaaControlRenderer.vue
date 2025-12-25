@@ -500,7 +500,7 @@ const getSliderLabel = (questionKey: string, position: 'prepend' | 'append'): st
 
           <v-slider
             :model-value="getQuestionValue(conditionalQ8.key) as number ?? undefined"
-            @update:model-value="(value) => handleSliderChange(conditionalQ8.key, value as number)"
+            @update:model-value="(value) => conditionalQ8 && handleSliderChange(conditionalQ8.key, value as number)"
             :min="conditionalQ8.minimum"
             :max="conditionalQ8.maximum"
             :step="1"
