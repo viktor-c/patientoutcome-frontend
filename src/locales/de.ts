@@ -216,6 +216,7 @@ export default {
   },
   forms: {
     externalId: 'Externe ID',
+    externalIdHint: 'Optional: Externe ID aus Ihrem Krankenhausinformationssystem',
     externalPatientCaseId: 'Externe Patientenfallnummer',
     age: 'Alter',
     sex: 'Geschlecht',
@@ -363,6 +364,7 @@ export default {
       noneFound: 'Keine Patienten gefunden.',
       notFound: 'Patient nicht gefunden.',
       duplicateExternalId: 'Ein Patient mit dieser externen ID existiert bereits.',
+      noExternalIdWarning: 'Warnung: Patient wird ohne externe ID erstellt. Falls die externe Datenbank die Verbindung zu diesem Patienten verliert, ist es später technisch nicht möglich, diese wieder herzustellen.',
     },
     case: {
       fetchCasesFailed: 'Fehler beim Abrufen der Fälle.',
