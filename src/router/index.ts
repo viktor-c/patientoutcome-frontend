@@ -23,6 +23,7 @@ import UserManagement from '@/views/Admin/UserManagement.vue'
 import FormTemplatesTester from '@/views/Admin/FormTemplatesTester.vue'
 import BatchUserCreation from '@/views/Admin/BatchUserCreation.vue'
 import DepartmentManagement from '@/views/Admin/DepartmentManagement.vue'
+import ConsultationTemplates from '@/views/Admin/ConsultationTemplates.vue'
 import { useUserStore } from '@/stores/userStore'
 
 const routes = [
@@ -87,6 +88,12 @@ const routes = [
         name: 'admin-form-templates',
         component: FormTemplatesTester,
         meta: { titleKey: 'pageTitles.adminFormTemplates', requiredRole: 'admin' }
+      },
+      {
+        path: 'consultation-templates',
+        name: 'admin-consultation-templates',
+        component: ConsultationTemplates,
+        meta: { titleKey: 'pageTitles.consultationTemplates', requiredRole: 'admin' }
       },
     ]
   },

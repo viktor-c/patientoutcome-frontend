@@ -29,6 +29,11 @@ const adminMenuItems = [
     icon: 'mdi-form-select',
     route: 'admin-form-templates'
   },
+  {
+    title: 'Consultation Templates',
+    icon: 'mdi-file-document-multiple',
+    route: 'admin-consultation-templates'
+  },
   // Add more admin items here in the future
 ];
 
