@@ -34,6 +34,16 @@ const adminMenuItems = [
     icon: 'mdi-file-document-multiple',
     route: 'admin-consultation-templates'
   },
+  {
+    title: 'Surgery Blueprints',
+    icon: 'mdi-content-cut',
+    route: 'admin-surgery-blueprints'
+  },
+  {
+    title: 'Case Blueprints',
+    icon: 'mdi-folder-open',
+    route: 'admin-case-blueprints'
+  },
   // Add more admin items here in the future
 ];
 
