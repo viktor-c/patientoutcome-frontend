@@ -153,9 +153,11 @@ import {
   type ChartData,
   type ChartOptions,
   TimeScale,
+  type TooltipItem,
 } from "chart.js";
 import "chartjs-adapter-date-fns";
 import zoomPlugin from "chartjs-plugin-zoom";
+import annotationPlugin, { type AnnotationOptions } from "chartjs-plugin-annotation";
 import { useNotifierStore } from "@/stores/notifierStore";
 import { statisticsApi } from '@/api'
 import type {
@@ -167,6 +169,13 @@ import type {
   GetCaseStatistics200ResponseResponseObjectConsultationsInnerPromsInnerScoring,
 } from '@/api'
 
+// Extended type for statistics response that includes surgeries
+type StatisticsWithSurgeries = GetCaseStatistics200ResponseResponseObject & {
+  surgeries?: Array<{ surgeryDate: string; therapy?: string | null }>;
+  surgeryDate?: string;
+  caseCreatedAt?: string;
+};
+
 // Register Chart.js components
 ChartJS.register(
   CategoryScale,
@@ -177,7 +186,8 @@ ChartJS.register(
   Tooltip,
   Legend,
   TimeScale,
-  zoomPlugin
+  zoomPlugin,
+  annotationPlugin
 );
 
 // Use generated model types from the OpenAPI client
@@ -194,11 +204,14 @@ const caseId = computed(() => route.params.caseId as string);
 const timelineMode = ref<"realTime" | "fixedInterval">("realTime");
 const loading = ref(false);
 const error = ref<string | null>(null);
-const statistics = ref<GetCaseStatistics200ResponseResponseObject | null>(null);
+const statistics = ref<StatisticsWithSurgeries | null>(null);
 const scoreData = ref<GetScoreData200ResponseResponseObject | null>(null);
 
 // Store actual acquisition dates for tooltip display
 const acquisitionDates = ref<Date[]>([]);
+
+// Store surgeries with their dates for annotation
+const surgeries = ref<Array<{ date: string; therapy?: string | null }>>([]);
 
 // Calculate time since surgery or case creation
 const calculateTimeSinceReference = (consultationDate: Date, referenceDate: Date): string => {
@@ -264,87 +277,137 @@ const computeScoreDataFromConsultations = (consultations: GetCaseStatistics200Re
   const realTime: GetScoreData200ResponseResponseObjectRealTimeInner[] = [];
   const fixedInterval: GetScoreData200ResponseResponseObjectRealTimeInner[] = [];
   const dates: Date[] = [];
-
-  consultations.forEach((consultation, idx) => {
-    // Determine a sensible date for the consultation: prefer the first prom that has scoring
+  
+  // Create a mixed list of consultations and surgeries, sorted by date
+  const mixedItems: Array<{ 
+    type: 'consultation' | 'surgery'; 
+    data: GetCaseStatistics200ResponseResponseObjectConsultationsInner | { date: string; therapy?: string | null }; 
+    date: Date 
+  }> = [];
+  
+  // Add consultations
+  consultations.forEach((consultation) => {
     const firstPromWithScore = consultation.proms && consultation.proms.length > 0
       ? (consultation.proms as GetCaseStatistics200ResponseResponseObjectConsultationsInnerPromsInner[]).find(
         p => p.scoring && (p.scoring as PromScoring).total != null,
       )
       : null;
     const dateStr = (firstPromWithScore?.createdAt ?? new Date()).toString();
-    const acquisitionDate = new Date(dateStr);
-    dates.push(acquisitionDate);    // Default scores
-    let aofasScore: number | null = null;
-    let efasScore: number | null = null;
-    let moxfqScore: number | null = null;
+    const consultationDate = new Date(dateStr);
+    
+    mixedItems.push({
+      type: 'consultation',
+      data: consultation,
+      date: consultationDate
+    });
+  });
+  
+  // Add surgeries
+  surgeries.value.forEach((surgery) => {
+    if (surgery.date) {
+      mixedItems.push({
+        type: 'surgery',
+        data: surgery,
+        date: new Date(surgery.date)
+      });
+    }
+  });
+  
+  // Sort by date
+  mixedItems.sort((a, b) => a.date.getTime() - b.date.getTime());
 
-    // Iterate prom entries and assign scores into categories using formTemplateId mapping
-    if (consultation.proms && Array.isArray(consultation.proms)) {
-      for (const promRaw of consultation.proms as GetCaseStatistics200ResponseResponseObjectConsultationsInnerPromsInner[]) {
-        const prom = promRaw as PromWithTemplate;
-        // Skip proms that have no scoring or no total score
-        const hasTotal = !!prom.scoring && (prom.scoring as PromScoring).total != null;
-        if (!hasTotal) continue;
+  let realTimeIdx = 0;
+  let fixedIntervalIdx = 0;
 
-        const tplId = prom.formTemplateId ? String(prom.formTemplateId) : null;
-        const score = prom.scoring?.total?.normalizedScore ?? null;
+  mixedItems.forEach((item) => {
+    if (item.type === 'surgery') {
+      // For fixed interval, add a blank point for the surgery space
+      (fixedInterval as unknown as Array<Record<string, unknown>>).push({
+        date: item.date.toString(),
+        dateIndex: fixedIntervalIdx++,
+        aofasScore: null,
+        efasScore: null,
+        moxfqScore: null,
+        vasScore: null,
+        isSurgery: true,
+        surgeryTherapy: (item.data as { date: string; therapy?: string | null }).therapy,
+      });
+    } else {
+      // It's a consultation
+      const consultation = item.data as GetCaseStatistics200ResponseResponseObjectConsultationsInner;
+      const dateStr = item.date.toString();
+      dates.push(item.date);
+      
+      let aofasScore: number | null = null;
+      let efasScore: number | null = null;
+      let moxfqScore: number | null = null;
+      let vasScore: number | null = null;
 
-        if (tplId && TEMPLATE_ID_TO_CATEGORY[tplId]) {
-          const cat = TEMPLATE_ID_TO_CATEGORY[tplId];
-          // update label from prom title if provided (only if the prom has a score)
-          if (prom.title) {
-            if (cat === "aofas") aofasLabel.value = prom.title;
-            if (cat === "efas") efasLabel.value = prom.title;
-            if (cat === "moxfq") moxfqLabel.value = prom.title;
-            if (cat === "vas") vasLabel.value = prom.title;
+      // Iterate prom entries and assign scores into categories using formTemplateId mapping
+      if (consultation.proms && Array.isArray(consultation.proms)) {
+        for (const promRaw of consultation.proms as GetCaseStatistics200ResponseResponseObjectConsultationsInnerPromsInner[]) {
+          const prom = promRaw as PromWithTemplate;
+          // Skip proms that have no scoring or no total score
+          const hasTotal = !!prom.scoring && (prom.scoring as PromScoring).total != null;
+          if (!hasTotal) continue;
+
+          const tplId = prom.formTemplateId ? String(prom.formTemplateId) : null;
+          const score = prom.scoring?.total?.normalizedScore ?? null;
+
+          if (tplId && TEMPLATE_ID_TO_CATEGORY[tplId]) {
+            const cat = TEMPLATE_ID_TO_CATEGORY[tplId];
+            // update label from prom title if provided (only if the prom has a score)
+            if (prom.title) {
+              if (cat === "aofas") aofasLabel.value = prom.title;
+              if (cat === "efas") efasLabel.value = prom.title;
+              if (cat === "moxfq") moxfqLabel.value = prom.title;
+              if (cat === "vas") vasLabel.value = prom.title;
+            }
+
+            if (cat === "aofas" && score != null) aofasScore = score;
+            if (cat === "efas" && score != null) efasScore = score;
+            if (cat === "moxfq" && score != null) moxfqScore = score;
           }
-
-          if (cat === "aofas" && score != null) aofasScore = score;
-          if (cat === "efas" && score != null) efasScore = score;
-          if (cat === "moxfq" && score != null) moxfqScore = score;
         }
       }
-    }
 
-    let vasScore: number | null = null;
+      // Check if any prom is VAS (pain scale)
+      if (consultation.proms && Array.isArray(consultation.proms)) {
+        for (const promRaw of consultation.proms as GetCaseStatistics200ResponseResponseObjectConsultationsInnerPromsInner[]) {
+          const prom = promRaw as PromWithTemplate;
+          const hasTotal = !!prom.scoring && (prom.scoring as PromScoring).total != null;
+          if (!hasTotal) continue;
 
-    // Check if any prom is VAS (pain scale)
-    if (consultation.proms && Array.isArray(consultation.proms)) {
-      for (const promRaw of consultation.proms as GetCaseStatistics200ResponseResponseObjectConsultationsInnerPromsInner[]) {
-        const prom = promRaw as PromWithTemplate;
-        const hasTotal = !!prom.scoring && (prom.scoring as PromScoring).total != null;
-        if (!hasTotal) continue;
-
-        // Check if this is a VAS form (pain scale) by looking at title or structure
-        if (prom.scoring?.total?.normalizedScore !== undefined) {
-          const score = prom.scoring.total.normalizedScore;
-          // VAS has a specific structure, check if rawData contains painScale
-          const rawData = (prom.scoring?.rawData as Record<string, unknown>) ?? {};
-          if ((rawData as Record<string, unknown>)?.painScale !== undefined) {
-            vasScore = score;
+          // Check if this is a VAS form (pain scale) by looking at title or structure
+          if (prom.scoring?.total?.normalizedScore !== undefined) {
+            const score = prom.scoring.total.normalizedScore;
+            // VAS has a specific structure, check if rawData contains painScale
+            const rawData = (prom.scoring?.rawData as Record<string, unknown>) ?? {};
+            if ((rawData as Record<string, unknown>)?.painScale !== undefined) {
+              vasScore = score;
+            }
           }
         }
       }
+
+      (realTime as unknown as Array<Record<string, unknown>>).push({
+        date: dateStr,
+        dateIndex: realTimeIdx++,
+        aofasScore,
+        efasScore,
+        moxfqScore,
+        vasScore,
+      });
+
+      (fixedInterval as unknown as Array<Record<string, unknown>>).push({
+        date: dateStr,
+        dateIndex: fixedIntervalIdx++,
+        aofasScore,
+        efasScore,
+        moxfqScore,
+        vasScore,
+      });
     }
-
-    (realTime as unknown as Array<Record<string, unknown>>).push({
-      date: dateStr,
-      dateIndex: idx,
-      aofasScore,
-      efasScore,
-      moxfqScore,
-      vasScore,
-    });
-
-    (fixedInterval as unknown as Array<Record<string, unknown>>).push({
-      date: dateStr,
-      dateIndex: idx + 1,
-      aofasScore,
-      efasScore,
-      moxfqScore,
-      vasScore,
-    });
   });
 
   // Store the acquisition dates for tooltip display
@@ -361,7 +424,16 @@ const fetchStatistics = async () => {
   try {
     const resp = await statisticsApi.getCaseStatistics({ caseId: caseId.value });
     // API wraps the payload in a response object
-    statistics.value = resp.responseObject ?? null;
+    statistics.value = (resp.responseObject as StatisticsWithSurgeries) ?? null;
+    
+    // Extract surgeries from statistics if available
+    if (statistics.value && statistics.value.surgeries) {
+      surgeries.value = statistics.value.surgeries.map(s => ({
+        date: s.surgeryDate || '',
+        therapy: s.therapy ?? null,
+      }));
+      console.debug('Extracted surgeries for annotations:', surgeries.value);
+    }
   } catch (err) {
     error.value = err instanceof Error ? err.message : String(err);
     notifierStore.error(error.value);
@@ -369,8 +441,6 @@ const fetchStatistics = async () => {
     loading.value = false;
   }
 };
-
-// We derive scoreData from the consultations returned by getCaseStatistics
 
 // Compute chart data based on timeline mode
 const chartData = computed<ChartData<"line"> | null>(() => {
@@ -462,8 +532,117 @@ const chartData = computed<ChartData<"line"> | null>(() => {
   };
 });
 
+// Generate surgery annotations for both real-time and fixed-interval timelines
+const generateSurgeryAnnotations = computed(() => {
+  const annotations: Record<string, {
+    type: 'line';
+    xMin: number;
+    xMax: number;
+    borderColor: string;
+    borderWidth: number;
+    borderDash: number[];
+    label: {
+      display: boolean;
+      content: string[];
+      position: string;
+      font: { size: number; weight: string };
+      color: string;
+      backgroundColor: string;
+      padding: number;
+      rotation?: number;
+    };
+  }> = {};
+
+  if (surgeries.value.length === 0 || !scoreData.value) {
+    return annotations;
+  }
+
+  const data = timelineMode.value === "realTime"
+    ? scoreData.value.realTime
+    : scoreData.value.fixedInterval;
+
+  if (!data || data.length === 0) {
+    return annotations;
+  }
+
+  // For realTime mode, use actual dates
+  if (timelineMode.value === "realTime") {
+    // Get the first consultation date to determine if surgery is at the beginning
+    const firstConsultationDate = acquisitionDates.value[0];
+    if (!firstConsultationDate) {
+      return annotations;
+    }
+
+    // Process each surgery
+    surgeries.value.forEach((surgery, idx) => {
+      if (!surgery.date) return;
+
+      const surgeryDate = new Date(surgery.date);
+      
+      // Skip annotation if surgery is at or before the first consultation date
+      // (it's obvious and doesn't need annotation)
+      // if (surgeryDate.getTime() <= firstConsultationDate.getTime()) {
+      //   return;
+      // }
+
+      const annotationKey = `surgery_${idx}`;
+      annotations[annotationKey] = {
+        type: "line",
+        xMin: surgeryDate.getTime(),
+        xMax: surgeryDate.getTime(),
+        borderColor: "rgb(200, 50, 50)",
+        borderWidth: 2,
+        borderDash: [5, 5],
+        label: {
+          display: true,
+          content: [surgery.therapy || t('statistics.surgery')],
+          position: "start",
+          font: {
+            size: 12,
+            weight: "bold",
+          },
+          color: "rgb(200, 50, 50)",
+          backgroundColor: "rgba(200, 50, 50, 0.1)",
+          padding: 4,
+          rotation: 90,
+        },
+      };
+    });
+  } else {
+    // For fixedInterval mode, find surgery points in the data array
+    data.forEach((point: GetScoreData200ResponseResponseObjectRealTimeInner & { isSurgery?: boolean; surgeryTherapy?: string }, idx: number) => {
+      if (point.isSurgery) {
+        const annotationKey = `surgery_${idx}`;
+        annotations[annotationKey] = {
+          type: "line",
+          xMin: idx,
+          xMax: idx,
+          borderColor: "rgb(200, 50, 50)",
+          borderWidth: 2,
+          borderDash: [5, 5],
+          label: {
+            display: true,
+            content: [point.surgeryTherapy || t('statistics.surgery')],
+            position: "start",
+            font: {
+              size: 12,
+              weight: "bold",
+            },
+            color: "rgb(200, 50, 50)",
+            backgroundColor: "rgba(200, 50, 50, 0.1)",
+            padding: 4,
+            rotation: 90,
+          },
+        };
+      }
+    });
+  }
+
+  return annotations;
+});
+
 // Chart options based on timeline mode
-const chartOptions = computed<ChartOptions<"line">>(() => {
+const chartOptions = computed(() => {
   const baseOptions: ChartOptions<"line"> = {
     responsive: true,
     maintainAspectRatio: false,
@@ -477,7 +656,7 @@ const chartOptions = computed<ChartOptions<"line">>(() => {
         text: t('statistics.chartTitle'),
       },
       tooltip: {
-        mode: "index",
+        mode: "index" as const,
         intersect: false,
       },
       zoom: {
@@ -495,6 +674,9 @@ const chartOptions = computed<ChartOptions<"line">>(() => {
           mode: "xy",
         },
       },
+      annotation: {
+        annotations: generateSurgeryAnnotations.value as Record<string, AnnotationOptions>,
+      },
     },
     scales: {
       y: {
@@ -509,13 +691,12 @@ const chartOptions = computed<ChartOptions<"line">>(() => {
   };
 
   if (timelineMode.value === "realTime") {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const stats = statistics.value as any;
+     
+    const stats = statistics.value as StatisticsWithSurgeries | null;
 
     // Calculate x-axis bounds
-    const surgeryDate = stats?.surgeryDate ? new Date(stats.surgeryDate) : null;
-    const caseCreatedAt = stats?.caseCreatedAt ? new Date(stats.caseCreatedAt) : null;
-    const referenceDate = surgeryDate || caseCreatedAt || new Date();
+    const referenceDate = (stats?.surgeryDate ? new Date(stats.surgeryDate) : null) || (stats?.caseCreatedAt ? new Date(stats.caseCreatedAt) : null) || new Date();
+    const isSurgeryReference = !!stats?.surgeryDate;
 
     // BUG FIX (gffc branch): Use last consultation date instead of current date
     // This allows the chart to show future consultation dates in the gffc branch
@@ -530,32 +711,35 @@ const chartOptions = computed<ChartOptions<"line">>(() => {
       plugins: {
         ...baseOptions.plugins,
         tooltip: {
-          mode: "index",
+          mode: "index" as const,
           intersect: false,
           callbacks: {
-            title: (context) => {
+            title: (context: TooltipItem<"line">[]) => {
               if (context.length === 0) return "";
               const dataIndex = context[0].dataIndex;
               const date = acquisitionDates.value[dataIndex];
               if (date && referenceDate) {
                 const timeSince = calculateTimeSinceReference(date, referenceDate);
                 const afterText = t('statistics.after');
-                const referenceText = surgeryDate ? t('statistics.surgery') : t('statistics.caseCreation');
+                const referenceText = isSurgeryReference ? t('statistics.surgery') : t('statistics.caseCreation');
                 return `${date.toLocaleDateString(currentLocale.value)} (${timeSince} ${afterText} ${referenceText})`;
               }
               return date ? date.toLocaleDateString(currentLocale.value) : '';
             },
           },
         },
+        annotation: {
+          annotations: generateSurgeryAnnotations.value as Record<string, AnnotationOptions>,
+        },
       },
       scales: {
         ...baseOptions.scales,
         x: {
-          type: "time",
+          type: "time" as const,
           min: referenceDate.getTime(),
           max: lastConsultationDate.getTime(), // BUG FIX (gffc): was now.getTime()
           time: {
-            unit: "week",
+            unit: "week" as const,
             displayFormats: {
               week: "dd MMM yyyy",
               day: "dd MMM yyyy",
@@ -564,7 +748,7 @@ const chartOptions = computed<ChartOptions<"line">>(() => {
           },
           title: {
             display: true,
-            text: surgeryDate ? t('statistics.timeSinceSurgery') : t('statistics.timeSinceCase'),
+            text: isSurgeryReference ? t('statistics.timeSinceSurgery') : t('statistics.timeSinceCase'),
           },
         },
       },
@@ -575,10 +759,10 @@ const chartOptions = computed<ChartOptions<"line">>(() => {
       plugins: {
         ...baseOptions.plugins,
         tooltip: {
-          mode: "index",
+          mode: "index" as const,
           intersect: false,
           callbacks: {
-            title: (context) => {
+            title: (context: TooltipItem<"line">[]) => {
               if (context.length === 0) return "";
               const dataIndex = context[0].dataIndex;
               const date = acquisitionDates.value[dataIndex];
