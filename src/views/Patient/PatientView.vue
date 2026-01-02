@@ -217,7 +217,7 @@ watch(activeTab, (newTab) => {
                 <p class="mt-1">
                   {{
                     t('forms.patientDetails', {
-                      externalId: patient.externalPatientId[0],
+                      externalId: patient.externalPatientId?.[0],
                       id: patient.id,
                     })
                   }}

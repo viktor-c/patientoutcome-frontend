@@ -136,15 +136,15 @@ const createPatient = async () => {
   if (!canProceedFromStep1.value) return
 
   // Show warning if external ID is missing
-  if (!patientData.value.externalPatientId[0] || !patientData.value.externalPatientId[0].trim()) {
+  if (!patientData.value.externalPatientId?.[0] || !patientData.value.externalPatientId[0]?.trim()) {
     showExternalIdWarning.value = true
   }
 
   isLoading.value = true
   try {
     // Filter out empty external IDs
-    const filteredExternalIds = patientData.value.externalPatientId
-      .map(id => id.trim())
+    const filteredExternalIds = (patientData.value.externalPatientId || [])
+      .map(id => (id || '').trim())
       .filter(id => id !== '')
     
     const patientDataToSend = {
@@ -177,7 +177,7 @@ const createPatient = async () => {
     // Check if it's a duplicate external ID error
     if (errorCode === 'DUPLICATE_EXTERNAL_ID' || errorMessage.toLowerCase().includes('external')) {
       // Extract external ID from the first field
-      duplicateExternalId.value = patientData.value.externalPatientId[0]
+      duplicateExternalId.value = patientData.value.externalPatientId?.[0] || ''
       showDuplicatePatientDialog.value = true
       notifierStore.notify(t('alerts.patient.duplicateExternalId'), 'info')
     } else {
@@ -354,12 +354,15 @@ const cancel = () => {
 }
 
 // Add external ID to patient
-const addExternalId = () => {
+const addExternalIdField = () => {
+  if (!patientData.value.externalPatientId) {
+    patientData.value.externalPatientId = []
+  }
   patientData.value.externalPatientId.push('')
 }
 
-const removeExternalId = (index: number) => {
-  if (patientData.value.externalPatientId.length > 1) {
+const removeExternalIdField = (index: number) => {
+  if (patientData.value.externalPatientId && patientData.value.externalPatientId.length > 1) {
     patientData.value.externalPatientId.splice(index, 1)
   }
 }
@@ -368,6 +371,9 @@ const removeExternalId = (index: number) => {
 onMounted(async () => {
   const externalId = route.query.externalId as string
   if (externalId && externalId.trim() !== '') {
+    if (!patientData.value.externalPatientId) {
+      patientData.value.externalPatientId = []
+    }
     patientData.value.externalPatientId[0] = externalId
   }
 
@@ -459,19 +465,19 @@ onMounted(async () => {
                     
                     <v-form>
                       <!-- External Patient IDs -->
-                      <div v-for="(externalId, index) in patientData.externalPatientId" :key="index" class="mb-2">
+                      <div v-for="(externalId, index) in patientData.externalPatientId || []" :key="index" class="mb-2">
                         <v-row align="center">
                           <v-col cols="10">
                             <v-text-field
-                                          v-model="patientData.externalPatientId[index]"
+                                          v-model="patientData.externalPatientId![index]"
                                           :label="t('forms.patient.externalId') + (index > 0 ? ' ' + (index + 1) : '')"
                                           :hint="index === 0 ? t('forms.externalIdHint') : ''"
                                           :persistent-hint="index === 0"></v-text-field>
                           </v-col>
                           <v-col cols="2">
                             <v-btn
-                                   v-if="index === patientData.externalPatientId.length - 1"
-                                   @click="addExternalId"
+                                   v-if="index === (patientData.externalPatientId?.length ?? 0) - 1"
+                                   @click="addExternalIdField"
                                    icon="mdi-plus"
                                    size="small"
                                    color="primary"
@@ -479,7 +485,7 @@ onMounted(async () => {
                                    :title="t('forms.patient.addExternalId')"></v-btn>
                             <v-btn
                                    v-if="index > 0"
-                                   @click="removeExternalId(index)"
+                                   @click="removeExternalIdField(index)"
                                    icon="mdi-minus"
                                    size="small"
                                    color="error"
