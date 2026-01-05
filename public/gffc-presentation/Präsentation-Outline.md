@@ -170,7 +170,7 @@
   - Deployment
     - Domain notwendig
     - script to deploy to Hetzner Server (KI generiert)
-      - CX22 Server 
+      - CX23 Server 
         - 2vCPU, 4 GB RAM, 40 GB Disk lokal
         - 3,92/mo; 48€/Jahr
     - initial setup with welcome script -> Demo
