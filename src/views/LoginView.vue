@@ -61,21 +61,10 @@ async function checkSetupStatus() {
   }
 }
 
-// Check if username starts with "kiosk" for kiosk mode (case-insensitive)
-const isKioskMode = computed(() => {
-  return username.value.trim().toLowerCase().startsWith('kiosk')
-})
-
 // Computed: check if form is ready to submit
 const canSubmit = computed(() => {
-  // For kiosk mode, only username is required
-  if (isKioskMode.value) {
-    return username.value.trim() !== ''
-  }
-  // For normal mode, both fields are required
   return username.value.trim() !== '' && password.value.trim() !== ''
 })
-
 
 const login = async () => {
   if (!username.value) {
@@ -83,58 +72,35 @@ const login = async () => {
     return
   }
 
-  // Check if kiosk mode
-  if (isKioskMode.value) {
-    // Kiosk login (passwordless) using generated API
-    isLoading.value = true
-    try {
-      const response = await userApi.kioskLoginUser({ kioskLoginUserRequest: { username: username.value.trim().toLowerCase() } })
+  if (!password.value) {
+    notifierStore.notify('Please fill in both username and password.', 'error')
+    return
+  }
 
-      if (response.responseObject && response.success && response.statusCode === 200) {
-        userStore.setSession({
-          username: response.responseObject.username,
-          department: response.responseObject.department,
-          belongsToCenter: response.responseObject.belongsToCenter,
-          email: response.responseObject.email || '',
-          roles: response.responseObject.roles || [],
-          postopWeek: response.responseObject.postopWeek
-        })
-        notifierStore.notify('Kiosk login successful!', 'success')
+  isLoading.value = true
+  try {
+    const response = await userApi.loginUser({ loginUserRequest: { username: username.value, password: password.value } })
+    if (response.responseObject && response.success && response.statusCode == 200) {
+      userStore.setSession({
+        username: username.value,
+        department: response.responseObject.department,
+        belongsToCenter: response.responseObject.belongsToCenter,
+        email: response.responseObject.email || '',
+        roles: (response.responseObject as LoginUser200ResponseResponseObject & { roles?: string[] }).roles || []
+      })
+      notifierStore.notify(t('login.loginSuccessfull'), 'success')
+      
+      // Redirect based on user role
+      if (userStore.isKioskUser()) {
         router.push('/kiosk')
       } else {
-        notifierStore.notify(response.message || 'Kiosk login failed', 'error')
-      }
-    } catch (error: unknown) {
-      console.error('Kiosk login error:', error)
-      notifierStore.notify('An error occurred during kiosk login.', 'error')
-    } finally {
-      isLoading.value = false
-    }
-  } else {
-    // Normal login with password
-    if (!password.value) {
-      notifierStore.notify('Please fill in both username and password.', 'error')
-      return
-    }
-
-    isLoading.value = true
-    try {
-      const response = await userApi.loginUser({ loginUserRequest: { username: username.value, password: password.value } })
-      if (response.responseObject && response.success && response.statusCode == 200) {
-        userStore.setSession({
-          username: username.value,
-          department: response.responseObject.department,
-          belongsToCenter: response.responseObject.belongsToCenter,
-          email: response.responseObject.email || '',
-          roles: (response.responseObject as LoginUser200ResponseResponseObject & { roles?: string[] }).roles || []
-        })
-        notifierStore.notify(t('login.loginSuccessfull'), 'success')
         const redirect = router.currentRoute.value.query.redirect as string | undefined
         if (redirect) {
           router.push(redirect)
         } else {
           router.push('/dashboard')
         }
+      }
       } else {
         notifierStore.notify('Invalid username or password.', 'error')
       }
@@ -166,17 +132,10 @@ const login = async () => {
     <v-card v-else>
       <v-card-title>{{ t('login.title') }}</v-card-title>
       <v-card-text>
-        <!-- Kiosk mode indicator -->
-        <v-alert v-if="isKioskMode" type="info" variant="tonal" class="mb-4" density="compact">
-          <v-icon icon="mdi-monitor-dashboard" class="mr-2"></v-icon>
-          Kiosk Mode - No password required
-        </v-alert>
-
         <v-form @submit.prevent="login">
           <v-text-field v-model="username" :label="t('login.username')" outlined dense required
-                        autocomplete="username" autofocus
-                        hint="Enter username starting with 'kiosk' for kiosk mode"></v-text-field>
-          <v-text-field v-if="!isKioskMode" v-model="password" :label="t('login.password')" type="password" outlined
+                        autocomplete="username" autofocus></v-text-field>
+          <v-text-field v-model="password" :label="t('login.password')" type="password" outlined
                         dense
                         required autocomplete="current-password"></v-text-field>
           <div class="d-flex justify-center">
@@ -190,10 +149,10 @@ const login = async () => {
                        color="primary"
                        type="submit"
                        :disabled="!canSubmit">
-                  {{ isKioskMode ? 'Kiosk Login' : t('login.loginButton') }}
+                  {{ t('login.loginButton') }}
                 </v-btn>
               </template>
-              <span>{{ isKioskMode ? 'Enter kiosk username' : t('login.fillFields') }}</span>
+              <span>{{ t('login.fillFields') }}</span>
             </v-tooltip>
 
             <template v-else>
@@ -207,9 +166,7 @@ const login = async () => {
               </v-btn>
             </template>
           </div>
-          <div class="text-center mt-2 text-caption text-grey" v-if="!canSubmit">{{ isKioskMode ? 'Enter kiosk username'
-            :
-            t('login.fillFields') }}</div>
+          <div class="text-center mt-2 text-caption text-grey" v-if="!canSubmit">{{ t('login.fillFields') }}</div>
         </v-form>
         <v-divider class="mt-4"></v-divider>
         <div class="text-center mt-4">
