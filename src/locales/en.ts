@@ -1011,8 +1011,7 @@ export default {
     consultationTemplates: 'Consultation Templates',
     surgeryBlueprints: 'Surgery Blueprints',
     caseBlueprints: 'Case Blueprints',
-    databaseBackup: 'Database Backup',
-    automatedBackups: 'Automated Backups',
+    backupManagement: 'Backup Management',
     setup: 'Setup',
   },
 
