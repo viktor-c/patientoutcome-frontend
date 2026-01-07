@@ -393,9 +393,13 @@ onMounted(async () => {
               class="elevation-1"
             >
               <template v-slot:[`item.encryption`]="{ item }">
-                <v-icon v-if="item.isEncrypted || item.encryptedWithPassword" size="small" color="warning">
-                  mdi-key
-                </v-icon>
+                <v-tooltip v-if="item.isEncrypted || item.encryptedWithPassword" :text="$t('backup.encrypted')" location="top">
+                  <template v-slot:activator="{ props }">
+                    <v-icon v-bind="props" size="small" color="warning">
+                      mdi-key
+                    </v-icon>
+                  </template>
+                </v-tooltip>
               </template>
               <template v-slot:[`item.startedAt`]="{ item }">
                 {{ formatDate(item.startedAt) }}
@@ -417,28 +421,43 @@ onMounted(async () => {
                 </v-chip>
               </template>
               <template v-slot:[`item.actions`]="{ item }">
-                <v-btn
-                  icon="mdi-download"
-                  size="small"
-                  variant="text"
-                  @click="downloadBackup(item)"
-                  :disabled="item.status !== 'completed'"
-                />
-                <v-btn
-                  icon="mdi-database-import"
-                  size="small"
-                  variant="text"
-                  color="primary"
-                  @click="openRestoreDialog(item)"
-                  :disabled="item.status !== 'completed'"
-                />
-                <v-btn
-                  icon="mdi-delete"
-                  size="small"
-                  variant="text"
-                  color="error"
-                  @click="openDeleteDialog(item)"
-                />
+                <v-tooltip :text="$t('backup.download')" location="top">
+                  <template v-slot:activator="{ props }">
+                    <v-btn
+                      v-bind="props"
+                      icon="mdi-download"
+                      size="small"
+                      variant="text"
+                      @click="downloadBackup(item)"
+                      :disabled="item.status !== 'completed'"
+                    />
+                  </template>
+                </v-tooltip>
+                <v-tooltip :text="$t('backup.restore')" location="top">
+                  <template v-slot:activator="{ props }">
+                    <v-btn
+                      v-bind="props"
+                      icon="mdi-database-import"
+                      size="small"
+                      variant="text"
+                      color="primary"
+                      @click="openRestoreDialog(item)"
+                      :disabled="item.status !== 'completed'"
+                    />
+                  </template>
+                </v-tooltip>
+                <v-tooltip :text="$t('backup.delete')" location="top">
+                  <template v-slot:activator="{ props }">
+                    <v-btn
+                      v-bind="props"
+                      icon="mdi-delete"
+                      size="small"
+                      variant="text"
+                      color="error"
+                      @click="openDeleteDialog(item)"
+                    />
+                  </template>
+                </v-tooltip>
               </template>
             </v-data-table>
           </v-card-text>

@@ -1218,4 +1218,10 @@ export default {
     surgery: 'surgery',
     caseCreation: 'case creation',
   },
+  backup: {
+    encrypted: 'Encrypted Backup',
+    download: 'Download Backup',
+    restore: 'Restore Backup',
+    delete: 'Delete Backup',
+  },
 }

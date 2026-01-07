@@ -1217,4 +1217,10 @@ export default {
     surgery: 'OP',
     caseCreation: 'Fallerstellung',
   },
+  backup: {
+    encrypted: 'Verschlüsselte Sicherung',
+    download: 'Sicherung herunterladen',
+    restore: 'Sicherung wiederherstellen',
+    delete: 'Sicherung löschen',
+  },
 }
