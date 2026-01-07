@@ -35,6 +35,8 @@ const encryptBackup = ref(false);
 const encryptionPassword = ref('');
 const uploadFile = ref<File | null>(null);
 const uploadDialog = ref(false);
+const manualBackupStorageType = ref<'local' | 's3' | 'sftp' | 'webdav'>('local');
+const manualBackupCredentialId = ref<string | null>(null);
 
 // Delete confirmation
 const deleteDialog = ref(false);
@@ -197,6 +199,11 @@ const createManualBackup = async () => {
     return;
   }
 
+  if (manualBackupStorageType.value !== 'local' && !manualBackupCredentialId.value) {
+    notifierStore.notify('Please select credentials for remote storage', 'info');
+    return;
+  }
+
   manualBackupLoading.value = true;
   try {
     const response = await backupApi.createManualBackup({
@@ -204,7 +211,8 @@ const createManualBackup = async () => {
         collections: selectedBackupCollections.value.length === collections.value.length 
           ? [] // Empty means all collections
           : selectedBackupCollections.value,
-        storageType: 'local',
+        storageType: manualBackupStorageType.value,
+        credentialId: manualBackupStorageType.value !== 'local' ? manualBackupCredentialId.value : undefined,
         encryptionEnabled: encryptBackup.value,
         password: encryptBackup.value ? encryptionPassword.value : undefined,
       },
@@ -214,6 +222,8 @@ const createManualBackup = async () => {
       notifierStore.notify('Backup created successfully', 'success');
       encryptionPassword.value = '';
       encryptBackup.value = false;
+      manualBackupStorageType.value = 'local';
+      manualBackupCredentialId.value = null;
       await loadBackupHistory();
     }
   } catch (error) {
@@ -518,6 +528,14 @@ const availableCredentials = computed(() => {
   return credentials.value.filter(c => c.storageType === newJob.value.storageType);
 });
 
+const manualBackupAvailableCredentials = computed(() => {
+  return credentials.value.filter(c => c.storageType === manualBackupStorageType.value);
+});
+
+const hasRemoteCredentials = computed(() => {
+  return credentials.value.some(c => c.storageType !== 'local');
+});
+
 interface CollectionComparison {
   name: string;
   backupCount: number;
@@ -590,6 +608,19 @@ onMounted(async () => {
                   <v-card-title>Create Manual Backup</v-card-title>
                   <v-card-text>
                     <v-row>
+                      <v-col cols="12">
+                        <v-alert
+                          v-if="!hasRemoteCredentials"
+                          type="info"
+                          variant="tonal"
+                          density="compact"
+                          class="mb-4"
+                        >
+                          Backup will be saved to local storage. Add remote storage credentials to enable cloud backup.
+                        </v-alert>
+                      </v-col>
+                    </v-row>
+                    <v-row>
                       <v-col cols="12" md="6">
                         <v-select
                           v-model="selectedBackupCollections"
@@ -605,6 +636,29 @@ onMounted(async () => {
                         />
                       </v-col>
                       <v-col cols="12" md="6">
+                        <v-select
+                          v-if="hasRemoteCredentials"
+                          v-model="manualBackupStorageType"
+                          :items="storageTypeOptions"
+                          label="Storage Location"
+                          hint="Select where to save the backup"
+                          persistent-hint
+                        />
+                        <v-select
+                          v-if="hasRemoteCredentials && manualBackupStorageType !== 'local'"
+                          v-model="manualBackupCredentialId"
+                          :items="manualBackupAvailableCredentials"
+                          item-title="name"
+                          item-value="_id"
+                          label="Select Credentials"
+                          hint="Choose credentials for remote storage"
+                          persistent-hint
+                          class="mt-2"
+                        />
+                      </v-col>
+                    </v-row>
+                    <v-row>
+                      <v-col cols="12">
                         <v-checkbox
                           v-model="encryptBackup"
                           label="Encrypt backup with password"
