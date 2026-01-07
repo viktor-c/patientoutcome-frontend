@@ -37,6 +37,7 @@ const deleteLoading = ref(false);
 
 const headers = [
   { title: 'Filename', key: 'filename', sortable: true },
+  { title: 'Encryption', key: 'encryption', sortable: false },
   { title: 'Created', key: 'startedAt', sortable: true },
   { title: 'Size', key: 'sizeBytes', sortable: true },
   { title: 'Collections', key: 'collections', sortable: false },
@@ -391,13 +392,10 @@ onMounted(async () => {
               :loading="loading"
               class="elevation-1"
             >
-              <template v-slot:[`item.filename`]="{ item }">
-                <div class="d-flex align-center gap-2">
-                  <v-icon v-if="item.isEncrypted || item.encryptedWithPassword" size="small" color="warning">
-                    mdi-key
-                  </v-icon>
-                  <span>{{ item.filename }}</span>
-                </div>
+              <template v-slot:[`item.encryption`]="{ item }">
+                <v-icon v-if="item.isEncrypted || item.encryptedWithPassword" size="small" color="warning">
+                  mdi-key
+                </v-icon>
               </template>
               <template v-slot:[`item.startedAt`]="{ item }">
                 {{ formatDate(item.startedAt) }}
