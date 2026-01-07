@@ -27,6 +27,14 @@ const encryptionPassword = ref('');
 const uploadFile = ref<File | null>(null);
 const uploadDialog = ref(false);
 
+// Delete confirmation
+const deleteDialog = ref(false);
+const deleteConfirmDialog = ref(false);
+const backupToDelete = ref<GetBackupHistory200ResponseResponseObjectInner | null>(null);
+const deleteConfirmationWord = ref('');
+const requiredConfirmationWord = ref('');
+const deleteLoading = ref(false);
+
 const headers = [
   { title: 'Filename', key: 'filename', sortable: true },
   { title: 'Created', key: 'startedAt', sortable: true },
@@ -227,6 +235,50 @@ const handleFileUpload = async () => {
   }
 };
 
+const openDeleteDialog = (backup: GetBackupHistory200ResponseResponseObjectInner) => {
+  backupToDelete.value = backup;
+  deleteDialog.value = true;
+};
+
+const confirmDeleteStep1 = () => {
+  deleteDialog.value = false;
+  // Randomly select one of the three confirmation words
+  const words = ['delete', 'trash', 'yes'];
+  requiredConfirmationWord.value = words[Math.floor(Math.random() * words.length)];
+  deleteConfirmationWord.value = '';
+  deleteConfirmDialog.value = true;
+};
+
+const confirmDeleteStep2 = async () => {
+  if (deleteConfirmationWord.value.toLowerCase() !== requiredConfirmationWord.value) {
+    notifierStore.notify(`Please type "${requiredConfirmationWord.value}" to confirm`, 'info');
+    return;
+  }
+
+  if (!backupToDelete.value?.id) return;
+
+  deleteLoading.value = true;
+  try {
+    await backupApi.deleteBackup({ id: backupToDelete.value.id });
+    notifierStore.notify('Backup deleted successfully', 'success');
+    deleteConfirmDialog.value = false;
+    backupToDelete.value = null;
+    await loadBackupHistory();
+  } catch (error) {
+    notifierStore.notify('Failed to delete backup', 'error');
+    console.error('Error deleting backup:', error);
+  } finally {
+    deleteLoading.value = false;
+  }
+};
+
+const cancelDelete = () => {
+  deleteDialog.value = false;
+  deleteConfirmDialog.value = false;
+  backupToDelete.value = null;
+  deleteConfirmationWord.value = '';
+};
+
 interface CollectionComparison {
   name: string;
   backupCount: number;
@@ -339,6 +391,14 @@ onMounted(async () => {
               :loading="loading"
               class="elevation-1"
             >
+              <template v-slot:[`item.filename`]="{ item }">
+                <div class="d-flex align-center gap-2">
+                  <v-icon v-if="item.isEncrypted || item.encryptedWithPassword" size="small" color="warning">
+                    mdi-key
+                  </v-icon>
+                  <span>{{ item.filename }}</span>
+                </div>
+              </template>
               <template v-slot:[`item.startedAt`]="{ item }">
                 {{ formatDate(item.startedAt) }}
               </template>
@@ -373,6 +433,13 @@ onMounted(async () => {
                   color="primary"
                   @click="openRestoreDialog(item)"
                   :disabled="item.status !== 'completed'"
+                />
+                <v-btn
+                  icon="mdi-delete"
+                  size="small"
+                  variant="text"
+                  color="error"
+                  @click="openDeleteDialog(item)"
                 />
               </template>
             </v-data-table>
@@ -489,6 +556,76 @@ onMounted(async () => {
             @click="handleFileUpload"
           >
             Upload
+          </v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
+
+    <!-- Delete Confirmation Dialog - Step 1 -->
+    <v-dialog v-model="deleteDialog" max-width="500px" persistent>
+      <v-card>
+        <v-card-title class="text-h5 text-error">
+          <v-icon color="error" class="mr-2">mdi-alert-circle</v-icon>
+          Delete Backup?
+        </v-card-title>
+        <v-card-text>
+          <v-alert type="error" variant="tonal" class="mb-4">
+            <div class="font-weight-bold">⚠️ WARNING: This action cannot be undone!</div>
+            <div class="mt-2">The backup file and all associated data will be permanently deleted.</div>
+          </v-alert>
+          <div class="mt-4">
+            <div><strong>Backup:</strong> {{ backupToDelete?.filename }}</div>
+            <div><strong>Created:</strong> {{ backupToDelete?.startedAt ? formatDate(backupToDelete.startedAt) : 'N/A' }}</div>
+            <div><strong>Size:</strong> {{ backupToDelete?.sizeBytes ? formatBytes(backupToDelete.sizeBytes) : 'N/A' }}</div>
+          </div>
+        </v-card-text>
+        <v-card-actions>
+          <v-spacer />
+          <v-btn text @click="cancelDelete">Cancel</v-btn>
+          <v-btn color="error" variant="flat" @click="confirmDeleteStep1">
+            Continue to Delete
+          </v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
+
+    <!-- Delete Confirmation Dialog - Step 2 -->
+    <v-dialog v-model="deleteConfirmDialog" max-width="500px" persistent>
+      <v-card>
+        <v-card-title class="text-h5 text-error">
+          <v-icon color="error" class="mr-2">mdi-alert-octagon</v-icon>
+          Final Confirmation Required
+        </v-card-title>
+        <v-card-text>
+          <v-alert type="error" variant="tonal" prominent class="mb-4">
+            <div class="font-weight-bold text-h6">⚠️ FINAL WARNING!</div>
+            <div class="mt-2">This backup will be permanently deleted and CANNOT be recovered.</div>
+          </v-alert>
+          <div class="mt-4 mb-4">
+            <p class="font-weight-bold">To confirm deletion, please type the word:</p>
+            <p class="text-h5 text-center text-error my-3">"{{ requiredConfirmationWord }}"</p>
+          </div>
+          <v-text-field
+            v-model="deleteConfirmationWord"
+            label="Type confirmation word"
+            variant="outlined"
+            :hint="`Type '${requiredConfirmationWord}' to confirm`"
+            persistent-hint
+            autofocus
+            @keyup.enter="confirmDeleteStep2"
+          />
+        </v-card-text>
+        <v-card-actions>
+          <v-spacer />
+          <v-btn text @click="cancelDelete">Cancel</v-btn>
+          <v-btn 
+            color="error" 
+            variant="flat" 
+            :loading="deleteLoading"
+            :disabled="deleteConfirmationWord.toLowerCase() !== requiredConfirmationWord"
+            @click="confirmDeleteStep2"
+          >
+            Delete Permanently
           </v-btn>
         </v-card-actions>
       </v-card>
