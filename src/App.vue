@@ -3,7 +3,6 @@ import { RouterLink, RouterView, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { ref, computed } from 'vue'
 import LanguageSelector from '@/components/LanguageSelector.vue'
-import RoleSwitcher from '@/components/RoleSwitcher.vue'
 import AppFooter from '@/components/AppFooter.vue'
 import { useNotifierStore, useUserStore } from '@/stores/'
 

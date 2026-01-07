@@ -26,6 +26,8 @@ import DepartmentManagement from '@/views/Admin/DepartmentManagement.vue'
 import ConsultationTemplates from '@/views/Admin/ConsultationTemplates.vue'
 import SurgeryBlueprints from '@/views/Admin/SurgeryBlueprints.vue'
 import CaseBlueprints from '@/views/Admin/CaseBlueprints.vue'
+import DatabaseBackup from '@/views/Admin/DatabaseBackup.vue'
+import AutomatedBackups from '@/views/Admin/AutomatedBackups.vue'
 import { useUserStore } from '@/stores/userStore'
 
 const routes = [
@@ -108,6 +110,18 @@ const routes = [
         name: 'admin-case-blueprints',
         component: CaseBlueprints,
         meta: { titleKey: 'pageTitles.caseBlueprints', requiredRole: 'admin' }
+      },
+      {
+        path: 'database-backup',
+        name: 'admin-database-backup',
+        component: DatabaseBackup,
+        meta: { titleKey: 'pageTitles.databaseBackup', requiredRole: 'admin' }
+      },
+      {
+        path: 'automated-backups',
+        name: 'admin-automated-backups',
+        component: AutomatedBackups,
+        meta: { titleKey: 'pageTitles.automatedBackups', requiredRole: 'admin' }
       },
     ]
   },

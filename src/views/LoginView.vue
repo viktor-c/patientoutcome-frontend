@@ -101,9 +101,9 @@ const login = async () => {
           router.push('/dashboard')
         }
       }
-      } else {
-        notifierStore.notify('Invalid username or password.', 'error')
-      }
+    } else {
+      notifierStore.notify('Invalid username or password.', 'error')
+    }
     } catch (error: unknown) {
       let errorMessage = 'An unexpected error occurred'
       if (error instanceof ResponseError) {
@@ -115,7 +115,7 @@ const login = async () => {
       isLoading.value = false
     }
   }
-}
+
 </script>
 
 <template>
@@ -162,7 +162,7 @@ const login = async () => {
                      :loading="isLoading"
                      color="primary"
                      type="submit">
-                {{ isKioskMode ? 'Kiosk Login' : t('login.loginButton') }}
+                {{ t('login.loginButton') }}
               </v-btn>
             </template>
           </div>
