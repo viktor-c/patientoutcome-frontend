@@ -52,6 +52,7 @@ const editingJob = ref<GetAllBackupJobs200ResponseResponseObjectInner | null>(nu
 
 const backupHistoryHeaders = [
   { title: 'Filename', key: 'filename', sortable: true },
+  { title: 'Storage', key: 'storage', sortable: false },
   { title: 'Encryption', key: 'encryption', sortable: false },
   { title: 'Created', key: 'startedAt', sortable: true },
   { title: 'Size', key: 'sizeBytes', sortable: true },
@@ -201,13 +202,13 @@ const createManualBackup = async () => {
   manualBackupLoading.value = true;
   try {
     const destination = backupDestinations.value.find(d => d.value === selectedDestination.value);
-    
+
     const response = await backupApi.createManualBackup({
       createManualBackupRequest: {
-        collections: selectedBackupCollections.value.length === collections.value.length 
+        collections: selectedBackupCollections.value.length === collections.value.length
           ? [] // Empty means all collections
           : selectedBackupCollections.value,
-        storageType: destination?.storageType || 'local',
+        storageType: (destination?.storageType || 'local') as any,
         credentialId: destination?.credentialId || undefined,
         encryptionEnabled: encryptBackup.value,
         password: encryptBackup.value ? encryptionPassword.value : undefined,
@@ -527,13 +528,13 @@ const backupDestinations = computed(() => {
   const destinations = [
     {
       value: 'local',
-      title: 'Local Storage',
+      title: 'Server Storage',
       subtitle: 'Save to server filesystem',
-      storageType: 'local' as const,
-      credentialId: null
+      storageType: 'local',
+      credentialId: ""
     }
   ];
-  
+
   credentials.value.forEach(cred => {
     const typeLabel = {
       's3': 'Amazon S3',
@@ -541,22 +542,43 @@ const backupDestinations = computed(() => {
       'webdav': 'WebDAV',
       'local': 'Local'
     }[cred.storageType] || cred.storageType;
-    
+
     destinations.push({
-      value: cred._id!,
+      value: cred.id!,
       title: cred.name,
       subtitle: typeLabel,
       storageType: cred.storageType,
-      credentialId: cred._id!
+      credentialId: cred.id!
     });
   });
-  
+
   return destinations;
 });
 
 const hasRemoteCredentials = computed(() => {
   return credentials.value.length > 0;
 });
+
+const getStorageDisplayName = (backup: GetBackupHistory200ResponseResponseObjectInner): string => {
+  if (backup.storageType === 'local') {
+    return 'Server Storage';
+  }
+  
+  if (backup.credentialId) {
+    const credential = credentials.value.find(c => c.id === backup.credentialId);
+    if (credential) {
+      return credential.name;
+    }
+  }
+  
+  // Fallback to storage type
+  const typeLabels: Record<string, string> = {
+    's3': 'Amazon S3',
+    'sftp': 'SFTP',
+    'webdav': 'WebDAV'
+  };
+  return typeLabels[backup.storageType] || backup.storageType;
+};
 
 interface CollectionComparison {
   name: string;
@@ -599,8 +621,8 @@ onMounted(async () => {
     <!-- Credentials Manager - Collapsed by default -->
     <v-row>
       <v-col cols="12">
-        <CredentialsManager 
-          :credentials="credentials" 
+        <CredentialsManager
+          :credentials="credentials"
           @refresh="loadCredentials"
         />
       </v-col>
@@ -638,7 +660,7 @@ onMounted(async () => {
                           density="compact"
                           class="mb-4"
                         >
-                          Backup will be saved to local storage. Add remote storage credentials to enable cloud backup.
+                          Backup will be saved to the server filesystem. Add remote storage credentials to enable cloud backup options.
                         </v-alert>
                       </v-col>
                     </v-row>
@@ -731,6 +753,11 @@ onMounted(async () => {
                       :loading="loading"
                       class="elevation-1"
                     >
+                      <template v-slot:[`item.storage`]="{ item }">
+                        <v-chip size="small" variant="tonal">
+                          {{ getStorageDisplayName(item) }}
+                        </v-chip>
+                      </template>
                       <template v-slot:[`item.encryption`]="{ item }">
                         <v-tooltip v-if="item.isEncrypted || item.encryptedWithPassword" :text="t('backup.encrypted')" location="top">
                           <template v-slot:activator="{ props }">
@@ -1053,9 +1080,9 @@ onMounted(async () => {
         <v-card-actions>
           <v-spacer />
           <v-btn text @click="cancelDelete">Cancel</v-btn>
-          <v-btn 
-            color="error" 
-            variant="flat" 
+          <v-btn
+            color="error"
+            variant="flat"
             :loading="deleteLoading"
             :disabled="deleteConfirmationWord.toLowerCase() !== requiredConfirmationWord"
             @click="confirmDeleteStep2"
