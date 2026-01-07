@@ -44,6 +44,16 @@ const adminMenuItems = [
     icon: 'mdi-folder-open',
     route: 'admin-case-blueprints'
   },
+  {
+    title: 'Database Backup',
+    icon: 'mdi-database-export',
+    route: 'admin-database-backup'
+  },
+  {
+    title: 'Automated Backups',
+    icon: 'mdi-database-clock',
+    route: 'admin-automated-backups'
+  },
   // Add more admin items here in the future
 ];
 

@@ -1009,6 +1009,8 @@ export default {
     consultationTemplates: 'Konsultationsvorlagen',
     surgeryBlueprints: 'Operationsvorlagen',
     caseBlueprints: 'Fallvorlagen',
+    databaseBackup: 'Datenbank-Sicherung',
+    automatedBackups: 'Automatisierte Sicherungen',
     setup: 'Einrichtung',
     activityLog: 'Aktivitätsprotokoll',
     statistics: 'Statistiken',
