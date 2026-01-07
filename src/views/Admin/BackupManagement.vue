@@ -35,8 +35,7 @@ const encryptBackup = ref(false);
 const encryptionPassword = ref('');
 const uploadFile = ref<File | null>(null);
 const uploadDialog = ref(false);
-const manualBackupStorageType = ref<'local' | 's3' | 'sftp' | 'webdav'>('local');
-const manualBackupCredentialId = ref<string | null>(null);
+const selectedDestination = ref<string>('local');
 
 // Delete confirmation
 const deleteDialog = ref(false);
@@ -199,20 +198,17 @@ const createManualBackup = async () => {
     return;
   }
 
-  if (manualBackupStorageType.value !== 'local' && !manualBackupCredentialId.value) {
-    notifierStore.notify('Please select credentials for remote storage', 'info');
-    return;
-  }
-
   manualBackupLoading.value = true;
   try {
+    const destination = backupDestinations.value.find(d => d.value === selectedDestination.value);
+    
     const response = await backupApi.createManualBackup({
       createManualBackupRequest: {
         collections: selectedBackupCollections.value.length === collections.value.length 
           ? [] // Empty means all collections
           : selectedBackupCollections.value,
-        storageType: manualBackupStorageType.value,
-        credentialId: manualBackupStorageType.value !== 'local' ? manualBackupCredentialId.value : undefined,
+        storageType: destination?.storageType || 'local',
+        credentialId: destination?.credentialId || undefined,
         encryptionEnabled: encryptBackup.value,
         password: encryptBackup.value ? encryptionPassword.value : undefined,
       },
@@ -222,8 +218,7 @@ const createManualBackup = async () => {
       notifierStore.notify('Backup created successfully', 'success');
       encryptionPassword.value = '';
       encryptBackup.value = false;
-      manualBackupStorageType.value = 'local';
-      manualBackupCredentialId.value = null;
+      selectedDestination.value = 'local';
       await loadBackupHistory();
     }
   } catch (error) {
@@ -528,12 +523,39 @@ const availableCredentials = computed(() => {
   return credentials.value.filter(c => c.storageType === newJob.value.storageType);
 });
 
-const manualBackupAvailableCredentials = computed(() => {
-  return credentials.value.filter(c => c.storageType === manualBackupStorageType.value);
+const backupDestinations = computed(() => {
+  const destinations = [
+    {
+      value: 'local',
+      title: 'Local Storage',
+      subtitle: 'Save to server filesystem',
+      storageType: 'local' as const,
+      credentialId: null
+    }
+  ];
+  
+  credentials.value.forEach(cred => {
+    const typeLabel = {
+      's3': 'Amazon S3',
+      'sftp': 'SFTP',
+      'webdav': 'WebDAV',
+      'local': 'Local'
+    }[cred.storageType] || cred.storageType;
+    
+    destinations.push({
+      value: cred._id!,
+      title: cred.name,
+      subtitle: typeLabel,
+      storageType: cred.storageType,
+      credentialId: cred._id!
+    });
+  });
+  
+  return destinations;
 });
 
 const hasRemoteCredentials = computed(() => {
-  return credentials.value.some(c => c.storageType !== 'local');
+  return credentials.value.length > 0;
 });
 
 interface CollectionComparison {
@@ -637,24 +659,22 @@ onMounted(async () => {
                       </v-col>
                       <v-col cols="12" md="6">
                         <v-select
-                          v-if="hasRemoteCredentials"
-                          v-model="manualBackupStorageType"
-                          :items="storageTypeOptions"
-                          label="Storage Location"
+                          v-model="selectedDestination"
+                          :items="backupDestinations"
+                          item-title="title"
+                          item-value="value"
+                          label="Backup Destination"
                           hint="Select where to save the backup"
                           persistent-hint
-                        />
-                        <v-select
-                          v-if="hasRemoteCredentials && manualBackupStorageType !== 'local'"
-                          v-model="manualBackupCredentialId"
-                          :items="manualBackupAvailableCredentials"
-                          item-title="name"
-                          item-value="_id"
-                          label="Select Credentials"
-                          hint="Choose credentials for remote storage"
-                          persistent-hint
-                          class="mt-2"
-                        />
+                        >
+                          <template v-slot:item="{ props, item }">
+                            <v-list-item v-bind="props">
+                              <template v-slot:subtitle>
+                                <span class="text-caption">{{ item.raw.subtitle }}</span>
+                              </template>
+                            </v-list-item>
+                          </template>
+                        </v-select>
                       </v-col>
                     </v-row>
                     <v-row>
