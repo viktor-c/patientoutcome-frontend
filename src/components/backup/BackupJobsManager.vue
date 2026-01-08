@@ -21,9 +21,6 @@ interface Props {
 }
 
 const props = defineProps<Props>();
-const emit = defineEmits<{
-  refresh: [];
-}>();
 
 const notifierStore = useNotifierStore();
 const { t } = useI18n();

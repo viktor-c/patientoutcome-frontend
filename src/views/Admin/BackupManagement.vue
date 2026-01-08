@@ -143,7 +143,7 @@ const createManualBackup = async () => {
         collections: selectedBackupCollections.value.length === collections.value.length
           ? [] // Empty means all collections
           : selectedBackupCollections.value,
-        storageType: (destination?.storageType || 'local') as any,
+        storageType: (destination?.storageType || 'local') as 'local' | 's3',
         credentialId: destination?.credentialId || undefined,
         encryptionEnabled: encryptBackup.value,
         password: encryptBackup.value ? encryptionPassword.value : undefined,
