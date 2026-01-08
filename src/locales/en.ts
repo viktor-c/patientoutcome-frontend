@@ -1,4 +1,5 @@
 export default {
+  locale: 'en-US',
   appBar: {
     clear_notifications: 'Benachrichtigungen löschen',
   },

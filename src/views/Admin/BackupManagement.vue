@@ -81,9 +81,9 @@ const collectionHeaders = [
 ];
 
 const frequencyOptions = [
-  { title: 'Daily (2:00 AM UTC)', value: 'daily' },
-  { title: 'Weekly (Sunday 2:00 AM UTC)', value: 'weekly' },
-  { title: 'Monthly (1st day 2:00 AM UTC)', value: 'monthly' },
+  { title: 'Daily', value: 'daily' },
+  { title: 'Weekly (Sunday)', value: 'weekly' },
+  { title: 'Monthly (1st day)', value: 'monthly' },
   { title: 'Custom (Cron Expression)', value: 'custom' },
 ];
 
@@ -99,6 +99,7 @@ interface JobForm {
   description: string;
   enabled: boolean;
   frequency: 'daily' | 'weekly' | 'monthly' | 'custom';
+  scheduleTime: string;
   cronExpression: string;
   storageType: 'local' | 's3' | 'sftp' | 'webdav';
   credentialId: string | null;
@@ -113,6 +114,7 @@ const newJob = ref<JobForm>({
   description: '',
   enabled: true,
   frequency: 'daily',
+  scheduleTime: '02:00',
   cronExpression: '',
   storageType: 'local',
   credentialId: null,
@@ -132,7 +134,15 @@ const formatBytes = (bytes: number) => {
 
 const formatDate = (dateString: string | null | undefined): string => {
   if (!dateString) return 'Never';
-  return new Date(dateString).toLocaleString();
+  const date = new Date(dateString);
+  return new Intl.DateTimeFormat(t('locale'), {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit'
+  }).format(date);
 };
 
 // Load data functions
@@ -400,6 +410,7 @@ const openNewJobDialog = () => {
     description: '',
     enabled: true,
     frequency: 'daily',
+    scheduleTime: '02:00',
     cronExpression: '',
     storageType: 'local',
     credentialId: null,
@@ -413,11 +424,24 @@ const openNewJobDialog = () => {
 
 const editJob = (job: GetAllBackupJobs200ResponseResponseObjectInner) => {
   editingJob.value = job;
+  
+  // Extract time from cron expression if available
+  let scheduleTime = '02:00';
+  if (job.cronExpression) {
+    const parts = job.cronExpression.split(' ');
+    if (parts.length >= 2) {
+      const minute = parts[0] || '0';
+      const hour = parts[1] || '2';
+      scheduleTime = `${hour.padStart(2, '0')}:${minute.padStart(2, '0')}`;
+    }
+  }
+  
   newJob.value = {
     name: job.name,
     description: job.description || '',
     enabled: job.enabled ?? true,
     frequency: (job.frequency || 'daily') as JobForm['frequency'],
+    scheduleTime,
     cronExpression: job.cronExpression || '',
     storageType: (job.storageType || 'local') as JobForm['storageType'],
     credentialId: job.credentialId || null,
@@ -443,8 +467,18 @@ const saveJob = async () => {
       retentionDays: newJob.value.retentionDays,
     };
 
+    // Generate cron expression based on frequency and time
     if (newJob.value.frequency === 'custom') {
       payload.cronExpression = newJob.value.cronExpression;
+    } else {
+      const [hour, minute] = newJob.value.scheduleTime.split(':');
+      if (newJob.value.frequency === 'daily') {
+        payload.cronExpression = `${minute} ${hour} * * *`;
+      } else if (newJob.value.frequency === 'weekly') {
+        payload.cronExpression = `${minute} ${hour} * * 0`;
+      } else if (newJob.value.frequency === 'monthly') {
+        payload.cronExpression = `${minute} ${hour} 1 * *`;
+      }
     }
 
     if (newJob.value.storageType !== 'local') {
@@ -566,6 +600,33 @@ const backupDestinations = computed(() => {
 const hasRemoteCredentials = computed(() => {
   return credentials.value.length > 0;
 });
+
+const formatSchedule = (frequency: string, cronExpression?: string | null): string => {
+  if (frequency === 'custom' && cronExpression) {
+    return `Custom: ${cronExpression}`;
+  }
+  
+  // Extract time from cron expression
+  let timeStr = '';
+  if (cronExpression) {
+    const parts = cronExpression.split(' ');
+    if (parts.length >= 2) {
+      const minute = parts[0] || '0';
+      const hour = parts[1] || '2';
+      timeStr = ` at ${hour.padStart(2, '0')}:${minute.padStart(2, '0')}`;
+    }
+  }
+  
+  if (frequency === 'daily') {
+    return `Daily${timeStr}`;
+  } else if (frequency === 'weekly') {
+    return `Weekly (Sunday)${timeStr}`;
+  } else if (frequency === 'monthly') {
+    return `Monthly (1st)${timeStr}`;
+  }
+  
+  return frequency;
+};
 
 const passwordsMatch = computed(() => {
   if (!encryptBackup.value) return true;
@@ -913,10 +974,7 @@ onMounted(async () => {
                       class="elevation-1"
                     >
                       <template v-slot:[`item.frequency`]="{ item }">
-                        <span v-if="item.frequency === 'daily'">Daily (2:00 AM)</span>
-                        <span v-else-if="item.frequency === 'weekly'">Weekly (Sunday)</span>
-                        <span v-else-if="item.frequency === 'monthly'">Monthly (1st)</span>
-                        <span v-else>Custom: {{ item.cronExpression }}</span>
+                        {{ formatSchedule(item.frequency, item.cronExpression) }}
                       </template>
                       <template v-slot:[`item.enabled`]="{ item }">
                         <v-switch
@@ -1195,6 +1253,15 @@ onMounted(async () => {
                   v-model="newJob.frequency"
                   :items="frequencyOptions"
                   label="Schedule Frequency"
+                />
+                <v-text-field
+                  v-if="newJob.frequency !== 'custom'"
+                  v-model="newJob.scheduleTime"
+                  label="Schedule Time (24h)"
+                  type="time"
+                  class="mt-2"
+                  hint="Time in 24-hour format (HH:MM)"
+                  persistent-hint
                 />
                 <v-text-field
                   v-if="newJob.frequency === 'custom'"

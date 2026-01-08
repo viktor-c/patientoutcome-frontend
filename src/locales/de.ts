@@ -1,6 +1,7 @@
 // import { title } from "process";
 
 export default {
+  locale: 'de-DE',
   appBar: {
     clear_notifications: 'Benachrichtigungen löschen',
   },
