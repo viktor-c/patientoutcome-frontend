@@ -33,6 +33,7 @@ const manualBackupLoading = ref(false);
 const selectedBackupCollections = ref<string[]>([]);
 const encryptBackup = ref(false);
 const encryptionPassword = ref('');
+const encryptionPasswordConfirm = ref('');
 const uploadFile = ref<File | null>(null);
 const uploadDialog = ref(false);
 const selectedDestination = ref<string>('local');
@@ -195,6 +196,11 @@ const createManualBackup = async () => {
     return;
   }
 
+  if (encryptBackup.value && !passwordsMatch.value) {
+    notifierStore.notify('Encryption passwords do not match', 'error');
+    return;
+  }
+
   if (selectedBackupCollections.value.length === 0) {
     notifierStore.notify('Please select at least one collection', 'info');
     return;
@@ -219,6 +225,7 @@ const createManualBackup = async () => {
     if (response.success) {
       notifierStore.notify('Backup created successfully', 'success');
       encryptionPassword.value = '';
+      encryptionPasswordConfirm.value = '';
       encryptBackup.value = false;
       selectedDestination.value = 'local';
       await loadBackupHistory();
@@ -560,6 +567,11 @@ const hasRemoteCredentials = computed(() => {
   return credentials.value.length > 0;
 });
 
+const passwordsMatch = computed(() => {
+  if (!encryptBackup.value) return true;
+  return encryptionPassword.value === encryptionPasswordConfirm.value && encryptionPassword.value.length > 0;
+});
+
 const getStorageDisplayName = (backup: GetBackupHistory200ResponseResponseObjectInner): string => {
   // Server-hosted backups
   if (backup.storageType === 'local') {
@@ -744,6 +756,16 @@ onMounted(async () => {
                           type="password"
                           class="mt-2"
                           hint="Keep this password safe - you'll need it to restore"
+                          persistent-hint
+                        />
+                        <v-text-field
+                          v-if="encryptBackup"
+                          v-model="encryptionPasswordConfirm"
+                          label="Confirm Encryption Password"
+                          type="password"
+                          class="mt-2"
+                          :error="!passwordsMatch"
+                          :hint="!passwordsMatch ? 'Passwords do not match' : 'Re-enter password to confirm'"
                           persistent-hint
                         />
                       </v-col>
