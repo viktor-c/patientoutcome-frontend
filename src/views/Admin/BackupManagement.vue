@@ -53,6 +53,7 @@ const editingJob = ref<GetAllBackupJobs200ResponseResponseObjectInner | null>(nu
 const backupHistoryHeaders = [
   { title: 'Filename', key: 'filename', sortable: true },
   { title: 'Storage', key: 'storage', sortable: false },
+  { title: 'Credential', key: 'credential', sortable: false },
   { title: 'Encryption', key: 'encryption', sortable: false },
   { title: 'Created', key: 'startedAt', sortable: true },
   { title: 'Size', key: 'sizeBytes', sortable: true },
@@ -560,24 +561,53 @@ const hasRemoteCredentials = computed(() => {
 });
 
 const getStorageDisplayName = (backup: GetBackupHistory200ResponseResponseObjectInner): string => {
+  // Server-hosted backups
   if (backup.storageType === 'local') {
     return 'Server Storage';
   }
-  
+
+  const typeLabels: Record<string, string> = {
+    's3': 'Amazon S3',
+    'sftp': 'SFTP',
+    'webdav': 'WebDAV'
+  };
+
+  return typeLabels[backup.storageType] || backup.storageType;
+};
+
+const getCredentialName = (backup: GetBackupHistory200ResponseResponseObjectInner): string => {
+  if (backup.storageType === 'local') {
+    return 'Server';
+  }
+
   if (backup.credentialId) {
     const credential = credentials.value.find(c => c.id === backup.credentialId);
     if (credential) {
       return credential.name;
     }
   }
-  
-  // Fallback to storage type
-  const typeLabels: Record<string, string> = {
-    's3': 'Amazon S3',
-    'sftp': 'SFTP',
-    'webdav': 'WebDAV'
-  };
-  return typeLabels[backup.storageType] || backup.storageType;
+
+  return '-';
+};
+
+const getLocationDetails = (backup: GetBackupHistory200ResponseResponseObjectInner): string => {
+  const parts: string[] = [];
+
+  // Add credential name
+  const credName = getCredentialName(backup);
+  if (credName !== '-') {
+    parts.push(`Credential: ${credName}`);
+  }
+
+  // Add storage type
+  parts.push(`Storage: ${getStorageDisplayName(backup)}`);
+
+  // Add storage location if available
+  if (backup.storageLocation) {
+    parts.push(`Location: ${backup.storageLocation}`);
+  }
+
+  return parts.join('\n');
 };
 
 interface CollectionComparison {
@@ -754,9 +784,17 @@ onMounted(async () => {
                       class="elevation-1"
                     >
                       <template v-slot:[`item.storage`]="{ item }">
-                        <v-chip size="small" variant="tonal">
-                          {{ getStorageDisplayName(item) }}
-                        </v-chip>
+                        <v-tooltip location="top">
+                          <template v-slot:activator="{ props }">
+                            <v-chip v-bind="props" size="small" variant="tonal">
+                              {{ getStorageDisplayName(item) }}
+                            </v-chip>
+                          </template>
+                          <div style="white-space: pre-line;">{{ getLocationDetails(item) }}</div>
+                        </v-tooltip>
+                      </template>
+                      <template v-slot:[`item.credential`]="{ item }">
+                        <span>{{ getCredentialName(item) }}</span>
                       </template>
                       <template v-slot:[`item.encryption`]="{ item }">
                         <v-tooltip v-if="item.isEncrypted || item.encryptedWithPassword" :text="t('backup.encrypted')" location="top">
