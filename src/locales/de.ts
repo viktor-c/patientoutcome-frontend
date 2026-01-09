@@ -76,6 +76,17 @@ export default {
     pdfError: 'Fehler beim Generieren des PDFs.',
     pdfInstructions: 'Scannen Sie diesen QR-Code zur Registrierung oder verwenden Sie den Code unten:',
   },
+  userManagement: {
+    title: 'Benutzerverwaltung',
+    confirmDelete: 'Löschen bestätigen',
+    deleteWarning: 'Sind Sie sicher, dass Sie den Benutzer <strong>{username}</strong> löschen möchten? Diese Aktion kann nicht rückgängig gemacht werden.',
+    cannotDeleteLastAdmin: 'Der letzte Admin-Benutzer kann nicht gelöscht werden. Bitte erstellen Sie zunächst einen weiteren Admin-Benutzer, bevor Sie Ihr Konto löschen.',
+    loadError: 'Fehler beim Laden der Benutzer',
+    updateSuccess: 'Benutzer erfolgreich aktualisiert',
+    updateError: 'Fehler beim Aktualisieren des Benutzers',
+    deleteSuccess: 'Benutzer erfolgreich gelöscht',
+    deleteError: 'Fehler beim Löschen des Benutzers',
+  },
   departmentManagement: {
     title: 'Abteilungsverwaltung',
     description: 'Verwalten Sie Benutzerabteilungen. Erstellen, bearbeiten oder löschen Sie Abteilungen.',

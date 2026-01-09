@@ -7,6 +7,9 @@ import { useUserStore } from '@/stores/userStore';
 import type { GetUsers200ResponseResponseObjectInner } from '@/api/models/GetUsers200ResponseResponseObjectInner';
 import type { UserDepartment } from '@/api/models/UserDepartment';
 import EditUserDialog from '@/components/dialogs/EditUserDialog.vue';
+import { useI18n } from 'vue-i18n';
+
+const { t } = useI18n();
 
 const notifierStore = useNotifierStore();
 const users = ref<GetUsers200ResponseResponseObjectInner[]>([]);
@@ -36,7 +39,7 @@ const loadUsers = async () => {
       users.value = response.responseObject;
     }
   } catch (error) {
-    notifierStore.notify('Failed to load users', 'error');
+    notifierStore.notify(t('userManagement.loadError'), 'error');
     console.error('Error loading users:', error);
   } finally {
     loading.value = false;
@@ -99,18 +102,31 @@ const saveUser = async (updatedUser: GetUsers200ResponseResponseObjectInner) => 
       });
     }
     console.debug('UserManagement.saveUser: updateUser response complete for', updatedUser?.username);
-    notifierStore.notify('User updated successfully', 'success');
+    notifierStore.notify(t('userManagement.updateSuccess'), 'success');
     await loadUsers();
     // close the dialog and clear the selected user to avoid keeping a reference
     showEditDialog.value = false;
     selectedUser.value = null;
   } catch (error) {
-    notifierStore.notify('Failed to update user', 'error');
+    notifierStore.notify(t('userManagement.updateError'), 'error');
     console.error('Error updating user:', error);
   }
 };
 
 const confirmDelete = (user: GetUsers200ResponseResponseObjectInner) => {
+  // Check if user being deleted is the logged-in user
+  if (user.username === userStore.username) {
+    // Check if user is an admin
+    if (user.roles?.includes('admin')) {
+      // Count total admins
+      const adminCount = users.value.filter(u => u.roles?.includes('admin')).length;
+      if (adminCount === 1) {
+        notifierStore.notify(t('userManagement.cannotDeleteLastAdmin'), 'error');
+        return;
+      }
+    }
+  }
+  
   userToDelete.value = user;
   showDeleteConfirm.value = true;
 };
@@ -120,12 +136,12 @@ const deleteUser = async () => {
 
   try {
     await userApi.deleteUser({ username: userToDelete.value.username });
-    notifierStore.notify('User deleted successfully', 'success');
+    notifierStore.notify(t('userManagement.deleteSuccess'), 'success');
     showDeleteConfirm.value = false;
     userToDelete.value = null;
     await loadUsers();
   } catch (error) {
-    notifierStore.notify('Failed to delete user', 'error');
+    notifierStore.notify(t('userManagement.deleteError'), 'error');
     console.error('Error deleting user:', error);
   }
 };
@@ -246,19 +262,18 @@ watch(showEditDialog, (isShown) => {
     <v-dialog v-model="showDeleteConfirm" max-width="500">
       <v-card>
         <v-card-title class="text-h5">
-          Confirm Delete
+          {{ t('userManagement.confirmDelete') }}
         </v-card-title>
         <v-card-text>
-          Are you sure you want to delete user <strong>{{ userToDelete?.username }}</strong>?
-          This action cannot be undone.
+          {{ t('userManagement.deleteWarning', { username: userToDelete?.username }) }}
         </v-card-text>
         <v-card-actions>
           <v-spacer />
           <v-btn color="grey" @click="showDeleteConfirm = false">
-            Cancel
+            {{ t('common.cancel') }}
           </v-btn>
           <v-btn color="error" @click="deleteUser">
-            Delete
+            {{ t('common.delete') }}
           </v-btn>
         </v-card-actions>
       </v-card>

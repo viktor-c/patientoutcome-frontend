@@ -471,6 +471,17 @@ export default {
     pdfError: 'Failed to generate PDF.',
     pdfInstructions: 'Scan this QR code to register or use the code below:',
   },
+  userManagement: {
+    title: 'User Management',
+    confirmDelete: 'Confirm Delete',
+    deleteWarning: 'Are you sure you want to delete user <strong>{username}</strong>? This action cannot be undone.',
+    cannotDeleteLastAdmin: 'Cannot delete the last admin user. Please create another admin user before deleting your account.',
+    loadError: 'Failed to load users',
+    updateSuccess: 'User updated successfully',
+    updateError: 'Failed to update user',
+    deleteSuccess: 'User deleted successfully',
+    deleteError: 'Failed to delete user',
+  },
   departmentManagement: {
     title: 'Department Management',
     description: 'Manage user departments. Create, edit, or delete departments.',
