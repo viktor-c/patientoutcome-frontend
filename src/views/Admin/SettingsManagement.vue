@@ -18,6 +18,18 @@ const settings = ref<GetSettings200ResponseResponseObject | null>(null);
 const editedValues = ref<Record<string, Record<string, string | number | boolean>>>({});
 const expandedPanels = ref<string[]>([]);
 
+// Helper to convert API value type to primitive
+const getFieldValue = (field: SettingField): string | number | boolean => {
+  const value = field.value as unknown;
+  if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') {
+    return value;
+  }
+  // Default fallback based on field type
+  if (field.type === 'number') return 0;
+  if (field.type === 'boolean') return false;
+  return '';
+};
+
 // Load settings from backend
 const loadSettings = async () => {
   loading.value = true;
@@ -30,7 +42,7 @@ const loadSettings = async () => {
       for (const [categoryKey, category] of Object.entries(settings.value.settings)) {
         editedValues.value[categoryKey] = {};
         for (const [fieldKey, field] of Object.entries(category.fields)) {
-          editedValues.value[categoryKey][fieldKey] = field.value;
+          editedValues.value[categoryKey][fieldKey] = getFieldValue(field);
         }
       }
       // Expand all panels by default
@@ -73,7 +85,7 @@ const resetChanges = () => {
     for (const [categoryKey, category] of Object.entries(settings.value.settings)) {
       editedValues.value[categoryKey] = {};
       for (const [fieldKey, field] of Object.entries(category.fields)) {
-        editedValues.value[categoryKey][fieldKey] = field.value;
+        editedValues.value[categoryKey][fieldKey] = getFieldValue(field);
       }
     }
     notifierStore.notify(t('settings.resetSuccess'), 'info');
@@ -86,7 +98,7 @@ const hasChanges = computed(() => {
   
   for (const [categoryKey, category] of Object.entries(settings.value.settings)) {
     for (const [fieldKey, field] of Object.entries(category.fields)) {
-      if (editedValues.value[categoryKey]?.[fieldKey] !== field.value) {
+      if (editedValues.value[categoryKey]?.[fieldKey] !== getFieldValue(field)) {
         return true;
       }
     }
