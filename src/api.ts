@@ -1,4 +1,4 @@
-import { Configuration, UserApi, FormApi, PatientApi, PatientCaseApi, ConsultationApi, CodeApi, FormtemplateApi, KioskApi, SurgeryApi, BlueprintApi, StatisticsApi, FeedbackApi, UserDepartmentApi, BackupApi } from '@/api/';
+import { Configuration, UserApi, FormApi, PatientApi, PatientCaseApi, ConsultationApi, CodeApi, FormtemplateApi, KioskApi, SurgeryApi, BlueprintApi, StatisticsApi, FeedbackApi, UserDepartmentApi, BackupApi, SettingsApi } from '@/api/';
 import { authMiddleware } from '@/middleware/authMiddleware';
 
 // Create a new configuration with a custom basePath and auth middleware
@@ -28,6 +28,7 @@ export const statisticsApi = new StatisticsApi(apiConfig)
 export const feedbackApi = new FeedbackApi(apiConfig)
 export const userDepartmentApi = new UserDepartmentApi(apiConfig)
 export const backupApi = new BackupApi(apiConfig)
+export const settingsApi = new SettingsApi(apiConfig)
 
 export * from '@/api/index'; // Export all APIs and models from the index file
 

@@ -49,6 +49,11 @@ const adminMenuItems = [
     icon: 'mdi-database-cog',
     route: 'admin-backup-management'
   },
+  {
+    title: 'Settings',
+    icon: 'mdi-cog',
+    route: 'admin-settings'
+  },
   // Add more admin items here in the future
 ];
 

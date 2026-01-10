@@ -1024,6 +1024,7 @@ export default {
     surgeryBlueprints: 'Surgery Blueprints',
     caseBlueprints: 'Case Blueprints',
     backupManagement: 'Backup Management',
+    settingsManagement: 'Settings Management',
     setup: 'Setup',
   },
 
@@ -1234,5 +1235,16 @@ export default {
     download: 'Download Backup',
     restore: 'Restore Backup',
     delete: 'Delete Backup',
+  },
+  settings: {
+    title: 'Application Settings',
+    save: 'Save Settings',
+    reset: 'Reset Changes',
+    loadError: 'Failed to load settings',
+    saveSuccess: 'Settings saved successfully',
+    saveError: 'Failed to save settings',
+    resetSuccess: 'Changes have been reset',
+    unsavedChanges: 'You have unsaved changes. Don\'t forget to save!',
+    noData: 'Unable to load settings data',
   },
 }
