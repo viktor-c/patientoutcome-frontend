@@ -41,7 +41,7 @@ async function checkSetupStatus() {
   checkingSetup.value = true
   try {
     const response = await setupApi.getSetupStatus()
-    if (response.success && response.responseObject?.setupRequired) {
+    if (response.success && response.responseObject?.data.setupRequired) {
       // Redirect to setup wizard
       router.push('/setup')
       return

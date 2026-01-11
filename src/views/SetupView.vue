@@ -20,9 +20,6 @@ function changeLanguage(lang: string) {
   localStorage.setItem('locale', lang)
 }
 
-// Environment info
-const isProduction = import.meta.env.MODE === 'production' || import.meta.env.PROD
-
 // Setup state
 const isLoading = ref(true)
 const setupRequired = ref(false)
@@ -40,15 +37,6 @@ const adminForm = ref({
   email: '',
   department: 'Administration',
   belongsToCenter: ['1']
-})
-
-// Seeding options
-const seedOptions = ref({
-  seedAll: false,
-  seedUsers: false,
-  seedPatients: false,
-  seedBlueprints: false,
-  seedForms: false
 })
 
 // Database stats
@@ -96,13 +84,13 @@ async function checkSetupStatus() {
     const response = await setupApi.getSetupStatus()
 
     if (response.success && response.responseObject) {
-      setupRequired.value = response.responseObject.setupRequired
-      hasAdminUser.value = response.responseObject.hasAdminUser
-      hasAnyUsers.value = response.responseObject.hasAnyUsers
-      databaseConnected.value = response.responseObject.databaseConnected
+      setupRequired.value = response.responseObject.data.setupRequired
+      hasAdminUser.value = response.responseObject.data.hasAdminUser
+      hasAnyUsers.value = response.responseObject.data.hasAnyUsers
+      databaseConnected.value = response.responseObject.data.databaseConnected
 
       // If setup is not required, redirect to login
-      if (!response.responseObject.setupRequired) {
+      if (!response.responseObject.data.setupRequired) {
         router.push('/')
       }
     }
@@ -121,7 +109,7 @@ async function fetchDatabaseStats() {
   try {
     const response = await setupApi.getSetupDatabaseStats()
     if (response.success && response.responseObject) {
-      dbStats.value = response.responseObject
+      dbStats.value = response.responseObject.data
     }
   } catch (error) {
     console.error('Failed to fetch database stats:', error)
@@ -134,7 +122,7 @@ async function createAdmin() {
   isLoading.value = true
   try {
     const response = await setupApi.createAdminUser({
-      createAdminRequest: {
+      createAdminUserRequest: {
         username: adminForm.value.username,
         password: adminForm.value.password,
         name: adminForm.value.name,
@@ -163,74 +151,12 @@ async function createAdmin() {
   }
 }
 
-async function seedDemoData() {
-  isLoading.value = true
-  try {
-    const response = await fetch(`${API_URL}/setup/seed`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      credentials: 'include',
-      body: JSON.stringify(seedOptions.value)
-    })
-
-    const data = await response.json()
-
-    if (data.success) {
-      notifierStore.notify(t('setup.notifications.demoDataSeeded'), 'success')
-      await fetchDatabaseStats()
-      dataSeeded.value = true
-    } else {
-      notifierStore.notify(data.message || t('setup.notifications.demoDataFailed'), 'info')
-    }
-  } catch (error) {
-    console.error('Failed to seed data:', error)
-    notifierStore.notify(t('setup.notifications.demoDataFailed'), 'error')
-  } finally {
-    isLoading.value = false
-  }
-}
-
 function finishSetup() {
   router.push('/')
 }
 
-// Check if user has selected seed options but hasn't seeded yet
-const hasSeedOptionsSelected = computed(() => {
-  return seedOptions.value.seedAll ||
-    seedOptions.value.seedUsers ||
-    seedOptions.value.seedPatients ||
-    seedOptions.value.seedBlueprints ||
-    seedOptions.value.seedForms
-})
-
-// Confirmation dialog state
-const showSeedConfirmDialog = ref(false)
-const dataSeeded = ref(false)
-
-function handleStep3Continue() {
-  // If user selected seed options but hasn't seeded, show confirmation
-  if (hasSeedOptionsSelected.value && !dataSeeded.value) {
-    showSeedConfirmDialog.value = true
-  } else {
-    nextStep()
-  }
-}
-
-async function confirmSeedAndContinue() {
-  showSeedConfirmDialog.value = false
-  await seedDemoData()
-  nextStep()
-}
-
-function skipSeedAndContinue() {
-  showSeedConfirmDialog.value = false
-  nextStep()
-}
-
 function nextStep() {
-  if (canProceed.value && currentStep.value < 4) {
+  if (canProceed.value && currentStep.value < 3) {
     currentStep.value++
   }
 }
@@ -298,9 +224,7 @@ function prevStep() {
                     <v-divider />
                     <v-stepper-item :complete="currentStep > 2" :value="2" :title="t('setup.steps.adminUser')" />
                     <v-divider />
-                    <v-stepper-item :complete="currentStep > 3" :value="3" :title="t('setup.steps.demoData')" />
-                    <v-divider />
-                    <v-stepper-item :value="4" :title="t('setup.steps.complete')" />
+                    <v-stepper-item :value="3" :title="t('setup.steps.complete')" />
                   </v-stepper-header>
 
                   <v-stepper-window>
@@ -439,95 +363,8 @@ function prevStep() {
                       </v-card-text>
                     </v-stepper-window-item>
 
-                    <!-- Step 3: Seed Demo Data -->
+                    <!-- Step 3: Complete -->
                     <v-stepper-window-item :value="3">
-                      <v-card-text class="px-6 py-4">
-                        <h3 class="text-h5 mb-4">{{ t('setup.step3.title') }}</h3>
-                        <p class="text-body-2 mb-4">
-                          {{ t('setup.step3.description') }}
-                        </p>
-
-                        <v-alert type="warning" variant="tonal" class="mb-4">
-                          <v-alert-title>{{ t('setup.step3.warning') }}</v-alert-title>
-                          {{ t('setup.step3.warningText') }}
-                        </v-alert>
-
-                        <v-alert v-if="isProduction" type="error" variant="tonal" class="mb-4">
-                          <v-icon start>mdi-alert</v-icon>
-                          {{ t('setup.step3.productionWarning') }}
-                        </v-alert>
-
-                        <v-card variant="outlined" class="mb-4">
-                          <v-card-text>
-                            <v-switch
-                                      v-model="seedOptions.seedAll"
-                                      :label="t('setup.step3.seedAll')"
-                                      color="primary"
-                                      hide-details
-                                      class="mb-2" />
-
-                            <v-divider class="my-3" />
-
-                            <div class="text-subtitle-2 mb-2">{{ t('setup.step3.selectSpecific') }}</div>
-
-                            <v-switch
-                                      v-model="seedOptions.seedUsers"
-                                      :label="t('setup.step3.demoUsers')"
-                                      color="secondary"
-                                      hide-details
-                                      :disabled="seedOptions.seedAll"
-                                      density="compact" />
-                            <v-switch
-                                      v-model="seedOptions.seedPatients"
-                                      :label="t('setup.step3.demoPatients')"
-                                      color="secondary"
-                                      hide-details
-                                      :disabled="seedOptions.seedAll"
-                                      density="compact" />
-                            <v-switch
-                                      v-model="seedOptions.seedBlueprints"
-                                      :label="t('setup.step3.formTemplates')"
-                                      color="secondary"
-                                      hide-details
-                                      :disabled="seedOptions.seedAll"
-                                      density="compact" />
-                            <v-switch
-                                      v-model="seedOptions.seedForms"
-                                      :label="t('setup.step3.demoForms')"
-                                      color="secondary"
-                                      hide-details
-                                      :disabled="seedOptions.seedAll"
-                                      density="compact" />
-                          </v-card-text>
-                        </v-card>
-
-                        <v-btn
-                               color="secondary"
-                               variant="outlined"
-                               :loading="isLoading"
-                               :disabled="!seedOptions.seedAll && !seedOptions.seedUsers && !seedOptions.seedPatients && !seedOptions.seedBlueprints && !seedOptions.seedForms"
-                               @click="seedDemoData">
-                          <v-icon start>mdi-database-plus</v-icon>
-                          {{ t('setup.step3.seedButton') }}
-                        </v-btn>
-
-                        <!-- Current database stats -->
-                        <v-card variant="outlined" class="mt-4">
-                          <v-card-title class="text-subtitle-1">{{ t('setup.step3.currentStatus') }}</v-card-title>
-                          <v-card-text>
-                            <v-chip-group>
-                              <v-chip v-for="(count, collection) in dbStats" :key="collection" size="small"
-                                      variant="tonal">
-                                {{ collection }}: {{ count }}
-                              </v-chip>
-                            </v-chip-group>
-                          </v-card-text>
-                        </v-card>
-                      </v-card-text>
-                    </v-stepper-window-item>
-
-                    <!-- Step 4: Complete -->
-                    <v-stepper-window-item :value="4">
                       <v-card-text class="text-center px-6 py-8">
                         <v-icon size="96" color="success" class="mb-4">mdi-check-circle</v-icon>
                         <h3 class="text-h4 mb-4">{{ t('setup.step4.title') }}</h3>
@@ -560,7 +397,7 @@ function prevStep() {
                 <!-- Navigation buttons -->
                 <v-card-actions class="pa-4">
                   <v-btn
-                         v-if="currentStep > 1 && currentStep < 4"
+                         v-if="currentStep > 1 && currentStep < 3"
                          variant="text"
                          @click="prevStep">
                     <v-icon start>mdi-chevron-left</v-icon>
@@ -587,51 +424,12 @@ function prevStep() {
                     {{ t('setup.buttons.createAdminContinue') }}
                     <v-icon end>mdi-chevron-right</v-icon>
                   </v-btn>
-
-                  <v-btn
-                         v-if="currentStep === 3"
-                         color="primary"
-                         @click="handleStep3Continue">
-                    {{ (dataSeeded || hasSeedOptionsSelected) ? t('setup.buttons.continue') :
-                      t('setup.buttons.skipContinue') }}
-                    <v-icon end>mdi-chevron-right</v-icon>
-                  </v-btn>
                 </v-card-actions>
               </template>
             </v-card>
           </v-col>
         </v-row>
       </v-container>
-
-      <!-- Seed Confirmation Dialog -->
-      <v-dialog v-model="showSeedConfirmDialog" max-width="500" persistent>
-        <v-card>
-          <v-card-title class="text-h5">
-            <v-icon color="warning" class="mr-2">mdi-database-alert</v-icon>
-            {{ t('setup.seedConfirmDialog.title') }}
-          </v-card-title>
-          <v-card-text>
-            <p>{{ t('setup.seedConfirmDialog.message') }}</p>
-            <p class="mt-2">{{ t('setup.seedConfirmDialog.question') }}</p>
-          </v-card-text>
-          <v-card-actions>
-            <v-btn
-                   variant="text"
-                   @click="skipSeedAndContinue">
-              {{ t('setup.seedConfirmDialog.skip') }}
-            </v-btn>
-            <v-spacer />
-            <v-btn
-                   color="primary"
-                   variant="elevated"
-                   :loading="isLoading"
-                   @click="confirmSeedAndContinue">
-              <v-icon start>mdi-database-plus</v-icon>
-              {{ t('setup.seedConfirmDialog.seedContinue') }}
-            </v-btn>
-          </v-card-actions>
-        </v-card>
-      </v-dialog>
     </v-main>
   </v-app>
 </template>
