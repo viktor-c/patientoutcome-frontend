@@ -5,7 +5,7 @@ import { useUserStore } from '@/stores/userStore'
 import { ResponseError } from '@/api'
 import { useNotifierStore } from '@/stores/notifierStore'
 import { useI18n } from 'vue-i18n'
-import { userApi } from '@/api'
+import { userApi, setupApi } from '@/api'
 import type { LoginUser200ResponseResponseObject } from '@/api'
 
 const { t } = useI18n()
@@ -13,9 +13,6 @@ const { t } = useI18n()
 const router = useRouter()
 const userStore = useUserStore()
 const notifierStore = useNotifierStore()
-
-// API base URL from environment
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000'
 
 // Prefill the username with `kiosk` so kiosk mode is ready on page load
 const username = ref('kiosk')
@@ -35,7 +32,7 @@ onMounted(async () => {
     }
     return
   }
-  
+
   // Then check setup status
   await checkSetupStatus()
 })
@@ -43,12 +40,8 @@ onMounted(async () => {
 async function checkSetupStatus() {
   checkingSetup.value = true
   try {
-    const response = await fetch(`${API_URL}/setup/status`, {
-      credentials: 'include'
-    })
-    const data = await response.json()
-    
-    if (data.success && data.responseObject?.setupRequired) {
+    const response = await setupApi.getSetupStatus()
+    if (response.success && response.responseObject?.setupRequired) {
       // Redirect to setup wizard
       router.push('/setup')
       return
@@ -89,7 +82,7 @@ const login = async () => {
         roles: (response.responseObject as LoginUser200ResponseResponseObject & { roles?: string[] }).roles || []
       })
       notifierStore.notify(t('login.loginSuccessfull'), 'success')
-      
+
       // Redirect based on user role
       if (userStore.isKioskUser()) {
         router.push('/kiosk')
@@ -127,7 +120,7 @@ const login = async () => {
         <div class="mt-4">Checking system status...</div>
       </v-card-text>
     </v-card>
-    
+
     <!-- Login form -->
     <v-card v-else>
       <v-card-title>{{ t('login.title') }}</v-card-title>

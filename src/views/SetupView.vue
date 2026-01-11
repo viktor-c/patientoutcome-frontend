@@ -3,6 +3,7 @@ import { ref, onMounted, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { useNotifierStore } from '@/stores/notifierStore'
 import { useI18n } from 'vue-i18n'
+import { setupApi } from '@/api'
 
 const router = useRouter()
 const notifierStore = useNotifierStore()
@@ -18,9 +19,6 @@ function changeLanguage(lang: string) {
   locale.value = lang
   localStorage.setItem('locale', lang)
 }
-
-// API base URL from environment
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000'
 
 // Environment info
 const isProduction = import.meta.env.MODE === 'production' || import.meta.env.PROD
@@ -95,19 +93,16 @@ onMounted(async () => {
 async function checkSetupStatus() {
   isLoading.value = true
   try {
-    const response = await fetch(`${API_URL}/setup/status`, {
-      credentials: 'include'
-    })
-    const data = await response.json()
+    const response = await setupApi.getSetupStatus()
 
-    if (data.success && data.responseObject) {
-      setupRequired.value = data.responseObject.setupRequired
-      hasAdminUser.value = data.responseObject.hasAdminUser
-      hasAnyUsers.value = data.responseObject.hasAnyUsers
-      databaseConnected.value = data.responseObject.databaseConnected
+    if (response.success && response.responseObject) {
+      setupRequired.value = response.responseObject.setupRequired
+      hasAdminUser.value = response.responseObject.hasAdminUser
+      hasAnyUsers.value = response.responseObject.hasAnyUsers
+      databaseConnected.value = response.responseObject.databaseConnected
 
       // If setup is not required, redirect to login
-      if (!data.responseObject.setupRequired) {
+      if (!response.responseObject.setupRequired) {
         router.push('/')
       }
     }
@@ -124,12 +119,9 @@ async function checkSetupStatus() {
 
 async function fetchDatabaseStats() {
   try {
-    const response = await fetch(`${API_URL}/setup/stats`, {
-      credentials: 'include'
-    })
-    const data = await response.json()
-    if (data.success && data.responseObject) {
-      dbStats.value = data.responseObject
+    const response = await setupApi.getSetupDatabaseStats()
+    if (response.success && response.responseObject) {
+      dbStats.value = response.responseObject
     }
   } catch (error) {
     console.error('Failed to fetch database stats:', error)
@@ -141,25 +133,18 @@ async function createAdmin() {
 
   isLoading.value = true
   try {
-    const response = await fetch(`${API_URL}/setup/create-admin`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      credentials: 'include',
-      body: JSON.stringify({
+    const response = await setupApi.createAdminUser({
+      createAdminRequest: {
         username: adminForm.value.username,
         password: adminForm.value.password,
         name: adminForm.value.name,
         email: adminForm.value.email,
         department: adminForm.value.department,
         belongsToCenter: adminForm.value.belongsToCenter
-      })
+      }
     })
 
-    const data = await response.json()
-
-    if (data.success) {
+    if (response.success) {
       notifierStore.notify(t('setup.notifications.adminCreated'), 'success')
       hasAdminUser.value = true
       hasAnyUsers.value = true
@@ -168,7 +153,7 @@ async function createAdmin() {
       // Just update the database stats
       await fetchDatabaseStats()
     } else {
-      notifierStore.notify(data.message || t('setup.notifications.adminCreateFailed'), 'error')
+      notifierStore.notify(response.message || t('setup.notifications.adminCreateFailed'), 'error')
     }
   } catch (error) {
     console.error('Failed to create admin:', error)
