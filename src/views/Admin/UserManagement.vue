@@ -2,7 +2,7 @@
 import { ref, onMounted, watch } from 'vue';
 import { useNotifierStore } from '@/stores/';
 import { userApi, userDepartmentApi } from '@/api';
-import type { UpdateUserByIdRequest } from '@/api/models/UpdateUserByIdRequest';
+import type { UpdateUserRequest } from '@/api/models/UpdateUserRequest';
 import { useUserStore } from '@/stores/userStore';
 import type { GetUsers200ResponseResponseObjectInner } from '@/api/models/GetUsers200ResponseResponseObjectInner';
 import type { UserDepartment } from '@/api/models/UserDepartment';
@@ -78,9 +78,19 @@ const userStore = useUserStore();
 
 const saveUser = async (updatedUser: GetUsers200ResponseResponseObjectInner) => {
   console.debug('UserManagement.saveUser: updating user', updatedUser?.username, 'as admin', userStore.username);
+
+  // User must have an id to be updated
+  if (!updatedUser.id) {
+    notifierStore.notify(t('userManagement.updateError'), 'error');
+    console.error('Error updating user: User ID is missing');
+    return;
+  }
+
   try {
     // Build the update payload
-    const updatePayload: UpdateUserByIdRequest & { roles?: string[], password?: string } = {
+    // The backend API now expects the id field in the JSON payload
+    const updatePayload: UpdateUserRequest & { id?: string | null, roles?: string[], password?: string } = {
+      id: updatedUser.id,
       name: updatedUser.name,
       email: updatedUser.email,
       department: updatedUser.department,
@@ -89,18 +99,11 @@ const saveUser = async (updatedUser: GetUsers200ResponseResponseObjectInner) => 
       ...(updatedUser.password && { password: updatedUser.password }),
     };
 
-    // Use ID-based endpoint if available (for targeted user updates)
-    // The ID field comes from MongoDB's _id field in the API response
-    if (updatedUser.id) {
-      console.debug('UserManagement.saveUser: using ID-based update for user', updatedUser.id);
-      await userApi.updateUserById({ id: updatedUser.id, updateUserByIdRequest: updatePayload });
-    } else {
-      // User updating their own profile
-      console.debug('UserManagement.saveUser: updating own profile');
-      await userApi.updateUser({
-        updateUserByIdRequest: updatePayload,
-      });
-    }
+    // Use the standard update endpoint
+    await userApi.updateUser({
+      updateUserRequest: updatePayload,
+    });
+
     console.debug('UserManagement.saveUser: updateUser response complete for', updatedUser?.username);
     notifierStore.notify(t('userManagement.updateSuccess'), 'success');
     await loadUsers();
@@ -126,7 +129,7 @@ const confirmDelete = (user: GetUsers200ResponseResponseObjectInner) => {
       }
     }
   }
-  
+
   userToDelete.value = user;
   showDeleteConfirm.value = true;
 };
@@ -256,6 +259,7 @@ watch(showEditDialog, (isShown) => {
     <EditUserDialog
                     v-model:show="showEditDialog"
                     :user="selectedUser"
+                    :departments="departments"
                     @save="saveUser" />
 
     <!-- Delete Confirmation Dialog -->

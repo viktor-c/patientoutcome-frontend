@@ -6,7 +6,6 @@ import { ResponseError } from '@/api'
 import { useNotifierStore } from '@/stores/notifierStore'
 import { useI18n } from 'vue-i18n'
 import { userApi, setupApi } from '@/api'
-import type { LoginUser200ResponseResponseObject } from '@/api'
 
 const { t } = useI18n()
 
@@ -15,7 +14,7 @@ const userStore = useUserStore()
 const notifierStore = useNotifierStore()
 
 // Prefill the username with `kiosk` so kiosk mode is ready on page load
-const username = ref('kiosk')
+const username = ref('')
 const password = ref('')
 const isLoading = ref(false)
 const checkingSetup = ref(true)
@@ -41,7 +40,7 @@ async function checkSetupStatus() {
   checkingSetup.value = true
   try {
     const response = await setupApi.getSetupStatus()
-    if (response.success && response.responseObject?.data.setupRequired) {
+    if (response.success && response.responseObject?.setupRequired) {
       // Redirect to setup wizard
       router.push('/setup')
       return
@@ -79,7 +78,7 @@ const login = async () => {
         department: response.responseObject.department,
         belongsToCenter: response.responseObject.belongsToCenter,
         email: response.responseObject.email || '',
-        roles: (response.responseObject as LoginUser200ResponseResponseObject & { roles?: string[] }).roles || []
+        roles: response.responseObject.roles || []
       })
       notifierStore.notify(t('login.loginSuccessfull'), 'success')
 
@@ -97,17 +96,17 @@ const login = async () => {
     } else {
       notifierStore.notify('Invalid username or password.', 'error')
     }
-    } catch (error: unknown) {
-      let errorMessage = 'An unexpected error occurred'
-      if (error instanceof ResponseError) {
-        errorMessage = (await error.response.json()).message
-      }
-      console.error('Login error:', errorMessage)
-      notifierStore.notify('An error occurred during login.', errorMessage === 'Invalid credentials' ? 'error' : 'info')
-    } finally {
-      isLoading.value = false
+  } catch (error: unknown) {
+    let errorMessage = 'An unexpected error occurred'
+    if (error instanceof ResponseError) {
+      errorMessage = (await error.response.json()).message
     }
+    console.error('Login error:', errorMessage)
+    notifierStore.notify('An error occurred during login.', errorMessage === 'Invalid credentials' ? 'error' : 'info')
+  } finally {
+    isLoading.value = false
   }
+}
 
 </script>
 

@@ -25,3 +25,7 @@ import 'animate.css';
 app.component('VueDatePicker', VueDatePicker);
 
 app.mount('#app')
+
+// log environment
+console.debug(`Environment: ${import.meta.env.MODE}`);
+console.debug(`API URL: ${import.meta.env.VITE_API_URL}`);

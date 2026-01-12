@@ -7,12 +7,18 @@ const defaultBase = import.meta.env.DEV
   ? (import.meta.env.VITE_API_URL || '/api')
   : (import.meta.env.VITE_API_URL || 'https://prom.example.com');
 
+const fileName = "src/api.ts";
+
 const apiConfig = new Configuration({
   basePath: defaultBase,
   credentials: "include",
   middleware: [authMiddleware]
 });
-console.debug("API Base Path:", apiConfig.basePath);
+console.debug(fileName + " API Base Path:", apiConfig.basePath);
+// console.debug(fileName + " API Config:", apiConfig);
+// console.debug(fileName + " Default Base:", defaultBase);
+// console.debug(fileName + " Environment, base URL:", import.meta.env.BASE_URL);
+
 // Create API instances with the custom configuration
 export const userApi = new UserApi(apiConfig)
 export const patientApi = new PatientApi(apiConfig) // Assuming you have a PatientApi similar to UserApi

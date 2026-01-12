@@ -84,13 +84,13 @@ async function checkSetupStatus() {
     const response = await setupApi.getSetupStatus()
 
     if (response.success && response.responseObject) {
-      setupRequired.value = response.responseObject.data.setupRequired
-      hasAdminUser.value = response.responseObject.data.hasAdminUser
-      hasAnyUsers.value = response.responseObject.data.hasAnyUsers
-      databaseConnected.value = response.responseObject.data.databaseConnected
+      setupRequired.value = response.responseObject.setupRequired
+      hasAdminUser.value = response.responseObject.hasAdminUser
+      hasAnyUsers.value = response.responseObject.hasAnyUsers
+      databaseConnected.value = response.responseObject.databaseConnected
 
       // If setup is not required, redirect to login
-      if (!response.responseObject.data.setupRequired) {
+      if (!response.responseObject.setupRequired) {
         router.push('/')
       }
     }
@@ -109,7 +109,7 @@ async function fetchDatabaseStats() {
   try {
     const response = await setupApi.getSetupDatabaseStats()
     if (response.success && response.responseObject) {
-      dbStats.value = response.responseObject.data
+      dbStats.value = response.responseObject
     }
   } catch (error) {
     console.error('Failed to fetch database stats:', error)
