@@ -54,7 +54,7 @@ const createPatient = async () => {
   if (!newPatient.value.externalPatientId.trim()) {
     showExternalIdWarning.value = true
   }
-  
+
   // Validate the input
   try {
     // Transform the comma-separated externalPatientId into an array
@@ -86,11 +86,11 @@ const createPatient = async () => {
 // Function to list all patients with pagination
 const getAllPatients = async () => {
   try {
-    const response = await patientApi.getPatients({ 
-      page: String(currentPage.value), 
-      limit: String(itemsPerPage.value) 
+    const response = await patientApi.getPatients({
+      page: String(currentPage.value),
+      limit: String(itemsPerPage.value)
     })
-    
+
     if (!response.responseObject) {
       console.debug('no patients Found')
       useNotifierStore().notify(t('alerts.patient.noneFound'), 'info')
@@ -99,7 +99,7 @@ const getAllPatients = async () => {
       totalPages.value = 0
       return
     }
-    
+
     // Handle paginated response structure
     searchResults.value = response.responseObject.patients || []
     totalPatients.value = response.responseObject.total || 0
@@ -169,43 +169,39 @@ const handlePageChange = (page: number) => {
         <v-tabs-window v-model="activeTab">
           <v-tabs-window-item :value="'createPatient'">
             <v-alert
-              type="info"
-              variant="tonal"
-              class="mb-4"
-              density="compact"
-            >
+                     type="info"
+                     variant="tonal"
+                     class="mb-4"
+                     density="compact">
               {{ t('alerts.patient.optionalFieldsInfo') }}
             </v-alert>
-            
+
             <v-alert
-              v-if="showExternalIdWarning"
-              type="warning"
-              variant="tonal"
-              class="mb-4"
-              closable
-              @click:close="showExternalIdWarning = false"
-            >
+                     v-if="showExternalIdWarning"
+                     type="warning"
+                     variant="tonal"
+                     class="mb-4"
+                     closable
+                     @click:close="showExternalIdWarning = false">
               {{ t('alerts.patient.noExternalIdWarning') }}
             </v-alert>
-            
+
             <v-form @submit.prevent="createPatient">
-              <v-text-field 
-                :label="t('forms.externalId')" 
-                v-model="newPatient.externalPatientId"
-                placeholder="Enter comma-separated IDs"
-                :hint="t('forms.externalIdHint')"
-                persistent-hint
-              ></v-text-field>
-              <v-select 
-                :label="t('forms.sex')" 
-                v-model="newPatient.sex" 
-                :items="sexOptions" 
-                item-value="value"
-                item-title="label" 
-                outlined 
-                dense 
-                clearable
-              ></v-select>
+              <v-text-field
+                            :label="t('forms.externalId')"
+                            v-model="newPatient.externalPatientId"
+                            placeholder="Enter comma-separated IDs"
+                            :hint="t('forms.externalIdHint')"
+                            persistent-hint></v-text-field>
+              <v-select
+                        :label="t('forms.sex')"
+                        v-model="newPatient.sex"
+                        :items="sexOptions"
+                        item-value="value"
+                        item-title="label"
+                        outlined
+                        dense
+                        clearable></v-select>
               <v-btn color="success" @click="createPatient">{{ t('forms.submit') }}</v-btn>
             </v-form>
           </v-tabs-window-item>
@@ -221,7 +217,7 @@ const handlePageChange = (page: number) => {
                   externalId: searchResult.externalPatientId,
                 })
               }}
-              <RouterLink :to="`/cases/patient/${searchResult.id}`">
+              <RouterLink :to="`/patient-overview/${searchResult.id}`">
                 <v-btn size="small" color="primary">{{ t('buttons.openPatient') }}</v-btn>
               </RouterLink>
             </p>
@@ -235,26 +231,25 @@ const handlePageChange = (page: number) => {
 
           <v-tabs-window-item :value="'listPatients'">
             <v-data-table
-              :headers="[
-                { title: t('forms.externalId'), key: 'externalPatientId', sortable: false },
-                { title: t('forms.sex'), key: 'sex', sortable: false },
-                { title: t('common.actions'), key: 'actions', sortable: false, align: 'end' }
-              ]"
-              :items="searchResults"
-              :items-length="totalPatients"
-              :items-per-page="itemsPerPage"
-              :page="currentPage"
-              hide-default-footer
-              class="elevation-1"
-            >
+                          :headers="[
+                            { title: t('forms.externalId'), key: 'externalPatientId', sortable: false },
+                            { title: t('forms.sex'), key: 'sex', sortable: false },
+                            { title: t('common.actions'), key: 'actions', sortable: false, align: 'end' }
+                          ]"
+                          :items="searchResults"
+                          :items-length="totalPatients"
+                          :items-per-page="itemsPerPage"
+                          :page="currentPage"
+                          hide-default-footer
+                          class="elevation-1">
               <template #item.externalPatientId="{ item }">
                 {{ item.externalPatientId?.[0] || '-' }}
               </template>
-              
+
               <template #item.sex="{ item }">
                 {{ item.sex || '-' }}
               </template>
-              
+
               <template #item.actions="{ item }">
                 <RouterLink :to="`/cases/patient/${item.id}`">
                   <v-btn size="small" color="primary" variant="tonal">
@@ -262,17 +257,16 @@ const handlePageChange = (page: number) => {
                   </v-btn>
                 </RouterLink>
               </template>
-              
+
               <template #bottom>
                 <div class="d-flex justify-center align-center pa-4">
                   <v-pagination
-                    v-model="currentPage"
-                    :length="totalPages"
-                    :total-visible="7"
-                    @update:modelValue="handlePageChange"
-                  ></v-pagination>
+                                v-model="currentPage"
+                                :length="totalPages"
+                                :total-visible="7"
+                                @update:modelValue="handlePageChange"></v-pagination>
                   <span class="ml-4 text-caption">
-                    {{ t('pagination.showing', { 
+                    {{ t('pagination.showing', {
                       start: (currentPage - 1) * itemsPerPage + 1,
                       end: Math.min(currentPage * itemsPerPage, totalPatients),
                       total: totalPatients
