@@ -397,6 +397,29 @@ const openCaseUrl = () => {
   }
 }
 
+// Copy URLs to clipboard
+const copyPatientUrl = () => {
+  const url = getPatientUrl()
+  if (url) {
+    navigator.clipboard.writeText(url).then(() => {
+      notifierStore.notify(t('creationFlow.urlCopied'), 'success')
+    }).catch(() => {
+      notifierStore.notify(t('creationFlow.urlCopyFailed'), 'error')
+    })
+  }
+}
+
+const copyCaseUrl = () => {
+  const url = getCaseUrl()
+  if (url) {
+    navigator.clipboard.writeText(url).then(() => {
+      notifierStore.notify(t('creationFlow.urlCopied'), 'success')
+    }).catch(() => {
+      notifierStore.notify(t('creationFlow.urlCopyFailed'), 'error')
+    })
+  }
+}
+
 // Add external ID to patient
 const addExternalIdField = () => {
   if (!patientData.value.externalPatientId) {
@@ -650,19 +673,28 @@ onMounted(async () => {
                       <p class="mb-2 font-weight-bold">{{ t('creationFlow.patientUrl') }}</p>
                       <v-text-field
                         :value="getPatientUrl()"
-                        :label="t('creationFlow.patientUrlLabel')"
                         readonly
                         variant="outlined"
                         density="compact"
-                        @click="openPatientUrl"
+                        @click="copyPatientUrl"
                         class="cursor-pointer"
                       >
                         <template #append-inner>
-                          <v-icon
+                          <v-btn
+                            icon="mdi-content-copy"
+                            size="x-small"
+                            variant="text"
+                            @click.stop="copyPatientUrl"
+                            :title="t('buttons.copy')"
+                            class="mr-2"
+                          ></v-btn>
+                          <v-btn
                             icon="mdi-open-in-new"
-                            @click="openPatientUrl"
-                            class="cursor-pointer"
-                          ></v-icon>
+                            size="x-small"
+                            variant="text"
+                            @click.stop="openPatientUrl"
+                            :title="t('buttons.open')"
+                          ></v-btn>
                         </template>
                       </v-text-field>
                     </div>
@@ -671,19 +703,28 @@ onMounted(async () => {
                       <p class="mb-2 font-weight-bold">{{ t('creationFlow.caseUrl') }}</p>
                       <v-text-field
                         :value="getCaseUrl()"
-                        :label="t('creationFlow.caseUrlLabel')"
                         readonly
                         variant="outlined"
                         density="compact"
-                        @click="openCaseUrl"
+                        @click="copyCaseUrl"
                         class="cursor-pointer"
                       >
                         <template #append-inner>
-                          <v-icon
+                          <v-btn
+                            icon="mdi-content-copy"
+                            size="x-small"
+                            variant="text"
+                            @click.stop="copyCaseUrl"
+                            :title="t('buttons.copy')"
+                            class="mr-2"
+                          ></v-btn>
+                          <v-btn
                             icon="mdi-open-in-new"
-                            @click="openCaseUrl"
-                            class="cursor-pointer"
-                          ></v-icon>
+                            size="x-small"
+                            variant="text"
+                            @click.stop="openCaseUrl"
+                            :title="t('buttons.open')"
+                          ></v-btn>
                         </template>
                       </v-text-field>
                     </div>
