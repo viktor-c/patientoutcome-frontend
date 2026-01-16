@@ -57,6 +57,9 @@ const createdCase = ref<GetAllPatientCases200ResponseResponseObjectInner | null>
 const createdSurgery = ref<Surgery | null>(null)
 const createdConsultations = ref<Consultation[]>([])
 
+// Track whether surgery is being skipped
+const skipSurgery = ref(false)
+
 // Consultation blueprint management
 const selectedConsultationBlueprints = ref<Blueprint[]>([])
 const showConsultationBlueprintSelection = ref(false)
@@ -127,7 +130,13 @@ const nextStep = async () => {
 
 const previousStep = () => {
   if (currentStep.value > 1) {
-    currentStep.value--
+    // If we skipped surgery and are on step 4, go back to step 3 (surgery step)
+    if (skipSurgery.value && currentStep.value === 4) {
+      skipSurgery.value = false
+      currentStep.value = 3
+    } else {
+      currentStep.value--
+    }
   }
 }
 
@@ -322,6 +331,13 @@ const completeCreationFlow = () => {
   }
 }
 
+// Skip surgery and proceed directly to consultations
+const handleSkipSurgery = () => {
+  skipSurgery.value = true
+  currentStep.value = 4
+  notifierStore.notify(t('creationFlow.surgerySkipped'), 'info')
+}
+
 // Handle consultation blueprint selection
 const handleConsultationBlueprintCancel = () => {
   showConsultationBlueprintSelection.value = false
@@ -351,6 +367,34 @@ const handleConsultationsSubmit = (consultations: Consultation[]) => {
 
 const cancel = () => {
   router.back()
+}
+
+// Generate direct access URLs
+const getPatientUrl = () => {
+  if (!createdPatient.value?.id) return ''
+  const baseUrl = window.location.origin
+  return `${baseUrl}/patient/${createdPatient.value.id}`
+}
+
+const getCaseUrl = () => {
+  if (!createdCase.value?.id) return ''
+  const baseUrl = window.location.origin
+  return `${baseUrl}/case/${createdCase.value.id}`
+}
+
+// Open URLs in new tab
+const openPatientUrl = () => {
+  const url = getPatientUrl()
+  if (url) {
+    window.open(url, '_blank')
+  }
+}
+
+const openCaseUrl = () => {
+  const url = getCaseUrl()
+  if (url) {
+    window.open(url, '_blank')
+  }
 }
 
 // Add external ID to patient
@@ -536,6 +580,10 @@ onMounted(async () => {
                   {{ t('creationFlow.surgeryBlueprintPrefilled') }}
                 </v-alert>
 
+                <v-alert type="info" variant="tonal" class="mb-4" density="compact">
+                  {{ t('creationFlow.surgeryOptionalInfo') }}
+                </v-alert>
+
                 <!-- Embedded Surgery Form -->
                 <CreateEditSurgeryDialog
                                          v-if="createdCase && createdCase.id"
@@ -545,12 +593,26 @@ onMounted(async () => {
                                          @submit="handleSurgerySubmit"
                                          @cancel="handleSurgeryCancel"
                                          @consultation-blueprints="handleConsultationBlueprints" />
+
+                <!-- Skip Surgery Action -->
+                <v-card-actions class="justify-center pa-4 mt-4">
+                  <v-btn
+                         @click="handleSkipSurgery"
+                         color="warning"
+                         variant="outlined">
+                    {{ t('creationFlow.skipSurgery') }}
+                  </v-btn>
+                </v-card-actions>
               </v-stepper-window-item>
 
               <!-- Step 4: Create Consultation -->
               <v-stepper-window-item :value="4">
                 <v-alert v-if="createdSurgery" type="success" class="mb-4">
                   {{ t('creationFlow.surgeryCreated') }} - ID: {{ createdSurgery.id }}
+                </v-alert>
+
+                <v-alert v-if="skipSurgery" type="info" class="mb-4">
+                  {{ t('creationFlow.surgerySkippedInfo') }}
                 </v-alert>
 
                 <!-- Consultation Creation Status -->
@@ -576,6 +638,54 @@ onMounted(async () => {
                         {{ t('creationFlow.noConsultationsCreated') }}
                       </v-alert>
                       <p>{{ t('creationFlow.noConsultationsCreatedMessage') }}</p>
+                    </div>
+                  </v-card-text>
+                </v-card>
+
+                <!-- Direct Access URLs -->
+                <v-card class="mt-4">
+                  <v-card-title>{{ t('creationFlow.directAccessUrls') }}</v-card-title>
+                  <v-card-text>
+                    <div v-if="createdPatient" class="mb-4">
+                      <p class="mb-2 font-weight-bold">{{ t('creationFlow.patientUrl') }}</p>
+                      <v-text-field
+                        :value="getPatientUrl()"
+                        :label="t('creationFlow.patientUrlLabel')"
+                        readonly
+                        variant="outlined"
+                        density="compact"
+                        @click="openPatientUrl"
+                        class="cursor-pointer"
+                      >
+                        <template #append-inner>
+                          <v-icon
+                            icon="mdi-open-in-new"
+                            @click="openPatientUrl"
+                            class="cursor-pointer"
+                          ></v-icon>
+                        </template>
+                      </v-text-field>
+                    </div>
+
+                    <div v-if="createdCase">
+                      <p class="mb-2 font-weight-bold">{{ t('creationFlow.caseUrl') }}</p>
+                      <v-text-field
+                        :value="getCaseUrl()"
+                        :label="t('creationFlow.caseUrlLabel')"
+                        readonly
+                        variant="outlined"
+                        density="compact"
+                        @click="openCaseUrl"
+                        class="cursor-pointer"
+                      >
+                        <template #append-inner>
+                          <v-icon
+                            icon="mdi-open-in-new"
+                            @click="openCaseUrl"
+                            class="cursor-pointer"
+                          ></v-icon>
+                        </template>
+                      </v-text-field>
                     </div>
                   </v-card-text>
                 </v-card>
@@ -676,5 +786,9 @@ onMounted(async () => {
 <style scoped>
 .gap-2 {
   gap: 8px;
+}
+
+.cursor-pointer {
+  cursor: pointer;
 }
 </style>

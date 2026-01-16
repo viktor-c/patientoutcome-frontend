@@ -29,6 +29,12 @@ const searchQuery = ref('')
 const searchResults = ref<Patient[]>([])
 const searchResult = ref<Patient | null>(null)
 
+// Pagination state for listing patients
+const currentPage = ref(1)
+const itemsPerPage = ref(10)
+const totalPatients = ref(0)
+const totalPages = ref(0)
+
 // Options for the "sex" dropdown
 const sexOptions = [
   { value: 'male', label: t('forms.patientCase.sexOptions.male') },
@@ -77,16 +83,27 @@ const createPatient = async () => {
   }
 }
 
-// Function to list all patients
+// Function to list all patients with pagination
 const getAllPatients = async () => {
   try {
-    const response = await patientApi.getPatients()
-    if (response.responseObject == undefined || response.responseObject.length === 0) {
+    const response = await patientApi.getPatients({ 
+      page: String(currentPage.value), 
+      limit: String(itemsPerPage.value) 
+    })
+    
+    if (!response.responseObject) {
       console.debug('no patients Found')
       useNotifierStore().notify(t('alerts.patient.noneFound'), 'info')
+      searchResults.value = []
+      totalPatients.value = 0
+      totalPages.value = 0
       return
     }
-    searchResults.value = response.responseObject
+    
+    // Handle paginated response structure
+    searchResults.value = response.responseObject.patients || []
+    totalPatients.value = response.responseObject.total || 0
+    totalPages.value = response.responseObject.totalPages || 0
     console.log('List of patients:', response.responseObject)
   } catch (error: unknown) {
     let errorMessage = 'An unexpected error occurred'
@@ -127,9 +144,16 @@ const searchPatient = async () => {
 // Watcher to refresh the list of patients when the "listPatients" tab is selected
 watch(activeTab, (newTab) => {
   if (newTab === 'listPatients') {
+    currentPage.value = 1 // Reset to first page when switching tabs
     getAllPatients()
   }
 })
+
+// Function to handle page changes
+const handlePageChange = (page: number) => {
+  currentPage.value = page
+  getAllPatients()
+}
 </script>
 
 <template>
@@ -195,11 +219,10 @@ watch(activeTab, (newTab) => {
               {{
                 t('forms.patientDetails', {
                   externalId: searchResult.externalPatientId,
-                  id: searchResult.id,
                 })
               }}
               <RouterLink :to="`/cases/patient/${searchResult.id}`">
-                <v-btn size="small" color="primary">{{ t('buttons.openCase') }}</v-btn>
+                <v-btn size="small" color="primary">{{ t('buttons.openPatient') }}</v-btn>
               </RouterLink>
             </p>
             <p v-else-if="searchQuery.length < SEARCH_QUERY_MINIMUM_LENGTH">
@@ -211,22 +234,53 @@ watch(activeTab, (newTab) => {
           </v-tabs-window-item>
 
           <v-tabs-window-item :value="'listPatients'">
-            <v-list>
-              <v-list-item v-for="(patient, index) in searchResults"
-                           :key="patient.id || patient.externalPatientId?.[0] || index">
-                <p class="mt-1">
-                  {{
-                    t('forms.patientDetails', {
-                      externalId: patient.externalPatientId?.[0],
-                      id: patient.id,
-                    })
-                  }}
-                  <RouterLink :to="`/cases/patient/${patient.id}`">
-                    <v-btn size="small" color="primary">{{ t('buttons.openCase') }}</v-btn>
-                  </RouterLink>
-                </p>
-              </v-list-item>
-            </v-list>
+            <v-data-table
+              :headers="[
+                { title: t('forms.externalId'), key: 'externalPatientId', sortable: false },
+                { title: t('forms.sex'), key: 'sex', sortable: false },
+                { title: t('common.actions'), key: 'actions', sortable: false, align: 'end' }
+              ]"
+              :items="searchResults"
+              :items-length="totalPatients"
+              :items-per-page="itemsPerPage"
+              :page="currentPage"
+              hide-default-footer
+              class="elevation-1"
+            >
+              <template #item.externalPatientId="{ item }">
+                {{ item.externalPatientId?.[0] || '-' }}
+              </template>
+              
+              <template #item.sex="{ item }">
+                {{ item.sex || '-' }}
+              </template>
+              
+              <template #item.actions="{ item }">
+                <RouterLink :to="`/cases/patient/${item.id}`">
+                  <v-btn size="small" color="primary" variant="tonal">
+                    {{ t('buttons.openPatient') }}
+                  </v-btn>
+                </RouterLink>
+              </template>
+              
+              <template #bottom>
+                <div class="d-flex justify-center align-center pa-4">
+                  <v-pagination
+                    v-model="currentPage"
+                    :length="totalPages"
+                    :total-visible="7"
+                    @update:modelValue="handlePageChange"
+                  ></v-pagination>
+                  <span class="ml-4 text-caption">
+                    {{ t('pagination.showing', { 
+                      start: (currentPage - 1) * itemsPerPage + 1,
+                      end: Math.min(currentPage * itemsPerPage, totalPatients),
+                      total: totalPatients
+                    }) }}
+                  </span>
+                </div>
+              </template>
+            </v-data-table>
           </v-tabs-window-item>
         </v-tabs-window>
       </v-card-text>

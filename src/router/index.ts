@@ -1,7 +1,7 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import i18n from '@/plugins/i18n'
 
-// import PatientView from '@/views/Patient/PatientView.vue' // Import the new view
+import PatientView from '@/views/Patient/PatientView.vue'
 // import CasesView from '@/views/Patient/PatientCaseView.vue' // Disabled for now
 import ConsultationView from '@/views/Patient/ConsultationView.vue'
 import PatientCaseCreationFlowView from '@/views/Patient/PatientCaseCreationFlowView.vue'
@@ -45,7 +45,7 @@ const routes = [
   { path: '/statistics/:caseId', name: 'statistics', component: StatisticsView, props: true, meta: { titleKey: 'pageTitles.statistics' } },
   { path: '/case/:caseId', name: 'patientcaselanding', component: () => import('@/views/Patient/PatientCaseLanding.vue'), props: true, meta: { titleKey: 'pageTitles.patientCaseLanding' } },
   // disabled patients view for now, this should be accessed via dashboard
-  //{ path: '/patients', name: 'patients', component: PatientView, meta: { titleKey: 'pageTitles.patients' } },
+  { path: '/patients', name: 'patients', component: PatientView, meta: { titleKey: 'pageTitles.patients' } },
   { path: '/patient-overview/:patientId', name: 'patientoverview', component: () => import('@/views/Overview/PatientOverview.vue'), props: true, meta: { titleKey: 'pageTitles.patientOverview' } },
 
   { path: '/kiosk', name: 'kiosk', component: KioskView, meta: { titleKey: 'pageTitles.kiosk' } },

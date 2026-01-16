@@ -88,7 +88,7 @@ export default {
     searchByExternalId: 'Search by external id',
     noPatientFound: 'No patient found with external id {externalId}',
     searchQueryTooShort: 'Search query must be at least 3 characters long',
-    patientDetails: 'Patient with external id {externalId} has id of {id}',
+    patientDetails: 'Patient found with external id {externalId}',
     previousForm: 'Previous form',
     saveAndSubmitForm: 'Save and load next Form',
     submitCompletedForm: 'Submit Completed Form',
@@ -178,6 +178,7 @@ export default {
   },
   buttons: {
     showAllPatients: 'Show all Patients',
+    openPatient: 'Open Patient',
     openCase: 'Open Case',
     createNewCase: 'Create New Case',
     create: 'Create',
@@ -693,6 +694,9 @@ export default {
     errorLoadingData: 'Error loading data',
     retry: 'Retry',
     unknown: 'Unknown',
+  },
+  pagination: {
+    showing: 'Showing {start}-{end} of {total}',
   },
   reviewForm: {
     title: 'Review Form Answers',

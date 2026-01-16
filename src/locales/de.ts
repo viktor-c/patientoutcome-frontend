@@ -331,7 +331,7 @@ export default {
     searchByExternalId: 'Nach externer ID suchen',
     noPatientFound: 'Kein Patient mit der externen ID {externalId} gefunden',
     searchQueryTooShort: 'Die Suchanfrage muss mindestens 3 Zeichen lang sein',
-    patientDetails: 'Patient mit der externen ID {externalId} hat die ID {id}',
+    patientDetails: 'Patient mit der externen ID {externalId} gefunden',
     previousForm: 'Vorheriges Formular',
     fillOutForm: 'Formular ausfüllen',
     loading: 'Formular wird geladen...',
@@ -421,6 +421,7 @@ export default {
   },
   buttons: {
     showAllPatients: 'Alle Patienten anzeigen',
+    openPatient: 'Patient öffnen',
     openCase: 'Fall öffnen',
     createNewCase: 'Neuen Fall erstellen',
     create: 'Erstellen',
@@ -694,6 +695,9 @@ export default {
     errorLoadingData: 'Fehler beim Laden der Daten',
     retry: 'Wiederholen',
     unknown: 'Unbekannt',
+  },
+  pagination: {
+    showing: 'Zeige {start}-{end} von {total}',
   },
   reviewForm: {
     title: 'Formular-Antworten überprüfen',
