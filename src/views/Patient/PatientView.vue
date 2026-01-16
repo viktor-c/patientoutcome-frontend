@@ -251,7 +251,7 @@ const handlePageChange = (page: number) => {
               </template>
 
               <template #item.actions="{ item }">
-                <RouterLink :to="`/cases/patient/${item.id}`">
+                <RouterLink :to="`/patient-overview/${item.id}`">
                   <v-btn size="small" color="primary" variant="tonal">
                     {{ t('buttons.openPatient') }}
                   </v-btn>
