@@ -427,6 +427,7 @@ export default {
     create: 'Erstellen',
     update: 'Aktualisieren',
     delete: 'Löschen',
+    deleteSelected: 'Ausgewählte löschen ({count})',
     edit: 'Bearbeiten',
     cancel: 'Abbrechen',
     yes: 'Ja',
@@ -476,6 +477,14 @@ export default {
       duplicateExternalId: 'Ein Patient mit dieser externen ID existiert bereits.',
       noExternalIdWarning: 'Warnung: Patient wird ohne externe ID erstellt. Falls die externe Datenbank die Verbindung zu diesem Patienten verliert, ist es später technisch nicht möglich, diese wieder herzustellen.',
       optionalFieldsInfo: 'Beide Felder sind optional. Sie können einen Patienten ohne zusätzliche Informationen erstellen. Das Verlieren der Verbindung zu dem Patienten oder den zugehörigen Fällen kann es jedoch unmöglich machen, sie später sicher zu identifizieren.',
+      deleted: 'Patient erfolgreich gelöscht!',
+      deleteFailed: 'Fehler beim Löschen des Patienten.',
+      deletedMultiple: '{count} Patienten erfolgreich gelöscht!',
+      restored: 'Patient erfolgreich wiederhergestellt!',
+      restoreFailed: 'Fehler beim Wiederherstellen des Patienten.',
+      permanentlyDeleted: 'Patient endgültig gelöscht!',
+      confirmPermanentDelete: 'Sind Sie sicher, dass Sie diesen Patienten endgültig löschen möchten? Diese Aktion kann nicht rückgängig gemacht werden.',
+      fetchDeletedFailed: 'Fehler beim Abrufen gelöschter Patienten.',
     },
     case: {
       fetchCasesFailed: 'Fehler beim Abrufen der Fälle.',
@@ -486,6 +495,12 @@ export default {
       deleted: 'Fall erfolgreich gelöscht!',
       deletionFailed: 'Fehler beim Löschen des Falls.',
       confirmDelete: 'Sind Sie sicher, dass Sie den Fall mit id {caseId} löschen möchten?',
+      restored: 'Fall erfolgreich wiederhergestellt!',
+      restoreFailed: 'Fehler beim Wiederherstellen des Falls.',
+      permanentlyDeleted: 'Fall endgültig gelöscht!',
+      confirmPermanentDelete: 'Sind Sie sicher, dass Sie diesen Fall endgültig löschen möchten? Diese Aktion kann nicht rückgängig gemacht werden.',
+      fetchDeletedFailed: 'Fehler beim Abrufen gelöschter Fälle.',
+      deleteFailed: 'Fehler beim Löschen des Falls.',
     },
     consultation: {
       created: 'Konsultation erfolgreich erstellt!',
@@ -699,6 +714,8 @@ export default {
     errorLoadingData: 'Fehler beim Laden der Daten',
     retry: 'Wiederholen',
     unknown: 'Unbekannt',
+    deletedAt: 'Gelöscht am',
+    patient: 'Patient',
   },
   pagination: {
     showing: 'Zeige {start}-{end} von {total}',
@@ -1047,10 +1064,20 @@ export default {
     caseBlueprints: 'Fallvorlagen',
     backupManagement: 'Sicherungsverwaltung',
     settingsManagement: 'Einstellungsverwaltung',
+    deletedItemsManagement: 'Verwaltung gelöschter Elemente',
     setup: 'Einrichtung',
     activityLog: 'Aktivitätsprotokoll',
     statistics: 'Statistiken',
   },
+
+  admin: {
+    deletedItemsManagement: {
+      title: 'Verwaltung gelöschter Elemente',
+      deletedPatients: 'Gelöschte Patienten',
+      deletedCases: 'Gelöschte Fälle',
+    },
+  },
+
   about: {
     technologies: {
       title: 'Verwendete Technologien',

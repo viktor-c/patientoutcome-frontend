@@ -35,6 +35,9 @@ const itemsPerPage = ref(10)
 const totalPatients = ref(0)
 const totalPages = ref(0)
 
+// Multi-select state
+const selectedPatients = ref<Patient[]>([])
+
 // Options for the "sex" dropdown
 const sexOptions = [
   { value: 'male', label: t('forms.patientCase.sexOptions.male') },
@@ -154,6 +157,42 @@ const handlePageChange = (page: number) => {
   currentPage.value = page
   getAllPatients()
 }
+
+// Function to soft delete a single patient
+const softDeletePatient = async (patientId: string) => {
+  try {
+    await patientApi.softDeletePatient({ id: patientId })
+    notifierStore.notify(t('alerts.patient.deleted'), 'success')
+    getAllPatients()
+  } catch (error: unknown) {
+    let errorMessage = 'An unexpected error occurred'
+    if (error instanceof ResponseError) {
+      errorMessage = (await error.response.json()).message
+    }
+    console.error('Error soft deleting patient:', errorMessage)
+    notifierStore.notify(t('alerts.patient.deleteFailed'), 'error')
+  }
+}
+
+// Function to soft delete multiple patients
+const softDeleteSelectedPatients = async () => {
+  if (selectedPatients.value.length === 0) return
+
+  try {
+    await patientApi.softDeletePatients({ softDeletePatientsRequest: { patientIds: selectedPatients.value }  })
+    notifierStore.notify(t('alerts.patient.deletedMultiple', { count: selectedPatients.value.length }), 'success')
+    selectedPatients.value = []
+    getAllPatients()
+  } catch (error: unknown) {
+    let errorMessage = 'An unexpected error occurred'
+    if (error instanceof ResponseError) {
+      errorMessage = (await error.response.json()).message
+    }
+    console.error('Error soft deleting patients:', errorMessage)
+    notifierStore.notify(t('alerts.patient.deleteFailed'), 'error')
+  }
+}
+
 </script>
 
 <template>
@@ -231,6 +270,7 @@ const handlePageChange = (page: number) => {
 
           <v-tabs-window-item :value="'listPatients'">
             <v-data-table
+                          v-model="selectedPatients"
                           :headers="[
                             { title: t('forms.externalId'), key: 'externalPatientId', sortable: false },
                             { title: t('forms.sex'), key: 'sex', sortable: false },
@@ -240,6 +280,8 @@ const handlePageChange = (page: number) => {
                           :items-length="totalPatients"
                           :items-per-page="itemsPerPage"
                           :page="currentPage"
+                          show-select
+                          item-value="id"
                           hide-default-footer
                           class="elevation-1">
               <template #item.externalPatientId="{ item }">
@@ -251,11 +293,17 @@ const handlePageChange = (page: number) => {
               </template>
 
               <template #item.actions="{ item }">
-                <RouterLink :to="`/patient-overview/${item.id}`">
-                  <v-btn size="small" color="primary" variant="tonal">
-                    {{ t('buttons.openPatient') }}
-                  </v-btn>
-                </RouterLink>
+                <div class="d-flex justify-end ga-2">
+                  <RouterLink :to="`/patient-overview/${item.id}`">
+                    <v-btn size="small" color="primary" variant="text" icon="mdi-eye"></v-btn>
+                  </RouterLink>
+                  <v-btn 
+                    size="small" 
+                    color="error" 
+                    variant="text" 
+                    icon="mdi-delete"
+                    @click="softDeletePatient(item.id!)"></v-btn>
+                </div>
               </template>
 
               <template #bottom>
@@ -278,6 +326,16 @@ const handlePageChange = (page: number) => {
           </v-tabs-window-item>
         </v-tabs-window>
       </v-card-text>
+
+      <!-- Delete button shown when patients are selected -->
+      <v-card-actions v-if="selectedPatients.length > 0" class="justify-center pa-4">
+        <v-btn 
+          color="error" 
+          prepend-icon="mdi-delete" 
+          @click="softDeleteSelectedPatients">
+          {{ t('buttons.deleteSelected', { count: selectedPatients.length }) }}
+        </v-btn>
+      </v-card-actions>
     </v-card>
   </v-container>
 </template>

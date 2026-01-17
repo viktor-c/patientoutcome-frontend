@@ -26,6 +26,7 @@ export const formApi = new FormApi(apiConfig)
 export const consultationApi = new ConsultationApi(apiConfig)
 export const codeApi = new CodeApi(apiConfig)
 export const patientCaseApi = new PatientCaseApi(apiConfig) // Assuming you have a PatientCaseApi similar to UserApi
+export const caseApi = new PatientCaseApi(apiConfig) // Alias for patientCaseApi
 export const formtemplateApi = new FormtemplateApi(apiConfig)
 export const kioskApi = new KioskApi(apiConfig)
 export const surgeryApi = new SurgeryApi(apiConfig)

@@ -54,6 +54,11 @@ const adminMenuItems = [
     icon: 'mdi-cog',
     route: 'admin-settings'
   },
+  {
+    title: 'Deleted Items',
+    icon: 'mdi-delete-restore',
+    route: 'admin-deleted-items'
+  },
   // Add more admin items here in the future
 ];
 

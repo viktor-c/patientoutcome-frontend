@@ -184,6 +184,7 @@ export default {
     create: 'Create',
     update: 'Update',
     delete: 'Delete',
+    deleteSelected: 'Delete Selected ({count})',
     edit: 'Edit',
     cancel: 'Cancel',
     yes: 'Yes',
@@ -233,6 +234,14 @@ export default {
       duplicateExternalId: 'A patient with this external ID already exists.',
       noExternalIdWarning: 'Warning: Creating a patient without an external ID. If the external database loses the link to this patient, it will not be technically possible to link them back together later.',
       optionalFieldsInfo: 'Both fields are optional. You can create a patient without any information. However, losing the link the the patient or related cases, can make it impossible to surely identify them later on.',
+      deleted: 'Patient deleted successfully!',
+      deleteFailed: 'Failed to delete patient.',
+      deletedMultiple: '{count} patients deleted successfully!',
+      restored: 'Patient restored successfully!',
+      restoreFailed: 'Failed to restore patient.',
+      permanentlyDeleted: 'Patient permanently deleted!',
+      confirmPermanentDelete: 'Are you sure you want to permanently delete this patient? This action cannot be undone.',
+      fetchDeletedFailed: 'Failed to fetch deleted patients.',
     },
     case: {
       fetchCasesFailed: 'Failed to fetch cases.',
@@ -243,6 +252,12 @@ export default {
       deleted: 'Case deleted successfully!',
       deletionFailed: 'Failed to delete case.',
       confirmDelete: 'Are you sure you want to delete the case with id {caseId}?',
+      restored: 'Case restored successfully!',
+      restoreFailed: 'Failed to restore case.',
+      permanentlyDeleted: 'Case permanently deleted!',
+      confirmPermanentDelete: 'Are you sure you want to permanently delete this case? This action cannot be undone.',
+      fetchDeletedFailed: 'Failed to fetch deleted cases.',
+      deleteFailed: 'Failed to delete case.',
     },
     consultation: {
       created: 'Consultation created successfully!',
@@ -698,6 +713,8 @@ export default {
     errorLoadingData: 'Error loading data',
     retry: 'Retry',
     unknown: 'Unknown',
+    deletedAt: 'Deleted At',
+    patient: 'Patient',
   },
   pagination: {
     showing: 'Showing {start}-{end} of {total}',
@@ -1048,7 +1065,16 @@ export default {
     caseBlueprints: 'Case Blueprints',
     backupManagement: 'Backup Management',
     settingsManagement: 'Settings Management',
+    deletedItemsManagement: 'Deleted Items Management',
     setup: 'Setup',
+  },
+
+  admin: {
+    deletedItemsManagement: {
+      title: 'Deleted Items Management',
+      deletedPatients: 'Deleted Patients',
+      deletedCases: 'Deleted Cases',
+    },
   },
 
   kioskList: {

@@ -28,6 +28,7 @@ import SurgeryBlueprints from '@/views/Admin/SurgeryBlueprints.vue'
 import CaseBlueprints from '@/views/Admin/CaseBlueprints.vue'
 import BackupManagement from '@/views/Admin/BackupManagement.vue'
 import SettingsManagement from '@/views/Admin/SettingsManagement.vue'
+import DeletedItemsManagement from '@/views/Admin/DeletedItemsManagement.vue'
 import { useUserStore } from '@/stores/userStore'
 
 const routes = [
@@ -122,6 +123,12 @@ const routes = [
         name: 'admin-settings',
         component: SettingsManagement,
         meta: { titleKey: 'pageTitles.settingsManagement', requiredRole: 'admin' }
+      },
+      {
+        path: 'deleted-items',
+        name: 'admin-deleted-items',
+        component: DeletedItemsManagement,
+        meta: { titleKey: 'pageTitles.deletedItemsManagement', requiredRole: 'admin' }
       },
     ]
   },
