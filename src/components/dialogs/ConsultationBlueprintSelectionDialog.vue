@@ -172,6 +172,7 @@ const cancel = () => {
 
 const closeDialog = () => {
   // Moving from 4a to 4b (skip blueprints, go to manual creation state)
+  notifierStore.clearNotifications()
   emit('consultation-flow-advance', '4b')
 }
 
@@ -180,6 +181,7 @@ const createConsultationsFromBlueprints = async () => {
   if (selectedBlueprints.value.length === 0) {
     // No blueprints selected - emit event to move to completion state (4b)
     notifierStore.notify(t('alerts.consultation.noConsultationsSelected'), 'info')
+    notifierStore.clearNotifications()
     emit('consultation-flow-advance', '4b')
     return
   }
@@ -225,10 +227,10 @@ const createConsultationsFromBlueprints = async () => {
 
     createdConsultations.value.push(...newConsultations)
     
+    notifierStore.notify(t('alerts.consultation.batchCreated', { count: newConsultations.length }), 'success')
+    notifierStore.clearNotifications()
     // Move to completion state (4b)
     emit('consultation-flow-advance', '4b')
-
-    notifierStore.notify(t('alerts.consultation.batchCreated', { count: newConsultations.length }), 'success')
 
     // Clear selected blueprints for potential next round
     selectedBlueprints.value = []
