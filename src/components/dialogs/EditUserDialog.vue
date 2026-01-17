@@ -123,6 +123,7 @@ const save = () => {
                   label="Roles"
                   multiple
                   chips
+                  closable-chips
                   required
                   density="compact"
                   variant="outlined"
