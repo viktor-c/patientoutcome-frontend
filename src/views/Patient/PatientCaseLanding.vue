@@ -42,6 +42,15 @@ const editingConsultation = ref<Consultation | null>(null)
 const showCreateSurgeryDialog = ref(false)
 const editingSurgery = ref<Surgery | null>(null)
 
+// Delete confirmation dialog states
+const showDeleteConfirmDialog = ref(false)
+const deleteConfirmData = ref<{
+  type: 'case' | 'consultation' | 'surgery'
+  id: string
+  title: string
+} | null>(null)
+const isDeleting = ref(false)
+
 // Helper function to safely format dates
 const safeFormatDate = (date: string | null | undefined, format: string = dateFormats.isoDateTime): string => {
   if (!date) return t('common.notAvailable')
@@ -273,6 +282,59 @@ const getConsultationStatusText = (consultation: Consultation): string => {
   }
 }
 
+// Delete handlers
+const initiateDelete = (type: 'case' | 'consultation' | 'surgery', id: string, title: string) => {
+  deleteConfirmData.value = { type, id, title }
+  showDeleteConfirmDialog.value = true
+}
+
+const confirmDelete = async () => {
+  if (!deleteConfirmData.value) return
+
+  isDeleting.value = true
+  try {
+    const { type, id } = deleteConfirmData.value
+
+    if (type === 'consultation') {
+      await consultationApi.deleteConsultation({ consultationId: id })
+      notifierStore.notify(t('alerts.consultation.deleted'), 'success')
+    } else if (type === 'surgery') {
+      await surgeryApi.deleteSurgeryById({ surgeryId: id })
+      notifierStore.notify(t('alerts.surgery.deleted'), 'success')
+    } else if (type === 'case') {
+      await patientCaseApi.deletePatientCaseById({ patientId: patient.value?.id || '', caseId: id })
+      notifierStore.notify(t('alerts.case.deleted'), 'success')
+      // Redirect to patient overview after deleting the case
+      setTimeout(() => {
+        router.push({ name: 'patientoverview', params: { patientId: patient.value?.id } })
+      }, 1000)
+      return
+    }
+
+    // Reload data after deletion
+    await loadCaseData()
+  } catch (err: unknown) {
+    let errorMessage = 'An error occurred'
+    if (err instanceof ResponseError) {
+      try {
+        const errorData = await err.response.clone().json()
+        errorMessage = errorData.message || errorMessage
+      } catch {
+        errorMessage = `HTTP ${err.response.status}`
+      }
+    } else if (err instanceof Error) {
+      errorMessage = err.message
+    }
+
+    console.error('Error deleting item:', errorMessage)
+    notifierStore.notify(t('alerts.general.deleteFailed'), 'error')
+  } finally {
+    isDeleting.value = false
+    showDeleteConfirmDialog.value = false
+    deleteConfirmData.value = null
+  }
+}
+
 // Lifecycle
 onMounted(() => {
   loadCaseData()
@@ -310,13 +372,22 @@ onMounted(() => {
                    class="me-2"></v-btn>
             {{ t('patientCaseLanding.title') }}
           </div>
-          <v-btn
-                 @click="openStatistics"
-                 color="primary"
-                 variant="tonal"
-                 prepend-icon="mdi-chart-line">
-            {{ t('patientCaseLanding.viewStatistics') }}
-          </v-btn>
+          <div class="d-flex align-center gap-2">
+            <v-btn
+                   @click="openStatistics"
+                   color="primary"
+                   variant="tonal"
+                   prepend-icon="mdi-chart-line">
+              {{ t('patientCaseLanding.viewStatistics') }}
+            </v-btn>
+            <v-btn
+                   icon="mdi-trash-can"
+                   variant="text"
+                   color="error"
+                   @click="initiateDelete('case', caseId, caseDisplayName)"
+                   :title="t('buttons.delete')">
+            </v-btn>
+          </div>
         </v-card-title>
 
         <!-- Case and Patient Details -->
@@ -443,6 +514,14 @@ onMounted(() => {
                        @click.stop="openEditSurgeryDialog(surgery)"
                        :title="t('patientCaseLanding.editSurgery')">
                 </v-btn>
+                <v-btn
+                       icon="mdi-trash-can"
+                       variant="text"
+                       size="small"
+                       color="error"
+                       @click.stop="initiateDelete('surgery', surgery.id || '', safeFormatDate(surgery.surgeryDate, dateFormats.isoDate))"
+                       :title="t('buttons.delete')">
+                </v-btn>
               </template>
             </v-list-item>
           </v-list>
@@ -528,6 +607,14 @@ onMounted(() => {
                        @click.stop="openConsultationOverview(consultation)"
                        :title="t('patientCaseLanding.viewConsultation')">
                 </v-btn>
+                <v-btn
+                       icon="mdi-trash-can"
+                       variant="text"
+                       size="small"
+                       color="error"
+                       @click.stop="initiateDelete('consultation', consultation.id || '', safeFormatDate(consultation.dateAndTime, dateFormats.isoDateTime))"
+                       :title="t('buttons.delete')">
+                </v-btn>
               </template>
             </v-list-item>
           </v-list>
@@ -591,6 +678,14 @@ onMounted(() => {
                        size="small"
                        @click.stop="openConsultationOverview(consultation)"
                        :title="t('patientCaseLanding.viewConsultation')">
+                </v-btn>
+                <v-btn
+                       icon="mdi-trash-can"
+                       variant="text"
+                       size="small"
+                       color="error"
+                       @click.stop="initiateDelete('consultation', consultation.id || '', safeFormatDate(consultation.dateAndTime, dateFormats.isoDateTime))"
+                       :title="t('buttons.delete')">
                 </v-btn>
               </template>
             </v-list-item>
@@ -663,6 +758,50 @@ onMounted(() => {
                                :surgery="editingSurgery"
                                @submit="handleSurgeryCreated"
                                @cancel="cancelDialog" />
+    </v-dialog>
+
+    <!-- Delete Confirmation Dialog -->
+    <v-dialog
+              v-model="showDeleteConfirmDialog"
+              max-width="500px">
+      <v-card v-if="deleteConfirmData">
+        <v-card-title class="d-flex align-center gap-2">
+          <v-icon color="error">mdi-alert</v-icon>
+          {{ t('alerts.general.confirmDeletion') }}
+        </v-card-title>
+
+        <v-card-text class="py-6">
+          <p v-if="deleteConfirmData.type === 'consultation'" class="mb-2">
+            {{ t('alerts.consultation.confirmDelete') }}
+          </p>
+          <p v-else-if="deleteConfirmData.type === 'surgery'" class="mb-2">
+            {{ t('alerts.surgery.confirmDelete') }}
+          </p>
+          <p v-else-if="deleteConfirmData.type === 'case'" class="mb-2">
+            {{ t('alerts.case.confirmDelete') }}
+          </p>
+          <p class="text-grey text-sm font-weight-bold mt-4">
+            {{ deleteConfirmData.title }}
+          </p>
+        </v-card-text>
+
+        <v-card-actions>
+          <v-spacer></v-spacer>
+          <v-btn
+                 variant="text"
+                 @click="showDeleteConfirmDialog = false"
+                 :disabled="isDeleting">
+            {{ t('buttons.cancel') }}
+          </v-btn>
+          <v-btn
+                 color="error"
+                 variant="tonal"
+                 @click="confirmDelete"
+                 :loading="isDeleting">
+            {{ t('buttons.delete') }}
+          </v-btn>
+        </v-card-actions>
+      </v-card>
     </v-dialog>
   </v-container>
 </template>

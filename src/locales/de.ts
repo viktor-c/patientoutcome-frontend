@@ -536,6 +536,10 @@ export default {
     validation: {
       failed: 'Formularvalidierung fehlgeschlagen. Bitte überprüfen Sie alle erforderlichen Felder.',
     },
+    general: {
+      confirmDeletion: 'Löschung bestätigen',
+      deleteFailed: 'Fehler beim Löschen des Elements.',
+    },
     noPatientId: 'Keine Patienten-ID angegeben.',
   },
   cases: {

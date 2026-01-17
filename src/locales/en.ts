@@ -293,6 +293,10 @@ export default {
     validation: {
       failed: 'Form validation failed. Please check all required fields.',
     },
+    general: {
+      confirmDeletion: 'Confirm Deletion',
+      deleteFailed: 'Failed to delete item.',
+    },
     noPatientId: 'No patient ID provided.',
   },
   cases: {
