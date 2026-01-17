@@ -162,10 +162,6 @@ const handleManualConsultationCreated = (consultation: Consultation) => {
   notifierStore.notify(t('alerts.consultation.created'), 'success')
 }
 
-const finishCreation = () => {
-  emit('consultations-created', createdConsultations.value)
-}
-
 const cancel = () => {
   emit('cancel')
 }
@@ -555,13 +551,6 @@ defineExpose({
                        variant="outlined">
                   <v-icon left>mdi-plus</v-icon>
                   {{ t('consultation.createMore') }}
-                </v-btn>
-                <v-btn
-                       color="primary"
-                       @click="finishCreation"
-                       variant="elevated">
-                  <v-icon left>mdi-check</v-icon>
-                  {{ t('consultation.finish') }}
                 </v-btn>
               </div>
             </v-card-text>
