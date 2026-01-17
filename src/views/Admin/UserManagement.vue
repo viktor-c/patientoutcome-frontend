@@ -99,6 +99,7 @@ const saveUser = async (updatedUser: GetUsers200ResponseResponseObjectInner) => 
       ...(updatedUser.password && { password: updatedUser.password }),
     };
 
+    console.debug('UserManagement.saveUser: updatePayload prepared for', updatedUser?.username, updatePayload);
     // Use the standard update endpoint
     await userApi.updateUser({
       updateUserRequest: updatePayload,
@@ -185,7 +186,7 @@ watch(showEditDialog, (isShown) => {
               <v-col cols="10">
                 <v-text-field
                               v-model="search"
-                              aria-label="search-input"
+                              aria-label="user-search-input"
                               label="Search users"
                               prepend-inner-icon="mdi-magnify"
                               variant="outlined"

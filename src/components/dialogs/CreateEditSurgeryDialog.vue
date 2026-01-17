@@ -32,6 +32,8 @@ const props = defineProps<{
     otherDiagnosis?: string[]
     otherDiagnosisICD10?: string[]
   } | null
+  // Whether to show the form's internal buttons (default: true)
+  showButtons?: boolean
 }>()
 
 const emit = defineEmits(['submit', 'cancel', 'consultation-blueprints'])
@@ -50,6 +52,23 @@ const safeFormatDate = (date: string | null | undefined, format: string = 'DD.MM
 }
 
 const isEditMode = ref(!!(props.surgery && props.surgery.id))
+
+// Watch for changes to props.surgery to update edit mode
+watch(() => props.surgery, (newSurgery) => {
+  isEditMode.value = !!(newSurgery && newSurgery.id)
+  if (isEditMode.value && newSurgery) {
+    // Update form with surgery data
+    form.value = { ...newSurgery }
+    form.value.patientCase = props.patientCaseId
+    
+    // Handle existing anaesthesia type data
+    if (newSurgery.anaesthesiaType) {
+      if (typeof newSurgery.anaesthesiaType === 'object' && newSurgery.anaesthesiaType.id) {
+        selectedAnaesthesiaTypeIds.value = [newSurgery.anaesthesiaType.id]
+      }
+    }
+  }
+}, { immediate: false })
 
 // Helper function to get today's date at 10:00 UTC as ISO datetime
 const getTodayAt10UTC = (): string => {
@@ -945,21 +964,25 @@ defineExpose({
           </v-card-text>
         </v-card>
 
-        <v-btn
-               v-if="isEditMode"
-               color="primary"
-               @click="saveSurgery">
-          {{ t('buttons.saveChanges') }}
-        </v-btn>
-        <v-btn
-               v-else
-               color="primary"
-               @click="saveSurgeryAndNextStep">
-          {{ t('buttons.saveAndNextStep') }}
-        </v-btn>
-        <v-btn color="error" @click="emit('cancel')" class="ml-2">
-          {{ t('buttons.cancel') }}
-        </v-btn>
+        <div v-if="props.showButtons !== false" class="d-flex gap-2 mt-4">
+          <v-btn
+                 v-if="isEditMode"
+                 color="primary"
+                 variant="elevated"
+                 @click="saveSurgery">
+            {{ t('buttons.saveChanges') }}
+          </v-btn>
+          <v-btn
+                 v-else
+                 color="primary"
+                 variant="elevated"
+                 @click="saveSurgeryAndNextStep">
+            {{ t('buttons.saveAndNextStep') }}
+          </v-btn>
+          <v-btn color="error" variant="outlined" @click="emit('cancel')">
+            {{ t('buttons.cancel') }}
+          </v-btn>
+        </div>
       </v-form>
     </v-card-text>
   </v-card>

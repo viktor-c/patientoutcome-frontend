@@ -54,7 +54,6 @@ const createdConsultations = ref<Consultation[]>([])
 
 // Blueprint-related state
 const selectedConsultationBlueprints = ref<Blueprint[]>([])
-const showConsultationBlueprintSelectionInStep = ref(true) // Always show in stepper
 const surgeryBlueprintConsultations = ref<string[]>([])
 
 // Use centralized API instances
@@ -266,11 +265,19 @@ const handleDialogCancel = () => {
 
 // Reference to the surgery form for external submission
 const surgeryFormRef = ref<InstanceType<typeof CreateEditSurgeryDialog> | null>(null)
+const consultationFormRef = ref<InstanceType<typeof ConsultationBlueprintSelectionDialog> | null>(null)
 
 // Submit surgery form externally
 const submitSurgeryForm = async () => {
   if (surgeryFormRef.value) {
     await surgeryFormRef.value.submit()
+  }
+}
+
+// Submit consultation form externally
+const submitConsultationForm = async () => {
+  if (consultationFormRef.value) {
+    await consultationFormRef.value.submit()
   }
 }
 
@@ -283,6 +290,9 @@ watch(currentFlowStep, (newStep, oldStep) => {
     }
     if (surgeryFormRef.value?.resetFormState) {
       surgeryFormRef.value.resetFormState()
+    }
+    if (consultationFormRef.value?.resetFormState) {
+      consultationFormRef.value.resetFormState()
     }
   }
 })
@@ -494,6 +504,7 @@ onMounted(() => {
           <v-stepper-window-item :value="1">
             <PatientCaseCreateEditForm
                                        ref="caseFormRef"
+                                       :selectedCase="null"
                                        :createNewCase="true"
                                        :patientId="patientId"
                                        :showButtons="false"
@@ -512,6 +523,7 @@ onMounted(() => {
                                      v-if="createdCase && createdCase.id"
                                      :patientCaseId="createdCase.id"
                                      :patient-case-data="createdCase"
+                                     :showButtons="false"
                                      @submit="handleSurgerySubmit"
                                      @cancel="handleSurgeryCancel"
                                      @consultation-blueprints="handleConsultationBlueprints" />
@@ -524,13 +536,14 @@ onMounted(() => {
             </v-alert>
 
             <ConsultationBlueprintSelectionDialog
+                                                  ref="consultationFormRef"
                                                   v-if="createdCase && createdCase.id"
                                                   v-model="selectedConsultationBlueprints"
-                                                  v-model:show="showConsultationBlueprintSelectionInStep"
                                                   :surgery-date="createdSurgery?.surgeryDate || undefined"
                                                   :patient-id="patientId"
                                                   :case-id="createdCase.id!"
                                                   :pre-selected-blueprint-ids="surgeryBlueprintConsultations"
+                                                  :showButtons="false"
                                                   @consultations-created="handleConsultationsCreatedInFlow"
                                                   @cancel="handleConsultationBlueprintCancelInFlow" />
           </v-stepper-window-item>
@@ -586,8 +599,8 @@ onMounted(() => {
                  v-if="currentFlowStep === 3"
                  color="primary"
                  variant="elevated"
-                 @click="currentFlowStep = 4">
-            {{ t('buttons.next') }}
+                 @click="submitConsultationForm">
+            {{ t('buttons.finish') }}
           </v-btn>
 
           <v-btn

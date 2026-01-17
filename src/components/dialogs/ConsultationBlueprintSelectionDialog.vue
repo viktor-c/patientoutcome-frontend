@@ -18,16 +18,16 @@ import CreateEditConsultationDialog from './CreateEditConsultationDialog.vue'
 
 const props = defineProps<{
   modelValue: Blueprint[]
-  show: boolean
   surgeryDate?: string
   patientId: string
   caseId: string
   preSelectedBlueprintIds?: string[]
+  // Whether to show the form's internal buttons (default: true)
+  showButtons?: boolean
 }>()
 
 const emit = defineEmits<{
   'update:modelValue': [blueprints: Blueprint[]]
-  'update:show': [value: boolean]
   'confirm': [blueprints: Blueprint[]]
   'cancel': []
   'consultations-created': [consultations: Consultation[]]
@@ -158,7 +158,6 @@ const handleManualConsultationCreated = (consultation: Consultation) => {
 
 const finishCreation = () => {
   emit('consultations-created', createdConsultations.value)
-  closeDialog()
 }
 
 const cancel = () => {
@@ -166,7 +165,7 @@ const cancel = () => {
 }
 
 const closeDialog = () => {
-  emit('update:show', false)
+  emit('cancel')
 }
 
 // New consultation creation functions
@@ -456,18 +455,25 @@ onMounted(() => {
     loadConsultationBlueprints()
   }
 })
+
+// Expose function for external access
+defineExpose({
+  submit: createConsultationsFromBlueprints,
+  resetFormState: () => {
+    creationComplete.value = false
+    selectedBlueprints.value = []
+    searchQuery.value = ''
+    createdConsultations.value = []
+  }
+})
 </script>
 
 <template>
-  <v-dialog
-            :model-value="show"
-            @update:model-value="emit('update:show', $event)"
-            max-width="1000px">
-    <v-card>
-      <v-card-title class="d-flex align-center">
-        <v-icon class="mr-2">mdi-calendar-multiple</v-icon>
-        {{ t('consultation.selectBlueprints') }}
-      </v-card-title>
+  <v-card>
+    <v-card-title class="d-flex align-center">
+      <v-icon class="mr-2">mdi-calendar-multiple</v-icon>
+      {{ t('consultation.selectBlueprints') }}
+    </v-card-title>
 
       <v-card-text>
         <!-- Creation Complete State -->
@@ -644,7 +650,7 @@ onMounted(() => {
       </v-card-text>
 
       <!-- Action buttons -->
-      <v-card-actions class="justify-space-between pa-4">
+      <v-card-actions v-if="props.showButtons !== false" class="justify-space-between pa-4">
         <!-- Creation Complete State Actions -->
         <div v-if="creationComplete" class="w-100 d-flex justify-end gap-2">
           <v-btn
@@ -707,23 +713,16 @@ onMounted(() => {
     </v-card>
 
     <!-- Manual Consultation Creation Dialog -->
-    <v-dialog
-              v-model="showManualConsultationDialog"
-              width="900"
-              persistent>
-      <v-card>
+      <v-card v-if="showManualConsultationDialog">
         <v-card-title>{{ t('consultation.createManual') }}</v-card-title>
         <v-card-text>
           <CreateEditConsultationDialog
-                                        v-if="showManualConsultationDialog"
                                         :patient-id="null"
                                         :case-id="props.caseId"
                                         @submit="handleManualConsultationCreated"
                                         @cancel="showManualConsultationDialog = false" />
         </v-card-text>
       </v-card>
-    </v-dialog>
-  </v-dialog>
 </template>
 
 <style scoped>
