@@ -24,6 +24,8 @@ const props = defineProps<{
   preSelectedBlueprintIds?: string[]
   // Whether to show the form's internal buttons (default: true)
   showButtons?: boolean
+  // Current consultation flow substep (4a or 4b)
+  consultationFlowStep?: '4a' | '4b'
 }>()
 
 const emit = defineEmits<{
@@ -31,6 +33,7 @@ const emit = defineEmits<{
   'confirm': [blueprints: Blueprint[]]
   'cancel': []
   'consultations-created': [consultations: Consultation[]]
+  'consultation-flow-advance': ['4a' | '4b']
 }>()
 
 const { t } = useI18n()
@@ -43,7 +46,11 @@ const selectedBlueprints = ref<Blueprint[]>([...props.modelValue])
 const loadingBlueprints = ref(false)
 const searchQuery = ref('')
 
-// Consultation creation state
+// Track current substep - sync with parent via prop
+const currentConsultationFlowStep = computed(() => props.consultationFlowStep || '4a')
+
+// Check if we're in completion state (4b)
+const creationComplete = computed(() => currentConsultationFlowStep.value === '4b')
 const consultationsToCreate = ref<Array<CreateConsultation & {
   originalIndex: number
   calculatedDate: string
@@ -52,7 +59,6 @@ const consultationsToCreate = ref<Array<CreateConsultation & {
 }>>([])
 const createdConsultations = ref<(Consultation & { blueprintTitle?: string })[]>([])
 const creating = ref(false)
-const creationComplete = ref(false)
 const showManualConsultationDialog = ref(false)
 
 // Computed properties
@@ -111,7 +117,7 @@ const sortedSelectedBlueprints = computed(() => {
 })
 
 const canConfirm = computed(() => {
-  return selectedBlueprints.value.length > 0 && !creating.value && !creationComplete.value
+  return selectedBlueprints.value.length > 0 && !creating.value && currentConsultationFlowStep.value === '4a'
 })
 
 const sortedCreatedConsultations = computed(() => {
@@ -143,8 +149,8 @@ const removeBlueprint = (blueprint: Blueprint) => {
 
 // Actions for handling creation flow
 const createMoreConsultations = () => {
-  // Reset to selection state
-  creationComplete.value = false
+  // Reset to selection state (4a)
+  emit('consultation-flow-advance', '4a')
   selectedBlueprints.value = []
   searchQuery.value = ''
 }
@@ -165,13 +171,16 @@ const cancel = () => {
 }
 
 const closeDialog = () => {
-  emit('cancel')
+  // Moving from 4a to 4b (skip blueprints, go to manual creation state)
+  emit('consultation-flow-advance', '4b')
 }
 
 // New consultation creation functions
 const createConsultationsFromBlueprints = async () => {
   if (selectedBlueprints.value.length === 0) {
-    notifierStore.notify(t('alerts.consultation.noConsultationsToCreate'), 'info')
+    // No blueprints selected - emit event to move to completion state (4b)
+    notifierStore.notify(t('alerts.consultation.noConsultationsSelected'), 'info')
+    emit('consultation-flow-advance', '4b')
     return
   }
 
@@ -215,7 +224,9 @@ const createConsultationsFromBlueprints = async () => {
     }
 
     createdConsultations.value.push(...newConsultations)
-    creationComplete.value = true
+    
+    // Move to completion state (4b)
+    emit('consultation-flow-advance', '4b')
 
     notifierStore.notify(t('alerts.consultation.batchCreated', { count: newConsultations.length }), 'success')
 
@@ -460,7 +471,6 @@ onMounted(() => {
 defineExpose({
   submit: createConsultationsFromBlueprints,
   resetFormState: () => {
-    creationComplete.value = false
     selectedBlueprints.value = []
     searchQuery.value = ''
     createdConsultations.value = []
@@ -470,9 +480,17 @@ defineExpose({
 
 <template>
   <v-card>
-    <v-card-title class="d-flex align-center">
-      <v-icon class="mr-2">mdi-calendar-multiple</v-icon>
-      {{ t('consultation.selectBlueprints') }}
+    <v-card-title class="d-flex align-center justify-space-between">
+      <div class="d-flex align-center">
+        <v-icon class="mr-2">mdi-calendar-multiple</v-icon>
+        <span>{{ t('consultation.selectBlueprints') }}</span>
+      </div>
+      <v-chip
+              size="small"
+              :color="currentConsultationFlowStep === '4a' ? 'info' : 'success'"
+              text-color="white">
+        Step {{ currentConsultationFlowStep }}
+      </v-chip>
     </v-card-title>
 
       <v-card-text>
@@ -480,11 +498,16 @@ defineExpose({
         <div v-if="creationComplete">
           <v-alert type="success" class="mb-4">
             <h4>{{ t('consultation.creationCompleteTitle') }}</h4>
-            <p>{{ t('consultation.creationCompleteMessage', { count: createdConsultations.length }) }}</p>
+            <p v-if="createdConsultations.length > 0">
+              {{ t('consultation.creationCompleteMessage', { count: createdConsultations.length }) }}
+            </p>
+            <p v-else>
+              {{ t('consultation.noConsultationsCreatedYet') }}
+            </p>
           </v-alert>
 
           <!-- Summary of created consultations -->
-          <v-card outlined class="mb-4">
+          <v-card v-if="createdConsultations.length > 0" outlined class="mb-4">
             <v-card-title>{{ t('consultation.createdConsultations') }}</v-card-title>
             <v-card-text>
               <v-list dense>
@@ -514,6 +537,31 @@ defineExpose({
             <v-card-title>{{ t('consultation.nextSteps') }}</v-card-title>
             <v-card-text>
               <p>{{ t('consultation.nextStepsMessage') }}</p>
+              
+              <!-- Action buttons for next steps -->
+              <div class="d-flex gap-2 mt-4">
+                <v-btn
+                       color="info"
+                       @click="showManualConsultationDialog = true"
+                       variant="outlined">
+                  <v-icon left>mdi-pencil</v-icon>
+                  {{ t('consultation.createManual') }}
+                </v-btn>
+                <v-btn
+                       color="success"
+                       @click="createMoreConsultations"
+                       variant="outlined">
+                  <v-icon left>mdi-plus</v-icon>
+                  {{ t('consultation.createMore') }}
+                </v-btn>
+                <v-btn
+                       color="primary"
+                       @click="finishCreation"
+                       variant="elevated">
+                  <v-icon left>mdi-check</v-icon>
+                  {{ t('consultation.finish') }}
+                </v-btn>
+              </div>
             </v-card-text>
           </v-card>
         </div>
@@ -666,13 +714,6 @@ defineExpose({
                  variant="outlined">
             <v-icon left>mdi-plus</v-icon>
             {{ t('consultation.createMore') }}
-          </v-btn>
-          <v-btn
-                 color="primary"
-                 @click="finishCreation"
-                 variant="elevated">
-            <v-icon left>mdi-check</v-icon>
-            {{ t('consultation.finish') }}
           </v-btn>
         </div>
 

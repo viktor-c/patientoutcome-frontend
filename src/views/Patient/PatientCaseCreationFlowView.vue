@@ -26,8 +26,11 @@ const router = useRouter()
 const route = useRoute()
 const notifierStore = useNotifierStore()
 
-// Current step in the flow (1: Patient, 2: Case, 3: Surgery, 4: Consultation)
+// Current step in the flow (1: Patient, 2: Case, 3: Surgery, 4: Consultation, 5: Completion)
 const currentStep = ref(1)
+
+// Consultation flow substeps: 4a (blueprint selection) or 4b (manual creation/completion)
+const consultationFlowStep = ref<'4a' | '4b'>('4a')
 
 // Data for each step
 const patientData = ref<CreatePatientRequest>({
@@ -78,6 +81,11 @@ const duplicateExternalId = ref<string>('')
 // Loading states
 const isLoading = ref(false)
 
+// Listen for consultation flow substep transitions
+const handleConsultationFlowAdvance = (substep: '4a' | '4b') => {
+  consultationFlowStep.value = substep
+}
+
 // Watch currentStep to reset form errors when navigating between steps
 watch(currentStep, (newStep, oldStep) => {
   if (newStep !== oldStep) {
@@ -98,6 +106,11 @@ watch(currentStep, (newStep, oldStep) => {
         externalPatientId: createdPatient.value.externalPatientId || [''],
         sex: createdPatient.value.sex || ''
       }
+    }
+
+    // Reset consultation flow substep when entering step 4
+    if (newStep === 4) {
+      consultationFlowStep.value = '4a'
     }
   }
 })
@@ -169,9 +182,13 @@ const nextStep = async () => {
       await surgeryFormRef.value.submit()
     }
   } else if (currentStep.value === 4) {
-    // Submit the consultation form externally
-    if (consultationFormRef.value) {
-      await consultationFormRef.value.submit()
+    // Step 4 has two substeps: 4a (blueprint selection) and 4b (manual creation)
+    if (consultationFlowStep.value === '4a') {
+      // Move from 4a to 4b (completion state)
+      consultationFlowStep.value = '4b'
+    } else {
+      // From 4b, advance to step 5 (completion)
+      currentStep.value = 5
     }
   }
 }
@@ -590,7 +607,7 @@ onMounted(async () => {
               <v-stepper-item
                               :complete="currentStep > 4"
                               :value="4"
-                              :title="t('creationFlow.step4Title')"></v-stepper-item>
+                              :title="`${t('creationFlow.step4Title')} (${consultationFlowStep})`"></v-stepper-item>
               <v-divider></v-divider>
               <v-stepper-item
                               :complete="currentStep > 5"
@@ -735,8 +752,10 @@ onMounted(async () => {
                   :patient-id="createdCase.patient.id || ''"
                   :case-id="createdCase.id"
                   :pre-selected-blueprint-ids="surgeryBlueprintConsultations"
+                  :consultation-flow-step="consultationFlowStep"
                   :showButtons="false"
                   @consultations-created="handleConsultationsSubmit"
+                  @consultation-flow-advance="handleConsultationFlowAdvance"
                   @cancel="handleConsultationBlueprintCancel" />
               </v-stepper-window-item>
 
