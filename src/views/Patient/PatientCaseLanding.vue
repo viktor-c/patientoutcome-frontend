@@ -601,7 +601,7 @@ onMounted(() => {
                        :title="t('patientCaseLanding.editConsultation')">
                 </v-btn>
                 <v-btn
-                       icon="mdi-arrow-right"
+                       icon="mdi-eye"
                        variant="text"
                        size="small"
                        @click.stop="openConsultationOverview(consultation)"
@@ -673,7 +673,7 @@ onMounted(() => {
                        :title="t('patientCaseLanding.editConsultation')">
                 </v-btn>
                 <v-btn
-                       icon="mdi-arrow-right"
+                       icon="mdi-eye"
                        variant="text"
                        size="small"
                        @click.stop="openConsultationOverview(consultation)"
