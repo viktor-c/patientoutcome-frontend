@@ -59,7 +59,7 @@ const fetchDeletedCases = async () => {
     })
 
     if (response.responseObject) {
-      deletedCases.value = response.responseObject.cases || []
+      deletedCases.value = (response.responseObject.cases || []) as any
       casesTotal.value = response.responseObject.total || 0
       casesTotalPages.value = response.responseObject.totalPages || 0
     }
@@ -255,7 +255,7 @@ watch(activeTab, (newTab) => {
               </template>
 
               <template #item.patient="{ item }">
-                {{ typeof item.patient === 'string' ? item.patient : (item.patient?.externalPatientId?.[0] || '-') }}
+                {{ typeof item.patient === 'string' ? item.patient : ((item.patient as any)?.externalPatientId?.[0] || '-') }}
               </template>
 
               <template #item.deletedAt="{ item }">
@@ -269,14 +269,14 @@ watch(activeTab, (newTab) => {
                     color="success" 
                     variant="text" 
                     icon="mdi-restore"
-                    @click="restoreCase(item._id!)">
+                    @click="restoreCase((item as any)._id || item.id)">
                   </v-btn>
                   <v-btn 
                     size="small" 
                     color="error" 
                     variant="text" 
                     icon="mdi-delete-forever"
-                    @click="permanentDeleteCase(typeof item.patient === 'string' ? item.patient : item.patient?.id!, item._id!)">
+                    @click="permanentDeleteCase(typeof item.patient === 'string' ? item.patient : ((item.patient as any)?.id || (item.patient as any)?._id), (item as any)._id || item.id)">
                   </v-btn>
                 </div>
               </template>

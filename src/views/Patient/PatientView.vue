@@ -179,7 +179,11 @@ const softDeleteSelectedPatients = async () => {
   if (selectedPatients.value.length === 0) return
 
   try {
-    await patientApi.softDeletePatients({ softDeletePatientsRequest: { patientIds: selectedPatients.value }  })
+    const patientIds = selectedPatients.value
+      .map(p => p.id)
+      .filter(id => id !== undefined && id !== null) as string[]
+    
+    await patientApi.softDeletePatients({ softDeletePatientsRequest: { patientIds }  })
     notifierStore.notify(t('alerts.patient.deletedMultiple', { count: selectedPatients.value.length }), 'success')
     selectedPatients.value = []
     getAllPatients()
@@ -274,6 +278,8 @@ const softDeleteSelectedPatients = async () => {
                           :headers="[
                             { title: t('forms.externalId'), key: 'externalPatientId', sortable: false },
                             { title: t('forms.sex'), key: 'sex', sortable: false },
+                            { title: t('patientOverview.totalCases'), key: 'caseCount', sortable: false },
+                            { title: t('patientOverview.totalConsultations'), key: 'consultationCount', sortable: false },
                             { title: t('common.actions'), key: 'actions', sortable: false, align: 'end' }
                           ]"
                           :items="searchResults"
@@ -290,6 +296,18 @@ const softDeleteSelectedPatients = async () => {
 
               <template #item.sex="{ item }">
                 {{ item.sex || '-' }}
+              </template>
+
+              <template #item.caseCount="{ item }">
+                <v-chip size="small" variant="outlined">
+                  {{ (item as any)?.caseCount ?? 0 }}
+                </v-chip>
+              </template>
+
+              <template #item.consultationCount="{ item }">
+                <v-chip size="small" variant="outlined">
+                  {{ (item as any)?.consultationCount ?? 0 }}
+                </v-chip>
               </template>
 
               <template #item.actions="{ item }">

@@ -289,7 +289,7 @@ const updatePatient = async () => {
 
     const response = await patientApi.updatePatient({
       id: createdPatient.value.id,
-      getPatients200ResponseResponseObjectPatientsInner: patientDataToSend
+      updatePatientRequest: patientDataToSend
     })
 
     if (response.responseObject) {

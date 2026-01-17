@@ -22,6 +22,7 @@ const emit = defineEmits<{
   'open-consultation': [consultationId: string | null | undefined]
   'update-consultations': []
   'create-consultation': [caseId: string | null | undefined]
+  'delete-case': [caseId: string | null | undefined]
 }>()
 
 // Handler for creating consultation
@@ -59,6 +60,10 @@ const handleOpenCase = () => {
 const handleOpenConsultation = (consultationId: string | null | undefined) => {
   emit('open-consultation', consultationId)
 }
+
+const handleDeleteCase = () => {
+  emit('delete-case', props.patientCase.id)
+}
 </script>
 
 <template>
@@ -95,6 +100,15 @@ const handleOpenConsultation = (consultationId: string | null | undefined) => {
                class="ms-2">
           {{ t('patientOverview.viewCase') }}
         </v-btn>
+
+        <v-btn
+               icon="mdi-trash-can-outline"
+               color="error"
+               variant="text"
+               size="small"
+               @click.stop="handleDeleteCase"
+               class="ms-2"
+               :title="t('buttons.delete')"></v-btn>
       </div>
     </v-expansion-panel-title>
 

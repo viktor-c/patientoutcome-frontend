@@ -5,8 +5,17 @@ import { createVuetify } from 'vuetify'
 import * as components from 'vuetify/components'
 import * as directives from 'vuetify/directives'
 import { createPinia, setActivePinia } from 'pinia'
+import { createI18n } from 'vue-i18n'
 import UserManagement from '../UserManagement.vue'
 import { userApi } from '@/api'
+import en from '@/locales/en'
+import de from '@/locales/de'
+
+const i18n = createI18n({
+  legacy: false,
+  locale: 'en',
+  messages: { en, de }
+})
 
 describe('UserManagement.vue', () => {
   let vuetify: ReturnType<typeof createVuetify>
@@ -34,7 +43,7 @@ describe('UserManagement.vue', () => {
 
     const wrapper = mount(UserManagement, {
       global: {
-        plugins: [vuetify],
+        plugins: [vuetify, i18n],
       },
     })
 
@@ -47,7 +56,7 @@ describe('UserManagement.vue', () => {
     expect(wrapper.text()).toContain('bob')
 
     // Find the search input and type 'alice'
-    const input = wrapper.find('input[aria-label="search-input"]')
+    const input = wrapper.find('input[aria-label="user-search-input"]')
     expect(input.exists()).toBe(true)
 
     await input.setValue('alice')
