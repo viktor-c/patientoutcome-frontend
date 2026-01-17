@@ -190,19 +190,59 @@ const editConsultation = (consultation: Consultation) => {
             <v-btn size="small" color="primary" @click="editSurgery(item.data as Surgery)">
               <v-icon icon="mdi-pencil"></v-icon>{{ t('buttons.editSurgery') }}
             </v-btn>
-            <v-btn size="small" variant="plain" color="error"
-                   @click="deleteSurgery(caseItem.id!, (item.data as Surgery).id!)">
-              <v-icon icon="mdi-trash-can"></v-icon>{{ t('buttons.deleteSurgery') }}
-            </v-btn>
+            <v-dialog max-width="500">
+              <template v-slot:activator="{ props: activatorProps }">
+                <v-btn size="small" variant="plain" color="error" v-bind="activatorProps">
+                  <v-icon icon="mdi-trash-can"></v-icon>{{ t('buttons.deleteSurgery') }}
+                </v-btn>
+              </template>
+              <template v-slot:default="{ isActive }">
+                <v-card title="Dialog">
+                  <v-card-text>
+                    {{ t('alerts.surgery.confirmDelete', { surgeryId: (item.data as Surgery).id }) }}
+                    <v-divider></v-divider>
+                  </v-card-text>
+                  <v-card-actions>
+                    <v-spacer></v-spacer>
+                    <v-btn
+                           color="error"
+                           :text="t('buttons.confirmDelete')"
+                           @click="caseItem.id && (item.data as Surgery).id && (isActive.value = false, deleteSurgery(caseItem.id, (item.data as Surgery).id!))">
+                    </v-btn>
+                    <v-btn color="primary" :text="t('buttons.abortDeletion')" @click="isActive.value = false"></v-btn>
+                  </v-card-actions>
+                </v-card>
+              </template>
+            </v-dialog>
           </template>
           <template v-else>
             <v-btn size="small" color="primary" @click="editConsultation(item.data as Consultation)">
               <v-icon icon="mdi-pencil"></v-icon>{{ t('buttons.editConsultation') }}
             </v-btn>
-            <v-btn size="small" variant="plain" color="error"
-                   @click="deleteConsultation(caseItem.id!, (item.data as Consultation).id!)">
-              <v-icon icon="mdi-trash-can"></v-icon>{{ t('buttons.deleteConsultation') }}
-            </v-btn>
+            <v-dialog max-width="500">
+              <template v-slot:activator="{ props: activatorProps }">
+                <v-btn size="small" variant="plain" color="error" v-bind="activatorProps">
+                  <v-icon icon="mdi-trash-can"></v-icon>{{ t('buttons.deleteConsultation') }}
+                </v-btn>
+              </template>
+              <template v-slot:default="{ isActive }">
+                <v-card title="Dialog">
+                  <v-card-text>
+                    {{ t('alerts.consultation.confirmDelete', { consultationId: (item.data as Consultation).id }) }}
+                    <v-divider></v-divider>
+                  </v-card-text>
+                  <v-card-actions>
+                    <v-spacer></v-spacer>
+                    <v-btn
+                           color="error"
+                           :text="t('buttons.confirmDelete')"
+                           @click="caseItem.id && (item.data as Consultation).id && (isActive.value = false, deleteConsultation(caseItem.id, (item.data as Consultation).id!))">
+                    </v-btn>
+                    <v-btn color="primary" :text="t('buttons.abortDeletion')" @click="isActive.value = false"></v-btn>
+                  </v-card-actions>
+                </v-card>
+              </template>
+            </v-dialog>
           </template>
         </td>
       </tr>

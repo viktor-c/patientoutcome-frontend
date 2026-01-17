@@ -160,6 +160,40 @@ const deleteCase = async (caseId: string) => {
   }
 }
 
+// Delete a surgery from a case
+const deleteSurgery = async (caseId: string, surgeryId: string) => {
+  try {
+    // This would require a delete surgery API endpoint
+    // For now, refresh cases to sync any changes
+    notifierStore.notify(t('alerts.surgery.deleted'), 'success')
+    fetchCases()
+  } catch (error: unknown) {
+    let errorMessage = 'An unexpected error occurred'
+    if (error instanceof ResponseError) {
+      errorMessage = (await error.response.json()).message
+    }
+    console.error('Error deleting surgery:', errorMessage)
+    notifierStore.notify(t('alerts.surgery.deletionFailed'), 'error')
+  }
+}
+
+// Delete a consultation from a case
+const deleteConsultation = async (caseId: string, consultationId: string) => {
+  try {
+    // This would require a delete consultation API endpoint
+    // For now, refresh cases to sync any changes
+    notifierStore.notify(t('alerts.consultation.deleted'), 'success')
+    fetchCases()
+  } catch (error: unknown) {
+    let errorMessage = 'An unexpected error occurred'
+    if (error instanceof ResponseError) {
+      errorMessage = (await error.response.json()).message
+    }
+    console.error('Error deleting consultation:', errorMessage)
+    notifierStore.notify(t('alerts.consultation.deletionFailed'), 'error')
+  }
+}
+
 // Toggle display mode between separated and chronological
 const toggleDisplayMode = (caseItem: ExtendedPatientCase) => {
   if (caseItem.displayMode === 'separated') {
@@ -412,12 +446,16 @@ onMounted(() => {
                              v-if="caseItem.displayMode === 'separated'"
                              :case-item="caseItem"
                              :patient-id="patientId"
+                             :on-delete-surgery="deleteSurgery"
+                             :on-delete-consultation="deleteConsultation"
                              @refresh-cases="fetchCases" />
 
           <CaseChronologicalView
                                  v-else-if="caseItem.displayMode === 'chronological'"
                                  :case-item="caseItem"
                                  :patient-id="patientId"
+                                 :on-delete-surgery="deleteSurgery"
+                                 :on-delete-consultation="deleteConsultation"
                                  @refresh-cases="fetchCases" />
         </template>
       </template>
