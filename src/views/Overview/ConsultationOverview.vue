@@ -10,7 +10,7 @@ import {
   type FindAllCodes200ResponseResponseObjectInnerConsultationId,
   type FindAllCodes200ResponseResponseObjectInnerConsultationIdPromsInner,
   type Note,
-  type GetAllKioskUsers200ResponseResponseObjectInner
+  type UserNoPassword
 } from '@/api'
 import { consultationApi, userApi, kioskApi, codeApi } from '@/api'
 import CreateEditConsultationDialog from '@/components/dialogs/CreateEditConsultationDialog.vue'
@@ -34,7 +34,7 @@ const confirmDeleteDialog = ref(false)
 const showEditDialog = ref(false)
 const editingNoteIndex = ref<number | null>(null)
 const editedNote = ref<string>('')
-const kioskUsers = ref<GetAllKioskUsers200ResponseResponseObjectInner[]>([])
+const kioskUsers = ref<UserNoPassword[]>([])
 const selectedKioskUser = ref<string | null>(null)
 const assigningKiosk = ref(false)
 type CodeItem = { _id?: string | null; id?: string | null; code: string; isCreateNew?: boolean }

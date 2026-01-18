@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, watch } from 'vue'
+import { ref, watch, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 // Importing necessary for i18n
 import { useI18n } from 'vue-i18n'
@@ -7,7 +7,9 @@ import { ResponseError, type Patient } from '@/api' // Adjust the path if necess
 
 // Importing the notifier store for notifications
 import { useNotifierStore } from '@/stores/notifierStore'
+import { useUserStore } from '@/stores/userStore'
 const notifierStore = useNotifierStore()
+const userStore = useUserStore()
 
 // initialise internationalization
 const { t } = useI18n()
@@ -20,6 +22,7 @@ const activeTab = ref('searchPatient')
 const newPatient = ref({
   externalPatientId: '',
   sex: '',
+  department: '', // Add department field
 })
 
 const showExternalIdWarning = ref(false)
@@ -47,9 +50,16 @@ const sexOptions = [
 ]
 
 // Use the centralized API instance
-import { patientApi } from '@/api'
+import { patientApi, userDepartmentApi } from '@/api'
 
 const SEARCH_QUERY_MINIMUM_LENGTH = import.meta.env.VITE_SEARCH_QUERY_MINIMUM_LENGTH
+
+// Auto-assign department on mount
+onMounted(() => {
+  if (userStore.department) {
+    newPatient.value.department = userStore.department
+  }
+})
 
 // Function to create a new patient
 const createPatient = async () => {
@@ -65,15 +75,20 @@ const createPatient = async () => {
       ? newPatient.value.externalPatientId.split(',').map((id) => id.trim()).filter(id => id)
       : []
 
-    const patientData = {
+    const patientData: any = {
       ...newPatient.value,
       externalPatientId: externalPatientIdArray.length > 0 ? externalPatientIdArray : undefined,
+      department: newPatient.value.department || undefined,
     }
 
     const response = await patientApi.createPatient({ createPatientRequest: patientData })
     console.log('Patient created successfully:', response)
     router.push({ path: `/cases/${response.responseObject?.id}` })
-    newPatient.value = { externalPatientId: '', sex: '' }
+    newPatient.value = { 
+      externalPatientId: '', 
+      sex: '',
+      department: userStore.department, // Reset with user's department
+    }
     showExternalIdWarning.value = false
     useNotifierStore().notify(t('alerts.patient.created'), 'success')
   } catch (error: unknown) {
@@ -245,6 +260,14 @@ const softDeleteSelectedPatients = async () => {
                         outlined
                         dense
                         clearable></v-select>
+              <v-text-field
+                            :label="t('forms.department')"
+                            v-model="newPatient.department"
+                            readonly
+                            :hint="t('forms.departmentAutoAssignedHint')"
+                            persistent-hint
+                            variant="outlined"
+                            density="compact"></v-text-field>
               <v-btn color="success" @click="createPatient">{{ t('forms.submit') }}</v-btn>
             </v-form>
           </v-tabs-window-item>

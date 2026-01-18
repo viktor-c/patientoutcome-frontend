@@ -3,6 +3,7 @@ import { ref, computed, onMounted, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRouter, useRoute } from 'vue-router'
 import { useNotifierStore } from '@/stores/notifierStore'
+import { useUserStore } from '@/stores/userStore'
 import type {
   Patient,
   Consultation,
@@ -12,7 +13,7 @@ import type {
   Blueprint,
   GetAllPatientCases200ResponseResponseObjectInner
 } from '@/api'
-import { ResponseError } from '@/api'
+import { ResponseError, userDepartmentApi } from '@/api'
 //step 1: create patient
 //step 2: create case
 import PatientCaseCreateEditForm from '@/components/forms/PatientCaseCreateEditForm.vue'
@@ -25,6 +26,7 @@ const { t } = useI18n()
 const router = useRouter()
 const route = useRoute()
 const notifierStore = useNotifierStore()
+const userStore = useUserStore()
 
 // Current step in the flow (1: Patient, 2: Case, 3: Surgery, 4: Consultation, 5: Completion)
 const currentStep = ref(1)
@@ -33,9 +35,10 @@ const currentStep = ref(1)
 const consultationFlowStep = ref<'4a' | '4b'>('4a')
 
 // Data for each step
-const patientData = ref<CreatePatientRequest>({
+const patientData = ref<CreatePatientRequest & { department?: string }>({
   externalPatientId: [''],
-  sex: ''
+  sex: '',
+  department: userStore.department, // Auto-assign user's department
 })
 
 const showExternalIdWarning = ref(false)
@@ -80,6 +83,9 @@ const duplicateExternalId = ref<string>('')
 
 // Loading states
 const isLoading = ref(false)
+
+// Department name display
+const departmentName = ref<string>('')
 
 // Listen for consultation flow substep transitions
 const handleConsultationFlowAdvance = (substep: '4a' | '4b') => {
@@ -231,9 +237,10 @@ const createPatient = async () => {
       .map(id => (id || '').trim())
       .filter(id => id !== '')
     
-    const patientDataToSend = {
+    const patientDataToSend: any = {
       ...patientData.value,
-      externalPatientId: filteredExternalIds.length > 0 ? filteredExternalIds : undefined
+      externalPatientId: filteredExternalIds.length > 0 ? filteredExternalIds : undefined,
+      department: patientData.value.department || undefined,
     }
 
     const response = await patientApi.createPatient({
@@ -542,6 +549,20 @@ const removeExternalIdField = (index: number) => {
 
 // Initialize data from route query if available
 onMounted(async () => {
+  // Fetch department name if department ID is available
+  if (userStore.department) {
+    try {
+      const response = await userDepartmentApi.getDepartmentById({ id: userStore.department })
+      if (response.responseObject) {
+        departmentName.value = response.responseObject.name || ''
+      }
+    } catch (error) {
+      console.error('Error fetching department name:', error)
+      // Fall back to showing the ID if fetch fails
+      departmentName.value = userStore.department
+    }
+  }
+
   const externalId = route.query.externalId as string
   if (externalId && externalId.trim() !== '') {
     if (!patientData.value.externalPatientId) {
@@ -680,6 +701,15 @@ onMounted(async () => {
                                 item-value="value"
                                 item-title="label"
                                 clearable></v-select>
+                      
+                      <v-text-field
+                                    :model-value="departmentName || patientData.department"
+                                    :label="t('forms.department')"
+                                    readonly
+                                    :hint="t('forms.departmentAutoAssignedHint')"
+                                    persistent-hint
+                                    variant="outlined"
+                                    density="compact"></v-text-field>
                     </v-form>
                   </v-card-text>
                 </v-card>

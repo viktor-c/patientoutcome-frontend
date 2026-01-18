@@ -29,10 +29,39 @@ const confirmPassword = ref('');
 const availableRoles = ['admin', 'doctor', 'mfa', 'kiosk', 'developer'];
 
 const departmentOptions = computed(() => {
-  return (props.departments || []).map(dept => ({
-    title: dept.name,
-    value: dept.id
-  }));
+  return (props.departments || [])
+    .filter(dept => dept.departmentType !== 'center') // Only show departments, not centers
+    .map(dept => ({
+      title: dept.name,
+      value: dept.id
+    }));
+});
+
+const centerOptions = computed(() => {
+  return (props.departments || [])
+    .filter(dept => dept.departmentType === 'center') // Only show centers
+    .map(dept => ({
+      title: dept.name,
+      value: dept.id
+    }));
+});
+
+const centerNameMap = computed(() => {
+  const map: Record<string, string> = {};
+  (props.departments || [])
+    .filter(dept => dept.departmentType === 'center')
+    .forEach(dept => {
+      if (dept.id) map[dept.id] = dept.name;
+    });
+  return map;
+});
+
+const displayCenterName = computed(() => {
+  if (!editedUser.value?.belongsToCenter) {
+    return '';
+  }
+  const centerId = editedUser.value.belongsToCenter;
+  return centerNameMap.value[centerId] || centerId;
 });
 
 const passwordMismatch = computed(() => {
@@ -43,6 +72,18 @@ watch(() => props.user, (newUser) => {
   if (newUser) {
     // deep clone to avoid mutating parent data
     editedUser.value = cloneUser(newUser);
+    // Ensure department is always an array
+    if (editedUser.value && !Array.isArray(editedUser.value.department)) {
+      editedUser.value.department = editedUser.value.department ? [editedUser.value.department] : [];
+    }
+    // belongsToCenter should be a single string value or empty string
+    if (editedUser.value) {
+      if (Array.isArray(editedUser.value.belongsToCenter)) {
+        editedUser.value.belongsToCenter = editedUser.value.belongsToCenter[0] || '';
+      } else if (!editedUser.value.belongsToCenter) {
+        editedUser.value.belongsToCenter = '';
+      }
+    }
     newPassword.value = '';
     confirmPassword.value = '';
   } else {
@@ -63,7 +104,7 @@ const save = () => {
       return;
     }
     // If password is provided, include it in the update
-    const userToSave = { ...editedUser.value };
+    const userToSave: any = { ...editedUser.value };
     if (newPassword.value) {
       userToSave.password = newPassword.value;
     }
@@ -111,8 +152,23 @@ const save = () => {
         <v-select
                   v-model="editedUser.department"
                   :items="departmentOptions"
-                  label="Department"
+                  label="Departments"
+                  multiple
+                  chips
+                  closable-chips
+                  item-title="title"
+                  item-value="value"
                   required
+                  density="compact"
+                  variant="outlined"
+                  class="mb-2" />
+
+        <v-select
+                  v-model="editedUser.belongsToCenter"
+                  :items="centerOptions"
+                  label="Center"
+                  item-title="title"
+                  item-value="value"
                   density="compact"
                   variant="outlined"
                   class="mb-2" />

@@ -15,9 +15,9 @@ const apiConfig = new Configuration({
   middleware: [authMiddleware]
 });
 console.debug(fileName + " API Base Path:", apiConfig.basePath);
-// console.debug(fileName + " API Config:", apiConfig);
-// console.debug(fileName + " Default Base:", defaultBase);
-// console.debug(fileName + " Environment, base URL:", import.meta.env.BASE_URL);
+console.debug(fileName + " API Config:", apiConfig);
+console.debug(fileName + " Default Base:", defaultBase);
+console.debug(fileName + " Environment, base URL:", import.meta.env.BASE_URL);
 
 // Create API instances with the custom configuration
 export const userApi = new UserApi(apiConfig)

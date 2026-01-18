@@ -35,7 +35,12 @@ const adminForm = ref({
   confirmPassword: '',
   name: '',
   email: '',
-  department: 'Administration',
+  department: 'Fußchirurgie',
+  departmentShortName: 'Fußchirurgie',
+  departmentDescription: 'Fußchirurgie Klinikum Fulda',
+  centerName: 'Klinikum Fulda',
+  centerShortName: 'KliFulda',
+  centerDescription: 'Klinikum Fulda - Main Medical Center',
   belongsToCenter: ['1']
 })
 
@@ -128,8 +133,13 @@ async function createAdmin() {
         name: adminForm.value.name,
         email: adminForm.value.email,
         department: adminForm.value.department,
+        departmentShortName: adminForm.value.departmentShortName,
+        departmentDescription: adminForm.value.departmentDescription,
+        centerName: adminForm.value.centerName,
+        centerShortName: adminForm.value.centerShortName,
+        centerDescription: adminForm.value.centerDescription,
         belongsToCenter: adminForm.value.belongsToCenter
-      }
+      } as any // Cast to any until API types are regenerated
     })
 
     if (response.success) {
@@ -348,9 +358,55 @@ function prevStep() {
                             </v-col>
                             <v-col cols="12" md="6">
                               <v-text-field
-                                            v-model="adminForm.belongsToCenter[0]"
-                                            :label="t('setup.step2.centerId')"
+                                            v-model="adminForm.departmentShortName"
+                                            :label="t('setup.step2.departmentShortName')"
+                                            prepend-inner-icon="mdi-text-short"
+                                            :hint="t('setup.step2.departmentShortNameHint')"
+                                            persistent-hint
+                                            maxlength="20"
+                                            variant="outlined" />
+                            </v-col>
+                            <v-col cols="12">
+                              <v-text-field
+                                            v-model="adminForm.departmentDescription"
+                                            :label="t('setup.step2.departmentDescription')"
+                                            prepend-inner-icon="mdi-text-box"
+                                            :hint="t('setup.step2.departmentDescriptionHint')"
+                                            persistent-hint
+                                            maxlength="500"
+                                            variant="outlined" />
+                            </v-col>
+                            
+                            <!-- Center Information -->
+                            <v-col cols="12">
+                              <v-divider class="my-2" />
+                              <p class="text-subtitle-2 mt-4 mb-2">{{ t('setup.step2.centerInformation') || 'Center Information' }}</p>
+                            </v-col>
+                            <v-col cols="12" md="6">
+                              <v-text-field
+                                            v-model="adminForm.centerName"
+                                            :label="t('setup.step2.centerName') || 'Center Name'"
                                             prepend-inner-icon="mdi-hospital-building"
+                                            variant="outlined" />
+                            </v-col>
+                            <v-col cols="12" md="6">
+                              <v-text-field
+                                            v-model="adminForm.centerShortName"
+                                            :label="t('setup.step2.centerShortName') || 'Center Short Name'"
+                                            prepend-inner-icon="mdi-text-short"
+                                            :hint="t('setup.step2.centerShortNameHint') || 'Short abbreviation for the center'"
+                                            persistent-hint
+                                            maxlength="20"
+                                            variant="outlined" />
+                            </v-col>
+                            <v-col cols="12">
+                              <v-text-field
+                                            v-model="adminForm.centerDescription"
+                                            :label="t('setup.step2.centerDescription') || 'Center Description'"
+                                            prepend-inner-icon="mdi-text-box"
+                                            :hint="t('setup.step2.centerDescriptionHint') || 'Description of the medical center'"
+                                            persistent-hint
+                                            maxlength="500"
                                             variant="outlined" />
                             </v-col>
                           </v-row>

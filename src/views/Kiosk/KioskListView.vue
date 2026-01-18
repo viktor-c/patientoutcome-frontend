@@ -67,14 +67,14 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { type GetAllKioskUsers200ResponseResponseObjectInner, type Consultation } from '@/api'
+import { type UserNoPassword, type Consultation } from '@/api'
 import { kioskApi, consultationApi } from '@/api'
 import { useNotifierStore } from '@/stores/notifierStore'
 
 const { t } = useI18n()
 const notifierStore = useNotifierStore()
 
-const kioskUsers = ref<GetAllKioskUsers200ResponseResponseObjectInner[]>([])
+const kioskUsers = ref<UserNoPassword[]>([])
 const consultationCache = ref<Record<string, Consultation | null>>({})
 const loading = ref(false)
 const revokingUserId = ref<string | null>(null)
@@ -117,7 +117,7 @@ const fetchKiosks = async () => {
   }
 }
 
-const revokeKiosk = async (user: GetAllKioskUsers200ResponseResponseObjectInner) => {
+const revokeKiosk = async (user: UserNoPassword) => {
   if (!user.id) return
 
   const confirmed = confirm(t('kioskList.confirmRevoke', { name: user.name }))

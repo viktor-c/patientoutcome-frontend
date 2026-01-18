@@ -1,13 +1,15 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { ResponseError, type GetAllPatientCases200ResponseResponseObjectInner as PatientCaseFromApi } from '@/api'
 import PatientCaseCreateEditForm from '@/components/forms/PatientCaseCreateEditForm.vue'
 import { useNotifierStore } from '@/stores/notifierStore'
+import { useUserStore } from '@/stores/userStore'
 import CreateEditConsultationDialog from '@/components/dialogs/CreateEditConsultationDialog.vue'
 
 const { t } = useI18n()
 const notifierStore = useNotifierStore()
+const userStore = useUserStore()
 
 // Use centralized API instance
 import { patientApi } from '@/api'
@@ -23,6 +25,14 @@ const createdCaseId = ref<string | null>(null)
 // Patient form fields
 const externalId = ref<string[]>([""])
 const sex = ref<'male' | 'female' | 'other' | "">("")
+const department = ref<string>("")
+
+// Auto-assign department on mount
+onMounted(() => {
+  if (userStore.department) {
+    department.value = userStore.department
+  }
+})
 
 // Sex dropdown options
 const sexOptions = [
@@ -45,7 +55,8 @@ const submitPatientForm = async () => {
       createPatientRequest: {
         externalPatientId: externalId.value,
         sex: sex.value,
-      },
+        department: department.value || undefined,
+      } as any,
     })
     if (response.responseObject && response.responseObject.id) {
       createdPatientId.value = response.responseObject.id
@@ -101,6 +112,7 @@ const resetForm = () => {
   step.value = 1
   externalId.value = [""]
   sex.value = ""
+  department.value = userStore.department // Reset with user's department
   createdPatientId.value = null
   createdCaseId.value = null
   error.value = ''
@@ -166,6 +178,14 @@ const removeExternalId = (idx: number) => {
                       outlined
                       dense
                       clearable></v-select>
+            <v-text-field
+                          v-model="department"
+                          :label="t('forms.department')"
+                          readonly
+                          :hint="t('forms.departmentAutoAssignedHint')"
+                          persistent-hint
+                          variant="outlined"
+                          density="compact"></v-text-field>
             <v-alert v-if="error" type="error" dense>{{ error }}</v-alert>
             <v-btn color="primary" type="submit" :loading="loading" class="mt-4">
               {{ t('buttons.nextStep') }}

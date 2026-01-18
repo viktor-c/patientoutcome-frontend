@@ -9,6 +9,7 @@ import {
   CreateConsultationReasonForConsultationEnum,
   type UpdatePatientCaseByIdRequestNotesInner as ConsultationNote,
   type User,
+  type UserNoPassword,
   type GetFormTemplatesShortlist200ResponseResponseObjectInner as FormTemplateShortList,
   ResponseError,
   type FindAllCodes200ResponseResponseObjectInner as Code,
@@ -54,7 +55,7 @@ const consultationsToCreate = ref<Array<CreateConsultation & {
 }>>([])
 
 // Supporting data
-const users = ref<User[]>([])
+const users = ref<UserNoPassword[]>([])
 const formTemplates = ref<FormTemplateShortList[]>([])
 const codes = ref<Code[]>([])
 

@@ -51,8 +51,8 @@ async function save() {
     const payload: UpdateUserRequest = {
       name: user.value.name,
       email: user.value.email,
-      department: user.value.department,
-      belongsToCenter: user.value.belongsToCenter,
+      department: Array.isArray(user.value.department) ? user.value.department : [user.value.department],
+      belongsToCenter: (Array.isArray(user.value.belongsToCenter) ? user.value.belongsToCenter[0] : user.value.belongsToCenter) || undefined,
       // include the new setting so it's persisted server-side
       daysBeforeConsultations: Number(user.value.daysBeforeConsultations || 7),
     };

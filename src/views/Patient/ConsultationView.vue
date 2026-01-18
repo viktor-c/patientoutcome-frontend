@@ -7,6 +7,7 @@ import { useDateFormat } from '@/composables/useDateFormat'
 import {
   type Consultation,
   type User,
+  type UserNoPassword,
   type Note,
   type GetFormTemplatesShortlist200ResponseResponseObjectInner as FormTemplateShortList,
   ResponseError,
@@ -59,7 +60,7 @@ const form = ref<Consultation>({
 })
 
 // Users list for the dropdown
-const users = ref<User[]>([])
+const users = ref<UserNoPassword[]>([])
 
 // Form templates list for the autocomplete
 const formTemplates = ref<FormTemplateShortList[]>([])

@@ -96,7 +96,7 @@ const saveUser = async (updatedUser: GetUsers200ResponseResponseObjectInner) => 
       department: updatedUser.department,
       roles: updatedUser.roles,
       belongsToCenter: updatedUser.belongsToCenter,
-      ...(updatedUser.password && { password: updatedUser.password }),
+      ...((updatedUser as any).password && { password: (updatedUser as any).password }),
     };
 
     console.debug('UserManagement.saveUser: updatePayload prepared for', updatedUser?.username, updatePayload);
@@ -155,7 +155,9 @@ const formatDate = (date: Date | undefined) => {
   return new Date(date).toLocaleDateString();
 };
 
-const getDepartmentName = (departmentId: string) => {
+const getDepartmentName = (departmentIds: string | string[]) => {
+  const departmentId = Array.isArray(departmentIds) ? departmentIds[0] : departmentIds;
+  if (!departmentId) return 'N/A';
   const dept = departments.value.find(d => d.id === departmentId);
   return dept?.name || departmentId;
 };

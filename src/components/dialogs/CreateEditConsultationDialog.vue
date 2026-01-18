@@ -8,6 +8,7 @@ import {
   type Consultation,
   type CreateConsultation,
   type User,
+  type UserNoPassword,
   type Note,
   type GetFormTemplatesShortlist200ResponseResponseObjectInner as FormTemplateShortList,
   ResponseError,
@@ -50,7 +51,7 @@ const form = ref<Consultation & { formTemplates?: string[] }>({
   formAccessCode: null,
 })
 
-const users = ref<User[]>([])
+const users = ref<UserNoPassword[]>([])
 const formTemplates = ref<FormTemplateShortList[]>([])
 const selectedFormTemplates = ref<string[]>([])
 const editingNoteIndex = ref<number | null>(null)
