@@ -12,7 +12,8 @@ const notifierStore = useNotifierStore()
 const userStore = useUserStore()
 
 // Use centralized API instance
-import { patientApi } from '@/api'
+import { patientApi, userDepartmentApi } from '@/api'
+import type { UserDepartment } from '@/api'
 
 const dialog = ref(false)
 const step = ref(1)
@@ -26,12 +27,55 @@ const createdCaseId = ref<string | null>(null)
 const externalId = ref<string[]>([""])
 const sex = ref<'male' | 'female' | 'other' | "">("")
 const department = ref<string>("")
+const userDepartments = ref<UserDepartment[]>([])
+const loadingDepartments = ref(false)
+
+// Fetch user departments if they have multiple
+const fetchUserDepartments = async () => {
+  // Parse department from userStore - it could be a string or array
+  let departmentIds: string[] = []
+  
+  if (typeof userStore.department === 'string') {
+    // Single department - could be comma-separated or single ID
+    if (userStore.department.includes(',')) {
+      departmentIds = userStore.department.split(',').map(d => d.trim()).filter(Boolean)
+    } else if (userStore.department) {
+      departmentIds = [userStore.department]
+    }
+  } else if (Array.isArray(userStore.department)) {
+    departmentIds = userStore.department
+  }
+
+  if (departmentIds.length === 0) {
+    return
+  }
+
+  // If only one department, auto-assign it
+  if (departmentIds.length === 1) {
+    department.value = departmentIds[0]
+    return
+  }
+
+  // If multiple departments, fetch their details
+  loadingDepartments.value = true
+  try {
+    const response = await userDepartmentApi.getAllDepartments()
+    if (response.success && response.responseObject) {
+      // Filter to only show departments the user belongs to
+      userDepartments.value = response.responseObject.filter(d => 
+        d.id && departmentIds.includes(d.id)
+      )
+    }
+  } catch (err) {
+    console.error('Error fetching departments:', err)
+  } finally {
+    loadingDepartments.value = false
+  }
+}
 
 // Auto-assign department on mount
-onMounted(() => {
-  if (userStore.department) {
-    department.value = userStore.department
-  }
+onMounted(async () => {
+  await fetchUserDepartments()
 })
 
 // Sex dropdown options
@@ -108,15 +152,17 @@ const handleCaseCancel = () => {
 }
 
 // Reset form to initial state
-const resetForm = () => {
+const resetForm = async () => {
   step.value = 1
   externalId.value = [""]
   sex.value = ""
-  department.value = userStore.department // Reset with user's department
+  department.value = ""
   createdPatientId.value = null
   createdCaseId.value = null
   error.value = ''
   loading.value = false
+  // Re-fetch and auto-assign departments
+  await fetchUserDepartments()
 }
 
 const addExternalId = () => {
@@ -178,7 +224,24 @@ const removeExternalId = (idx: number) => {
                       outlined
                       dense
                       clearable></v-select>
+            
+            <!-- Show dropdown if user has multiple departments -->
+            <v-select
+                      v-if="userDepartments.length > 1"
+                      v-model="department"
+                      :items="userDepartments"
+                      item-value="id"
+                      item-title="name"
+                      :label="t('forms.department')"
+                      :loading="loadingDepartments"
+                      :rules="[v => !!v || t('forms.departmentRequired')]"
+                      variant="outlined"
+                      density="compact"
+                      required></v-select>
+            
+            <!-- Show readonly field if user has only one department -->
             <v-text-field
+                          v-else
                           v-model="department"
                           :label="t('forms.department')"
                           readonly
