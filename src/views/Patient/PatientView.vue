@@ -57,7 +57,12 @@ const SEARCH_QUERY_MINIMUM_LENGTH = import.meta.env.VITE_SEARCH_QUERY_MINIMUM_LE
 // Auto-assign department on mount
 onMounted(() => {
   if (userStore.department) {
-    newPatient.value.department = userStore.department
+    // Ensure department is a string, not an array
+    if (Array.isArray(userStore.department)) {
+      newPatient.value.department = userStore.department[0] || ''
+    } else {
+      newPatient.value.department = userStore.department
+    }
   }
 })
 
@@ -75,10 +80,20 @@ const createPatient = async () => {
       ? newPatient.value.externalPatientId.split(',').map((id) => id.trim()).filter(id => id)
       : []
 
+    // Ensure department is a string, not an array
+    let departmentId: string | undefined = undefined
+    if (newPatient.value.department) {
+      if (Array.isArray(newPatient.value.department)) {
+        departmentId = newPatient.value.department[0] // Take first if array
+      } else {
+        departmentId = newPatient.value.department
+      }
+    }
+
     const patientData: any = {
       ...newPatient.value,
       externalPatientId: externalPatientIdArray.length > 0 ? externalPatientIdArray : undefined,
-      department: newPatient.value.department || undefined,
+      department: departmentId,
     }
 
     const response = await patientApi.createPatient({ createPatientRequest: patientData })
