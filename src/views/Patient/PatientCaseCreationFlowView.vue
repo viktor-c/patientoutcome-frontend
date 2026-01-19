@@ -28,6 +28,13 @@ const route = useRoute()
 const notifierStore = useNotifierStore()
 const userStore = useUserStore()
 
+// =============================================================================
+// URL PATTERNS FOR DIRECT ACCESS LINKS
+// =============================================================================
+const PATIENT_URL_PATTERN = '/patient-overview/{id}'
+const CASE_URL_PATTERN = '/case/{id}'
+// =============================================================================
+
 // Current step in the flow (1: Patient, 2: Case, 3: Surgery, 4: Consultation, 5: Completion)
 const currentStep = ref(1)
 
@@ -147,7 +154,7 @@ const canProceedFromStep2 = computed(() => {
 // Convert createdCase to the format expected by PatientCaseCreateEditForm
 const caseForEditing = computed(() => {
   if (!createdCase.value) return null
-  
+
   // Create a PatientCase object from the created case
   return {
     id: createdCase.value.id,
@@ -210,7 +217,7 @@ const previousStep = async () => {
       }, 100)
       return
     }
-    
+
     // If we skipped surgery and are on step 4, go back to step 3 (surgery step)
     if (skipSurgery.value && currentStep.value === 4) {
       skipSurgery.value = false
@@ -236,7 +243,7 @@ const createPatient = async () => {
     const filteredExternalIds = (patientData.value.externalPatientId || [])
       .map(id => (id || '').trim())
       .filter(id => id !== '')
-    
+
     const patientDataToSend: any = {
       ...patientData.value,
       externalPatientId: filteredExternalIds.length > 0 ? filteredExternalIds : undefined,
@@ -288,7 +295,7 @@ const updatePatient = async () => {
     const filteredExternalIds = (patientData.value.externalPatientId || [])
       .map(id => (id || '').trim())
       .filter(id => id !== '')
-    
+
     const patientDataToSend = {
       ...patientData.value,
       externalPatientId: filteredExternalIds.length > 0 ? filteredExternalIds : undefined
@@ -363,8 +370,8 @@ const handleCaseSubmit = (caseData: GetAllPatientCases200ResponseResponseObjectI
   if (currentStep.value === 2) {
     currentStep.value = 3
   }
-  const message = caseData.id === createdCase.value?.id ? 
-    t('creationFlow.caseUpdated') : 
+  const message = caseData.id === createdCase.value?.id ?
+    t('creationFlow.caseUpdated') :
     t('creationFlow.caseCreated')
   notifierStore.notify(message, 'success')
 }
@@ -412,8 +419,8 @@ const handleCaseCancel = () => {
 const handleSurgerySubmit = async (surgery: Surgery) => {
   const isUpdate = createdSurgery.value?.id === surgery.id
   createdSurgery.value = surgery
-  const message = isUpdate ? 
-    t('creationFlow.surgeryUpdated') : 
+  const message = isUpdate ?
+    t('creationFlow.surgeryUpdated') :
     t('creationFlow.surgeryCreated')
   notifierStore.notify(message, 'success')
 
@@ -486,13 +493,13 @@ const cancel = () => {
 const getPatientUrl = () => {
   if (!createdPatient.value?.id) return ''
   const baseUrl = window.location.origin
-  return `${baseUrl}/patient/${createdPatient.value.id}`
+  return `${baseUrl}${PATIENT_URL_PATTERN.replace('{id}', createdPatient.value.id)}`
 }
 
 const getCaseUrl = () => {
   if (!createdCase.value?.id) return ''
   const baseUrl = window.location.origin
-  return `${baseUrl}/case/${createdCase.value.id}`
+  return `${baseUrl}${CASE_URL_PATTERN.replace('{id}', createdCase.value.id)}`
 }
 
 // Open URLs in new tab
@@ -643,25 +650,23 @@ onMounted(async () => {
                   <v-card-title>{{ t('creationFlow.step1Title') }}</v-card-title>
                   <v-card-text>
                     <v-alert
-                      type="info"
-                      variant="tonal"
-                      class="mb-4"
-                      density="compact"
-                    >
+                             type="info"
+                             variant="tonal"
+                             class="mb-4"
+                             density="compact">
                       {{ t('alerts.patient.optionalFieldsInfo') }}
                     </v-alert>
-                    
+
                     <v-alert
-                      v-if="showExternalIdWarning"
-                      type="warning"
-                      variant="tonal"
-                      class="mb-4"
-                      closable
-                      @click:close="showExternalIdWarning = false"
-                    >
+                             v-if="showExternalIdWarning"
+                             type="warning"
+                             variant="tonal"
+                             class="mb-4"
+                             closable
+                             @click:close="showExternalIdWarning = false">
                       {{ t('alerts.patient.noExternalIdWarning') }}
                     </v-alert>
-                    
+
                     <v-form>
                       <!-- External Patient IDs -->
                       <div v-for="(externalId, index) in patientData.externalPatientId || []" :key="index" class="mb-2">
@@ -701,7 +706,7 @@ onMounted(async () => {
                                 item-value="value"
                                 item-title="label"
                                 clearable></v-select>
-                      
+
                       <v-text-field
                                     :model-value="departmentName || patientData.department"
                                     :label="t('forms.department')"
@@ -775,18 +780,18 @@ onMounted(async () => {
 
                 <!-- Embedded Consultation Blueprint Selection -->
                 <ConsultationBlueprintSelectionDialog
-                  ref="consultationFormRef"
-                  v-if="createdCase && createdCase.patient && createdCase.id"
-                  v-model="selectedConsultationBlueprints"
-                  :surgery-date="createdSurgery?.surgeryDate || undefined"
-                  :patient-id="createdCase.patient.id || ''"
-                  :case-id="createdCase.id"
-                  :pre-selected-blueprint-ids="surgeryBlueprintConsultations"
-                  :consultation-flow-step="consultationFlowStep"
-                  :showButtons="false"
-                  @consultations-created="handleConsultationsSubmit"
-                  @consultation-flow-advance="handleConsultationFlowAdvance"
-                  @cancel="handleConsultationBlueprintCancel" />
+                                                      ref="consultationFormRef"
+                                                      v-if="createdCase && createdCase.patient && createdCase.id"
+                                                      v-model="selectedConsultationBlueprints"
+                                                      :surgery-date="createdSurgery?.surgeryDate || undefined"
+                                                      :patient-id="createdCase.patient.id || ''"
+                                                      :case-id="createdCase.id"
+                                                      :pre-selected-blueprint-ids="surgeryBlueprintConsultations"
+                                                      :consultation-flow-step="consultationFlowStep"
+                                                      :showButtons="false"
+                                                      @consultations-created="handleConsultationsSubmit"
+                                                      @consultation-flow-advance="handleConsultationFlowAdvance"
+                                                      @cancel="handleConsultationBlueprintCancel" />
               </v-stepper-window-item>
 
               <!-- Step 5: Completion & URLs -->
@@ -806,29 +811,26 @@ onMounted(async () => {
                     <div v-if="createdPatient" class="mb-4">
                       <p class="mb-2 font-weight-bold">{{ t('creationFlow.patientUrl') }}</p>
                       <v-text-field
-                        :value="getPatientUrl()"
-                        readonly
-                        variant="outlined"
-                        density="compact"
-                        @click="copyPatientUrl"
-                        class="cursor-pointer"
-                      >
+                                    :value="getPatientUrl()"
+                                    readonly
+                                    variant="outlined"
+                                    density="compact"
+                                    @click="copyPatientUrl"
+                                    class="cursor-pointer">
                         <template #append-inner>
                           <v-btn
-                            icon="mdi-content-copy"
-                            size="x-small"
-                            variant="text"
-                            @click.stop="copyPatientUrl"
-                            :title="t('buttons.copy')"
-                            class="mr-2"
-                          ></v-btn>
+                                 icon="mdi-content-copy"
+                                 size="x-small"
+                                 variant="text"
+                                 @click.stop="copyPatientUrl"
+                                 :title="t('buttons.copy')"
+                                 class="mr-2"></v-btn>
                           <v-btn
-                            icon="mdi-open-in-new"
-                            size="x-small"
-                            variant="text"
-                            @click.stop="openPatientUrl"
-                            :title="t('buttons.open')"
-                          ></v-btn>
+                                 icon="mdi-open-in-new"
+                                 size="x-small"
+                                 variant="text"
+                                 @click.stop="openPatientUrl"
+                                 :title="t('buttons.open')"></v-btn>
                         </template>
                       </v-text-field>
                     </div>
@@ -836,29 +838,26 @@ onMounted(async () => {
                     <div v-if="createdCase">
                       <p class="mb-2 font-weight-bold">{{ t('creationFlow.caseUrl') }}</p>
                       <v-text-field
-                        :value="getCaseUrl()"
-                        readonly
-                        variant="outlined"
-                        density="compact"
-                        @click="copyCaseUrl"
-                        class="cursor-pointer"
-                      >
+                                    :value="getCaseUrl()"
+                                    readonly
+                                    variant="outlined"
+                                    density="compact"
+                                    @click="copyCaseUrl"
+                                    class="cursor-pointer">
                         <template #append-inner>
                           <v-btn
-                            icon="mdi-content-copy"
-                            size="x-small"
-                            variant="text"
-                            @click.stop="copyCaseUrl"
-                            :title="t('buttons.copy')"
-                            class="mr-2"
-                          ></v-btn>
+                                 icon="mdi-content-copy"
+                                 size="x-small"
+                                 variant="text"
+                                 @click.stop="copyCaseUrl"
+                                 :title="t('buttons.copy')"
+                                 class="mr-2"></v-btn>
                           <v-btn
-                            icon="mdi-open-in-new"
-                            size="x-small"
-                            variant="text"
-                            @click.stop="openCaseUrl"
-                            :title="t('buttons.open')"
-                          ></v-btn>
+                                 icon="mdi-open-in-new"
+                                 size="x-small"
+                                 variant="text"
+                                 @click.stop="openCaseUrl"
+                                 :title="t('buttons.open')"></v-btn>
                         </template>
                       </v-text-field>
                     </div>
