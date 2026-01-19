@@ -1,9 +1,11 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue';
+import { ref, computed, onMounted } from 'vue';
 import { useI18n } from 'vue-i18n';
 import ChangePasswordDialog from './ChangePasswordDialog.vue';
 import { useUserStore } from '@/stores/userStore';
+import { userDepartmentApi } from '@/api';
 import type { UpdateUserRequest } from '@/api/models/UpdateUserRequest';
+import type { UserDepartment } from '@/api';
 
 const { t } = useI18n();
 
@@ -11,6 +13,9 @@ const show = defineModel<boolean>('show');
 
 const showPasswordDialog = ref(false);
 const userStore = useUserStore();
+const departments = ref<UserDepartment[]>([]);
+const centers = ref<UserDepartment[]>([]);
+const loadingDepartments = ref(false);
 
 const MIN_DAYS = 0
 const MAX_DAYS = 365
@@ -20,7 +25,9 @@ const user = ref({
   username: userStore.username || '',
   email: userStore.email || '',
   department: userStore.department || '',
+  departmentName: '',
   belongsToCenter: userStore.belongsToCenter || [] as string[],
+  belongsToCenterName: '',
   centerOptions: [] as string[],
   // editable local copy of the per-user setting
   daysBeforeConsultations: Number(userStore.daysBeforeConsultations || 7),
@@ -31,6 +38,52 @@ const daysValid = computed(() => {
   return Number.isInteger(v) && v >= MIN_DAYS && v <= MAX_DAYS
 })
 
+// Fetch department and center information
+const fetchDepartmentData = async () => {
+  loadingDepartments.value = true;
+  try {
+    const response = await userDepartmentApi.getAllDepartments();
+    if (response.success && response.responseObject) {
+      departments.value = response.responseObject;
+      centers.value = response.responseObject.filter(d => d.departmentType === 'center');
+
+      // Find and set department name
+      if (user.value.department) {
+        const dept = Array.isArray(user.value.department) 
+          ? user.value.department[0] 
+          : user.value.department;
+        
+        const foundDept = departments.value.find(d => d.id === dept);
+        if (foundDept) {
+          user.value.departmentName = foundDept.name;
+        }
+      }
+
+      // Find and set center name
+      if (user.value.belongsToCenter) {
+        const centerId = Array.isArray(user.value.belongsToCenter) 
+          ? user.value.belongsToCenter[0] 
+          : user.value.belongsToCenter;
+        
+        const foundCenter = centers.value.find(c => c.id === centerId);
+        if (foundCenter) {
+          user.value.belongsToCenterName = foundCenter.name;
+        }
+      }
+    }
+  } catch (error) {
+    console.error('Error fetching departments:', error);
+  } finally {
+    loadingDepartments.value = false;
+  }
+};
+
+// Watch for dialog open
+onMounted(() => {
+  if (show.value) {
+    fetchDepartmentData();
+  }
+});
 
 function openPasswordDialog() {
   showPasswordDialog.value = true;
@@ -68,20 +121,31 @@ async function save() {
 </script>
 
 <template>
-  <v-dialog v-model="show" max-width="600">
+  <v-dialog v-model="show" max-width="600" @update:model-value="(val) => val && fetchDepartmentData()">
     <v-card>
       <v-card-title>{{ t('editUserSettings.title') }}</v-card-title>
       <v-card-text>
         <v-text-field v-if="user" v-model="user.name" :label="t('editUserSettings.name')" />
         <v-text-field v-if="user" v-model="user.username" :label="t('editUserSettings.username')" />
         <v-text-field v-if="user" v-model="user.email" :label="t('editUserSettings.email')" />
-        <v-text-field v-if="user" v-model="user.department" :label="t('editUserSettings.department')" />
-        <v-select
-                  v-if="user"
-                  v-model="user.belongsToCenter"
-                  :items="user.centerOptions"
-                  :label="t('editUserSettings.belongsToCenter')"
-                  multiple />
+        <v-text-field 
+          v-if="user" 
+          v-model="user.departmentName" 
+          :label="t('editUserSettings.department')" 
+          readonly
+          :loading="loadingDepartments"
+          :hint="t('editUserSettings.departmentReadOnly')"
+          persistent-hint
+        />
+        <v-text-field 
+          v-if="user" 
+          v-model="user.belongsToCenterName" 
+          :label="t('editUserSettings.belongsToCenter')" 
+          readonly
+          :loading="loadingDepartments"
+          :hint="t('editUserSettings.centerReadOnly')"
+          persistent-hint
+        />
         <v-text-field
                       v-if="user"
                       type="number"
