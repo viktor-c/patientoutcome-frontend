@@ -4,6 +4,7 @@ import { useRouter } from 'vue-router'
 import { useNotifierStore } from '@/stores/notifierStore'
 import { useI18n } from 'vue-i18n'
 import { setupApi } from '@/api'
+import { logger } from '@/services/logger'
 
 const router = useRouter()
 const notifierStore = useNotifierStore()
@@ -121,7 +122,7 @@ async function fetchDatabaseStats() {
       dbStats.value = response.responseObject
     }
   } catch (error) {
-    console.error('Failed to fetch database stats:', error)
+    logger.error('Failed to check setup status', error)
   }
 }
 

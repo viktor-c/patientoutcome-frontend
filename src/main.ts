@@ -5,6 +5,7 @@ import { createPinia } from 'pinia'
 import vuetify from '@/plugins/vuetify'
 import i18n from '@/plugins/i18n'
 import notifier from '@/plugins/notifier'
+import { logger } from '@/services/logger'
 
 import App from './App.vue'
 import router from './router'
@@ -26,6 +27,9 @@ app.component('VueDatePicker', VueDatePicker);
 
 app.mount('#app')
 
-// log environment
-console.debug(`Environment: ${import.meta.env.MODE}`);
-console.debug(`API URL: ${import.meta.env.VITE_API_URL}`);
+// Log environment with structured logger
+logger.info('Application started', {
+  environment: import.meta.env.MODE,
+  apiUrl: import.meta.env.VITE_API_URL,
+  timestamp: new Date().toISOString()
+});

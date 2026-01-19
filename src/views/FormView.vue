@@ -21,6 +21,7 @@ const tab = ref('0') // Tab index for navigation
 
 // Use centralized API instance
 import { consultationApi } from '@/api'
+import { logger } from '@/services/logger'
 
 // Fetch consultation data and populate forms
 onMounted(async () => {
@@ -28,7 +29,7 @@ onMounted(async () => {
     const response = await consultationApi.getConsultationById({ consultationId })
     const consultationData = response.responseObject
     if (!consultationData) {
-      console.error('No consultation data found')
+      logger.error('No consultation data found', { consultationId: route.params.consultationId })
       return
     }
     // Assuming consultationData contains an array of forms
