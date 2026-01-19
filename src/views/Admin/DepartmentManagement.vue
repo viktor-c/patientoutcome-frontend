@@ -32,6 +32,15 @@
           :items-per-page="10"
           class="elevation-1"
         >
+          <template #[`item.departmentType`]="{ item }">
+            <v-chip
+              :color="item.departmentType === 'center' ? 'primary' : 'secondary'"
+              size="small"
+              variant="tonal"
+            >
+              {{ item.departmentType === 'center' ? t('departmentManagement.types.center') : t('departmentManagement.types.department') }}
+            </v-chip>
+          </template>
           <template #[`item.actions`]="{ item }">
             <v-btn
               icon="mdi-pencil"
@@ -70,6 +79,28 @@
             <v-text-field
               v-model="editedDepartment.shortName"
               :label="t('departmentManagement.fields.shortName')"
+            />
+
+            <v-select
+              v-model="editedDepartment.departmentType"
+              :items="departmentTypes"
+              item-value="value"
+              item-title="title"
+              :label="t('departmentManagement.fields.type')"
+              :disabled="editedIndex !== -1 && editedDepartment.hasChildDepartments"
+              :hint="editedIndex !== -1 && editedDepartment.hasChildDepartments ? t('departmentManagement.cannotChangeTypeHint') : ''"
+              persistent-hint
+              required
+            />
+
+            <v-select
+              v-if="editedDepartment.departmentType === 'department'"
+              v-model="editedDepartment.center"
+              :items="centers"
+              item-value="id"
+              item-title="name"
+              :label="t('departmentManagement.fields.center')"
+              clearable
             />
 
             <v-textarea
@@ -188,13 +219,22 @@ const editedDepartment = ref<UserDepartment>({
   description: '',
   contactEmail: '',
   contactPhone: '',
+  departmentType: 'department' as 'department' | 'center',
+  center: undefined,
 })
 const editedIndex = ref(-1)
 const departmentToDelete = ref<UserDepartment | null>(null)
+const centers = ref<UserDepartment[]>([])
+
+const departmentTypes = computed(() => [
+  { value: 'department', title: t('departmentManagement.types.department') },
+  { value: 'center', title: t('departmentManagement.types.center') },
+])
 
 const headers = computed(() => [
   { title: t('departmentManagement.fields.name'), key: 'name', sortable: true },
   { title: t('departmentManagement.fields.shortName'), key: 'shortName', sortable: true },
+  { title: t('departmentManagement.fields.type'), key: 'departmentType', sortable: true },
   { title: t('departmentManagement.fields.description'), key: 'description', sortable: false },
   { title: t('departmentManagement.fields.contactEmail'), key: 'contactEmail', sortable: false },
   { title: t('departmentManagement.fields.contactPhone'), key: 'contactPhone', sortable: false },
@@ -222,6 +262,8 @@ async function loadDepartments() {
     const response = await userDepartmentApi.getAllDepartments()
     if (response.success && response.responseObject) {
       departments.value = response.responseObject
+      // Filter centers for the dropdown
+      centers.value = response.responseObject.filter(d => d.departmentType === 'center')
     }
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : String(error)
@@ -239,6 +281,8 @@ function openCreateDialog() {
     description: '',
     contactEmail: '',
     contactPhone: '',
+    departmentType: 'department' as 'department' | 'center',
+    center: undefined,
   }
   dialog.value = true
 }
@@ -258,6 +302,8 @@ function closeDialog() {
     description: '',
     contactEmail: '',
     contactPhone: '',
+    departmentType: 'department' as 'department' | 'center',
+    center: undefined,
   }
 }
 
