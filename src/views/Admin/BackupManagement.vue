@@ -229,6 +229,16 @@ const restoreBackup = async () => {
   }
 };
 
+const toggleCollection = (collectionName: string, selected: boolean | null) => {
+  if (selected === true) {
+    if (!selectedCollections.value.includes(collectionName)) {
+      selectedCollections.value.push(collectionName);
+    }
+  } else if (selected === false) {
+    selectedCollections.value = selectedCollections.value.filter(name => name !== collectionName);
+  }
+};
+
 const handleFileUpload = async () => {
   if (!uploadFile.value) {
     notifierStore.notify('Please select a file to upload', 'info');
@@ -510,33 +520,38 @@ onMounted(async () => {
           <v-row>
             <v-col cols="12">
               <h4 class="mb-2">Select Collections to Restore</h4>
-              <v-data-table
-                v-model="selectedCollections"
-                :headers="collectionHeaders"
-                :items="collectionComparison"
-                item-value="name"
-                show-select
-                density="compact"
-              >
-                <template v-slot:[`item.documentCount`]="{ item }">
-                  <div>
-                    <div>Backup: {{ item.backupCount }}</div>
-                    <div class="text-caption">Current: {{ item.currentCount }}</div>
-                  </div>
-                </template>
-                <template v-slot:[`item.lastModified`]="{ item }">
-                  <div v-if="item.backupLastModified">
-                    <div class="text-caption">Backup: {{ formatDate(item.backupLastModified || '') }}</div>
-                    <div v-if="item.currentLastModified" class="text-caption">
-                      Current: {{ formatDate(item.currentLastModified || '') }}
-                    </div>
-                  </div>
-                  <span v-else class="text-caption">N/A</span>
-                </template>
-                <template v-slot:[`item.sizeBytes`]="{ item }">
-                  {{ formatBytes(item.sizeBytes || 0) }}
-                </template>
-              </v-data-table>
+              <v-card variant="outlined" class="scrollable-collection-list">
+                <v-list density="compact">
+                  <v-list-item
+                    v-for="item in collectionComparison"
+                    :key="item.name"
+                    class="collection-item"
+                  >
+                    <template v-slot:prepend>
+                      <v-checkbox
+                        :model-value="selectedCollections.includes(item.name)"
+                        @update:model-value="(val) => toggleCollection(item.name, val)"
+                        hide-details
+                      />
+                    </template>
+                    <v-list-item-title>{{ item.name }}</v-list-item-title>
+                    <v-list-item-subtitle>
+                      <div class="collection-details">
+                        <div>
+                          <span class="text-caption">Backup: {{ item.backupCount }} docs</span>
+                          <span class="text-caption ml-4">Current: {{ item.currentCount }} docs</span>
+                        </div>
+                        <div class="text-caption">
+                          Size: {{ formatBytes(item.sizeBytes || 0) }}
+                        </div>
+                        <div v-if="item.backupLastModified" class="text-caption">
+                          Last modified: {{ formatDate(item.backupLastModified || '') }}
+                        </div>
+                      </div>
+                    </v-list-item-subtitle>
+                  </v-list-item>
+                </v-list>
+              </v-card>
             </v-col>
           </v-row>
         </v-card-text>
@@ -597,7 +612,22 @@ onMounted(async () => {
 </template>
 
 <style scoped>
-.v-data-table {
-  font-size: 0.875rem;
+.scrollable-collection-list {
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+.collection-item {
+  border-bottom: 1px solid rgba(0, 0, 0, 0.12);
+}
+
+.collection-item:last-child {
+  border-bottom: none;
+}
+
+.collection-details {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
 }
 </style>

@@ -44,6 +44,10 @@ const adminForm = ref({
   belongsToCenter: ['1']
 })
 
+// Starter data options
+const seedStarterData = ref(false)
+const seedingStarterData = ref(false)
+
 // Database stats
 const dbStats = ref<Record<string, number>>({})
 
@@ -158,6 +162,25 @@ async function createAdmin() {
     notifierStore.notify(t('setup.notifications.adminCreateFailed'), 'error')
   } finally {
     isLoading.value = false
+  }
+}
+
+async function seedStarter() {
+  seedingStarterData.value = true
+  try {
+    const response = await setupApi.seedStarterData()
+    
+    if (response.success) {
+      notifierStore.notify(t('setup.step4.starterDataSeeded'), 'success')
+      await fetchDatabaseStats()
+    } else {
+      notifierStore.notify(response.message || t('setup.step4.starterDataFailed'), 'error')
+    }
+  } catch (error) {
+    console.error('Failed to seed starter data:', error)
+    notifierStore.notify(t('setup.step4.starterDataFailed'), 'error')
+  } finally {
+    seedingStarterData.value = false
   }
 }
 
@@ -427,6 +450,30 @@ function prevStep() {
                         <p class="text-body-1 mb-6">
                           {{ t('setup.step4.description') }}
                         </p>
+
+                        <!-- Starter Data Section -->
+                        <v-card class="mb-6 text-left" variant="outlined">
+                          <v-card-title class="d-flex align-center">
+                            <v-icon class="mr-2" color="primary">mdi-package-variant</v-icon>
+                            {{ t('setup.step4.starterDataTitle') }}
+                          </v-card-title>
+                          <v-card-text>
+                            <p class="text-body-2 mb-3">{{ t('setup.step4.starterDataDescription') }}</p>
+                            <v-alert type="info" variant="tonal" density="compact" class="mb-3">
+                              {{ t('setup.step4.starterDataInfo') }}
+                            </v-alert>
+                            <v-btn
+                              color="primary"
+                              variant="outlined"
+                              :loading="seedingStarterData"
+                              @click="seedStarter"
+                              block
+                            >
+                              <v-icon start>mdi-database-plus</v-icon>
+                              {{ t('setup.step4.seedStarterData') }}
+                            </v-btn>
+                          </v-card-text>
+                        </v-card>
 
                         <v-alert type="success" variant="tonal" class="mb-4 text-left">
                           <v-alert-title>{{ t('setup.step4.nextSteps') }}</v-alert-title>
