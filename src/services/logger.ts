@@ -145,16 +145,20 @@ class Logger {
 
     switch (level) {
       case LogLevel.DEBUG:
-        console.debug(prefix, entry.message, entry.data || '');
+        if (import.meta.env.DEV) console.debug(prefix, entry.message, entry.data || '');
+        else console.debug(JSON.stringify(entry));
         break;
       case LogLevel.INFO:
-        console.info(prefix, entry.message, entry.data || '');
+        if (import.meta.env.DEV) console.info(prefix, entry.message, entry.data || '');
+        else console.info(JSON.stringify(entry));
         break;
       case LogLevel.WARN:
-        console.warn(prefix, entry.message, entry.data || '');
+        if (import.meta.env.DEV) console.warn(prefix, entry.message, entry.data || '');
+        else console.warn(JSON.stringify(entry));
         break;
       case LogLevel.ERROR:
-        console.error(prefix, entry.message, entry.data || '');
+        if (import.meta.env.DEV) console.error(prefix, entry.message, entry.data || '');
+        else console.error(JSON.stringify(entry));
         break;
     }
   }
