@@ -20,9 +20,11 @@ RUN --mount=type=cache,id=pnpm,target=/pnpm/store pnpm install --no-frozen-lockf
 FROM base AS build
 WORKDIR /app
 
-# Accept build argument
+# Accept build arguments
 ARG VITE_API_URL
+ARG VITE_LOG_LEVEL=info
 ENV VITE_API_URL=${VITE_API_URL}
+ENV VITE_LOG_LEVEL=${VITE_LOG_LEVEL}
 
 # Copy dependencies from deps stage
 COPY --from=deps /app/node_modules /app/node_modules

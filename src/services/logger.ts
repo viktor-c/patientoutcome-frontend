@@ -31,8 +31,25 @@ class Logger {
   private localStorageKey = 'app_logs';
 
   constructor() {
-    // Set log level based on environment
-    this.currentLevel = import.meta.env.DEV ? LogLevel.DEBUG : LogLevel.INFO;
+    // Set log level based on environment variable or default based on dev/prod
+    const logLevelEnv = import.meta.env.VITE_LOG_LEVEL?.toLowerCase();
+    let initialLevel: LogLevel;
+
+    if (logLevelEnv) {
+      // Map string to LogLevel enum
+      const levelMap: Record<string, LogLevel> = {
+        'debug': LogLevel.DEBUG,
+        'info': LogLevel.INFO,
+        'warn': LogLevel.WARN,
+        'error': LogLevel.ERROR,
+      };
+      initialLevel = levelMap[logLevelEnv] ?? LogLevel.INFO;
+    } else {
+      // Default based on environment
+      initialLevel = import.meta.env.DEV ? LogLevel.DEBUG : LogLevel.INFO;
+    }
+
+    this.currentLevel = initialLevel;
     this.enableRemoteLogging = import.meta.env.PROD;
     this.maxLocalLogs = 100;
 

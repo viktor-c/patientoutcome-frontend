@@ -9,6 +9,10 @@ RUN corepack enable && corepack prepare pnpm@latest --activate
 # Create app directory
 WORKDIR /app
 
+# Accept build arguments
+ARG VITE_LOG_LEVEL=debug
+ENV VITE_LOG_LEVEL=${VITE_LOG_LEVEL}
+
 # Copy package files
 COPY package.json pnpm-lock.yaml ./
 
