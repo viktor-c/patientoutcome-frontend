@@ -121,14 +121,16 @@ const logout = async () => {
                 {{ notification.message }} - <span class="text-muted">{{ formatDateTime(notification.time) }}</span>
               </v-list-item-title>
             </v-list-item>
+            <v-list-item>
+              <v-btn color="error" @click="notifierStore.clearNotifications">{{ t('appBar.clear_notifications')
+                }}</v-btn>
+            </v-list-item>
+          </v-list>
+        </v-menu>
         <v-btn icon slim @click="editUserSettings"><v-icon>mdi-account</v-icon></v-btn>
         <v-btn icon slim @click="logout"><v-icon>mdi-logout</v-icon></v-btn>
         <!-- Language selector component (shows current language + flag) -->
         <!-- The interactive menu moved into LanguageSelector.vue -->
-
-        <!-- Show role switcher for kiosk/doctor users, logout for others -->
-        <!-- <role-switcher v-if="isKioskOrDoctor" class="ml-2" />
-        <v-btn v-else icon slim @click="logout"><v-icon>mdi-logout</v-icon></v-btn> -->
 
       </v-app-bar>
     </template>
