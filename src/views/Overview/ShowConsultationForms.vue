@@ -122,7 +122,7 @@ const startCountdown = () => {
     countdownProgress.value = (countdown / 4) * 100
     if (countdown <= 0) {
       clearInterval(interval)
-      router.push('/')
+      router.push({ name: 'completioninfo' })
     }
   }, 1000)
 }

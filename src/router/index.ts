@@ -28,7 +28,7 @@ const router = createRouter({
 // Add a global navigation guard to check authentication
 router.beforeEach((to, from, next) => {
   const userStore = useUserStore()
-  const allowedUnauthenticatedRoutes = ['Login', 'setup', 'register', 'about', 'logout', 'presentation', 'feedback', 'patientflow', 'showConsultationForms', 'showInternalConsultationForms', 'formview']
+  const allowedUnauthenticatedRoutes = ['Login', 'setup', 'register', 'about', 'logout', 'presentation', 'feedback', 'patientflow', 'showConsultationForms', 'showInternalConsultationForms', 'formview', 'completioninfo']
 
   if (!allowedUnauthenticatedRoutes.includes(String(to.name)) && !userStore.isAuthenticated()) {
     next({ name: 'Login', query: { redirect: to.fullPath } })
