@@ -19,6 +19,17 @@ const props = defineProps<{
   code?: string | null
 }>()
 
+const showNormalFlow = () => {
+  // errorMessage.value = '' // Clear any validation errors
+  setTimeout(() => {
+    moveToTop.value = true
+    setTimeout(() => {
+      showH2.value = true
+      showInput2.value = true
+    }, 100) // Delay for h2 and input to appear after h1 moves
+  }, 500) // Delay for h1
+}
+
 const validateCode = async () => {
   if (patientCode.value.length >= 5) {
     try {
@@ -40,15 +51,28 @@ const validateCode = async () => {
         }, 4000) // Keep success message visible for 2 seconds
       } else {
         errorMessage.value = t('flow.invalidCodeMessage')
+        patientCode.value = '' // Clear the input
+        showNormalFlow()
       }
     } catch (error: unknown) {
       let errMessage = 'An unexpected error occurred'
       if (error instanceof ResponseError) {
-        errMessage = (await error.response.json()).message
-        console.error('Error validating code:', error.response.status, errMessage)
+        const statusCode = error.response.status
+        const responseData = await error.response.json()
+        errMessage = responseData.message
+
+        console.error('Error validating code:', statusCode, errMessage)
+
+        // Handle different error statuses
+        if (statusCode === 404 || statusCode === 400 || statusCode === 500) {
+          errorMessage.value = t('flow.invalidCodeMessage')
+          patientCode.value = '' // Clear the input to allow re-entry
+          showNormalFlow()
+        }
+      } else {
+        errorMessage.value = t('flow.invalidCodeMessage')
+        showNormalFlow()
       }
-      //TODO do we really have an invalid code? maybe the server is down?
-      errorMessage.value = t('flow.invalidCodeMessage')
       console.error('Error when validating code:', error)
     }
   } else {
@@ -70,13 +94,7 @@ onMounted(() => {
     }, 500)
   } else {
     // Otherwise show the normal greeting flow
-    setTimeout(() => {
-      moveToTop.value = true
-      setTimeout(() => {
-        showH2.value = true
-        showInput2.value = true
-      }, 100) // Delay for h2 and input to appear after h1 moves
-    }, 500) // 2 seconds delay for h1
+    showNormalFlow()
   }
 })
 </script>

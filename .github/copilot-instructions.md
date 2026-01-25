@@ -119,3 +119,5 @@ This patient outcome frontend uses **Vue 3 Composition API** with TypeScript, Vu
 If any section is unclear or missing project-specific details, please provide feedback for further refinement.
 
 - do not solve typescript issues by using "as any" or "as unknown" with double assertion. Before doing this, check if an exact typing is possible. Ask if you are unsure.
+
+- use logger.ts for logging errors and important information instead of direct console.log or console.error statements
