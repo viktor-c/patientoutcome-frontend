@@ -247,6 +247,7 @@ const calculateMoxfqScore = (data: questions): ScoringData => {
                          aria-label="MOXFQ options">
             <v-radio
                      v-for="(option, optionIndex) in getQuestionOptions(question.options)"
+                     density="compact"
                      :key="optionIndex"
                      :value="option.value"
                      :label="`${option.value} - ${option.label}`"
@@ -390,8 +391,8 @@ const calculateMoxfqScore = (data: questions): ScoringData => {
   background-color: #fff;
   border: 1px solid #e0e0e0;
   border-radius: 8px;
-  padding: 16px;
-  margin-bottom: 16px;
+  padding: 12px;
+  margin-bottom: 8px;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
   /* Ensure card expands to fit all radio options */
   overflow: visible;
@@ -407,24 +408,26 @@ const calculateMoxfqScore = (data: questions): ScoringData => {
   display: flex;
   align-items: center;
   gap: 12px;
+  padding: 4px 0;
 }
 
 .card-number {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-width: 28px;
-  height: 28px;
+  min-width: 24px;
+  height: 24px;
   background-color: #f5f5f5;
   border-radius: 50%;
   font-weight: bold;
   color: #1976d2;
   flex-shrink: 0;
+  font-size: 12px;
 }
 
 .card-title-text {
   margin: 0;
-  font-size: 15px;
+  font-size: 14px;
   font-weight: 500;
   color: #333;
   line-height: 1.25;
@@ -432,7 +435,7 @@ const calculateMoxfqScore = (data: questions): ScoringData => {
 
 .card-options {
   display: block;
-  padding: 8px 0;
+  padding: 4px 0;
   /* Ensure all options are visible - no overflow clipping */
   overflow: visible;
 }
@@ -440,7 +443,7 @@ const calculateMoxfqScore = (data: questions): ScoringData => {
 .mobile-radio-group {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 2px;
   padding: 0;
   /* Ensure the radio group doesn't clip content */
   overflow: visible;
@@ -450,13 +453,13 @@ const calculateMoxfqScore = (data: questions): ScoringData => {
 .mobile-radio-group :deep(.v-selection-control-group) {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 0px;
 }
 
 .mobile-radio {
   /* make sure radio uses the label prop and sits left with a small gap */
   margin: 0;
-  min-height: 32px;
+  min-height: 18px;
 }
 
 /* Tweak Vuetify internal radio layout inside cards for left alignment */
@@ -464,19 +467,21 @@ const calculateMoxfqScore = (data: questions): ScoringData => {
   display: flex;
   align-items: center;
   justify-content: flex-start;
+  padding: 0px 0;
 }
 
 .question-card :deep(.v-radio__label) {
-  margin-left: 8px;
+  margin-left: 4px;
   /* Ensure long labels wrap properly */
   white-space: normal;
   word-wrap: break-word;
+  font-size: 12px;
 }
 
 /* Ensure v-card-text doesn't clip the radio options */
 .question-card :deep(.v-card-text) {
   overflow: visible;
-  padding-bottom: 12px;
+  padding-bottom: 4px;
 }
 
 .option-label {
@@ -600,7 +605,12 @@ const calculateMoxfqScore = (data: questions): ScoringData => {
 }
 
 /* Responsive adjustments */
-@media (max-width: 1024px) {
+@media (max-width: 1300px) {
+  .moxfq-table-container {
+    width: 100%;
+    padding: 0px;
+  }
+
   .number-column {
     width: 50px;
     min-width: 50px;
@@ -634,82 +644,8 @@ const calculateMoxfqScore = (data: questions): ScoringData => {
   }
 }
 
-@media (max-width: 768px) {
-  .moxfq-table-container {
-    padding: 8px;
-  }
-
-  .moxfq-table {
-    /* Ensure table can scroll horizontally if needed */
-    overflow-x: auto;
-    /* Set minimum width to ensure all 5 answer columns are always visible */
-    min-width: 700px;
-  }
-
-  .number-column {
-    width: 35px;
-    min-width: 35px;
-    padding: 6px 2px !important;
-  }
-
-  .number-cell {
-    padding: 6px 2px !important;
-  }
-
-  .question-column {
-    min-width: 180px;
-    left: 35px;
-    padding: 8px 12px !important;
-  }
-
-  .question-cell {
-    left: 35px;
-    padding: 8px 12px !important;
-  }
-
-  .answer-column {
-    min-width: 58px;
-    width: 58px;
-  }
-
-  .answer-cell {
-    min-width: 58px;
-    width: 58px;
-  }
-
-  .answer-cell-special {
-    min-width: 58px;
-    width: 58px;
-  }
-
-  .answer-label {
-    font-size: 8px;
-    max-width: 50px;
-    line-height: 1.1;
-  }
-
-  .answer-caption {
-    font-size: 9px;
-    max-width: 50px;
-    line-height: 1.1;
-  }
-
-  .special-answer-container {
-    min-height: 55px;
-    padding: 2px;
-  }
-
-  .answer-value {
-    font-size: 12px;
-  }
-
-  .answer-value-special {
-    font-size: 12px;
-  }
-}
-
 /* Extra responsive handling for very narrow screens like phones in portrait */
-@media (max-width: 480px) {
+@media (max-width: 860px) {
 
   /* Show mobile card layout on small screens */
   .mobile-layout {

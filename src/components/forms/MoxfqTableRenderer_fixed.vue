@@ -452,7 +452,6 @@ const headerOptions = answerOptions.likert
 <style scoped>
 .moxfq-table-container {
   width: 100%;
-  padding: 16px;
 }
 
 .moxfq-table {

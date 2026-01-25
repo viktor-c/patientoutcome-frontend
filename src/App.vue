@@ -26,10 +26,6 @@ const router = useRouter()
 const showEditUserSettingsKey = ref(0);
 
 const shouldShowNavBar = computed(() => userStore.isAuthenticated() && !userStore.isKioskUser())
-const isKioskOrDoctor = computed(() => {
-  const roles = userStore.roles || []
-  return roles.includes('kiosk') || roles.includes('doctor')
-})
 
 // Format time based on locale
 function formatDateTime(DateTime: string) {
@@ -125,14 +121,8 @@ const logout = async () => {
                 {{ notification.message }} - <span class="text-muted">{{ formatDateTime(notification.time) }}</span>
               </v-list-item-title>
             </v-list-item>
-            <v-list-item>
-              <v-btn color="error" @click="notifierStore.clearNotifications">{{ t('appBar.clear_notifications')
-                }}</v-btn>
-            </v-list-item>
-          </v-list>
-        </v-menu>
         <v-btn icon slim @click="editUserSettings"><v-icon>mdi-account</v-icon></v-btn>
-
+        <v-btn icon slim @click="logout"><v-icon>mdi-logout</v-icon></v-btn>
         <!-- Language selector component (shows current language + flag) -->
         <!-- The interactive menu moved into LanguageSelector.vue -->
 

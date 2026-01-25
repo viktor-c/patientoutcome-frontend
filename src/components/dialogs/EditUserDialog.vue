@@ -56,14 +56,6 @@ const centerNameMap = computed(() => {
   return map;
 });
 
-const displayCenterName = computed(() => {
-  if (!editedUser.value?.belongsToCenter) {
-    return '';
-  }
-  const centerId = editedUser.value.belongsToCenter;
-  return centerNameMap.value[centerId] || centerId;
-});
-
 const passwordMismatch = computed(() => {
   return !!(newPassword.value && confirmPassword.value && newPassword.value !== confirmPassword.value);
 });

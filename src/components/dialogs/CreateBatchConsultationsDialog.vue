@@ -8,7 +8,6 @@ import {
   type CreateConsultation,
   CreateConsultationReasonForConsultationEnum,
   type UpdatePatientCaseByIdRequestNotesInner as ConsultationNote,
-  type User,
   type UserNoPassword,
   type GetFormTemplatesShortlist200ResponseResponseObjectInner as FormTemplateShortList,
   ResponseError,

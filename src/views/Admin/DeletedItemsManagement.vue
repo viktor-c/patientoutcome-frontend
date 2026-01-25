@@ -17,7 +17,6 @@ const patientsPage = ref(1)
 const patientsLimit = ref(10)
 const patientsTotalPages = ref(0)
 const patientsTotal = ref(0)
-const selectedDeletedPatients = ref<Patient[]>([])
 
 // Deleted cases state
 const deletedCases = ref<PatientCase[]>([])
@@ -25,7 +24,6 @@ const casesPage = ref(1)
 const casesLimit = ref(10)
 const casesTotalPages = ref(0)
 const casesTotal = ref(0)
-const selectedDeletedCases = ref<PatientCase[]>([])
 
 // Fetch deleted patients
 const fetchDeletedPatients = async () => {

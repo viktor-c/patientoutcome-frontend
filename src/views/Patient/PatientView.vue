@@ -50,7 +50,7 @@ const sexOptions = [
 ]
 
 // Use the centralized API instance
-import { patientApi, userDepartmentApi } from '@/api'
+import { patientApi } from '@/api'
 
 const SEARCH_QUERY_MINIMUM_LENGTH = import.meta.env.VITE_SEARCH_QUERY_MINIMUM_LENGTH
 

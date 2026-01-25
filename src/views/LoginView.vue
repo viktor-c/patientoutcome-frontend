@@ -16,6 +16,7 @@ const notifierStore = useNotifierStore()
 // Prefill the username with `kiosk` so kiosk mode is ready on page load
 const username = ref('')
 const password = ref('')
+const showPassword = ref(false)
 const isLoading = ref(false)
 const checkingSetup = ref(true)
 
@@ -127,9 +128,17 @@ const login = async () => {
         <v-form @submit.prevent="login">
           <v-text-field v-model="username" :label="t('login.username')" outlined dense required
                         autocomplete="username" autofocus></v-text-field>
-          <v-text-field v-model="password" :label="t('login.password')" type="password" outlined
-                        dense
-                        required autocomplete="current-password"></v-text-field>
+          <v-text-field
+            v-model="password"
+            :label="t('login.password')"
+            :type="showPassword ? 'text' : 'password'"
+            outlined
+            dense
+            required
+            autocomplete="current-password"
+            :append-inner-icon="showPassword ? 'mdi-eye-off' : 'mdi-eye'"
+            @click:append-inner="showPassword = !showPassword"
+          ></v-text-field>
           <div class="d-flex justify-center">
             <v-tooltip v-if="!canSubmit" location="top">
               <template #activator="{ props }">
@@ -199,4 +208,5 @@ const login = async () => {
     width: 100%;
   }
 }
+
 </style>

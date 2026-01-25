@@ -46,7 +46,6 @@ const adminForm = ref({
 })
 
 // Starter data options
-const seedStarterData = ref(false)
 const seedingStarterData = ref(false)
 
 // Database stats

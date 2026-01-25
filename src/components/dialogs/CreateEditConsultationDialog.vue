@@ -7,7 +7,6 @@ import { useFormValidation } from '@/composables/useFormValidation'
 import {
   type Consultation,
   type CreateConsultation,
-  type User,
   type UserNoPassword,
   type Note,
   type GetFormTemplatesShortlist200ResponseResponseObjectInner as FormTemplateShortList,

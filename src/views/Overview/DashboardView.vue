@@ -31,6 +31,7 @@ const desktopHeaders = [
   { title: t('forms.patient.externalId'), value: 'patientExternalIds', align: 'start' as const, sortable: true },
   { title: t('dashboard.mainDiagnosis'), value: 'patientCaseId.mainDiagnosis', sortable: true },
   { title: t('dashboard.patientCase'), value: 'patientCaseId' },
+  { title: 'Access Code / Kiosk', value: 'accessInfo', align: 'center' as const, sortable: false },
   { title: t('dashboard.forms'), value: 'forms', align: 'end' as const, sortable: false, key: 'data-table-expand' },
   { title: t('dashboard.actions'), key: 'actions', align: 'end' as const, sortable: false },
 ]
@@ -38,6 +39,7 @@ const desktopHeaders = [
 const mobileHeaders = [
   { title: t('forms.patient.externalId'), value: 'patientExternalIds', align: 'start' as const },
   { title: t('dashboard.date'), value: 'dateAndTime' },
+  { title: 'Access Code / Kiosk', value: 'accessInfo', align: 'center' as const },
   { title: t('dashboard.actions'), key: 'actions', align: 'end' as const },
 ]
 
@@ -91,6 +93,30 @@ const getPatientCaseExternalIds = (item: unknown): string => {
   if (!ext) return ''
   if (Array.isArray(ext)) return (ext as unknown[]).map(String).join(', ')
   return String(ext)
+}
+
+// Extract access code and kiosk information
+const getAccessInfo = (item: unknown): { code?: string; kioskNumber?: number } => {
+  const obj = item as Record<string, unknown>
+  const result: { code?: string; kioskNumber?: number } = {}
+  
+  // Get access code
+  const formAccessCode = obj['formAccessCode'] as Record<string, unknown> | string | undefined
+  if (formAccessCode) {
+    if (typeof formAccessCode === 'string') {
+      result.code = formAccessCode
+    } else if (typeof formAccessCode === 'object' && 'code' in formAccessCode) {
+      result.code = (formAccessCode as Record<string, unknown>).code as string
+    }
+  }
+  
+  // Get kiosk number from kioskId (User object with postopWeek)
+  const kioskId = obj['kioskId'] as Record<string, unknown> | undefined
+  if (kioskId && 'postopWeek' in kioskId) {
+    result.kioskNumber = kioskId.postopWeek as number
+  }
+  
+  return result
 }
 
 const openPatientOverviewFromCase = async (caseId: string | null | undefined) => {
@@ -224,7 +250,7 @@ onMounted(async () => {
                variant="text"
                border
                slim
-               @click="toggleExpand(internalItem)"></v-btn>
+               @click.stop="toggleExpand(internalItem)"></v-btn>
       </template>
 
       <template v-slot:expanded-row="{ columns, item }">
@@ -241,7 +267,7 @@ onMounted(async () => {
 
                   <tr v-for="(form, index) in item.proms || []" :key="(form as any).id || index">
                     <td>
-                      Review <RouterLink v-if="(form as any).id" :to="`/review-form/${(form as any).id}`">
+                      Review <RouterLink v-if="(form as any).id" :to="`/review-form/${(form as any).id}`" @click.stop>
                         {{ (form as any).title || t('forms.consultation.untitledForm') }}</RouterLink>
                       <span v-else>{{ t('forms.consultation.untitledForm') }}</span>
                     </td>
@@ -285,6 +311,18 @@ onMounted(async () => {
       </template>
       <template v-slot:[`item.dateAndTime`]="{ item }">
         {{ safeFormatDate(item.dateAndTime) }}
+      </template>
+
+      <template v-slot:[`item.accessInfo`]="{ item }">
+        <div v-if="getAccessInfo(item).code || getAccessInfo(item).kioskNumber" class="d-flex flex-column gap-1 align-center">
+          <div v-if="getAccessInfo(item).code" class="text-caption font-weight-bold">
+            Code: {{ getAccessInfo(item).code }}
+          </div>
+          <div v-if="getAccessInfo(item).kioskNumber" class="text-caption">
+            Kiosk #{{ getAccessInfo(item).kioskNumber }}
+          </div>
+        </div>
+        <span v-else class="text-caption text-disabled">-</span>
       </template>
 
       <template v-slot:[`item.actions`]="{ item }">

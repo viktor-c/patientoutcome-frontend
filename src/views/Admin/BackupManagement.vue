@@ -49,13 +49,6 @@ const uploadFile = ref<File | null>(null);
 const uploadDialog = ref(false);
 const selectedDestination = ref<string>('local');
 
-const collectionHeaders = [
-  { title: 'Collection', key: 'name' },
-  { title: 'Documents', key: 'documentCount' },
-  { title: 'Last Modified', key: 'lastModified' },
-  { title: 'Size', key: 'sizeBytes' },
-];
-
 interface CollectionComparison {
   name: string;
   backupCount?: number;

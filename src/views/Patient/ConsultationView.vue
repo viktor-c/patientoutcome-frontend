@@ -6,7 +6,6 @@ import { useConsultationStore } from '@/stores/'
 import { useDateFormat } from '@/composables/useDateFormat'
 import {
   type Consultation,
-  type User,
   type UserNoPassword,
   type Note,
   type GetFormTemplatesShortlist200ResponseResponseObjectInner as FormTemplateShortList,

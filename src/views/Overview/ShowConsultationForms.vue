@@ -189,7 +189,7 @@ const gotoPreviousForm = () => {
   }
 }
 
-const isSmallScreen = computed(() => window.innerWidth < 1200)
+const isSmallScreen = computed(() => window.innerWidth < 1300)
 </script>
 
 <template>
