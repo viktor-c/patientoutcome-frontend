@@ -1,34 +1,7 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 
 const { t } = useI18n()
-const router = useRouter()
-
-const countdownProgress = ref(100)
-const countdownSeconds = ref(4)
-
-const startCountdown = () => {
-  let countdown = 4
-  const interval = setInterval(() => {
-    countdown--
-    countdownSeconds.value = countdown
-    countdownProgress.value = (countdown / 4) * 100
-    if (countdown <= 0) {
-      clearInterval(interval)
-      router.push('/')
-    }
-  }, 1000)
-}
-
-onMounted(() => {
-  startCountdown()
-})
-
-const skipCountdown = () => {
-  router.push('/')
-}
 </script>
 
 <template>
@@ -133,27 +106,16 @@ const skipCountdown = () => {
             </div>
           </div>
 
-          <!-- Redirect Countdown Section -->
+          <!-- Close Message Section -->
           <v-divider class="my-6"></v-divider>
 
           <div class="text-center">
-            <v-progress-linear
-              :model-value="countdownProgress"
-              color="primary"
-              height="6"
-              class="mb-4 rounded"
-            ></v-progress-linear>
-            <p class="text-body2 text-grey mb-2">
-              {{ t('completionInfo.redirectingIn') || 'Redirecting in' }} {{ countdownSeconds }} {{ t('completionInfo.seconds') || 'seconds' }}...
+            <p class="text-body1 font-weight-semibold mb-2 text-success">
+              {{ t('completionInfo.allDone') || '✓ All Done!' }}
             </p>
-            <v-btn
-              color="primary"
-              variant="outlined"
-              size="small"
-              @click="skipCountdown"
-            >
-              {{ t('completionInfo.closeNow') || 'Close Now' }}
-            </v-btn>
+            <p class="text-body2 text-grey">
+              {{ t('completionInfo.closePageMessage') || 'You can now safely close this page.' }}
+            </p>
           </div>
         </v-card>
       </v-col>

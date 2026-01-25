@@ -337,6 +337,8 @@ export default {
     anonymityDescription: 'Ihre Antworten sind völlig anonym. Wir können dieses Formular nicht auf Sie zurückführen. Ihre Daten sind sicher und Ihre Privatsphäre ist vollständig geschützt.',
     purposeTitle: 'Warum wir diese Informationen erfassen',
     purposeDescription: 'Diese Informationen helfen uns, die Ergebnisse für Patienten zu verstehen und die Gesundheitsdienste zu verbessern. Ihr Feedback ist wertvoll und wird nur für medizinische Forschung und Qualitätsverbesserungszwecke verwendet.',
+    allDone: '✓ Fertig!',
+    closePageMessage: 'Sie können diese Seite nun sicher schließen.',
     redirectingIn: 'Umleitung in',
     seconds: 'Sekunden',
     closeNow: 'Jetzt schließen',

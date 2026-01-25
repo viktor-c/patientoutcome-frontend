@@ -87,6 +87,8 @@ export default {
     anonymityDescription: 'Your responses are completely anonymous. We cannot trace this form back to you in any way. Your data is safe and your privacy is fully protected.',
     purposeTitle: 'Why We Collect This Information',
     purposeDescription: 'This information helps us understand patient outcomes and improve healthcare services. Your feedback is invaluable and will be used only for medical research and quality improvement purposes.',
+    allDone: '✓ All Done!',
+    closePageMessage: 'You can now safely close this page.',
     redirectingIn: 'Redirecting in',
     seconds: 'seconds',
     closeNow: 'Close Now',
