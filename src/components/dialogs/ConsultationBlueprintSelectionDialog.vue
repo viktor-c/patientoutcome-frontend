@@ -1,4 +1,9 @@
 <script setup lang="ts">
+/**
+ * @description A dialog component for selecting consultation blueprints in the patient outcome application.
+ * This component provides an interface for users to browse and select predefined consultation blueprints,
+ * facilitating efficient consultation setup and management.
+ */
 import { ref, computed, onMounted, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useDateFormat } from '@/composables/useDateFormat'
@@ -15,6 +20,7 @@ import { useNotifierStore } from '@/stores/notifierStore'
 import { blueprintApi, consultationApi } from '@/api'
 import dayjs from 'dayjs'
 import CreateEditConsultationDialog from './CreateEditConsultationDialog.vue'
+import { logger } from '@/services/logger'
 
 const props = defineProps<{
   modelValue: Blueprint[]
@@ -129,6 +135,10 @@ const sortedCreatedConsultations = computed(() => {
 })
 
 // Actions
+/**
+ * @description Toggles the selection of a blueprint in the list.
+ * @param {Blueprint} blueprint - The blueprint to toggle.
+ */
 const toggleBlueprint = (blueprint: Blueprint) => {
   const index = selectedBlueprints.value.findIndex(selected => selected.id === blueprint.id)
   if (index >= 0) {
@@ -139,6 +149,10 @@ const toggleBlueprint = (blueprint: Blueprint) => {
   emit('update:modelValue', selectedBlueprints.value)
 }
 
+/**
+ * @description Removes a blueprint from the selected list.
+ * @param {Blueprint} blueprint - The blueprint to remove.
+ */
 const removeBlueprint = (blueprint: Blueprint) => {
   const index = selectedBlueprints.value.findIndex(selected => selected.id === blueprint.id)
   if (index >= 0) {
@@ -148,6 +162,9 @@ const removeBlueprint = (blueprint: Blueprint) => {
 }
 
 // Actions for handling creation flow
+/**
+ * @description Resets the form to allow creating more consultations from blueprints.
+ */
 const createMoreConsultations = () => {
   // Reset to selection state (4a)
   emit('consultation-flow-advance', '4a')
@@ -155,6 +172,10 @@ const createMoreConsultations = () => {
   searchQuery.value = ''
 }
 
+/**
+ * @description Handles the creation of a manual consultation and adds it to the list.
+ * @param {Consultation} consultation - The created consultation.
+ */
 const handleManualConsultationCreated = (consultation: Consultation) => {
   // Add the manually created consultation to the list
   createdConsultations.value.push({ ...consultation, blueprintTitle: 'Manual' })
@@ -162,10 +183,16 @@ const handleManualConsultationCreated = (consultation: Consultation) => {
   notifierStore.notify(t('alerts.consultation.created'), 'success')
 }
 
+/**
+ * @description Cancels the dialog and emits the cancel event.
+ */
 const cancel = () => {
   emit('cancel')
 }
 
+/**
+ * @description Closes the dialog and advances to the completion state.
+ */
 const closeDialog = () => {
   // Moving from 4a to 4b (skip blueprints, go to manual creation state)
   notifierStore.clearNotifications()
@@ -173,7 +200,13 @@ const closeDialog = () => {
 }
 
 // New consultation creation functions
+/**
+ * @description Creates consultations from the selected blueprints.
+ */
 const createConsultationsFromBlueprints = async () => {
+  logger.debug('Creating consultations from selected blueprints', {
+    selectedBlueprints: selectedBlueprints.value
+  })
   if (selectedBlueprints.value.length === 0) {
     // No blueprints selected - emit event to move to completion state (4b)
     notifierStore.notify(t('alerts.consultation.noConsultationsSelected'), 'info')
@@ -217,12 +250,12 @@ const createConsultationsFromBlueprints = async () => {
         // Add the blueprint title to the created consultation for UI purposes
         const consultationWithTitle = { ...response.responseObject, blueprintTitle }
         newConsultations.push(consultationWithTitle)
-        console.log('Consultation created successfully with calculated date:', response.responseObject)
+        logger.info('Consultation created successfully', { consultationId: response.responseObject.id, calculatedDate: response.responseObject.dateAndTime })
       }
     }
 
     createdConsultations.value.push(...newConsultations)
-    
+
     notifierStore.notify(t('alerts.consultation.batchCreated', { count: newConsultations.length }), 'success')
     notifierStore.clearNotifications()
     // Move to completion state (4b)
@@ -237,16 +270,22 @@ const createConsultationsFromBlueprints = async () => {
     if (error instanceof ResponseError) {
       errorMessage = (await error.response.json()).message
     }
-    console.error('Error creating consultations:', errorMessage)
+    logger.error('Error creating consultations', { errorMessage })
     notifierStore.notify(t('alerts.consultation.batchCreateFailed'), 'error')
   } finally {
     creating.value = false
   }
 }
 
+
+/**
+ * @description Processes a blueprint to generate consultation data.
+ * @param {Blueprint} blueprint - The blueprint to process.
+ * @returns {Promise<Array<CreateConsultation & { originalIndex: number; calculatedDate: string; timeDelta: string; blueprintTitle: string }>>} The processed consultations.
+ */
 const processBlueprint = async (blueprint: Blueprint): Promise<Array<CreateConsultation & { originalIndex: number; calculatedDate: string; timeDelta: string; blueprintTitle: string }>> => {
   if (!blueprint.content) {
-    console.warn('Blueprint has no content')
+    logger.warn('Blueprint has no content', { blueprintId: blueprint.id, title: blueprint.title })
     return []
   }
 
@@ -288,7 +327,7 @@ const processBlueprint = async (blueprint: Blueprint): Promise<Array<CreateConsu
 
   // Helper function to convert form template IDs for formTemplates (backend expects array of strings)
   const convertFormTemplateIds = (formTemplateIds: string[] = []): string[] => {
-    console.log('Converting form template IDs for formTemplates:', formTemplateIds)
+    logger.debug('Converting form template IDs for formTemplates', { formTemplateIds })
     return formTemplateIds
   }
 
@@ -353,11 +392,17 @@ const processBlueprint = async (blueprint: Blueprint): Promise<Array<CreateConsu
 }
 
 // Parse timeDelta and calculate actual date
+/**
+ * @description Parses the timeDelta string and calculates the actual consultation date.
+ * @param {string} timeDelta - The time delta string (e.g., "7d", "2w").
+ * @param {dayjs.Dayjs} referenceDate - The reference date to calculate from.
+ * @returns {dayjs.Dayjs} The calculated date.
+ */
 const calculateConsultationDate = (timeDelta: string, referenceDate: dayjs.Dayjs): dayjs.Dayjs => {
   // Parse timeDelta format like "7d", "2w", "1m", "0d", etc. (case insensitive)
   const match = timeDelta.match(/^([+-]?\d+)([dwmy])$/i)
   if (!match) {
-    console.warn('Invalid timeDelta format:', timeDelta, 'using 0 days')
+    logger.warn('Invalid timeDelta format, using 0 days', { timeDelta })
     return referenceDate
   }
 
@@ -374,12 +419,18 @@ const calculateConsultationDate = (timeDelta: string, referenceDate: dayjs.Dayjs
     case 'y':
       return referenceDate.add(amount, 'year')
     default:
-      console.warn('Unknown time unit:', unit, 'using 0 days')
+      logger.warn('Unknown time unit, using 0 days', { unit })
       return referenceDate
   }
 }
 
-// API functions
+/* ******************************************************** */
+/* ******************* API functions ********************** */
+/* ******************************************************** */
+
+/**
+ * @description Loads consultation blueprints from the API.
+ */
 const loadConsultationBlueprints = async () => {
   loadingBlueprints.value = true
   try {
@@ -397,7 +448,7 @@ const loadConsultationBlueprints = async () => {
     if (error instanceof ResponseError) {
       errorMessage = (await error.response.json()).message
     }
-    console.error('Error loading consultation blueprints:', errorMessage)
+    logger.error('Error loading consultation blueprints', { errorMessage })
     notifierStore.notify(t('alerts.blueprint.loadFailed'), 'error')
   } finally {
     loadingBlueprints.value = false
@@ -405,12 +456,15 @@ const loadConsultationBlueprints = async () => {
 }
 
 // Handle pre-selected blueprint IDs from surgery blueprint
+/**
+ * @description Handles pre-selected blueprint IDs by fetching and selecting them.
+ */
 const handlePreSelectedBlueprints = async () => {
   if (!props.preSelectedBlueprintIds || props.preSelectedBlueprintIds.length === 0) {
     return
   }
 
-  console.log('Pre-selecting blueprint IDs:', props.preSelectedBlueprintIds)
+  logger.info('Pre-selecting blueprint IDs', { blueprintIds: props.preSelectedBlueprintIds })
 
   const preSelectedBlueprints: Blueprint[] = []
 
@@ -430,7 +484,7 @@ const handlePreSelectedBlueprints = async () => {
           }
         }
       } catch (error) {
-        console.warn('Failed to load pre-selected blueprint:', id, error)
+        logger.warn('Failed to load pre-selected blueprint', { blueprintId: id, error })
         continue
       }
     }
@@ -443,20 +497,20 @@ const handlePreSelectedBlueprints = async () => {
   if (preSelectedBlueprints.length > 0) {
     selectedBlueprints.value = preSelectedBlueprints
     emit('update:modelValue', selectedBlueprints.value)
-    console.log('Pre-selected', preSelectedBlueprints.length, 'blueprints from surgery')
+    logger.info('Pre-selected blueprints from surgery', { count: preSelectedBlueprints.length })
   }
 }
 
-// Watch for changes to pre-selected blueprint IDs
-watch(
-  () => props.preSelectedBlueprintIds,
-  async (newIds) => {
-    if (newIds && newIds.length > 0 && availableBlueprints.value.length > 0) {
-      await handlePreSelectedBlueprints()
+// Watch for creation complete state changes
+watch(creationComplete, (isComplete) => {
+  if (isComplete) {
+    if (createdConsultations.value.length > 0) {
+      notifierStore.notify(t('consultation.creationCompleteMessage', { count: createdConsultations.value.length }), 'success')
+    } else {
+      notifierStore.notify(t('consultation.noConsultationsCreatedYet'), 'info')
     }
-  },
-  { immediate: false }
-)
+  }
+})
 
 // Lifecycle
 onMounted(() => {
@@ -468,6 +522,7 @@ onMounted(() => {
 // Expose function for external access
 defineExpose({
   submit: createConsultationsFromBlueprints,
+  /** @description Resets the form state to initial values. */
   resetFormState: () => {
     selectedBlueprints.value = []
     searchQuery.value = ''
@@ -491,270 +546,261 @@ defineExpose({
       </v-chip>
     </v-card-title>
 
-      <v-card-text>
-        <!-- Creation Complete State -->
-        <div v-if="creationComplete">
-          <v-alert type="success" class="mb-4">
-            <h4>{{ t('consultation.creationCompleteTitle') }}</h4>
-            <p v-if="createdConsultations.length > 0">
-              {{ t('consultation.creationCompleteMessage', { count: createdConsultations.length }) }}
-            </p>
-            <p v-else>
-              {{ t('consultation.noConsultationsCreatedYet') }}
-            </p>
-          </v-alert>
+    <v-card-text>
+      <!-- Creation Complete State -->
+      <div v-if="creationComplete">
 
-          <!-- Summary of created consultations -->
-          <v-card v-if="createdConsultations.length > 0" outlined class="mb-4">
-            <v-card-title>{{ t('consultation.createdConsultations') }}</v-card-title>
-            <v-card-text>
-              <v-list dense>
-                <v-list-item v-for="(consultation, index) in sortedCreatedConsultations"
-                             :key="consultation.id || index">
-                  <template v-slot:prepend>
-                    <v-icon color="success">mdi-check-circle</v-icon>
-                  </template>
-                  <v-list-item-title>
-                    {{ consultation.blueprintTitle ? t('consultation.consultationBasedOn', {
-                      title:
-                        consultation.blueprintTitle
-                    }) :
-                      t('consultation.consultationTitle', { index: index + 1 }) }}
+        <!-- Summary of created consultations -->
+        <v-card v-if="createdConsultations.length > 0" outlined class="mb-4">
+          <v-card-title>{{ t('consultation.createdConsultations') }}</v-card-title>
+          <v-card-text>
+            <v-list dense>
+              <v-list-item v-for="(consultation, index) in sortedCreatedConsultations"
+                           :key="consultation.id || index">
+                <template v-slot:prepend>
+                  <v-icon color="success">mdi-check-circle</v-icon>
+                </template>
+                <v-list-item-title>
+                  {{ consultation.blueprintTitle ? t('consultation.consultationBasedOn', {
+                    title:
+                      consultation.blueprintTitle
+                  }) :
+                    t('consultation.consultationTitle', { index: index + 1 }) }}
+                </v-list-item-title>
+                <v-list-item-subtitle>
+                  {{ consultation.dateAndTime ? formatLocalizedCustomDate(consultation.dateAndTime,
+                    dateFormats.longDate) : '' }}
+                </v-list-item-subtitle>
+              </v-list-item>
+            </v-list>
+          </v-card-text>
+        </v-card>
+
+        <!-- Options for next steps -->
+        <v-card outlined>
+          <v-card-title>{{ t('consultation.nextSteps') }}</v-card-title>
+          <v-card-text>
+            <p>{{ t('consultation.nextStepsMessage') }}</p>
+
+            <!-- Action buttons for next steps -->
+            <div class="d-flex gap-2 mt-4">
+              <v-btn
+                     color="info"
+                     @click="showManualConsultationDialog = true"
+                     variant="outlined">
+                <v-icon left>mdi-pencil</v-icon>
+                {{ t('consultation.createManual') }}
+              </v-btn>
+              <v-btn
+                     color="success"
+                     @click="createMoreConsultations"
+                     variant="outlined">
+                <v-icon left>mdi-plus</v-icon>
+                {{ t('consultation.createMore') }}
+              </v-btn>
+            </div>
+          </v-card-text>
+        </v-card>
+      </div>
+
+      <!-- Blueprint Selection State -->
+      <div v-else>
+        <v-row>
+          <!-- Left panel: Available blueprints -->
+          <v-col cols="7">
+            <h3>{{ t('consultation.availableBlueprints') }}</h3>
+
+            <!-- Search -->
+            <v-text-field
+                          v-model="searchQuery"
+                          :label="t('consultation.searchBlueprints')"
+                          prepend-inner-icon="mdi-magnify"
+                          clearable
+                          outlined
+                          dense
+                          class="mb-4" />
+
+            <!-- Loading state -->
+            <v-progress-linear
+                               v-if="loadingBlueprints"
+                               indeterminate
+                               class="mb-4" />
+
+            <!-- Blueprint list -->
+            <v-list class="blueprint-list">
+              <v-list-item
+                           v-for="blueprint in filteredBlueprints"
+                           :key="blueprint.id || blueprint.title"
+                           @click="toggleBlueprint(blueprint)"
+                           :class="{ 'selected': isSelected(blueprint) }"
+                           class="blueprint-item">
+                <template v-slot:prepend>
+                  <v-checkbox
+                              :model-value="isSelected(blueprint)"
+                              @click.stop="toggleBlueprint(blueprint)"
+                              color="primary" />
+                </template>
+
+                <div>
+                  <v-list-item-title class="font-weight-medium">
+                    {{ blueprint.title }}
                   </v-list-item-title>
-                  <v-list-item-subtitle>
-                    {{ consultation.dateAndTime ? formatLocalizedCustomDate(consultation.dateAndTime,
-                      dateFormats.longDate) : '' }}
+                  <v-list-item-subtitle class="text-wrap">
+                    {{ blueprint.description }}
                   </v-list-item-subtitle>
-                </v-list-item>
-              </v-list>
-            </v-card-text>
-          </v-card>
-
-          <!-- Options for next steps -->
-          <v-card outlined>
-            <v-card-title>{{ t('consultation.nextSteps') }}</v-card-title>
-            <v-card-text>
-              <p>{{ t('consultation.nextStepsMessage') }}</p>
-              
-              <!-- Action buttons for next steps -->
-              <div class="d-flex gap-2 mt-4">
-                <v-btn
-                       color="info"
-                       @click="showManualConsultationDialog = true"
-                       variant="outlined">
-                  <v-icon left>mdi-pencil</v-icon>
-                  {{ t('consultation.createManual') }}
-                </v-btn>
-                <v-btn
-                       color="success"
-                       @click="createMoreConsultations"
-                       variant="outlined">
-                  <v-icon left>mdi-plus</v-icon>
-                  {{ t('consultation.createMore') }}
-                </v-btn>
-              </div>
-            </v-card-text>
-          </v-card>
-        </div>
-
-        <!-- Blueprint Selection State -->
-        <div v-else>
-          <v-row>
-            <!-- Left panel: Available blueprints -->
-            <v-col cols="7">
-              <h3>{{ t('consultation.availableBlueprints') }}</h3>
-
-              <!-- Search -->
-              <v-text-field
-                            v-model="searchQuery"
-                            :label="t('consultation.searchBlueprints')"
-                            prepend-inner-icon="mdi-magnify"
-                            clearable
-                            outlined
-                            dense
-                            class="mb-4" />
-
-              <!-- Loading state -->
-              <v-progress-linear
-                                 v-if="loadingBlueprints"
-                                 indeterminate
-                                 class="mb-4" />
-
-              <!-- Blueprint list -->
-              <v-list class="blueprint-list">
-                <v-list-item
-                             v-for="blueprint in filteredBlueprints"
-                             :key="blueprint.id || blueprint.title"
-                             @click="toggleBlueprint(blueprint)"
-                             :class="{ 'selected': isSelected(blueprint) }"
-                             class="blueprint-item">
-                  <template v-slot:prepend>
-                    <v-checkbox
-                                :model-value="isSelected(blueprint)"
-                                @click.stop="toggleBlueprint(blueprint)"
-                                color="primary" />
-                  </template>
-
-                  <div>
-                    <v-list-item-title class="font-weight-medium">
-                      {{ blueprint.title }}
-                    </v-list-item-title>
-                    <v-list-item-subtitle class="text-wrap">
-                      {{ blueprint.description }}
-                    </v-list-item-subtitle>
-                    <div class="d-flex align-center mt-1">
+                  <div class="d-flex align-center mt-1">
+                    <v-chip
+                            size="small"
+                            color="info"
+                            variant="outlined"
+                            class="mr-2">
+                      {{ blueprint.timeDelta }}
+                    </v-chip>
+                    <div v-if="blueprint.tags && blueprint.tags.length > 0">
                       <v-chip
-                              size="small"
-                              color="info"
+                              v-for="tag in blueprint.tags.slice(0, 2)"
+                              :key="tag"
+                              size="x-small"
+                              color="grey"
                               variant="outlined"
-                              class="mr-2">
-                        {{ blueprint.timeDelta }}
+                              class="mr-1">
+                        {{ tag }}
                       </v-chip>
-                      <div v-if="blueprint.tags && blueprint.tags.length > 0">
-                        <v-chip
-                                v-for="tag in blueprint.tags.slice(0, 2)"
-                                :key="tag"
-                                size="x-small"
-                                color="grey"
-                                variant="outlined"
-                                class="mr-1">
-                          {{ tag }}
-                        </v-chip>
-                      </div>
                     </div>
                   </div>
-                </v-list-item>
-              </v-list>
+                </div>
+              </v-list-item>
+            </v-list>
 
-              <!-- Empty state -->
-              <v-card v-if="filteredBlueprints.length === 0 && !loadingBlueprints" outlined class="text-center pa-4">
-                <v-icon size="48" color="grey">mdi-calendar-search</v-icon>
-                <h4 class="mt-2">{{ t('consultation.noBlueprintsFound') }}</h4>
-                <p class="text-grey">{{ t('consultation.tryDifferentSearch') }}</p>
-              </v-card>
-            </v-col>
+            <!-- Empty state -->
+            <v-card v-if="filteredBlueprints.length === 0 && !loadingBlueprints" outlined class="text-center pa-4">
+              <v-icon size="48" color="grey">mdi-calendar-search</v-icon>
+              <h4 class="mt-2">{{ t('consultation.noBlueprintsFound') }}</h4>
+              <p class="text-grey">{{ t('consultation.tryDifferentSearch') }}</p>
+            </v-card>
+          </v-col>
 
-            <!-- Right panel: Selected blueprints -->
-            <v-col cols="5">
-              <h3>{{ t('consultation.selectedBlueprints') }}</h3>
-              <v-chip class="mb-4" color="primary">
-                {{ selectedBlueprints.length }} {{ t('consultation.selected') }}
-              </v-chip>
+          <!-- Right panel: Selected blueprints -->
+          <v-col cols="5">
+            <h3>{{ t('consultation.selectedBlueprints') }}</h3>
+            <v-chip class="mb-4" color="primary">
+              {{ selectedBlueprints.length }} {{ t('consultation.selected') }}
+            </v-chip>
 
-              <v-list v-if="selectedBlueprints.length > 0" class="selected-list">
-                <v-list-item
-                             v-for="blueprint in sortedSelectedBlueprints"
-                             :key="blueprint.id || blueprint.title"
-                             class="selected-item">
-                  <div>
-                    <v-list-item-title class="font-weight-medium">
-                      {{ blueprint.title }}
-                    </v-list-item-title>
-                    <v-list-item-subtitle>
-                      {{ blueprint.timeDelta }}
-                    </v-list-item-subtitle>
-                  </div>
+            <v-list v-if="selectedBlueprints.length > 0" class="selected-list">
+              <v-list-item
+                           v-for="blueprint in sortedSelectedBlueprints"
+                           :key="blueprint.id || blueprint.title"
+                           class="selected-item">
+                <div>
+                  <v-list-item-title class="font-weight-medium">
+                    {{ blueprint.title }}
+                  </v-list-item-title>
+                  <v-list-item-subtitle>
+                    {{ blueprint.timeDelta }}
+                  </v-list-item-subtitle>
+                </div>
 
-                  <template v-slot:append>
-                    <v-btn
-                           icon="mdi-close"
-                           size="small"
-                           variant="text"
-                           color="error"
-                           @click="removeBlueprint(blueprint)" />
-                  </template>
-                </v-list-item>
-              </v-list>
+                <template v-slot:append>
+                  <v-btn
+                         icon="mdi-close"
+                         size="small"
+                         variant="text"
+                         color="error"
+                         @click="removeBlueprint(blueprint)" />
+                </template>
+              </v-list-item>
+            </v-list>
 
-              <!-- Empty selected state -->
-              <v-card v-else outlined class="text-center pa-4">
-                <v-icon size="48" color="grey">mdi-calendar-plus</v-icon>
-                <h4 class="mt-2">{{ t('consultation.noSelectedBlueprints') }}</h4>
-                <p class="text-grey">{{ t('consultation.selectFromLeft') }}</p>
-              </v-card>
+            <!-- Empty selected state -->
+            <v-card v-else outlined class="text-center pa-4">
+              <v-icon size="48" color="grey">mdi-calendar-plus</v-icon>
+              <h4 class="mt-2">{{ t('consultation.noSelectedBlueprints') }}</h4>
+              <p class="text-grey">{{ t('consultation.selectFromLeft') }}</p>
+            </v-card>
 
-              <!-- Surgery date reference -->
-              <v-card v-if="surgeryDate" outlined class="mt-4">
-                <v-card-text>
-                  <h4>{{ t('consultation.referenceDate') }}</h4>
-                  <p class="text-body-2">{{ formatLocalizedCustomDate(surgeryDate, dateFormats.longDate) }}</p>
-                  <p class="text-caption text-grey">
-                    {{ t('consultation.consultationTimesCalculated') }}
-                  </p>
-                </v-card-text>
-              </v-card>
-            </v-col>
-          </v-row>
-        </div>
-      </v-card-text>
+            <!-- Surgery date reference -->
+            <v-card v-if="surgeryDate" outlined class="mt-4">
+              <v-card-text>
+                <h4>{{ t('consultation.referenceDate') }}</h4>
+                <p class="text-body-2">{{ formatLocalizedCustomDate(surgeryDate, dateFormats.longDate) }}</p>
+                <p class="text-caption text-grey">
+                  {{ t('consultation.consultationTimesCalculated') }}
+                </p>
+              </v-card-text>
+            </v-card>
+          </v-col>
+        </v-row>
+      </div>
+    </v-card-text>
 
-      <!-- Action buttons -->
-      <v-card-actions v-if="props.showButtons !== false" class="justify-space-between pa-4">
-        <!-- Creation Complete State Actions -->
-        <div v-if="creationComplete" class="w-100 d-flex justify-end gap-2">
+    <!-- Action buttons -->
+    <v-card-actions v-if="props.showButtons !== false" class="justify-space-between pa-4">
+      <!-- Creation Complete State Actions -->
+      <div v-if="creationComplete" class="w-100 d-flex justify-end gap-2">
+        <v-btn
+               color="info"
+               @click="showManualConsultationDialog = true"
+               variant="outlined">
+          <v-icon left>mdi-pencil</v-icon>
+          {{ t('consultation.createManual') }}
+        </v-btn>
+        <v-btn
+               color="success"
+               @click="createMoreConsultations"
+               variant="outlined">
+          <v-icon left>mdi-plus</v-icon>
+          {{ t('consultation.createMore') }}
+        </v-btn>
+      </div>
+
+      <!-- Blueprint Selection State Actions -->
+      <div v-else class="w-100 d-flex justify-space-between">
+        <v-btn
+               color="grey"
+               variant="outlined"
+               @click="cancel">
+          {{ t('buttons.cancel') }}
+        </v-btn>
+
+        <div class="d-flex gap-2">
           <v-btn
-                 color="info"
-                 @click="showManualConsultationDialog = true"
-                 variant="outlined">
-            <v-icon left>mdi-pencil</v-icon>
-            {{ t('consultation.createManual') }}
+                 color="primary"
+                 variant="outlined"
+                 @click="closeDialog">
+            {{ t('buttons.skipConsultations') }}
           </v-btn>
+
           <v-btn
                  color="success"
-                 @click="createMoreConsultations"
-                 variant="outlined">
-            <v-icon left>mdi-plus</v-icon>
-            {{ t('consultation.createMore') }}
+                 variant="elevated"
+                 :disabled="!canConfirm || creating"
+                 :loading="creating"
+                 @click="createConsultationsFromBlueprints">
+            {{ t('consultation.createConsultations') }}
+            <v-badge
+                     v-if="selectedBlueprints.length > 0"
+                     :content="selectedBlueprints.length"
+                     color="white"
+                     text-color="success"
+                     class="ml-2" />
           </v-btn>
         </div>
+      </div>
+    </v-card-actions>
+  </v-card>
 
-        <!-- Blueprint Selection State Actions -->
-        <div v-else class="w-100 d-flex justify-space-between">
-          <v-btn
-                 color="grey"
-                 variant="outlined"
-                 @click="cancel">
-            {{ t('buttons.cancel') }}
-          </v-btn>
-
-          <div class="d-flex gap-2">
-            <v-btn
-                   color="primary"
-                   variant="outlined"
-                   @click="closeDialog">
-              {{ t('buttons.skipConsultations') }}
-            </v-btn>
-
-            <v-btn
-                   color="success"
-                   variant="elevated"
-                   :disabled="!canConfirm || creating"
-                   :loading="creating"
-                   @click="createConsultationsFromBlueprints">
-              {{ t('consultation.createConsultations') }}
-              <v-badge
-                       v-if="selectedBlueprints.length > 0"
-                       :content="selectedBlueprints.length"
-                       color="white"
-                       text-color="success"
-                       class="ml-2" />
-            </v-btn>
-          </div>
-        </div>
-      </v-card-actions>
-    </v-card>
-
-    <!-- Manual Consultation Creation Dialog -->
-      <v-card v-if="showManualConsultationDialog">
-        <v-card-title>{{ t('consultation.createManual') }}</v-card-title>
-        <v-card-text>
-          <CreateEditConsultationDialog
-                                        :patient-id="null"
-                                        :case-id="props.caseId"
-                                        @submit="handleManualConsultationCreated"
-                                        @cancel="showManualConsultationDialog = false" />
-        </v-card-text>
-      </v-card>
+  <!-- Manual Consultation Creation Dialog -->
+  <v-card v-if="showManualConsultationDialog">
+    <v-card-title>{{ t('consultation.createManual') }}</v-card-title>
+    <v-card-text>
+      <CreateEditConsultationDialog
+                                    :patient-id="null"
+                                    :case-id="props.caseId"
+                                    @submit="handleManualConsultationCreated"
+                                    @cancel="showManualConsultationDialog = false" />
+    </v-card-text>
+  </v-card>
 </template>
 
 <style scoped>

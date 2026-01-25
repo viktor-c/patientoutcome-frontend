@@ -298,7 +298,7 @@ describe('SettingsManagement.vue', () => {
     await flushPromises()
 
     // Initially the save button should be disabled
-    let saveButtons = wrapper.findAll('button')
+    const saveButtons = wrapper.findAll('button')
     const saveButton = saveButtons.find((btn: any) => btn.text().includes('Save') || btn.attributes('aria-label')?.includes('Save'))
     expect(saveButton).toBeDefined()
     if (saveButton) {

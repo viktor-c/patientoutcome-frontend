@@ -99,8 +99,8 @@ const createPatient = async () => {
     const response = await patientApi.createPatient({ createPatientRequest: patientData })
     console.log('Patient created successfully:', response)
     router.push({ path: `/cases/${response.responseObject?.id}` })
-    newPatient.value = { 
-      externalPatientId: '', 
+    newPatient.value = {
+      externalPatientId: '',
       sex: '',
       department: userStore.department, // Reset with user's department
     }
@@ -212,8 +212,8 @@ const softDeleteSelectedPatients = async () => {
     const patientIds = selectedPatients.value
       .map(p => p.id)
       .filter(id => id !== undefined && id !== null) as string[]
-    
-    await patientApi.softDeletePatients({ softDeletePatientsRequest: { patientIds }  })
+
+    await patientApi.softDeletePatients({ softDeletePatientsRequest: { patientIds } })
     notifierStore.notify(t('alerts.patient.deletedMultiple', { count: selectedPatients.value.length }), 'success')
     selectedPatients.value = []
     getAllPatients()
@@ -353,12 +353,12 @@ const softDeleteSelectedPatients = async () => {
                   <RouterLink :to="`/patient-overview/${item.id}`">
                     <v-btn size="small" color="primary" variant="text" icon="mdi-eye"></v-btn>
                   </RouterLink>
-                  <v-btn 
-                    size="small" 
-                    color="error" 
-                    variant="text" 
-                    icon="mdi-delete"
-                    @click="softDeletePatient(item.id!)"></v-btn>
+                  <v-btn
+                         size="small"
+                         color="error"
+                         variant="text"
+                         icon="mdi-delete"
+                         @click="softDeletePatient(item.id!)"></v-btn>
                 </div>
               </template>
 
@@ -385,10 +385,10 @@ const softDeleteSelectedPatients = async () => {
 
       <!-- Delete button shown when patients are selected -->
       <v-card-actions v-if="selectedPatients.length > 0" class="justify-center pa-4">
-        <v-btn 
-          color="error" 
-          prepend-icon="mdi-delete" 
-          @click="softDeleteSelectedPatients">
+        <v-btn
+               color="error"
+               prepend-icon="mdi-delete"
+               @click="softDeleteSelectedPatients">
           {{ t('buttons.deleteSelected', { count: selectedPatients.length }) }}
         </v-btn>
       </v-card-actions>

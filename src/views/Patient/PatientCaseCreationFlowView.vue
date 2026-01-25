@@ -21,6 +21,7 @@ import PatientCaseCreateEditForm from '@/components/forms/PatientCaseCreateEditF
 import CreateEditSurgeryDialog from '@/components/dialogs/CreateEditSurgeryDialog.vue'
 //step 4: create consultations (from surgery blueprint or manual selection)
 import ConsultationBlueprintSelectionDialog from '@/components/dialogs/ConsultationBlueprintSelectionDialog.vue'
+import { logger } from '@/services/logger'
 
 const { t } = useI18n()
 const router = useRouter()
@@ -121,14 +122,46 @@ watch(currentStep, (newStep, oldStep) => {
       }
     }
 
-    // Reset consultation flow substep when entering step 4
-    if (newStep === 4) {
+    // Show step-specific notifications
+    if (newStep === 1) {
+      // Step 1: Patient creation
+      notifierStore.notify(t('alerts.patient.optionalFieldsInfo'), 'info')
+      if (showExternalIdWarning.value) {
+        notifierStore.notify(t('alerts.patient.noExternalIdWarning'), 'warning')
+      }
+    } else if (newStep === 2) {
+      // Step 2: Case creation
+      if (createdPatient.value) {
+        notifierStore.notify(`${t('creationFlow.patientCreated')} - ID: ${createdPatient.value.id}`, 'success')
+      }
+    } else if (newStep === 3) {
+      // Step 3: Surgery creation
+      if (createdCase.value) {
+        notifierStore.notify(`${t('creationFlow.caseCreated')} - ID: ${createdCase.value.id}`, 'success')
+      }
+      if (surgeryBlueprintId.value) {
+        notifierStore.notify(t('creationFlow.surgeryBlueprintPrefilled'), 'info')
+      }
+      notifierStore.notify(t('creationFlow.surgeryOptionalInfo'), 'info')
+    } else if (newStep === 4) {
+      // Step 4: Consultation creation
       consultationFlowStep.value = '4a'
+
+      // Show surgery status notifications
+      if (createdSurgery.value) {
+        notifierStore.notify(`${t('creationFlow.surgeryCreated')} - ID: ${createdSurgery.value.id}`, 'success')
+      } else if (skipSurgery.value) {
+        notifierStore.notify(t('creationFlow.surgerySkippedInfo'), 'info')
+      }
+    } else if (newStep === 5) {
+      // Step 5: Completion
+      notifierStore.notify(t('creationFlow.flowCompleted'), 'success')
+      if (createdConsultations.value.length > 0) {
+        notifierStore.notify(t('creationFlow.consultationsCreated', { count: createdConsultations.value.length }), 'info')
+      }
     }
   }
-})
-
-// Use centralized API instance
+})// Use centralized API instance
 import { patientApi } from '@/api'
 
 // Sex options for patient
@@ -197,8 +230,11 @@ const nextStep = async () => {
   } else if (currentStep.value === 4) {
     // Step 4 has two substeps: 4a (blueprint selection) and 4b (manual creation)
     if (consultationFlowStep.value === '4a') {
-      // Move from 4a to 4b (completion state)
-      consultationFlowStep.value = '4b'
+      // Submit the consultation form to create consultations from selected blueprints
+      if (consultationFormRef.value) {
+        await consultationFormRef.value.submit()
+      }
+      // The consultation form will emit 'consultation-flow-advance' to move to 4b
     } else {
       // From 4b, advance to step 5 (completion)
       currentStep.value = 5
@@ -270,7 +306,7 @@ const createPatient = async () => {
       errorMessage = errorBody.message
       errorCode = errorBody.code
     }
-    console.error('Error creating patient:', errorMessage)
+    logger.error('❌ Error creating patient:', errorMessage)
 
     // Check if it's a duplicate external ID error
     if (errorCode === 'DUPLICATE_EXTERNAL_ID' || errorMessage.toLowerCase().includes('external')) {
@@ -316,7 +352,7 @@ const updatePatient = async () => {
     if (error instanceof ResponseError) {
       errorMessage = (await error.response.json()).message
     }
-    console.error('Error updating patient:', errorMessage)
+    logger.error('❌ Error updating patient:', errorMessage)
     notifierStore.notify(t('alerts.patient.updateFailed'), 'error')
   } finally {
     isLoading.value = false
@@ -345,7 +381,7 @@ const loadPatientByExternalId = async (externalId: string) => {
     if (error instanceof ResponseError) {
       errorMessage = (await error.response.json()).message
     }
-    console.error('Error searching for patient:', errorMessage)
+    logger.error('❌ Error searching for patient:', errorMessage)
     notifierStore.notify(t('alerts.patient.searchFailed'), 'error')
   } finally {
     isLoading.value = false
@@ -378,7 +414,7 @@ const handleCaseSubmit = (caseData: GetAllPatientCases200ResponseResponseObjectI
 
 // Handle case blueprint application - extract surgery blueprint ID if present
 const handleCaseBlueprintApplied = (blueprint: Blueprint) => {
-  console.log('Case blueprint applied:', blueprint.title, blueprint.content)
+  logger.info('Case blueprint applied', { title: blueprint.title, content: blueprint.content })
 
   if (blueprint.content) {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -398,14 +434,14 @@ const handleCaseBlueprintApplied = (blueprint: Blueprint) => {
     }
 
     if (surgeryId) {
-      console.log('✅ Surgery blueprint ID found in case blueprint surgeries:', surgeryId)
+      logger.info('✅ Surgery blueprint ID found in case blueprint surgeries', { surgeryId })
       surgeryBlueprintId.value = surgeryId
     } else {
-      console.log('❌ No surgery blueprint ID found in case blueprint content.surgeries:', content.surgeries)
+      logger.info('❌ No surgery blueprint ID found in case blueprint content.surgeries', { surgeries: content.surgeries })
       surgeryBlueprintId.value = null
     }
   } else {
-    console.log('❌ Case blueprint has no content')
+    logger.info('❌ Case blueprint has no content')
     surgeryBlueprintId.value = null
   }
 }
@@ -437,7 +473,7 @@ const handleSurgeryCancel = () => {
 
 // Handle consultation blueprint IDs from surgery blueprint
 const handleConsultationBlueprints = (consultationBlueprintIds: string[]) => {
-  console.log('Received consultation blueprint IDs from surgery:', consultationBlueprintIds)
+  logger.info('Received consultation blueprint IDs from surgery', { consultationBlueprintIds })
   surgeryBlueprintConsultations.value = consultationBlueprintIds
 }
 
@@ -470,7 +506,7 @@ const handleSkipSurgery = () => {
 const handleConsultationBlueprintCancel = () => {
   // User can go back to step 3 using the Previous button
   // For now, just log cancellation
-  console.log('Consultation blueprint selection cancelled')
+  logger.info('Consultation blueprint selection cancelled')
 }
 
 // Handle consultation dialog events  
@@ -564,7 +600,7 @@ onMounted(async () => {
         departmentName.value = response.responseObject.name || ''
       }
     } catch (error) {
-      console.error('Error fetching department name:', error)
+      logger.error('❌ Error fetching department name:', error)
       // Fall back to showing the ID if fetch fails
       departmentName.value = userStore.department
     }
@@ -595,7 +631,7 @@ onMounted(async () => {
       if (error instanceof ResponseError) {
         errorMessage = (await error.response.json()).message
       }
-      console.error('Error loading patient:', errorMessage)
+      logger.error('❌ Error loading patient:', errorMessage)
       notifierStore.notify(t('alerts.patient.loadFailed'), 'error')
     }
   }
@@ -649,23 +685,6 @@ onMounted(async () => {
                 <v-card>
                   <v-card-title>{{ t('creationFlow.step1Title') }}</v-card-title>
                   <v-card-text>
-                    <v-alert
-                             type="info"
-                             variant="tonal"
-                             class="mb-4"
-                             density="compact">
-                      {{ t('alerts.patient.optionalFieldsInfo') }}
-                    </v-alert>
-
-                    <v-alert
-                             v-if="showExternalIdWarning"
-                             type="warning"
-                             variant="tonal"
-                             class="mb-4"
-                             closable
-                             @click:close="showExternalIdWarning = false">
-                      {{ t('alerts.patient.noExternalIdWarning') }}
-                    </v-alert>
 
                     <v-form>
                       <!-- External Patient IDs -->
@@ -722,9 +741,6 @@ onMounted(async () => {
 
               <!-- Step 2: Create Case -->
               <v-stepper-window-item :value="2">
-                <v-alert v-if="createdPatient" type="success" class="mb-4">
-                  {{ t('creationFlow.patientCreated') }} - ID: {{ createdPatient.id }}
-                </v-alert>
 
                 <!-- Embedded Case Form -->
                 <PatientCaseCreateEditForm
@@ -742,17 +758,6 @@ onMounted(async () => {
 
               <!-- Step 3: Create Surgery -->
               <v-stepper-window-item :value="3">
-                <v-alert v-if="createdCase" type="success" class="mb-4">
-                  {{ t('creationFlow.caseCreated') }} - ID: {{ createdCase.id }}
-                </v-alert>
-
-                <v-alert v-if="surgeryBlueprintId" type="info" class="mb-4">
-                  {{ t('creationFlow.surgeryBlueprintPrefilled') }}
-                </v-alert>
-
-                <v-alert type="info" variant="tonal" class="mb-4" density="compact">
-                  {{ t('creationFlow.surgeryOptionalInfo') }}
-                </v-alert>
 
                 <!-- Embedded Surgery Form -->
                 <CreateEditSurgeryDialog
@@ -770,13 +775,6 @@ onMounted(async () => {
 
               <!-- Step 4: Create Consultation -->
               <v-stepper-window-item :value="4">
-                <v-alert v-if="createdSurgery" type="success" class="mb-4">
-                  {{ t('creationFlow.surgeryCreated') }} - ID: {{ createdSurgery.id }}
-                </v-alert>
-
-                <v-alert v-if="skipSurgery" type="info" class="mb-4">
-                  {{ t('creationFlow.surgerySkippedInfo') }}
-                </v-alert>
 
                 <!-- Embedded Consultation Blueprint Selection -->
                 <ConsultationBlueprintSelectionDialog
@@ -796,13 +794,6 @@ onMounted(async () => {
 
               <!-- Step 5: Completion & URLs -->
               <v-stepper-window-item :value="5">
-                <v-alert type="success" class="mb-4">
-                  {{ t('creationFlow.flowCompleted') }}
-                </v-alert>
-
-                <v-alert v-if="createdConsultations.length > 0" type="info" class="mb-4">
-                  {{ t('creationFlow.consultationsCreated', { count: createdConsultations.length }) }}
-                </v-alert>
 
                 <!-- Direct Access URLs -->
                 <v-card class="mt-4">
