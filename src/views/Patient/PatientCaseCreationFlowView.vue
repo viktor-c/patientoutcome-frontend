@@ -92,6 +92,9 @@ const duplicateExternalId = ref<string>('')
 // Loading states
 const isLoading = ref(false)
 
+// Track if manual consultation dialog is open in step 4b
+const isManualConsultationDialogOpen = ref(false)
+
 // Department name display
 const departmentName = ref<string>('')
 
@@ -519,6 +522,11 @@ const handleConsultationsSubmit = (consultations: Consultation[]) => {
   completeCreationFlow()
 }
 
+// Handle manual consultation dialog state changes
+const handleManualConsultationDialogState = (isOpen: boolean) => {
+  isManualConsultationDialogOpen.value = isOpen
+}
+
 
 
 const cancel = () => {
@@ -789,6 +797,7 @@ onMounted(async () => {
                                                       :showButtons="false"
                                                       @consultations-created="handleConsultationsSubmit"
                                                       @consultation-flow-advance="handleConsultationFlowAdvance"
+                                                      @manual-consultation-dialog-state="handleManualConsultationDialogState"
                                                       @cancel="handleConsultationBlueprintCancel" />
               </v-stepper-window-item>
 
@@ -894,13 +903,14 @@ onMounted(async () => {
             <v-btn
                    @click="cancel"
                    color="grey"
-                   variant="outlined">
+                   variant="outlined"
+                   :disabled="isManualConsultationDialogOpen">
               {{ t('buttons.cancel') }}
             </v-btn>
 
             <div class="d-flex gap-2">
               <v-btn
-                     v-if="currentStep >= 2 && currentStep <= 5"
+                     v-if="currentStep >= 2 && currentStep <= 5 && !isManualConsultationDialogOpen"
                      @click="previousStep"
                      color="primary"
                      variant="outlined">
@@ -916,7 +926,7 @@ onMounted(async () => {
               </v-btn>
 
               <v-btn
-                     v-if="currentStep < 5"
+                     v-if="currentStep < 5 && !isManualConsultationDialogOpen"
                      @click="nextStep"
                      color="primary"
                      variant="elevated"

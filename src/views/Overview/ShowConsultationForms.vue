@@ -42,6 +42,7 @@ const completedForms = ref<Form[]>([]) // Forms that were already completed befo
 const allForms = ref<Form[]>([]) // All forms including completed ones for review
 const isReviewMode = ref(false) // True when reviewing completed forms
 const isFinalized = ref(false) // True after code is deactivated
+const formCompletionStatus = ref<Map<number, boolean>>(new Map()) // Track completion status per form index
 
 const notifierStore = useNotifierStore()
 
@@ -96,6 +97,24 @@ const processFormData = (formData: FormData, formIndex: number) => {
   // Store the form data  - scoring is now handled by the renderer
   forms.value[formIndex].formData = formData
 }
+
+// Handle form completion status changes
+const processFormCompletion = (isComplete: boolean, formIndex: number) => {
+  console.debug(`Form ${formIndex} completion status changed: ${isComplete}`)
+  formCompletionStatus.value.set(formIndex, isComplete)
+}
+
+// Computed: count of incomplete forms
+const incompleteForms = computed(() => {
+  const incomplete: number[] = []
+  for (let i = 0; i < forms.value.length; i++) {
+    const status = formCompletionStatus.value.get(i)
+    if (status === false || status === undefined) {
+      incomplete.push(i)
+    }
+  }
+  return incomplete
+})
 
 // Handle form submission
 const submitForm = () => {
@@ -222,6 +241,24 @@ const isSmallScreen = computed(() => window.innerWidth < 1300)
             <p v-if="completedForms.length > 0" class="mb-4">
               {{ t('flow.previouslyFilledForms', { count: completedForms.length }) }}
             </p>
+            <!-- Show incomplete forms warning -->
+            <v-alert
+              v-if="incompleteForms.length > 0"
+              type="warning"
+              variant="tonal"
+              class="mb-4 text-left">
+              <div class="d-flex flex-column">
+                <strong>{{ t('flow.incompleteFormsWarning', { count: incompleteForms.length }) }}</strong>
+                <span class="text-body-2 mt-2">{{ t('flow.incompleteFormsExplanation') }}</span>
+              </div>
+            </v-alert>
+            <v-alert
+              v-else
+              type="success"
+              variant="tonal"
+              class="mb-4">
+              {{ t('flow.allFormsComplete') }}
+            </v-alert>
             <p class="mb-4">{{ t('flow.reviewQuestion') }}</p>
           </v-card-text>
           <v-card-actions class="justify-center flex-wrap ga-4">
@@ -231,7 +268,7 @@ const isSmallScreen = computed(() => window.innerWidth < 1300)
                    size="large"
                    @click="startReview">
               <v-icon start>mdi-eye</v-icon>
-              {{ t('flow.reviewAnswers') }}
+              {{ incompleteForms.length > 0 ? t('flow.reviewIncompleteAnswers') : t('flow.reviewAnswers') }}
             </v-btn>
             <v-btn
                    color="success"
@@ -275,8 +312,10 @@ const isSmallScreen = computed(() => window.innerWidth < 1300)
                        :form-id="currentForm._id || ''"
                        :formArrayIdx="currentFormIndex"
                        @formDataChange="(data) => processFormData(data, currentFormIndex)"
+                       @form-completion-change="(isComplete) => processFormCompletion(isComplete, currentFormIndex)"
                        @submit-form="submitForm"
                        @goto-previous-form="gotoPreviousForm"
+                       @goto-next-form="submitForm"
                        :key="currentForm._id" />
         </v-card>
       </transition>

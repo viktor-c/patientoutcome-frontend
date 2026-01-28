@@ -40,6 +40,7 @@ const emit = defineEmits<{
   'cancel': []
   'consultations-created': [consultations: Consultation[]]
   'consultation-flow-advance': ['4a' | '4b']
+  'manual-consultation-dialog-state': [isOpen: boolean]
 }>()
 
 const { t } = useI18n()
@@ -180,6 +181,7 @@ const handleManualConsultationCreated = (consultation: Consultation) => {
   // Add the manually created consultation to the list
   createdConsultations.value.push({ ...consultation, blueprintTitle: 'Manual' })
   showManualConsultationDialog.value = false
+  emit('manual-consultation-dialog-state', false)
   notifierStore.notify(t('alerts.consultation.created'), 'success')
 }
 
@@ -586,7 +588,7 @@ defineExpose({
             <div class="d-flex gap-2 mt-4">
               <v-btn
                      color="info"
-                     @click="showManualConsultationDialog = true"
+                     @click="() => { showManualConsultationDialog = true; emit('manual-consultation-dialog-state', true) }"
                      variant="outlined">
                 <v-icon left>mdi-pencil</v-icon>
                 {{ t('consultation.createManual') }}
@@ -740,7 +742,7 @@ defineExpose({
       <div v-if="creationComplete" class="w-100 d-flex justify-end gap-2">
         <v-btn
                color="info"
-               @click="showManualConsultationDialog = true"
+               @click="() => { showManualConsultationDialog = true; emit('manual-consultation-dialog-state', true) }"
                variant="outlined">
           <v-icon left>mdi-pencil</v-icon>
           {{ t('consultation.createManual') }}
@@ -795,10 +797,10 @@ defineExpose({
     <v-card-title>{{ t('consultation.createManual') }}</v-card-title>
     <v-card-text>
       <CreateEditConsultationDialog
-                                    :patient-id="null"
+                                    :patient-id="props.patientId"
                                     :case-id="props.caseId"
                                     @submit="handleManualConsultationCreated"
-                                    @cancel="showManualConsultationDialog = false" />
+                                    @cancel="() => { showManualConsultationDialog = false; emit('manual-consultation-dialog-state', false) }" />
     </v-card-text>
   </v-card>
 </template>

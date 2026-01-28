@@ -1,12 +1,23 @@
 <template>
-  <v-snackbar v-model="isOpen" :color="color" :timeout="timeout" timer="true" location="top">
-    <div class="d-flex align-center justify-space-between" style="width:100%">
-      <div>{{ content }}</div>
-      <v-btn icon variant="text" aria-label="Close notification" @click="isOpen = false">
-        <v-icon>mdi-close</v-icon>
-      </v-btn>
-    </div>
-  </v-snackbar>
+  <div class="notification-container">
+    <v-snackbar
+                v-for="notification in activeNotifications"
+                :key="notification.id"
+                :model-value="true"
+                :color="notification.type"
+                :timeout="notification.timeout"
+                timer="true"
+                location="top"
+                :style="{ top: getNotificationOffset(notification.id) + 'px' }"
+                @update:model-value="(val) => !val && removeNotification(notification.id)">
+      <div class="d-flex align-center justify-space-between" style="width:100%">
+        <div>{{ notification.message }}</div>
+        <v-btn icon variant="text" aria-label="Close notification" @click="removeNotification(notification.id)">
+          <v-icon>mdi-close</v-icon>
+        </v-btn>
+      </div>
+    </v-snackbar>
+  </div>
 </template>
 
 <script setup lang="ts">
@@ -15,14 +26,22 @@ import { useNotifierStore } from '@/stores/notifierStore'
 
 const notifierStore = useNotifierStore()
 
-const isOpen = computed({
-  get: () => notifierStore.isOpen,
-  set: (value: boolean) => {
-    notifierStore.isOpen = value
-  },
-})
+const activeNotifications = computed(() => notifierStore.activeNotifications)
 
-const content = computed(() => notifierStore.content)
-const color = computed(() => notifierStore.color)
-const timeout = computed(() => notifierStore.timeout)
+const removeNotification = (id: number) => {
+  notifierStore.removeNotification(id)
+}
+
+// Calculate vertical offset for each notification to stack them
+const getNotificationOffset = (id: number) => {
+  const index = activeNotifications.value.findIndex(n => n.id === id)
+  // Each notification is offset by 80px from the previous one
+  return index * 80
+}
 </script>
+
+<style scoped>
+.notification-container {
+  position: relative;
+}
+</style>

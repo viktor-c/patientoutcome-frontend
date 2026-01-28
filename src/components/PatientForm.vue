@@ -66,6 +66,7 @@ const props = defineProps<{
 const emit = defineEmits<{
   formDataChange: [formData: FormData]
   scoringDataChange: [scoring: ScoringData | null]
+  formCompletionChange: [isComplete: boolean]
   submitForm: []
   gotoPreviousForm: []
   gotoNextForm: []
@@ -86,7 +87,97 @@ let sessionStartTime: Date | undefined = undefined
 const formScoring = ref<ScoringData>({} as ScoringData)
 
 // Computed property for form completion
-const isFormComplete = computed(() => formScoring.value?.total?.isComplete || false)
+const isFormComplete = computed(() => {
+  // First check if scoring data has completion status
+  if (formScoring.value?.total?.isComplete !== undefined) {
+    return formScoring.value.total.isComplete
+  }
+  // Fallback to question stats - form is complete if no unanswered questions
+  return questionStats.value.unanswered === 0 && questionStats.value.total > 0
+})
+
+// Count answered and unanswered questions
+const questionStats = computed(() => {
+  let answered = 0
+  let unanswered = 0
+  
+  // Helper function to check if a value is considered "answered"
+  const isAnswered = (answer: unknown): boolean => {
+    // Explicitly handle 0 as a valid answer (important for scales that include 0)
+    if (answer === 0) return true
+    if (answer === null || answer === undefined) return false
+    if (typeof answer === 'string' && answer === '') return false
+    // For numbers, only reject NaN
+    if (typeof answer === 'number' && isNaN(answer)) return false
+    return true
+  }
+  
+  // Helper to recursively count questions in nested structures
+  const countInData = (data: Record<string, unknown>, prefix = ''): { answered: number; unanswered: number } => {
+    let localAnswered = 0
+    let localUnanswered = 0
+    
+    for (const [key, value] of Object.entries(data)) {
+      // Skip metadata fields
+      if (key === 'subscales' || key === 'total' || key === 'rawData') continue
+      
+      // Skip type indicators (like q8_type in VISA-A)
+      if (key.endsWith('_type')) continue
+      
+      if (value && typeof value === 'object' && !Array.isArray(value)) {
+        // Nested object - recurse
+        const nested = countInData(value as Record<string, unknown>, prefix + key + '.')
+        localAnswered += nested.answered
+        localUnanswered += nested.unanswered
+      } else {
+        // Leaf value - check if answered
+        if (isAnswered(value)) {
+          localAnswered++
+        } else {
+          localUnanswered++
+        }
+      }
+    }
+    
+    return { answered: localAnswered, unanswered: localUnanswered }
+  }
+  
+  // Get all question keys from the schema to know total count
+  const allQuestionKeys: string[] = []
+  
+  if (props.formSchema?.properties) {
+    const extractKeys = (properties: Record<string, unknown>, prefix = '') => {
+      for (const [key, value] of Object.entries(properties)) {
+        // Skip metadata fields
+        if (key === 'subscales' || key === 'total' || key === 'rawData') continue
+        
+        const propValue = value as { properties?: Record<string, unknown>; type?: string }
+        if (propValue.properties) {
+          // Nested structure: recurse
+          extractKeys(propValue.properties, prefix + key + '.')
+        } else if (propValue.type === 'number' || propValue.type === 'integer' || propValue.type === 'string') {
+          // Leaf property that's a question
+          allQuestionKeys.push(prefix + key)
+        }
+      }
+    }
+    
+    extractKeys(props.formSchema.properties)
+  }
+  
+  // Count from actual data
+  const counts = countInData(formData.value)
+  answered = counts.answered
+  unanswered = counts.unanswered
+  
+  // If we have a total from schema and it's larger, use that to ensure we show all questions
+  const schemaTotal = allQuestionKeys.length
+  if (schemaTotal > answered + unanswered) {
+    unanswered = schemaTotal - answered
+  }
+  
+  return { answered, unanswered, total: answered + unanswered }
+})
 
 // Initialize form start time and session start time
 onMounted(() => {
@@ -111,15 +202,15 @@ const onChange = (event: JsonFormsChangeEvent) => {
   console.debug(`${componentName}: Form data changed:`, event.data)
 
   if (event.data.rawData) {
-    console.debug(`${componentName}: Received ScoringData from renderer:`, formScoring.value)
+    console.debug(`${componentName}: Received ScoringData from renderer:`, event.data)
     formScoring.value = event.data as ScoringData
     formData.value = formScoring.value.rawData as FormData
   }
   else {
     console.debug(`${componentName}: rawData NOT present in event.data, using event.data as formData`)
-    // formData.value = event.data as FormData
-    // formScoring.value.rawData = formData.value
-    //formScoring.value = null
+    formData.value = event.data as FormData
+    // If no scoring data, clear it
+    formScoring.value = {} as ScoringData
   }
 
   const validate = ajv.compile(props.formSchema)
@@ -129,10 +220,12 @@ const onChange = (event: JsonFormsChangeEvent) => {
     event.errors = []
   } else {
     console.log('Form data is valid')
-    // Emit the updated form data to the parent component
-    emit('formDataChange', formData.value)
-    emit('scoringDataChange', formScoring.value)
   }
+  
+  // Always emit the updated form data to the parent component
+  emit('formDataChange', formData.value)
+  emit('scoringDataChange', formScoring.value)
+  emit('formCompletionChange', isFormComplete.value)
 
   // If form is complete for the first time, record end time
   if (isFormComplete.value && !formEndTime.value) {
@@ -319,8 +412,35 @@ const renderedMarkdownFooter = computed(() => {
   </v-container>
 
   <br />
-  <!-- Navigation buttons -->
-  <v-row v-if="isFormComplete" class="mt-4">
+  <!-- Form completion status message -->
+  <v-container class="form-status-container">
+    <v-alert
+      v-if="isFormComplete"
+      type="success"
+      variant="tonal"
+      class="mb-4">
+      <div class="d-flex align-center">
+        <v-icon class="me-2">mdi-check-circle</v-icon>
+        <span>{{ t('forms.formComplete', { answered: questionStats.answered, total: questionStats.total }) }}</span>
+      </div>
+    </v-alert>
+    <v-alert
+      v-else
+      type="info"
+      variant="tonal"
+      class="mb-4">
+      <div class="d-flex flex-column">
+        <div class="d-flex align-center mb-2">
+          <v-icon class="me-2">mdi-information</v-icon>
+          <span>{{ t('forms.formIncomplete', { answered: questionStats.answered, total: questionStats.total, unanswered: questionStats.unanswered }) }}</span>
+        </div>
+        <span class="text-body-2 text-medium-emphasis">{{ t('forms.canContinueIncomplete') }}</span>
+      </div>
+    </v-alert>
+  </v-container>
+
+  <!-- Navigation buttons - always visible -->
+  <v-row class="mt-4">
     <v-col cols="12" sm="auto">
       <v-btn
              v-if="formArrayIdx > 0"
@@ -344,9 +464,9 @@ const renderedMarkdownFooter = computed(() => {
       <v-btn
              v-if="typeof formArrayIdx === 'number'"
              @click="() => handleSubmit(() => emit('gotoNextForm'))"
-             color="primary"
+             :color="isFormComplete ? 'primary' : 'warning'"
              prepend-icon="mdi-arrow-right">
-        {{ t('forms.submitAndNextForm') }}
+        {{ isFormComplete ? t('forms.submitAndNextForm') : t('forms.continueWithIncomplete') }}
       </v-btn>
     </v-col>
   </v-row>

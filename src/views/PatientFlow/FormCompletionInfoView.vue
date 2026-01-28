@@ -6,37 +6,38 @@ const { t } = useI18n()
 
 <template>
   <v-container class="completion-info-container">
-    <v-row justify="center" class="mt-12">
-      <v-col cols="12" md="8">
-        <v-card class="pa-8 completion-card">
+    <v-row justify="center" class="mt-4 mt-md-12">
+      <v-col cols="12" md="10" lg="8">
+        <v-card class="pa-4 pa-sm-6 pa-md-8 completion-card">
           <!-- Success Icon and Title -->
-          <div class="text-center mb-8">
-            <v-icon size="80" color="success" class="mb-4">mdi-check-circle</v-icon>
-            <h1 class="text-h4 font-weight-bold text-success">
+          <div class="text-center mb-6 mb-md-8">
+            <v-icon :size="$vuetify.display.smAndDown ? 60 : 80" color="success"
+                    class="mb-3 mb-md-4">mdi-check-circle</v-icon>
+            <h1 class="text-h5 text-md-h4 font-weight-bold text-success">
               {{ t('completionInfo.title') || 'Form Submission Successful!' }}
             </h1>
           </div>
 
           <!-- Privacy Information Section -->
-          <v-divider class="my-6"></v-divider>
+          <v-divider class="my-4 my-md-6"></v-divider>
 
           <div class="privacy-section">
-            <h2 class="text-h6 font-weight-bold mb-4">
+            <h2 class="text-subtitle-1 text-md-h6 font-weight-bold mb-3 mb-md-4">
               {{ t('completionInfo.privacyTitle') || 'Your Privacy & Data Protection' }}
             </h2>
 
             <div class="privacy-content">
               <!-- Data Collection -->
-              <div class="mb-6">
-                <h3 class="text-subtitle1 font-weight-semibold mb-2 text-primary">
+              <div class="mb-4 mb-md-6">
+                <h3 class="text-subtitle-2 text-md-subtitle-1 font-weight-semibold mb-2 text-primary">
                   {{ t('completionInfo.dataCollectionTitle') || 'What We Collect' }}
                 </h3>
-                <v-list class="transparent-list">
-                  <v-list-item>
+                <v-list class="transparent-list" density="compact">
+                  <v-list-item class="px-0">
                     <template #prepend>
                       <v-icon color="success" size="small">mdi-check</v-icon>
                     </template>
-                    <v-list-item-title class="text-body2">
+                    <v-list-item-title class="text-body-2 text-wrap">
                       {{ t('completionInfo.collectAnswers') || 'Only the answers you provide in this form' }}
                     </v-list-item-title>
                   </v-list-item>
@@ -44,40 +45,40 @@ const { t } = useI18n()
               </div>
 
               <!-- What We Do NOT Collect -->
-              <div class="mb-6">
-                <h3 class="text-subtitle1 font-weight-semibold mb-2 text-error">
+              <div class="mb-4 mb-md-6">
+                <h3 class="text-subtitle-2 text-md-subtitle-1 font-weight-semibold mb-2 text-error">
                   {{ t('completionInfo.noCollectionTitle') || 'What We Do NOT Collect' }}
                 </h3>
-                <v-list class="transparent-list">
-                  <v-list-item>
+                <v-list class="transparent-list" density="compact">
+                  <v-list-item class="px-0">
                     <template #prepend>
                       <v-icon color="error" size="small">mdi-close</v-icon>
                     </template>
-                    <v-list-item-title class="text-body2">
+                    <v-list-item-title class="text-body-2 text-wrap">
                       {{ t('completionInfo.noPersonalName') || 'Your name or personal identification' }}
                     </v-list-item-title>
                   </v-list-item>
-                  <v-list-item>
+                  <v-list-item class="px-0">
                     <template #prepend>
                       <v-icon color="error" size="small">mdi-close</v-icon>
                     </template>
-                    <v-list-item-title class="text-body2">
+                    <v-list-item-title class="text-body-2 text-wrap">
                       {{ t('completionInfo.noPhoneNumber') || 'Your phone number or contact details' }}
                     </v-list-item-title>
                   </v-list-item>
-                  <v-list-item>
+                  <v-list-item class="px-0">
                     <template #prepend>
                       <v-icon color="error" size="small">mdi-close</v-icon>
                     </template>
-                    <v-list-item-title class="text-body2">
+                    <v-list-item-title class="text-body-2 text-wrap">
                       {{ t('completionInfo.noIPAddress') || 'Your IP address or location data' }}
                     </v-list-item-title>
                   </v-list-item>
-                  <v-list-item>
+                  <v-list-item class="px-0">
                     <template #prepend>
                       <v-icon color="error" size="small">mdi-close</v-icon>
                     </template>
-                    <v-list-item-title class="text-body2">
+                    <v-list-item-title class="text-body-2 text-wrap">
                       {{ t('completionInfo.noBrowserData') || 'Browser cookies or tracking information' }}
                     </v-list-item-title>
                   </v-list-item>
@@ -85,48 +86,43 @@ const { t } = useI18n()
               </div>
 
               <!-- Anonymity -->
-              <div class="mb-6 pa-4 bg-success-light rounded">
-                <h3 class="text-subtitle1 font-weight-semibold mb-2 text-success">
+              <div class="mb-4 mb-md-6 pa-3 pa-md-4 bg-success-light rounded">
+                <h3 class="text-subtitle-2 text-md-subtitle-1 font-weight-semibold mb-2 text-success">
                   {{ t('completionInfo.anonymityTitle') || 'Complete Anonymity' }}
                 </h3>
-                <p class="text-body2 mb-0">
-                  {{ t('completionInfo.anonymityDescription') || 'Your responses are completely anonymous. We cannot trace this form back to you in any way. Your data is safe and your privacy is fully protected.' }}
+                <p class="text-body-2 mb-0">
+                  {{ t('completionInfo.anonymityDescription') ||
+                    `Your responses are completely anonymous. We cannot trace this form back to you in any way.Your
+                  data is safe and your privacy is fully protected.` }}
                 </p>
               </div>
 
               <!-- Purpose Section -->
-              <div class="mb-6 pa-4 bg-info-light rounded">
-                <h3 class="text-subtitle1 font-weight-semibold mb-2 text-info">
+              <div class="mb-4 mb-md-6 pa-3 pa-md-4 bg-info-light rounded">
+                <h3 class="text-subtitle-2 text-md-subtitle-1 font-weight-semibold mb-2 text-info">
                   {{ t('completionInfo.purposeTitle') || 'Why We Collect This Information' }}
                 </h3>
-                <p class="text-body2 mb-0">
-                  {{ t('completionInfo.purposeDescription') || 'This information helps us understand patient outcomes and improve healthcare services. Your feedback is invaluable and will be used only for medical research and quality improvement purposes.' }}
+                <p class="text-body-2 mb-0">
+                  {{ t('completionInfo.purposeDescription') || `This information helps us understand patient outcomes
+                  and improve healthcare services.Your feedback is invaluable and will be used only for medical research
+                  and quality improvement purposes.` }}
                 </p>
               </div>
             </div>
           </div>
 
           <!-- Close Message Section -->
-          <v-divider class="my-6"></v-divider>
+          <v-divider class="my-4 my-md-6"></v-divider>
 
           <div class="text-center">
-            <p class="text-body1 font-weight-semibold mb-2 text-success">
+            <p class="text-body-1 font-weight-semibold mb-2 text-success">
               {{ t('completionInfo.allDone') || '✓ All Done!' }}
             </p>
-            <p class="text-body2 text-grey">
+            <p class="text-body-2 text-grey">
               {{ t('completionInfo.closePageMessage') || 'You can now safely close this page.' }}
             </p>
           </div>
         </v-card>
-      </v-col>
-    </v-row>
-
-    <!-- Alternative: Minimal Version for Mobile -->
-    <v-row justify="center" class="mt-4 d-md-none">
-      <v-col cols="12">
-        <div class="text-center text-caption text-grey">
-          {{ t('completionInfo.thankyou') || 'Thank you for completing the form!' }}
-        </div>
       </v-col>
     </v-row>
   </v-container>
@@ -138,13 +134,21 @@ const { t } = useI18n()
   min-height: 100vh;
   display: flex;
   align-items: center;
-  padding: 2rem 1rem;
+  padding: 1rem;
+}
+
+@media (min-width: 600px) {
+  .completion-info-container {
+    padding: 2rem 1rem;
+  }
 }
 
 .completion-card {
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
   border-radius: 12px;
   border: 1px solid rgba(0, 0, 0, 0.05);
+  overflow-wrap: break-word;
+  word-wrap: break-word;
 }
 
 .transparent-list {
@@ -154,10 +158,22 @@ const { t } = useI18n()
 .transparent-list :deep(.v-list-item) {
   padding-left: 0;
   padding-right: 0;
+  min-height: auto;
 }
 
 .transparent-list :deep(.v-list-item__prepend) {
-  margin-right: 12px;
+  margin-right: 8px;
+}
+
+@media (min-width: 600px) {
+  .transparent-list :deep(.v-list-item__prepend) {
+    margin-right: 12px;
+  }
+}
+
+.transparent-list :deep(.v-list-item-title) {
+  white-space: normal;
+  line-height: 1.5;
 }
 
 .bg-success-light {
@@ -176,7 +192,20 @@ const { t } = useI18n()
   color: #2196f3;
 }
 
+h1,
+h2,
+h3 {
+  overflow-wrap: break-word;
+  word-wrap: break-word;
+}
+
 h3 {
   letter-spacing: 0.3px;
+}
+
+/* Ensure paragraphs wrap properly on mobile */
+p {
+  overflow-wrap: break-word;
+  word-wrap: break-word;
 }
 </style>

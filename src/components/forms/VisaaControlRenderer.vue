@@ -20,6 +20,38 @@ const control = useVuetifyControl(useJsonFormsControl(props))
 // Local state to store raw form data (question answers)
 const localRawData = ref<Record<string, number | string | null>>({})
 
+/**
+ * Map backend data to frontend display values
+ * Q2, Q3, Q4, Q5: reversed scale (backend 0-10 -> frontend 10-0)
+ */
+const mapBackendToFrontend = (key: string, value: number | null): number | null => {
+  if (value === null || value === undefined) return null
+  
+  // Reverse scales for Q2, Q3, Q4 (0-10 scale)
+  if (key === 'q2' || key === 'q3' || key === 'q4' || key === 'q5') {
+    return 10 - value
+  }
+  
+  // All other questions: no transformation
+  return value
+}
+
+/**
+ * Map frontend display values back to backend values for saving
+ * Q2, Q3, Q4, Q5: reversed scale (frontend 10-0 -> backend 0-10)
+ */
+const mapFrontendToBackend = (key: string, value: number | null): number | null => {
+  if (value === null || value === undefined) return null
+  
+  // Reverse scales for Q2, Q3, Q4 (0-10 scale)
+  if (key === 'q2' || key === 'q3' || key === 'q4' || key === 'q5') {
+    return 10 - value
+  }
+  
+  // All other questions: no transformation
+  return value
+}
+
 // Initialize local raw data from control data on mount
 const initializeLocalData = () => {
   const data = control.control.value.data
@@ -82,38 +114,6 @@ watch(() => localRawData.value.q8_type, (newType, oldType) => {
 
 import { createTranslate } from './translate'
 const translate = createTranslate()
-
-/**
- * Map backend data to frontend display values
- * Q2, Q3, Q4, Q5: reversed scale (backend 0-10 -> frontend 10-0)
- */
-const mapBackendToFrontend = (key: string, value: number | null): number | null => {
-  if (value === null || value === undefined) return null
-  
-  // Reverse scales for Q2, Q3, Q4 (0-10 scale)
-  if (key === 'q2' || key === 'q3' || key === 'q4' || key === 'q5') {
-    return 10 - value
-  }
-  
-  // All other questions: no transformation
-  return value
-}
-
-/**
- * Map frontend display values to backend scoring values
- * Q2, Q3, Q4, Q5: reversed scale (frontend 10-0 -> backend 0-10)
- */
-const mapFrontendToBackend = (key: string, value: number | null): number | null => {
-  if (value === null || value === undefined) return null
-  
-  // Reverse scales for Q2, Q3, Q4 (0-10 scale)
-  if (key === 'q2' || key === 'q3' || key === 'q4' || key === 'q5') {
-    return 10 - value
-  }
-  
-  // All other questions: no transformation
-  return value
-}
 
 // Extract questions from schema properties
 const questionsData = computed(() => {
