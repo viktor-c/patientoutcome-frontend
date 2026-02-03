@@ -42,7 +42,7 @@ const completedForms = ref<Form[]>([]) // Forms that were already completed befo
 const allForms = ref<Form[]>([]) // All forms including completed ones for review
 const isReviewMode = ref(false) // True when reviewing completed forms
 const isFinalized = ref(false) // True after code is deactivated
-const formCompletionStatus = ref<Map<number, boolean>>(new Map()) // Track completion status per form index
+const formCompletionStatus = ref<Map<string, boolean>>(new Map()) // Track completion status per form ID
 
 const notifierStore = useNotifierStore()
 
@@ -93,24 +93,45 @@ onMounted(async () => {
 
 // Handle form data changes
 const processFormData = (formData: FormData, formIndex: number) => {
-  console.debug(`Form data changed for form ${formIndex}:`, formData)
+  const currentFormId = forms.value[formIndex]?._id
+  console.debug(`ShowConsultationForms: processFormData called - formIndex=${formIndex}, formId=${currentFormId}`)
+  console.debug(`ShowConsultationForms: Received formData:`, formData)
   // Store the form data  - scoring is now handled by the renderer
-  forms.value[formIndex].formData = formData
+  if (currentFormId) {
+    console.debug(`ShowConsultationForms: Updating forms[${formIndex}].formData`)
+    forms.value[formIndex].formData = formData
+    // Also update in allForms to keep data in sync
+    const allFormIndex = allForms.value.findIndex(f => f._id === currentFormId)
+    if (allFormIndex !== -1) {
+      console.debug(`ShowConsultationForms: Also updating allForms[${allFormIndex}].formData`)
+      allForms.value[allFormIndex].formData = formData
+    }
+  }
 }
 
 // Handle form completion status changes
 const processFormCompletion = (isComplete: boolean, formIndex: number) => {
-  console.debug(`Form ${formIndex} completion status changed: ${isComplete}`)
-  formCompletionStatus.value.set(formIndex, isComplete)
+  const formId = forms.value[formIndex]?._id
+  if (formId) {
+    console.debug(`Form ${formIndex} (ID: ${formId}) completion status changed: ${isComplete}`)
+    formCompletionStatus.value.set(formId, isComplete)
+  }
 }
 
 // Computed: count of incomplete forms
 const incompleteForms = computed(() => {
-  const incomplete: number[] = []
-  for (let i = 0; i < forms.value.length; i++) {
-    const status = formCompletionStatus.value.get(i)
-    if (status === false || status === undefined) {
-      incomplete.push(i)
+  const incomplete: string[] = []
+  for (const form of forms.value) {
+    const formId = form._id
+    if (!formId) continue
+    
+    const status = formCompletionStatus.value.get(formId)
+    // Check if form was previously completed
+    const wasCompleted = form.formFillStatus === 'completed'
+    
+    // Form is incomplete if not completed before AND not marked complete now
+    if (!wasCompleted && (status === false || status === undefined)) {
+      incomplete.push(formId)
     }
   }
   return incomplete
@@ -118,20 +139,27 @@ const incompleteForms = computed(() => {
 
 // Handle form submission
 const submitForm = () => {
+  console.debug(`========== submitForm() called ==========`)
+  console.debug(`Current form index: ${currentFormIndex.value}, Total forms: ${forms.value.length}`)
+  console.debug(`Stack trace:`, new Error().stack)
   console.debug(`Form ${currentFormIndex.value} submitted.`)
   if (currentFormIndex.value < forms.value.length - 1) {
+    console.debug(`Moving to next form: ${currentFormIndex.value} -> ${currentFormIndex.value + 1}`)
     currentFormIndex.value++
     // Reset scroll position for the next form
     y.value = 0
   } else if (isReviewMode.value) {
+    console.debug(`In review mode, moving past last form`)
     // In review mode, go to review complete screen
     currentFormIndex.value++
     y.value = 0
   } else {
+    console.debug(`All forms filled, showing review option`)
     // All new forms are filled, show review option
     showReviewOption.value = true
     y.value = 0
   }
+  console.debug(`========== submitForm() done ==========`)
 }
 
 const startCountdown = () => {

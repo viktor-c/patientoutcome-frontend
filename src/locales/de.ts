@@ -320,7 +320,7 @@ export default {
     finishWithoutReview: 'Ohne Überprüfung abschließen',
     reviewComplete: 'Überprüfung abgeschlossen',
     reviewCompleteMessage: 'Sie haben alle Ihre Antworten überprüft. Klicken Sie unten, um abzuschließen.',
-    finishAndClose: 'Abschließen und Schließen',
+    finishAndClose: 'Abschließen',
     reviewModeLabel: 'Überprüfungsmodus',
     redirectingMessage: 'Sie werden in Kürze weitergeleitet...',
     incompleteFormsWarning: '{count} Formular(e) sind nicht vollständig ausgefüllt.',
@@ -583,6 +583,14 @@ export default {
     code: {
       generated: 'Neuer Code erfolgreich generiert!',
       generateFailed: 'Fehler beim Generieren eines neuen Codes.',
+    },
+    form: {
+      restored: 'Formular erfolgreich wiederhergestellt!',
+      restoreFailed: 'Fehler beim Wiederherstellen des Formulars.',
+      permanentlyDeleted: 'Formular endgültig gelöscht!',
+      confirmPermanentDelete: 'Sind Sie sicher, dass Sie dieses Formular endgültig löschen möchten? Diese Aktion kann nicht rückgängig gemacht werden.',
+      fetchDeletedFailed: 'Fehler beim Abrufen gelöschter Formulare.',
+      deleteFailed: 'Fehler beim Löschen des Formulars.',
     },
     validation: {
       failed: 'Formularvalidierung fehlgeschlagen. Bitte überprüfen Sie alle erforderlichen Felder.',
@@ -927,6 +935,15 @@ export default {
     createNewCode: 'Neuen Code erstellen',
     codeCreatedAndAssigned: 'Neuer Code erstellt und erfolgreich zugewiesen',
     codeCreateError: 'Fehler beim Erstellen des neuen Codes',
+    archiveFormTitle: 'Formular archivieren',
+    archiveFormWarning: 'Sind Sie sicher, dass Sie das Formular "{formTitle}" archivieren möchten? Die Formulardaten bleiben erhalten, werden aber aus dieser Konsultation entfernt.',
+    archiveFormReasonLabel: 'Grund für die Archivierung',
+    archiveFormReasonPlaceholder: 'Bitte geben Sie einen Grund für die Archivierung an (z.B. Duplikat, falsche Daten, etc.)',
+    archiveFormReasonRequired: 'Begründung erforderlich',
+    archiveFormConfirm: 'Formular archivieren',
+    formArchived: 'Formular erfolgreich archiviert',
+    formArchiveError: 'Fehler beim Archivieren des Formulars',
+    archiveFormTooltip: 'Dieses Formular archivieren (Arzt-Rolle erforderlich)',
   },
   kiosk: {
     title: 'Kiosk - Patientenformulare',
@@ -1142,6 +1159,7 @@ export default {
       title: 'Verwaltung gelöschter Elemente',
       deletedPatients: 'Gelöschte Patienten',
       deletedCases: 'Gelöschte Fälle',
+      deletedForms: 'Gelöschte Formulare',
     },
   },
 

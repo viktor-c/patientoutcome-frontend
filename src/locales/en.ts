@@ -70,7 +70,7 @@ export default {
     finishWithoutReview: 'Finish Without Review',
     reviewComplete: 'Review Complete',
     reviewCompleteMessage: 'You have reviewed all your answers. Click below to finish.',
-    finishAndClose: 'Finish and Close',
+    finishAndClose: 'Finish',
     reviewModeLabel: 'Review Mode',
     redirectingMessage: 'You will be redirected shortly...',
     incompleteFormsWarning: '{count} form(s) are not completely filled out.',
@@ -333,6 +333,14 @@ export default {
     code: {
       generated: 'New code generated successfully!',
       generateFailed: 'Failed to generate new code.',
+    },
+    form: {
+      restored: 'Form restored successfully!',
+      restoreFailed: 'Failed to restore form.',
+      permanentlyDeleted: 'Form permanently deleted!',
+      confirmPermanentDelete: 'Are you sure you want to permanently delete this form? This action cannot be undone.',
+      fetchDeletedFailed: 'Failed to fetch deleted forms.',
+      deleteFailed: 'Failed to delete form.',
     },
     validation: {
       failed: 'Form validation failed. Please check all required fields.',
@@ -926,6 +934,15 @@ export default {
     createNewCode: 'Create new code',
     codeCreatedAndAssigned: 'New code created and assigned successfully',
     codeCreateError: 'Failed to create new code',
+    archiveFormTitle: 'Archive Form',
+    archiveFormWarning: 'Are you sure you want to archive the form "{formTitle}"? The form data will be preserved but removed from this consultation.',
+    archiveFormReasonLabel: 'Reason for archiving',
+    archiveFormReasonPlaceholder: 'Please provide a reason for archiving this form (e.g., duplicate, incorrect data, etc.)',
+    archiveFormReasonRequired: 'Reason is required',
+    archiveFormConfirm: 'Archive Form',
+    formArchived: 'Form archived successfully',
+    formArchiveError: 'Failed to archive form',
+    archiveFormTooltip: 'Archive this form (requires doctor role)',
   },
   kiosk: {
     title: 'Kiosk - Patient Forms',
@@ -1141,6 +1158,7 @@ export default {
       title: 'Deleted Items Management',
       deletedPatients: 'Deleted Patients',
       deletedCases: 'Deleted Cases',
+      deletedForms: 'Deleted Forms',
     },
   },
 

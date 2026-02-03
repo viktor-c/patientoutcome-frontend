@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest'
+import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest'
 import { mount, VueWrapper } from '@vue/test-utils'
 import { createVuetify } from 'vuetify'
 import * as components from 'vuetify/components'
@@ -33,6 +33,7 @@ describe('AppAlert.vue', () => {
     // Create fresh Pinia instance for each test
     setActivePinia(createPinia())
     notifierStore = useNotifierStore()
+    vi.useFakeTimers()
 
     vuetify = createVuetify({
       components,
@@ -44,6 +45,10 @@ describe('AppAlert.vue', () => {
         plugins: [vuetify],
       },
     })
+  })
+
+  afterEach(() => {
+    vi.restoreAllMocks()
   })
 
   describe('visibility', () => {
@@ -187,7 +192,12 @@ describe('AppAlert.vue', () => {
       expect(notifierStore.isOpen).toBe(false)
     })
 
-    it('should have VSnackbar component', () => {
+    it('should have VSnackbar component', async () => {
+      // Add a notification first so VSnackbar renders
+      notifierStore.notify('Test', 'info')
+      await vi.advanceTimersByTimeAsync(300)
+      await wrapper.vm.$nextTick()
+      
       // Check that the component uses VSnackbar
       const snackbar = wrapper.findComponent({ name: 'VSnackbar' })
       expect(snackbar.exists()).toBe(true)
@@ -232,6 +242,7 @@ describe('AppAlert.vue', () => {
   describe('integration with notifier store', () => {
     it('should display notification from store notify method', async () => {
       notifierStore.notify('Integration test message', 'success')
+      await vi.advanceTimersByTimeAsync(300)
       await wrapper.vm.$nextTick()
       
       expect(notifierStore.isOpen).toBe(true)
@@ -241,6 +252,7 @@ describe('AppAlert.vue', () => {
 
     it('should display success notification', async () => {
       notifierStore.success('Success message')
+      await vi.advanceTimersByTimeAsync(300)
       await wrapper.vm.$nextTick()
       
       expect(notifierStore.isOpen).toBe(true)
@@ -250,6 +262,7 @@ describe('AppAlert.vue', () => {
 
     it('should display error notification', async () => {
       notifierStore.error('Error message')
+      await vi.advanceTimersByTimeAsync(300)
       await wrapper.vm.$nextTick()
       
       expect(notifierStore.isOpen).toBe(true)
@@ -259,6 +272,7 @@ describe('AppAlert.vue', () => {
 
     it('should display info notification', async () => {
       notifierStore.info('Info message')
+      await vi.advanceTimersByTimeAsync(300)
       await wrapper.vm.$nextTick()
       
       expect(notifierStore.isOpen).toBe(true)
@@ -266,16 +280,41 @@ describe('AppAlert.vue', () => {
       expect(notifierStore.color).toBe('info')
     })
 
-    it('should display multiple notifications sequentially', async () => {
+    it('should batch multiple notifications sent quickly', async () => {
       notifierStore.notify('First notification', 'info')
-      await wrapper.vm.$nextTick()
-      
-      expect(notifierStore.content).toBe('First notification')
-      
       notifierStore.notify('Second notification', 'success')
+      await vi.advanceTimersByTimeAsync(300)
       await wrapper.vm.$nextTick()
       
-      expect(notifierStore.content).toBe('Second notification')
+      expect(notifierStore.activeNotifications).toHaveLength(2)
+    })
+
+    it('should show count badge for duplicate notifications', async () => {
+      notifierStore.notify('Same message', 'info')
+      notifierStore.notify('Same message', 'info')
+      notifierStore.notify('Same message', 'info')
+      await vi.advanceTimersByTimeAsync(300)
+      await wrapper.vm.$nextTick()
+      
+      expect(notifierStore.activeNotifications).toHaveLength(1)
+      expect(notifierStore.activeNotifications[0].count).toBe(3)
+      
+      // Check that VChip exists when count > 1
+      const chip = wrapper.findComponent({ name: 'VChip' })
+      expect(chip.exists()).toBe(true)
+    })
+
+    it('should not show count badge when count is 1', async () => {
+      notifierStore.notify('Single message', 'info')
+      await vi.advanceTimersByTimeAsync(300)
+      await wrapper.vm.$nextTick()
+      
+      expect(notifierStore.activeNotifications).toHaveLength(1)
+      expect(notifierStore.activeNotifications[0].count).toBe(1)
+      
+      // Check that VChip does not exist when count is 1
+      const chip = wrapper.findComponent({ name: 'VChip' })
+      expect(chip.exists()).toBe(false)
     })
   })
 
@@ -283,6 +322,7 @@ describe('AppAlert.vue', () => {
     it('should have location set to top', async () => {
       // Set isOpen to true to render the snackbar
       notifierStore.notify('Test', 'info')
+      await vi.advanceTimersByTimeAsync(300)
       await wrapper.vm.$nextTick()
       
       // Find the VSnackbar component and check its location prop
@@ -294,6 +334,7 @@ describe('AppAlert.vue', () => {
     it('should have timer enabled', async () => {
       // Set isOpen to true to render the snackbar
       notifierStore.notify('Test', 'info')
+      await vi.advanceTimersByTimeAsync(300)
       await wrapper.vm.$nextTick()
       
       // Find the VSnackbar component and check its timer prop

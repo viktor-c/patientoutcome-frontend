@@ -12,9 +12,10 @@ import {
   type Note,
   type UserNoPassword
 } from '@/api'
-import { consultationApi, userApi, kioskApi, codeApi } from '@/api'
+import { consultationApi, userApi, kioskApi, codeApi, formApi } from '@/api'
 import CreateEditConsultationDialog from '@/components/dialogs/CreateEditConsultationDialog.vue'
 import QRCodeDisplay from '@/components/QRCodeDisplay.vue'
+import { useUserStore } from '@/stores/userStore'
 
 const componentName = 'ConsultationOverview.vue'
 const { t } = useI18n()
@@ -22,6 +23,7 @@ const route = useRoute()
 const router = useRouter()
 const notifierStore = useNotifierStore()
 const { formatLocalizedCustomDate } = useDateFormat()
+const userStore = useUserStore()
 
 // Get consultationId from route params
 const consultationId = route.params.consultationId as string
@@ -42,6 +44,13 @@ type CodeItem = { _id?: string | null; id?: string | null; code: string; isCreat
 const availableCodes = ref<CodeItem[]>([])
 const selectedCode = ref<string | null>(null)
 const assigningCode = ref(false)
+
+// Archive form state
+const archiveFormDialog = ref(false)
+const archiveFormId = ref<string | null>(null)
+const archiveFormTitle = ref<string>('')
+const archiveFormReason = ref<string>('')
+const archivingForm = ref(false)
 
 // Helper function to safely format dates
 const safeFormatDate = (date: string | null | undefined, format: string = 'DD.MM.YYYY HH:mm'): string => {
@@ -568,7 +577,70 @@ const revokeCode = async () => {
   } finally {
     assigningCode.value = false
   }
-}// Get form scores
+}
+
+// Archive form functions
+const canArchiveForm = computed(() => {
+  // Check if user has doctor role or higher (doctor, study-nurse, admin, etc.)
+  return userStore.hasRole('doctor') || 
+         userStore.hasRole('study-nurse') || 
+         userStore.hasRole('admin') || 
+         userStore.hasRole('project-manager') || 
+         userStore.hasRole('developer')
+})
+
+const initiateArchiveForm = (formId: string | null | undefined, formTitle: string) => {
+  if (!formId) return
+  archiveFormId.value = formId
+  archiveFormTitle.value = formTitle
+  archiveFormReason.value = ''
+  archiveFormDialog.value = true
+}
+
+const archiveForm = async () => {
+  if (!archiveFormId.value || !archiveFormReason.value.trim()) {
+    notifierStore.notify(t('consultationOverview.archiveFormReasonRequired'), 'warning')
+    return
+  }
+
+  try {
+    archivingForm.value = true
+    await formApi.softDeleteForm({
+      formId: archiveFormId.value,
+      softDeleteFormRequest: {
+        deletionReason: archiveFormReason.value.trim()
+      }
+    })
+    notifierStore.notify(t('consultationOverview.formArchived'), 'success')
+    archiveFormDialog.value = false
+    
+    // Refresh consultation to show updated form list
+    const resp = await consultationApi.getConsultationById({ consultationId })
+    consultation.value = resp.responseObject || null
+  } catch (error: unknown) {
+    let errorMessage = 'An unexpected error occurred'
+    if (error instanceof ResponseError) {
+      try {
+        errorMessage = (await error.response.json()).message
+      } catch {
+        errorMessage = error.response.statusText || errorMessage
+      }
+    }
+    console.error(`${componentName}: Failed to archive form:`, errorMessage)
+    notifierStore.notify(t('consultationOverview.formArchiveError'), 'error')
+  } finally {
+    archivingForm.value = false
+  }
+}
+
+const cancelArchiveForm = () => {
+  archiveFormDialog.value = false
+  archiveFormId.value = null
+  archiveFormTitle.value = ''
+  archiveFormReason.value = ''
+}
+
+// Get form scores
 const getFormScore = (form: FindAllCodes200ResponseResponseObjectInnerConsultationIdPromsInner): string => {
   if (form.scoring?.total?.rawScore !== undefined && form.scoring?.total?.rawScore !== null) {
     return form.scoring.total.rawScore.toString()
@@ -771,6 +843,20 @@ const patientFlowUrl = computed(() => {
                          :disabled="!form.id">
                     {{ t('consultationOverview.reviewForm') }}
                   </v-btn>
+                  <v-spacer></v-spacer>
+                  <v-tooltip v-if="canArchiveForm" location="top">
+                    <template #activator="{ props }">
+                      <v-btn
+                             v-bind="props"
+                             color="warning"
+                             variant="text"
+                             icon="mdi-archive"
+                             @click="initiateArchiveForm(form.id, form.title || t('forms.consultation.untitledForm'))"
+                             :disabled="!form.id">
+                      </v-btn>
+                    </template>
+                    <span>{{ t('consultationOverview.archiveFormTooltip') }}</span>
+                  </v-tooltip>
                 </v-card-actions>
               </v-card>
             </v-col>
@@ -1197,6 +1283,47 @@ const patientFlowUrl = computed(() => {
           </v-btn>
           <v-btn color="error" variant="flat" @click="deleteConsultation">
             {{ t('consultationOverview.deleteConfirm') }}
+          </v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
+
+    <!-- Archive Form Confirmation Dialog -->
+    <v-dialog v-model="archiveFormDialog" max-width="600">
+      <v-card>
+        <v-card-title class="text-h5">
+          <v-icon color="warning" class="me-2">mdi-archive</v-icon>
+          {{ t('consultationOverview.archiveFormTitle') }}
+        </v-card-title>
+        <v-card-text>
+          <p class="mb-4">
+            {{ t('consultationOverview.archiveFormWarning', { formTitle: archiveFormTitle }) }}
+          </p>
+          <v-textarea
+                      v-model="archiveFormReason"
+                      :label="t('consultationOverview.archiveFormReasonLabel')"
+                      :placeholder="t('consultationOverview.archiveFormReasonPlaceholder')"
+                      :rules="[(v) => !!v || t('consultationOverview.archiveFormReasonRequired')]"
+                      rows="3"
+                      variant="outlined"
+                      :disabled="archivingForm"></v-textarea>
+        </v-card-text>
+        <v-card-actions>
+          <v-spacer></v-spacer>
+          <v-btn 
+                 color="grey" 
+                 variant="text" 
+                 @click="cancelArchiveForm"
+                 :disabled="archivingForm">
+            {{ t('common.cancel') }}
+          </v-btn>
+          <v-btn 
+                 color="warning" 
+                 variant="flat" 
+                 @click="archiveForm"
+                 :loading="archivingForm"
+                 :disabled="!archiveFormReason.trim()">
+            {{ t('consultationOverview.archiveFormConfirm') }}
           </v-btn>
         </v-card-actions>
       </v-card>

@@ -9,7 +9,7 @@ import {
   useJsonFormsControl,
   type RendererProps,
 } from '@jsonforms/vue'
-import { computed, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { useVuetifyControl } from '@jsonforms/vue-vuetify'
 import type { ScoringData, SubscaleScore } from '@/types'
 
@@ -47,23 +47,37 @@ const initializeLocalData = () => {
     // Handle ScoringData structure (has rawData field)
     if ('rawData' in data) {
       localRawData.value = { ...(data.rawData as Record<string, Record<string, number | null>>) }
+      console.debug('AOFAS: Initialized from rawData structure')
     }
-    // Handle direct nested structure (like { vorfußfragebogen: { pain: 10, ... } })
-    else if ('vorfußfragebogen' in data) {
-      localRawData.value = { ...(data as Record<string, Record<string, number | null>>) }
-    }
-    // Initialize empty structure if no recognizable data
+    // Handle direct nested structure - check if any property is an object (section data)
     else {
-      localRawData.value = {}
+      // Check if data has any object properties (sections like 'forefoot', 'vorfußfragebogen', etc.)
+      const hasNestedStructure = Object.values(data).some(val => val && typeof val === 'object' && !Array.isArray(val))
+      
+      if (hasNestedStructure) {
+        localRawData.value = { ...(data as Record<string, Record<string, number | null>>) }
+        console.debug('AOFAS: Initialized from nested structure:', localRawData.value)
+      } else {
+        // Initialize empty structure if no recognizable data
+        localRawData.value = {}
+        console.debug('AOFAS: No nested structure found, initializing empty')
+      }
     }
   } else {
     localRawData.value = {}
+    console.debug('AOFAS: No data provided, initializing empty')
   }
-  console.debug('AOFAS: Initialized local raw data:', localRawData.value)
+  console.debug('AOFAS: Final initialized local raw data:', localRawData.value)
 }
 
 // Initialize on component mount
 initializeLocalData()
+
+// Watch for data changes (e.g., when navigating to a form with existing data during review)
+watch(() => control.control.value.data, (newData) => {
+  console.debug('AOFAS: Control data changed, reinitializing:', newData)
+  initializeLocalData()
+}, { deep: true })
 
 import { createTranslate } from './translate'
 const translate = createTranslate()

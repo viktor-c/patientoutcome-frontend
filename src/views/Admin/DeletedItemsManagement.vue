@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import { ref, onMounted, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { ResponseError, type Patient, type PatientCase } from '@/api'
+import { ResponseError, type Patient, type PatientCase, type Form } from '@/api'
 import { useNotifierStore } from '@/stores/notifierStore'
-import { patientApi, caseApi } from '@/api'
+import { patientApi, caseApi, formApi } from '@/api'
 
 const { t } = useI18n()
 const notifierStore = useNotifierStore()
@@ -24,6 +24,13 @@ const casesPage = ref(1)
 const casesLimit = ref(10)
 const casesTotalPages = ref(0)
 const casesTotal = ref(0)
+
+// Deleted forms state
+const deletedForms = ref<Form[]>([])
+const formsPage = ref(1)
+const formsLimit = ref(10)
+const formsTotalPages = ref(0)
+const formsTotal = ref(0)
 
 // Fetch deleted patients
 const fetchDeletedPatients = async () => {
@@ -68,6 +75,29 @@ const fetchDeletedCases = async () => {
     }
     console.error('Error fetching deleted cases:', errorMessage)
     notifierStore.notify(t('alerts.case.fetchDeletedFailed'), 'error')
+  }
+}
+
+// Fetch deleted forms
+const fetchDeletedForms = async () => {
+  try {
+    const response = await formApi.getDeletedForms({
+      page: String(formsPage.value),
+      limit: String(formsLimit.value)
+    })
+
+    if (response.responseObject) {
+      deletedForms.value = (response.responseObject.forms || []) as any
+      formsTotal.value = response.responseObject.total || 0
+      formsTotalPages.value = response.responseObject.totalPages || 0
+    }
+  } catch (error: unknown) {
+    let errorMessage = 'An unexpected error occurred'
+    if (error instanceof ResponseError) {
+      errorMessage = (await error.response.json()).message
+    }
+    console.error('Error fetching deleted forms:', errorMessage)
+    notifierStore.notify(t('alerts.form.fetchDeletedFailed'), 'error')
   }
 }
 
@@ -139,6 +169,40 @@ const permanentDeleteCase = async (patientId: string, caseId: string) => {
   }
 }
 
+// Restore a single form
+const restoreForm = async (formId: string) => {
+  try {
+    await formApi.restoreForm({ formId })
+    notifierStore.notify(t('alerts.form.restored'), 'success')
+    fetchDeletedForms()
+  } catch (error: unknown) {
+    let errorMessage = 'An unexpected error occurred'
+    if (error instanceof ResponseError) {
+      errorMessage = (await error.response.json()).message
+    }
+    console.error('Error restoring form:', errorMessage)
+    notifierStore.notify(t('alerts.form.restoreFailed'), 'error')
+  }
+}
+
+// Permanently delete a form
+const permanentDeleteForm = async (formId: string) => {
+  if (!confirm(t('alerts.form.confirmPermanentDelete'))) return
+
+  try {
+    await formApi.deleteForm({ formId })
+    notifierStore.notify(t('alerts.form.permanentlyDeleted'), 'success')
+    fetchDeletedForms()
+  } catch (error: unknown) {
+    let errorMessage = 'An unexpected error occurred'
+    if (error instanceof ResponseError) {
+      errorMessage = (await error.response.json()).message
+    }
+    console.error('Error permanently deleting form:', errorMessage)
+    notifierStore.notify(t('alerts.form.deleteFailed'), 'error')
+  }
+}
+
 // Load data on mount and watch tab changes
 onMounted(() => {
   fetchDeletedPatients()
@@ -148,6 +212,8 @@ onMounted(() => {
 watch(activeTab, (newTab) => {
   if (newTab === 'deletedCases') {
     fetchDeletedCases()
+  } else if (newTab === 'deletedForms') {
+    fetchDeletedForms()
   }
 })
 
@@ -163,6 +229,7 @@ watch(activeTab, (newTab) => {
       <v-tabs v-model="activeTab" bg-color="primary">
         <v-tab value="deletedPatients">{{ t('admin.deletedItemsManagement.deletedPatients') }}</v-tab>
         <v-tab value="deletedCases" @click="fetchDeletedCases">{{ t('admin.deletedItemsManagement.deletedCases') }}</v-tab>
+        <v-tab value="deletedForms" @click="fetchDeletedForms">{{ t('admin.deletedItemsManagement.deletedForms') }}</v-tab>
       </v-tabs>
 
       <v-card-text>
@@ -292,6 +359,89 @@ watch(activeTab, (newTab) => {
                       start: (casesPage - 1) * casesLimit + 1,
                       end: Math.min(casesPage * casesLimit, casesTotal),
                       total: casesTotal
+                    }) }}
+                  </span>
+                </div>
+              </template>
+            </v-data-table>
+          </v-tabs-window-item>
+
+          <!-- Deleted Forms Tab -->
+          <v-tabs-window-item value="deletedForms">
+            <v-data-table
+              :headers="[
+                { title: t('forms.consultation.formTitle'), key: 'title', sortable: false },
+                { title: t('common.consultation'), key: 'consultationId', sortable: false },
+                { title: t('common.deletedBy'), key: 'deletedBy', sortable: false },
+                { title: t('common.deletionReason'), key: 'deletionReason', sortable: false },
+                { title: t('common.deletedAt'), key: 'deletedAt', sortable: false },
+                { title: t('common.actions'), key: 'actions', sortable: false, align: 'end' }
+              ]"
+              :items="deletedForms"
+              :items-length="formsTotal"
+              :items-per-page="formsLimit"
+              :page="formsPage"
+              hide-default-footer
+              class="elevation-1">
+              <template #item.title="{ item }">
+                {{ item.title || '-' }}
+              </template>
+
+              <template #item.consultationId="{ item }">
+                {{ typeof item.consultationId === 'string' ? item.consultationId : ((item.consultationId as any)?.id || (item.consultationId as any)?._id || '-') }}
+              </template>
+
+              <template #item.deletedBy="{ item }">
+                {{ typeof item.deletedBy === 'string' ? item.deletedBy : ((item.deletedBy as any)?.username || (item.deletedBy as any)?._id || '-') }}
+              </template>
+
+              <template #item.deletionReason="{ item }">
+                <v-tooltip location="top">
+                  <template #activator="{ props }">
+                    <span v-bind="props" class="text-truncate d-inline-block" style="max-width: 200px;">
+                      {{ item.deletionReason || '-' }}
+                    </span>
+                  </template>
+                  <span>{{ item.deletionReason || '-' }}</span>
+                </v-tooltip>
+              </template>
+
+              <template #item.deletedAt="{ item }">
+                {{ item.deletedAt ? new Date(item.deletedAt).toLocaleString() : '-' }}
+              </template>
+
+              <template #item.actions="{ item }">
+                <div class="d-flex justify-end ga-2">
+                  <v-btn 
+                    size="small" 
+                    color="success" 
+                    variant="text" 
+                    icon="mdi-restore"
+                    @click="restoreForm((item as any)._id || item.id)">
+                  </v-btn>
+                  <v-btn 
+                    size="small" 
+                    color="error" 
+                    variant="text" 
+                    icon="mdi-delete-forever"
+                    @click="permanentDeleteForm((item as any)._id || item.id)">
+                  </v-btn>
+                </div>
+              </template>
+
+              <template #bottom>
+                <div class="d-flex justify-center align-center pa-4">
+                  <v-pagination
+                    v-model="formsPage"
+                    :length="formsTotalPages"
+                    :total-visible="7"
+                    @update:modelValue="fetchDeletedForms">
+                  </v-pagination>
+                  <span class="ml-4 text-caption">
+                    {{ t('pagination.showing', {
+                      start: (formsPage - 1) * formsLimit + 1,
+                      end: Math.min(formsPage * formsLimit, formsTotal),
+                      total: formsTotal
                     }) }}
                   </span>
                 </div>

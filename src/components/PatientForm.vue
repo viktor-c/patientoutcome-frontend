@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref, onMounted } from 'vue'
+import { computed, ref, onMounted, watch } from 'vue'
 import { JsonForms, type JsonFormsChangeEvent } from '@jsonforms/vue'
 import { INIT, UPDATE_DATA, type JsonSchema, type UISchemaElement } from '@jsonforms/core'
 import { extendedVuetifyRenderers } from '@jsonforms/vue-vuetify'
@@ -77,6 +77,29 @@ const emit = defineEmits<{
 
 const formData = ref<FormData>(props.formData ? props.formData : {})
 
+console.debug(`${componentName}: Initial mount with formId=${props.formId}, formData=`, props.formData)
+
+// Watch for form ID changes to detect when we switch to a different form
+// This avoids infinite loops from deep watching formData itself
+watch(() => props.formId, (newFormId, oldFormId) => {
+  console.debug(`${componentName}: formId watcher triggered - old=${oldFormId}, new=${newFormId}`)
+  if (newFormId !== oldFormId) {
+    console.debug(`${componentName}: Form changed, reloading formData for form ${newFormId}`, props.formData)
+    formData.value = props.formData ? { ...props.formData } : {}
+  } else {
+    console.debug(`${componentName}: formId same, skipping reload`)
+  }
+}, { immediate: false })
+
+// Watch for array index changes (form navigation)
+watch(() => props.formArrayIdx, (newIdx, oldIdx) => {
+  console.debug(`${componentName}: formArrayIdx watcher triggered - old=${oldIdx}, new=${newIdx}, formId=${props.formId}`)
+  if (newIdx !== oldIdx) {
+    console.debug(`${componentName}: Form index changed, reloading formData`, props.formData)
+    formData.value = props.formData ? { ...props.formData } : {}
+  }
+}, { immediate: false })
+
 // Form timing
 const formStartTimeRef = ref<Date>()
 const formEndTime = ref<Date>()
@@ -88,12 +111,15 @@ const formScoring = ref<ScoringData>({} as ScoringData)
 
 // Computed property for form completion
 const isFormComplete = computed(() => {
-  // First check if scoring data has completion status
+  // First check if scoring data has completion status - trust the renderer
   if (formScoring.value?.total?.isComplete !== undefined) {
+    console.debug(`${componentName}: Using renderer-provided completion status:`, formScoring.value.total.isComplete)
     return formScoring.value.total.isComplete
   }
   // Fallback to question stats - form is complete if no unanswered questions
-  return questionStats.value.unanswered === 0 && questionStats.value.total > 0
+  const fallbackComplete = questionStats.value.unanswered === 0 && questionStats.value.total > 0
+  console.debug(`${componentName}: Using fallback completion logic:`, fallbackComplete)
+  return fallbackComplete
 })
 
 // Count answered and unanswered questions
@@ -199,7 +225,9 @@ import Ajv from 'ajv'
 const ajv = new Ajv({ allErrors: true, verbose: true, strict: false })
 
 const onChange = (event: JsonFormsChangeEvent) => {
-  console.debug(`${componentName}: Form data changed:`, event.data)
+  console.debug(`${componentName}: ========== onChange START ==========`)
+  console.debug(`${componentName}: Form ID: ${props.formId}, Array Index: ${props.formArrayIdx}`)
+  console.debug(`${componentName}: Event data:`, event.data)
 
   if (event.data.rawData) {
     console.debug(`${componentName}: Received ScoringData from renderer:`, event.data)
@@ -223,6 +251,7 @@ const onChange = (event: JsonFormsChangeEvent) => {
   }
   
   // Always emit the updated form data to the parent component
+  console.debug(`${componentName}: Emitting formDataChange`, formData.value)
   emit('formDataChange', formData.value)
   emit('scoringDataChange', formScoring.value)
   emit('formCompletionChange', isFormComplete.value)
@@ -231,6 +260,7 @@ const onChange = (event: JsonFormsChangeEvent) => {
   if (isFormComplete.value && !formEndTime.value) {
     formEndTime.value = new Date()
   }
+  console.debug(`${componentName}: ========== onChange END ==========`)
 }
 
 const errors = ref<Array<ErrorObject>>([])
@@ -329,8 +359,15 @@ const handleSubmit = async (afterSave?: () => void) => {
       notifierStore.notify(t('forms.completionTime', { seconds: completionTimeSeconds.value }), 'info')
     }
 
-    emit('submitForm')
-    if (afterSave) afterSave()
+    console.debug(`${componentName}: About to call afterSave callback`)
+    if (afterSave) {
+      console.debug(`${componentName}: Calling afterSave()`)
+      afterSave()
+      console.debug(`${componentName}: afterSave() completed`)
+    } else {
+      console.debug(`${componentName}: No afterSave callback provided`)
+      emit('submitForm')
+    }
     // Reset session start time for next navigation
     sessionStartTime = new Date()
   } catch (error: unknown) {

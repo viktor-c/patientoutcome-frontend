@@ -26,12 +26,12 @@ const localRawData = ref<Record<string, number | string | null>>({})
  */
 const mapBackendToFrontend = (key: string, value: number | null): number | null => {
   if (value === null || value === undefined) return null
-  
+
   // Reverse scales for Q2, Q3, Q4 (0-10 scale)
   if (key === 'q2' || key === 'q3' || key === 'q4' || key === 'q5') {
     return 10 - value
   }
-  
+
   // All other questions: no transformation
   return value
 }
@@ -42,12 +42,12 @@ const mapBackendToFrontend = (key: string, value: number | null): number | null 
  */
 const mapFrontendToBackend = (key: string, value: number | null): number | null => {
   if (value === null || value === undefined) return null
-  
+
   // Reverse scales for Q2, Q3, Q4 (0-10 scale)
   if (key === 'q2' || key === 'q3' || key === 'q4' || key === 'q5') {
     return 10 - value
   }
-  
+
   // All other questions: no transformation
   return value
 }
@@ -58,7 +58,7 @@ const initializeLocalData = () => {
   console.debug('VISA-A: Initializing with data:', data)
 
   let backendData: Record<string, unknown> = {}
-  
+
   if (data && typeof data === 'object') {
     // Handle ScoringData structure (has rawData field)
     if ('rawData' in data && data.rawData && typeof data.rawData === 'object') {
@@ -78,7 +78,7 @@ const initializeLocalData = () => {
       backendData = data as Record<string, unknown>
     }
   }
-  
+
   // Map backend values to frontend display values (applying scale reversals)
   const frontendData: Record<string, number | string | null> = {}
   for (const [key, value] of Object.entries(backendData)) {
@@ -88,7 +88,7 @@ const initializeLocalData = () => {
       frontendData[key] = value as string | null
     }
   }
-  
+
   localRawData.value = frontendData
   console.debug('VISA-A: Initialized local raw data (frontend values):', localRawData.value)
 }
@@ -103,7 +103,7 @@ watch(() => localRawData.value.q8_type, (newType, oldType) => {
     if (newType !== 'no_pain') localRawData.value.q8a = null
     if (newType !== 'pain_no_stop') localRawData.value.q8b = null
     if (newType !== 'pain_stop') localRawData.value.q8c = null
-    
+
     // Update the control
     const updatedData = {
       visaa: { ...localRawData.value }
@@ -135,15 +135,15 @@ const questionsData = computed(() => {
   // Extract question properties from the schema
   Object.keys(properties).forEach((questionKey) => {
     const prop = properties[questionKey] as Record<string, unknown>
-    
+
     // Skip q8a, q8b, q8c - they will be handled separately as conditional questions
     if (questionKey === 'q8a' || questionKey === 'q8b' || questionKey === 'q8c') {
       return
     }
-    
+
     // q7 should be rendered as radio buttons
     const renderType = questionKey === 'q7' ? 'radio' : 'slider'
-    
+
     questions.push({
       key: questionKey,
       fullPath: `visaa.${questionKey}`,
@@ -162,13 +162,13 @@ const questionsData = computed(() => {
 // Get the conditional question based on q8_type
 const conditionalQ8 = computed(() => {
   const q8Type = localRawData.value.q8_type as string | null
-  
+
   if (q8Type === 'no_pain') {
     return {
       key: 'q8a',
       title: translate('visaa.q8a'),
       minimum: 0,
-      maximum: 40,
+      maximum: 30,
       isTimeBasedQ8: true,
     }
   } else if (q8Type === 'pain_no_stop') {
@@ -176,7 +176,7 @@ const conditionalQ8 = computed(() => {
       key: 'q8b',
       title: translate('visaa.q8b'),
       minimum: 0,
-      maximum: 40,
+      maximum: 30,
       isTimeBasedQ8: true,
     }
   } else if (q8Type === 'pain_stop') {
@@ -184,11 +184,11 @@ const conditionalQ8 = computed(() => {
       key: 'q8c',
       title: translate('visaa.q8c'),
       minimum: 0,
-      maximum: 40,
+      maximum: 30,
       isTimeBasedQ8: true,
     }
   }
-  
+
   return null
 })
 
@@ -207,14 +207,50 @@ const q7Options = computed(() => [
   { value: 10, title: translate('visaa.q7_option_10') },
 ])
 
-// Handle value changes
-const handleSliderChange = (questionKey: string, value: number | null) => {
-  console.debug(`VISA-A: Slider changed for ${questionKey}:`, value, '(frontend value)')
-  
-  // Update local data with frontend value
-  localRawData.value[questionKey] = value
+// Calculate completion status for VISA-A
+const calculateCompletion = (): { isComplete: boolean; answeredQuestions: number; totalQuestions: number } => {
+  const requiredQuestions = ['q1', 'q2', 'q3', 'q4', 'q5', 'q6', 'q7', 'q8_type']
+  let answered = 0
+  let total = requiredQuestions.length
 
-  // Convert frontend values to backend values for saving
+  // Check all regular questions
+  for (const key of requiredQuestions) {
+    const value = localRawData.value[key]
+    if (value !== null && value !== undefined && value !== '') {
+      answered++
+    }
+  }
+
+  // Special handling for Q8: if q8_type is answered, check the corresponding variant
+  const q8Type = localRawData.value.q8_type
+  if (q8Type) {
+    // One of the q8 variants should be answered based on type
+    let q8VariantAnswered = false
+    if (q8Type === 'no_pain' && localRawData.value.q8a !== null && localRawData.value.q8a !== undefined) {
+      q8VariantAnswered = true
+    } else if (q8Type === 'pain_no_stop' && localRawData.value.q8b !== null && localRawData.value.q8b !== undefined) {
+      q8VariantAnswered = true
+    } else if (q8Type === 'pain_stop' && localRawData.value.q8c !== null && localRawData.value.q8c !== undefined) {
+      q8VariantAnswered = true
+    }
+
+    if (q8VariantAnswered) {
+      answered++
+    }
+    total++ // Add the q8 variant to total
+  }
+
+  const isComplete = answered === total
+  console.debug('VISA-A: Completion calculation:', { answered, total, isComplete, localRawData: localRawData.value })
+
+  return { isComplete, answeredQuestions: answered, totalQuestions: total }
+}
+
+// Calculate VISA-A score and build ScoringData
+const calculateScore = (): ScoringData => {
+  const completion = calculateCompletion()
+
+  // Convert frontend values to backend for storage
   const backendData: Record<string, number | string | null> = {}
   for (const [key, val] of Object.entries(localRawData.value)) {
     if (typeof val === 'number') {
@@ -224,48 +260,69 @@ const handleSliderChange = (questionKey: string, value: number | null) => {
     }
   }
 
-  // Build the complete nested data structure with backend values
-  const updatedData = {
-    visaa: { ...backendData }
+  // Calculate raw score (sum of all numeric answered questions, using backend values)
+  let rawScore = 0
+  for (const [key, value] of Object.entries(backendData)) {
+    if (typeof value === 'number' && !key.endsWith('_type')) {
+      rawScore += value
+    }
   }
 
-  console.debug('VISA-A: Updating control with backend data:', updatedData)
-  
-  // Update the JsonForms control
-  control.onChange(updatedData)
+  // VISA-A max score is 100
+  const maxScore = 100
+  const normalizedScore = maxScore > 0 ? (rawScore / maxScore) * 100 : 0
+
+  return {
+    rawData: { visaa: backendData },
+    subscales: {},
+    total: {
+      name: 'VISA-A Score',
+      isComplete: completion.isComplete,
+      completionPercentage: completion.totalQuestions > 0 
+        ? Math.round((completion.answeredQuestions / completion.totalQuestions) * 100) 
+        : 0,
+      answeredQuestions: completion.answeredQuestions,
+      totalQuestions: completion.totalQuestions,
+      rawScore,
+      normalizedScore: Math.round(normalizedScore),
+      maxPossibleScore: maxScore
+    }
+  }
+}
+
+// Handle value changes
+const handleSliderChange = (questionKey: string, value: number | null) => {
+  console.debug(`VISA-A: Slider changed for ${questionKey}:`, value, '(frontend value)')
+
+  // Update local data with frontend value
+  localRawData.value[questionKey] = value
+
+  // Calculate scoring with completion status
+  const scoringData = calculateScore()
+  console.debug('VISA-A: Calculated scoring data:', scoringData)
+
+  // Update the JsonForms control with ScoringData
+  control.onChange(scoringData)
 }
 
 // Handle q8_type selection change
 const handleQ8TypeChange = (value: string | null) => {
   console.debug('VISA-A: Q8 type changed to:', value)
-  
+
   // Update local data
   localRawData.value.q8_type = value
-  
+
   // Clear all q8 variant values
   localRawData.value.q8a = null
   localRawData.value.q8b = null
   localRawData.value.q8c = null
 
-  // Convert frontend values to backend values for saving
-  const backendData: Record<string, number | string | null> = {}
-  for (const [key, val] of Object.entries(localRawData.value)) {
-    if (typeof val === 'number') {
-      backendData[key] = mapFrontendToBackend(key, val)
-    } else {
-      backendData[key] = val
-    }
-  }
+  // Calculate scoring with completion status
+  const scoringData = calculateScore()
+  console.debug('VISA-A: Calculated scoring data:', scoringData)
 
-  // Build the complete nested data structure with backend values
-  const updatedData = {
-    visaa: { ...backendData }
-  }
-
-  console.debug('VISA-A: Updating control with backend data:', updatedData)
-  
-  // Update the JsonForms control
-  control.onChange(updatedData)
+  // Update the JsonForms control with ScoringData
+  control.onChange(scoringData)
 }
 
 // Computed scores (if available from control data)
@@ -294,17 +351,16 @@ const getQuestionValue = (questionKey: string): number | string | null => {
 // Helper to generate tick labels for sliders
 const getTickLabels = (questionKey: string, min: number, max: number, isTimeBasedQ8 = false): Record<number, string> => {
   const labels: Record<number, string> = {}
-  
+
   // For time-based Q8 questions (0-40 minutes)
-  if (isTimeBasedQ8 && max === 40) {
+  if (isTimeBasedQ8 && max === 30) {
     labels[0] = '0'
     labels[10] = '10'
     labels[20] = '20'
-    labels[30] = '30'
-    labels[40] = '30+'
+    labels[30] = '30+'
     return labels
   }
-  
+
   // Q1: Show time labels from 100+ minutes to 0 minutes
   if (questionKey === 'q1') {
     labels[0] = '100+'
@@ -315,13 +371,13 @@ const getTickLabels = (questionKey: string, min: number, max: number, isTimeBase
     labels[10] = '0'
     return labels
   }
-  
+
   // Q2, Q3, Q4: Only show labels at start and end (pain descriptions)
   if (questionKey === 'q2' || questionKey === 'q3' || questionKey === 'q4') {
     // Labels will be shown via prepend/append slots only
     return {}
   }
-  
+
   // Q5: Show all values from 0 to 30 (every 5)
   if (questionKey === 'q5') {
     for (let i = min; i <= max; i += 5) {
@@ -332,7 +388,7 @@ const getTickLabels = (questionKey: string, min: number, max: number, isTimeBase
     }
     return labels
   }
-  
+
   // Q6: Show all values from 0 to 10
   if (questionKey === 'q6') {
     for (let i = min; i <= max; i++) {
@@ -340,14 +396,14 @@ const getTickLabels = (questionKey: string, min: number, max: number, isTimeBase
     }
     return labels
   }
-  
+
   // Default: show all values for 0-10 scale
   if (max === 10) {
     for (let i = min; i <= max; i++) {
       labels[i] = i.toString()
     }
   }
-  
+
   return labels
 }
 
@@ -361,7 +417,7 @@ const getSliderLabel = (questionKey: string, position: 'prepend' | 'append'): st
       return translate('visaa.pain_severe') || 'Severe pain'
     }
   }
-  
+
   // Q5: Function descriptions
   if (questionKey === 'q5') {
     if (position === 'prepend') {
@@ -370,7 +426,7 @@ const getSliderLabel = (questionKey: string, position: 'prepend' | 'append'): st
       return translate('visaa.unable') || 'Sever pain / unable'
     }
   }
-  
+
   // Default: show min/max values
   return ''
 }
@@ -393,11 +449,10 @@ const getSliderLabel = (questionKey: string, position: 'prepend' | 'append'): st
 
       <v-card-text class="pa-6">
         <!-- Render each question as a slider or radio -->
-        <div 
-          v-for="question in questionsData" 
-          :key="question.key"
-          class="question-item mb-8"
-        >
+        <div
+             v-for="question in questionsData"
+             :key="question.key"
+             class="question-item mb-8">
           <div class="question-label mb-2">
             <strong>{{ question.title }}</strong>
           </div>
@@ -405,84 +460,76 @@ const getSliderLabel = (questionKey: string, position: 'prepend' | 'append'): st
           <!-- Render dropdown for q8_type -->
           <template v-if="question.key === 'q8_type'">
             <v-select
-              :model-value="getQuestionValue(question.key) as string"
-              @update:model-value="(value) => handleQ8TypeChange(value as string)"
-              :items="q8TypeOptions"
-              item-title="title"
-              item-value="value"
-              variant="outlined"
-              color="primary"
-              class="mt-2"
-              clearable
-            ></v-select>
+                      :model-value="getQuestionValue(question.key) as string"
+                      @update:model-value="(value) => handleQ8TypeChange(value as string)"
+                      :items="q8TypeOptions"
+                      item-title="title"
+                      item-value="value"
+                      variant="outlined"
+                      color="primary"
+                      class="mt-2"
+                      clearable></v-select>
           </template>
 
           <!-- Render radio buttons for q7 -->
           <template v-else-if="question.renderType === 'radio'">
             <v-radio-group
-              :model-value="getQuestionValue(question.key) as number"
-              @update:model-value="(value) => handleSliderChange(question.key, value as number)"
-              class="mt-2"
-            >
+                           :model-value="getQuestionValue(question.key) as number"
+                           @update:model-value="(value) => handleSliderChange(question.key, value as number)"
+                           class="mt-2">
               <v-radio
-                v-for="option in q7Options"
-                :key="option.value"
-                :label="option.title"
-                :value="option.value"
-                color="primary"
-              ></v-radio>
+                       v-for="option in q7Options"
+                       :key="option.value"
+                       :label="option.title"
+                       :value="option.value"
+                       color="primary"></v-radio>
             </v-radio-group>
           </template>
 
           <!-- Render slider for numeric questions -->
           <template v-else-if="question.minimum !== undefined && question.maximum !== undefined">
             <v-slider
-              :model-value="getQuestionValue(question.key) as number ?? undefined"
-              @update:model-value="(value) => handleSliderChange(question.key, value as number)"
-              :min="question.minimum"
-              :max="question.maximum"
-              :step="(question.maximum - question.minimum) / 10"
-              :tick-labels="getTickLabels(question.key, question.minimum, question.maximum)"
-              :show-ticks="Object.keys(getTickLabels(question.key, question.minimum, question.maximum)).length > 0 ? 'always' : false"
-              thumb-label="always"
-              color="primary"
-              track-color="grey-lighten-2"
-              class="visaa-slider"
-              :class="`visaa-slider-${question.maximum >= 30 ? 'large' : 'normal'}`"
-            >
+                      :model-value="getQuestionValue(question.key) as number ?? undefined"
+                      @update:model-value="(value) => handleSliderChange(question.key, value as number)"
+                      :min="question.minimum"
+                      :max="question.maximum"
+                      :step="(question.maximum - question.minimum) / 10"
+                      :tick-labels="getTickLabels(question.key, question.minimum, question.maximum)"
+                      :show-ticks="Object.keys(getTickLabels(question.key, question.minimum, question.maximum)).length > 0 ? 'always' : false"
+                      thumb-label="always"
+                      color="primary"
+                      track-color="grey-lighten-2"
+                      class="visaa-slider"
+                      :class="`visaa-slider-${question.maximum >= 30 ? 'large' : 'normal'}`">
               <template v-slot:prepend>
-                <v-chip 
-                  v-if="getSliderLabel(question.key, 'prepend')"
-                  size="small" 
-                  variant="outlined"
-                  class="mr-2"
-                >
+                <v-chip
+                        v-if="getSliderLabel(question.key, 'prepend')"
+                        size="small"
+                        variant="outlined"
+                        class="mr-2">
                   {{ getSliderLabel(question.key, 'prepend') }}
                 </v-chip>
-                <v-chip 
-                  v-else
-                  size="small" 
-                  variant="outlined"
-                  class="mr-2"
-                >
+                <v-chip
+                        v-else
+                        size="small"
+                        variant="outlined"
+                        class="mr-2">
                   {{ question.minimum }}
                 </v-chip>
               </template>
               <template v-slot:append>
-                <v-chip 
-                  v-if="getSliderLabel(question.key, 'append')"
-                  size="small" 
-                  variant="outlined"
-                  class="ml-2"
-                >
+                <v-chip
+                        v-if="getSliderLabel(question.key, 'append')"
+                        size="small"
+                        variant="outlined"
+                        class="ml-2">
                   {{ getSliderLabel(question.key, 'append') }}
                 </v-chip>
-                <v-chip 
-                  v-else
-                  size="small" 
-                  variant="outlined"
-                  class="ml-2"
-                >
+                <v-chip
+                        v-else
+                        size="small"
+                        variant="outlined"
+                        class="ml-2">
                   {{ question.maximum }}
                 </v-chip>
               </template>
@@ -499,33 +546,30 @@ const getSliderLabel = (questionKey: string, position: 'prepend' | 'append'): st
           </div>
 
           <v-slider
-            :model-value="getQuestionValue(conditionalQ8.key) as number ?? undefined"
-            @update:model-value="(value) => conditionalQ8 && handleSliderChange(conditionalQ8.key, value as number)"
-            :min="conditionalQ8.minimum"
-            :max="conditionalQ8.maximum"
-            :step="1"
-            :tick-labels="getTickLabels(conditionalQ8.key, conditionalQ8.minimum, conditionalQ8.maximum, conditionalQ8.isTimeBasedQ8)"
-            show-ticks="always"
-            thumb-label="always"
-            color="primary"
-            track-color="grey-lighten-2"
-            class="visaa-slider visaa-slider-large"
-          >
+                    :model-value="getQuestionValue(conditionalQ8.key) as number ?? undefined"
+                    @update:model-value="(value) => conditionalQ8 && handleSliderChange(conditionalQ8.key, value as number)"
+                    :min="conditionalQ8.minimum"
+                    :max="conditionalQ8.maximum"
+                    :step="1"
+                    :tick-labels="getTickLabels(conditionalQ8.key, conditionalQ8.minimum, conditionalQ8.maximum, conditionalQ8.isTimeBasedQ8)"
+                    show-ticks="always"
+                    thumb-label="always"
+                    color="primary"
+                    track-color="grey-lighten-2"
+                    class="visaa-slider visaa-slider-large">
             <template v-slot:prepend>
-              <v-chip 
-                size="small" 
-                variant="outlined"
-                class="mr-2"
-              >
+              <v-chip
+                      size="small"
+                      variant="outlined"
+                      class="mr-2">
                 0 min
               </v-chip>
             </template>
             <template v-slot:append>
-              <v-chip 
-                size="small" 
-                variant="outlined"
-                class="ml-2"
-              >
+              <v-chip
+                      size="small"
+                      variant="outlined"
+                      class="ml-2">
                 30+ min
               </v-chip>
             </template>
@@ -535,11 +579,10 @@ const getSliderLabel = (questionKey: string, position: 'prepend' | 'append'): st
     </v-card>
 
     <!-- Scoring Summary (if available) -->
-    <v-card 
-      v-if="scoreData" 
-      variant="outlined" 
-      class="visaa-score-card mb-4"
-    >
+    <v-card
+            v-if="scoreData"
+            variant="outlined"
+            class="visaa-score-card mb-4">
       <v-card-title class="text-h5 bg-secondary pa-4">
         Scores
       </v-card-title>
@@ -547,22 +590,20 @@ const getSliderLabel = (questionKey: string, position: 'prepend' | 'append'): st
       <v-card-text class="pa-6">
         <!-- Subscales -->
         <v-row class="mb-4">
-          <v-col 
-            v-for="(subscaleScore, subscaleKey) in scoreData.subscales" 
-            :key="subscaleKey"
-            cols="12" 
-            md="6"
-          >
+          <v-col
+                 v-for="(subscaleScore, subscaleKey) in scoreData.subscales"
+                 :key="subscaleKey"
+                 cols="12"
+                 md="6">
             <v-card variant="tonal" class="pa-3">
               <div class="text-subtitle-2 mb-1">{{ subscaleScore?.name || subscaleKey }}</div>
               <div class="text-h6">{{ formatScore(subscaleScore) }}</div>
               <v-progress-linear
-                :model-value="subscaleScore?.normalizedScore || 0"
-                height="8"
-                rounded
-                color="primary"
-                class="mt-2"
-              ></v-progress-linear>
+                                 :model-value="subscaleScore?.normalizedScore || 0"
+                                 height="8"
+                                 rounded
+                                 color="primary"
+                                 class="mt-2"></v-progress-linear>
             </v-card>
           </v-col>
         </v-row>
@@ -574,13 +615,12 @@ const getSliderLabel = (questionKey: string, position: 'prepend' | 'append'): st
           <div class="text-h4 font-weight-bold">{{ formatScore(scoreData.total) }}</div>
           <div class="text-caption mt-2">{{ scoreData.total?.description }}</div>
           <v-progress-linear
-            :model-value="scoreData.total?.rawScore || 0"
-            :max="scoreData.total?.maxPossibleScore || 100"
-            height="12"
-            rounded
-            color="white"
-            class="mt-3"
-          ></v-progress-linear>
+                             :model-value="scoreData.total?.rawScore || 0"
+                             :max="scoreData.total?.maxPossibleScore || 100"
+                             height="12"
+                             rounded
+                             color="white"
+                             class="mt-3"></v-progress-linear>
         </v-card>
       </v-card-text>
     </v-card>
