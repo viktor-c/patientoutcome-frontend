@@ -14,6 +14,7 @@ import {
 } from '@/api'
 import { consultationApi, userApi, kioskApi, codeApi } from '@/api'
 import CreateEditConsultationDialog from '@/components/dialogs/CreateEditConsultationDialog.vue'
+import QRCodeDisplay from '@/components/QRCodeDisplay.vue'
 
 const componentName = 'ConsultationOverview.vue'
 const { t } = useI18n()
@@ -585,6 +586,14 @@ const getFormStatusColor = (status: string | undefined): string => {
     default: return 'grey'
   }
 }
+
+// Compute the patient flow URL for QR code
+const patientFlowUrl = computed(() => {
+  const code = assignedCode.value
+  if (!code) return ''
+  const baseUrl = window.location.origin
+  return `${baseUrl}/flow/${code}`
+})
 </script>
 
 <template>
@@ -986,14 +995,17 @@ const getFormStatusColor = (status: string | undefined): string => {
                   </div>
                 </v-list-item-subtitle>
                 <template #append>
-                  <v-btn
-                         color="error"
-                         variant="tonal"
-                         icon="mdi-delete"
-                         size="small"
-                         @click="revokeCode"
-                         :disabled="assigningCode"
-                         :loading="assigningCode"></v-btn>
+                  <div class="d-flex gap-2 align-center">
+                    <QRCodeDisplay v-if="patientFlowUrl" :url="patientFlowUrl" />
+                    <v-btn
+                           color="error"
+                           variant="tonal"
+                           icon="mdi-delete"
+                           size="small"
+                           @click="revokeCode"
+                           :disabled="assigningCode"
+                           :loading="assigningCode"></v-btn>
+                  </div>
                 </template>
               </v-list-item>
             </v-list>

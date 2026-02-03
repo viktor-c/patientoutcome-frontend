@@ -255,6 +255,17 @@ export default {
     createConsultations: 'Create {count} Consultations',
     skipConsultations: 'Skip Consultations',
     confirmBlueprints: 'Confirm Selected Blueprints',
+    close: 'Close',
+  },
+  qrCode: {
+    showQRCode: 'Show QR Code',
+    title: 'QR Code for Patient Forms',
+    instruction: 'Scan this QR code or share the link:',
+    scanInfo: 'Patient can scan this code',
+    altText: 'QR code for patient forms',
+    errorGenerating: 'Error generating QR code',
+    urlCopied: 'URL copied to clipboard',
+    urlCopyFailed: 'Failed to copy URL',
   },
   alerts: {
     patient: {

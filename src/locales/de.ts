@@ -505,6 +505,17 @@ export default {
     createConsultations: '{count} Konsultationen erstellen',
     skipConsultations: 'Konsultationen überspringen',
     confirmBlueprints: 'Ausgewählte Vorlagen bestätigen',
+    close: 'Schließen',
+  },
+  qrCode: {
+    showQRCode: 'QR-Code anzeigen',
+    title: 'QR-Code für Patientenformulare',
+    instruction: 'Scannen Sie diesen QR-Code oder teilen Sie den Link:',
+    scanInfo: 'Patient kann diesen Code scannen',
+    altText: 'QR-Code für Patientenformulare',
+    errorGenerating: 'Fehler beim Generieren des QR-Codes',
+    urlCopied: 'URL in die Zwischenablage kopiert',
+    urlCopyFailed: 'Fehler beim Kopieren der URL',
   },
   alerts: {
     patient: {
