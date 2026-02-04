@@ -415,6 +415,7 @@ loadDefaultBlueprints()
     </v-card>
 
     <v-form @submit.prevent="submit">
+      <!-- Full width fields -->
       <v-text-field
                     v-model="formCase.externalId"
                     :label="t('forms.externalPatientCaseId')"></v-text-field>
@@ -424,76 +425,95 @@ loadDefaultBlueprints()
                   :label="t('forms.patientCase.caseDescription')"
                   rows="3"></v-textarea>
 
-      <v-combobox
-                  :label="t('forms.patientCase.mainDiagnosis')"
-                  v-model="formCase.mainDiagnosis"
-                  :items="formCase.mainDiagnosis"
-                  multiple
-                  outlined
-                  dense
-                  chips
-                  clearable
-                  closable-chips
-                  :hint="t('forms.hints.required')"
-                  persistent-hint
-                  :error="hasErrorIfNeeded('mainDiagnosis')"
-                  :error-messages="[getErrorIfNeeded('mainDiagnosis')]"
-                  @blur="touchField('mainDiagnosis')"></v-combobox>
+      <!-- Grouped diagnosis fields with responsive layout -->
+      <!-- Main Diagnosis Row -->
+      <v-row>
+        <v-col cols="12" md="6" lg="8">
+          <v-combobox
+                      :label="t('forms.patientCase.mainDiagnosis')"
+                      v-model="formCase.mainDiagnosis"
+                      :items="formCase.mainDiagnosis"
+                      multiple
+                      outlined
+                      dense
+                      chips
+                      clearable
+                      closable-chips
+                      :hint="t('forms.hints.required')"
+                      persistent-hint
+                      :error="hasErrorIfNeeded('mainDiagnosis')"
+                      :error-messages="[getErrorIfNeeded('mainDiagnosis')]"
+                      @blur="touchField('mainDiagnosis')"></v-combobox>
+        </v-col>
+        <v-col cols="12" md="6" lg="4">
+          <v-combobox
+                      :label="t('forms.patientCase.mainDiagnosisICD10')"
+                      v-model="formCase.mainDiagnosisICD10"
+                      :items="formCase.mainDiagnosisICD10"
+                      multiple
+                      outlined
+                      dense
+                      chips
+                      clearable
+                      closable-chips></v-combobox>
+        </v-col>
+      </v-row>
 
-      <v-combobox
-                  :label="t('forms.patientCase.mainDiagnosisICD10')"
-                  v-model="formCase.mainDiagnosisICD10"
-                  :items="formCase.mainDiagnosisICD10"
-                  multiple
-                  outlined
-                  dense
-                  chips
-                  clearable
-                  closable-chips></v-combobox>
+      <!-- Study Diagnosis Row -->
+      <v-row>
+        <v-col cols="12" md="6" lg="8">
+          <v-combobox
+                      :label="t('forms.patientCase.studyDiagnosis')"
+                      v-model="formCase.studyDiagnosis"
+                      :items="formCase.studyDiagnosis"
+                      multiple
+                      outlined
+                      dense
+                      chips
+                      clearable
+                      closable-chips></v-combobox>
+        </v-col>
+        <v-col cols="12" md="6" lg="4">
+          <v-combobox
+                      :label="t('forms.patientCase.studyDiagnosisICD10')"
+                      v-model="formCase.studyDiagnosisICD10"
+                      :items="formCase.studyDiagnosisICD10"
+                      multiple
+                      outlined
+                      dense
+                      chips
+                      clearable
+                      closable-chips></v-combobox>
+        </v-col>
+      </v-row>
 
-      <v-combobox
-                  :label="t('forms.patientCase.studyDiagnosis')"
-                  v-model="formCase.studyDiagnosis"
-                  :items="formCase.studyDiagnosis"
-                  multiple
-                  outlined
-                  dense
-                  chips
-                  clearable
-                  closable-chips></v-combobox>
-
-      <v-combobox
-                  :label="t('forms.patientCase.studyDiagnosisICD10')"
-                  v-model="formCase.studyDiagnosisICD10"
-                  :items="formCase.studyDiagnosisICD10"
-                  multiple
-                  outlined
-                  dense
-                  chips
-                  clearable
-                  closable-chips></v-combobox>
-
-      <v-combobox
-                  :label="t('forms.patientCase.otherDiagnosis')"
-                  v-model="formCase.otherDiagnosis"
-                  :items="formCase.otherDiagnosis"
-                  multiple
-                  outlined
-                  dense
-                  chips
-                  clearable
-                  closable-chips></v-combobox>
-
-      <v-combobox
-                  :label="t('forms.patientCase.otherDiagnosisICD10')"
-                  v-model="formCase.otherDiagnosisICD10"
-                  :items="formCase.otherDiagnosisICD10"
-                  multiple
-                  outlined
-                  dense
-                  chips
-                  clearable
-                  closable-chips></v-combobox>
+      <!-- Other Diagnosis Row -->
+      <v-row>
+        <v-col cols="12" md="6" lg="8">
+          <v-combobox
+                      :label="t('forms.patientCase.otherDiagnosis')"
+                      v-model="formCase.otherDiagnosis"
+                      :items="formCase.otherDiagnosis"
+                      multiple
+                      outlined
+                      dense
+                      chips
+                      clearable
+                      closable-chips></v-combobox>
+        </v-col>
+        <v-col cols="12" md="6" lg="4">
+          <v-combobox
+                      :label="t('forms.patientCase.otherDiagnosisICD10')"
+                      v-model="formCase.otherDiagnosisICD10"
+                      :items="formCase.otherDiagnosisICD10"
+                      multiple
+                      outlined
+                      dense
+                      chips
+                      clearable
+                      closable-chips></v-combobox>
+        </v-col>
+      </v-row>
 
       <div v-if="props.showButtons !== false" class="d-flex gap-2 mt-4">
         <v-btn color="primary" type="submit" variant="elevated">
