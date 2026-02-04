@@ -581,12 +581,8 @@ const revokeCode = async () => {
 
 // Archive form functions
 const canArchiveForm = computed(() => {
-  // Check if user has doctor role or higher (doctor, study-nurse, admin, etc.)
-  return userStore.hasRole('doctor') || 
-         userStore.hasRole('study-nurse') || 
-         userStore.hasRole('admin') || 
-         userStore.hasRole('project-manager') || 
-         userStore.hasRole('developer')
+  // Check if user has permission to archive forms (based on backend settings)
+  return userStore.hasPermission('form:archive')
 })
 
 const initiateArchiveForm = (formId: string | null | undefined, formTitle: string) => {
@@ -799,7 +795,7 @@ const patientFlowUrl = computed(() => {
       </v-card>
 
       <!-- Current Consultation Forms -->
-      <v-card class="mb-6" v-if="consultation.proms?.length">
+      <v-card class="mb-6" v-if="consultation.proms?.filter(form => !form.deletedAt).length">
         <v-card-title>
           <v-icon class="me-2">mdi-form-select</v-icon>
           {{ t('consultationOverview.currentConsultationForms') }}
@@ -807,7 +803,7 @@ const patientFlowUrl = computed(() => {
         <v-card-text>
           <v-row>
             <v-col
-                   v-for="(form, index) in consultation.proms"
+                   v-for="(form, index) in consultation.proms.filter(form => !form.deletedAt)"
                    :key="form.id || `form-${index}`"
                    cols="12"
                    md="6"

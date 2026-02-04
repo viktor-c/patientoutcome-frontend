@@ -21,6 +21,7 @@ import PatientCaseCreateEditForm from '@/components/forms/PatientCaseCreateEditF
 import CreateEditSurgeryDialog from '@/components/dialogs/CreateEditSurgeryDialog.vue'
 //step 4: create consultations (from surgery blueprint or manual selection)
 import ConsultationBlueprintSelectionDialog from '@/components/dialogs/ConsultationBlueprintSelectionDialog.vue'
+import QRCodeDisplay from '@/components/QRCodeDisplay.vue'
 import { logger } from '@/services/logger'
 
 const { t } = useI18n()
@@ -165,7 +166,7 @@ watch(currentStep, (newStep, oldStep) => {
     }
   }
 })// Use centralized API instance
-import { patientApi } from '@/api'
+import { patientApi, consultationApi } from '@/api'
 
 // Sex options for patient
 const sexOptions = [
@@ -239,7 +240,24 @@ const nextStep = async () => {
       }
       // The consultation form will emit 'consultation-flow-advance' to move to 4b
     } else {
-      // From 4b, advance to step 5 (completion)
+      // From 4b, we need to fetch all consultations and advance to step 5
+      // Fetch consultations for the case to populate the QR code and links
+      if (createdCase.value?.id) {
+        try {
+          logger.info('🔄 Fetching all consultations for case before completing flow:', createdCase.value.id)
+          const response = await consultationApi.getAllConsultations({ caseId: createdCase.value.id })
+          if (response.responseObject && Array.isArray(response.responseObject)) {
+            createdConsultations.value = response.responseObject as Consultation[]
+            logger.info('✅ Fetched consultations:', { 
+              count: createdConsultations.value.length,
+              firstConsultation: createdConsultations.value[0]
+            })
+          }
+        } catch (error) {
+          logger.error('❌ Error fetching consultations:', error)
+        }
+      }
+      // Advance to step 5 (completion)
       currentStep.value = 5
     }
   }
@@ -513,8 +531,52 @@ const handleConsultationBlueprintCancel = () => {
 }
 
 // Handle consultation dialog events  
-const handleConsultationsSubmit = (consultations: Consultation[]) => {
+const handleConsultationsSubmit = async (consultations: Consultation[]) => {
+  logger.info('📝 Consultations submitted:', { count: consultations.length, consultations })
+  
+  // Store consultations initially
   createdConsultations.value = consultations
+  logger.info('📦 Initial assignment:', { count: createdConsultations.value.length })
+
+  // Fetch full consultation details to get populated formAccessCode
+  if (consultations.length > 0 && createdCase.value?.id) {
+    try {
+      logger.info('🔄 Fetching consultation details for case:', createdCase.value.id)
+      const response = await consultationApi.getAllConsultations({ caseId: createdCase.value.id })
+      logger.info('📥 Fetched consultation details:', { 
+        success: response.success,
+        hasResponseObject: !!response.responseObject,
+        isArray: Array.isArray(response.responseObject),
+        count: Array.isArray(response.responseObject) ? response.responseObject.length : 0
+      })
+      
+      if (response.responseObject && Array.isArray(response.responseObject)) {
+        // Update with full consultation data including populated codes
+        createdConsultations.value = response.responseObject as Consultation[]
+        logger.info('✅ Updated createdConsultations:', { 
+          count: createdConsultations.value.length,
+          firstId: createdConsultations.value[0]?._id,
+          formAccessCodeExists: !!createdConsultations.value[0]?.formAccessCode,
+          formAccessCode: createdConsultations.value[0]?.formAccessCode
+        })
+      } else {
+        logger.warn('⚠️ Unexpected response format, keeping initial consultations')
+      }
+    } catch (error) {
+      logger.error('❌ Error fetching consultation details:', error)
+      // Continue anyway with the consultations we have
+    }
+  } else {
+    logger.info('ℹ️ Skipping fetch:', { 
+      hasConsultations: consultations.length > 0,
+      hasCaseId: !!createdCase.value?.id 
+    })
+  }
+
+  logger.info('📊 Final createdConsultations state:', { 
+    count: createdConsultations.value.length,
+    firstConsultation: createdConsultations.value[0]
+  })
 
   notifierStore.notify(t('creationFlow.consultationsCreated', { count: consultations.length }), 'success')
 
@@ -581,6 +643,129 @@ const copyCaseUrl = () => {
     }).catch(() => {
       notifierStore.notify(t('creationFlow.urlCopyFailed'), 'error')
     })
+  }
+}
+
+// Computed: First consultation sorted by date (ascending)
+const firstConsultation = computed(() => {
+  logger.info('🔍 Computing firstConsultation:', { 
+    consultationsCount: createdConsultations.value.length,
+    consultations: createdConsultations.value 
+  })
+  
+  if (createdConsultations.value.length === 0) return null
+  
+  // Sort consultations by dateAndTime ascending and return the first one
+  const sorted = [...createdConsultations.value].sort((a, b) => {
+    const dateA = new Date(a.dateAndTime || 0).getTime()
+    const dateB = new Date(b.dateAndTime || 0).getTime()
+    return dateA - dateB
+  })
+  
+  logger.info('✅ First consultation:', sorted[0])
+  return sorted[0]
+})
+
+// Computed: External code from first consultation (for QR code flow URL)
+const firstConsultationCode = computed(() => {
+  logger.info('🔍 Computing firstConsultationCode:', { 
+    hasFirstConsultation: !!firstConsultation.value,
+    firstConsultationId: firstConsultation.value?.id,
+    firstConsultationIdField: firstConsultation.value?._id
+  })
+  
+  if (!firstConsultation.value) {
+    logger.info('❌ No first consultation')
+    return null
+  }
+  
+  // Check if first consultation has a formAccessCode
+  const accessCode = firstConsultation.value.formAccessCode
+  if (!accessCode) {
+    logger.info('❌ No formAccessCode found on consultation')
+    return null
+  }
+  
+  logger.info('📋 FormAccessCode RAW:', accessCode)
+  logger.info('📋 FormAccessCode details:', { 
+    type: typeof accessCode,
+    isObject: typeof accessCode === 'object',
+    isNull: accessCode === null,
+    keys: typeof accessCode === 'object' && accessCode !== null ? Object.keys(accessCode) : [],
+    hasCodeProp: typeof accessCode === 'object' && accessCode !== null && 'code' in accessCode,
+    codeProperty: typeof accessCode === 'object' && accessCode !== null ? (accessCode as any).code : undefined
+  })
+  
+  // Handle both string and object types
+  // formAccessCode can be:
+  // 1. A string (the code itself)
+  // 2. An object with { _id, id, code, ... } - we want the 'code' property, NOT the id
+  if (typeof accessCode === 'string') {
+    logger.info('✅ Code is string:', accessCode)
+    return accessCode
+  }
+  
+  if (typeof accessCode === 'object' && accessCode !== null && 'code' in accessCode) {
+    const codeValue = (accessCode as any).code
+    logger.info('✅ Extracted code from object:', { codeValue, objectId: (accessCode as any)._id || (accessCode as any).id })
+    return codeValue
+  }
+  
+  logger.warn('⚠️ formAccessCode format not recognized:', { accessCode, type: typeof accessCode })
+  return null
+})
+
+// Generate QR Code URL (patient flow with code)
+const getQRCodeUrl = () => {
+  if (!firstConsultationCode.value) return ''
+  const baseUrl = window.location.origin
+  return `${baseUrl}/flow/${firstConsultationCode.value}`
+}
+
+// Generate First Consultation URL
+const getFirstConsultationUrl = () => {
+  if (!firstConsultation.value?.id) return ''
+  const baseUrl = window.location.origin
+  return `${baseUrl}/consultation-overview/${firstConsultation.value.id}`
+}
+
+// Copy QR Code URL to clipboard
+const copyQRCodeUrl = () => {
+  const url = getQRCodeUrl()
+  if (url) {
+    navigator.clipboard.writeText(url).then(() => {
+      notifierStore.notify(t('creationFlow.urlCopied'), 'success')
+    }).catch(() => {
+      notifierStore.notify(t('creationFlow.urlCopyFailed'), 'error')
+    })
+  }
+}
+
+// Open QR Code URL in new tab
+const openQRCodeUrl = () => {
+  const url = getQRCodeUrl()
+  if (url) {
+    window.open(url, '_blank')
+  }
+}
+
+// Copy First Consultation URL to clipboard
+const copyFirstConsultationUrl = () => {
+  const url = getFirstConsultationUrl()
+  if (url) {
+    navigator.clipboard.writeText(url).then(() => {
+      notifierStore.notify(t('creationFlow.urlCopied'), 'success')
+    }).catch(() => {
+      notifierStore.notify(t('creationFlow.urlCopyFailed'), 'error')
+    })
+  }
+}
+
+// Open First Consultation URL in new tab
+const openFirstConsultationUrl = () => {
+  const url = getFirstConsultationUrl()
+  if (url) {
+    window.open(url, '_blank')
   }
 }
 
@@ -857,6 +1042,63 @@ onMounted(async () => {
                                  size="x-small"
                                  variant="text"
                                  @click.stop="openCaseUrl"
+                                 :title="t('buttons.open')"></v-btn>
+                        </template>
+                      </v-text-field>
+                    </div>
+
+                    <!-- QR Code Link (if external code exists) -->
+                    <div v-if="firstConsultationCode" class="mb-4">
+                      <p class="mb-2 font-weight-bold">{{ t('creationFlow.patientFlowQrUrl') }}</p>
+                      <v-text-field
+                                    :value="getQRCodeUrl()"
+                                    readonly
+                                    variant="outlined"
+                                    density="compact"
+                                    @click="copyQRCodeUrl"
+                                    class="cursor-pointer">
+                        <template #append-inner>
+                          <QRCodeDisplay :url="getQRCodeUrl()" />
+                          <v-btn
+                                 icon="mdi-content-copy"
+                                 size="x-small"
+                                 variant="text"
+                                 @click.stop="copyQRCodeUrl"
+                                 :title="t('buttons.copy')"
+                                 class="mr-2"></v-btn>
+                          <v-btn
+                                 icon="mdi-open-in-new"
+                                 size="x-small"
+                                 variant="text"
+                                 @click.stop="openQRCodeUrl"
+                                 :title="t('buttons.open')"></v-btn>
+                        </template>
+                      </v-text-field>
+                    </div>
+
+                    <!-- First Consultation Link -->
+                    <div v-if="firstConsultation" class="mb-4">
+                      <p class="mb-2 font-weight-bold">{{ t('creationFlow.firstConsultationUrl') }}</p>
+                      <v-text-field
+                                    :value="getFirstConsultationUrl()"
+                                    readonly
+                                    variant="outlined"
+                                    density="compact"
+                                    @click="copyFirstConsultationUrl"
+                                    class="cursor-pointer">
+                        <template #append-inner>
+                          <v-btn
+                                 icon="mdi-content-copy"
+                                 size="x-small"
+                                 variant="text"
+                                 @click.stop="copyFirstConsultationUrl"
+                                 :title="t('buttons.copy')"
+                                 class="mr-2"></v-btn>
+                          <v-btn
+                                 icon="mdi-open-in-new"
+                                 size="x-small"
+                                 variant="text"
+                                 @click.stop="openFirstConsultationUrl"
                                  :title="t('buttons.open')"></v-btn>
                         </template>
                       </v-text-field>

@@ -49,5 +49,10 @@ export default defineConfig(({ mode }) => {
       // configure HMR host when proxied (optional)
       hmr: hmrHost ? { host: hmrHost } : undefined,
     },
+    test: {
+      globals: true,
+      environment: 'jsdom',
+      setupFiles: ['./src/test/setup.ts'],
+    },
   }
 })

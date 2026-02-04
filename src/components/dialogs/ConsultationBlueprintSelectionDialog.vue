@@ -260,6 +260,10 @@ const createConsultationsFromBlueprints = async () => {
 
     notifierStore.notify(t('alerts.consultation.batchCreated', { count: newConsultations.length }), 'success')
     notifierStore.clearNotifications()
+    
+    // Emit consultations-created event for parent component
+    emit('consultations-created', newConsultations)
+    
     // Move to completion state (4b)
     emit('consultation-flow-advance', '4b')
 

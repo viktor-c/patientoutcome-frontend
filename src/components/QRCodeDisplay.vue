@@ -62,6 +62,16 @@
       </v-card-text>
 
       <v-card-actions>
+        <v-btn
+          color="secondary"
+          variant="outlined"
+          @click="downloadPDF"
+          :loading="generatingPDF"
+          :disabled="!qrCodeDataUrl"
+        >
+          <v-icon start>mdi-download</v-icon>
+          {{ t('qrCode.downloadPDF') }}
+        </v-btn>
         <v-spacer></v-spacer>
         <v-btn color="primary" @click="dialogOpen = false">
           {{ t('buttons.close') }}
@@ -75,6 +85,7 @@
 import { ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useNotifierStore } from '@/stores/notifierStore'
+import { logger } from '@/services/logger'
 
 const { t } = useI18n()
 const notifierStore = useNotifierStore()
@@ -82,14 +93,19 @@ const notifierStore = useNotifierStore()
 interface Props {
   url: string
   size?: number
+  title?: string
+  subtitle?: string
 }
 
 const props = withDefaults(defineProps<Props>(), {
-  size: 256
+  size: 256,
+  title: '',
+  subtitle: ''
 })
 
 const dialogOpen = ref(false)
 const loading = ref(false)
+const generatingPDF = ref(false)
 const qrCodeDataUrl = ref<string | null>(null)
 
 // Generate QR code when dialog opens
@@ -112,7 +128,7 @@ const generateQRCode = async () => {
       }
     })
   } catch (error) {
-    console.error('Failed to generate QR code:', error)
+    logger.error('Failed to generate QR code:', error)
     notifierStore.notify(t('qrCode.errorGenerating'), 'error')
   } finally {
     loading.value = false
@@ -125,6 +141,91 @@ const copyUrl = () => {
   }).catch(() => {
     notifierStore.notify(t('qrCode.urlCopyFailed'), 'error')
   })
+}
+
+const downloadPDF = async () => {
+  if (!qrCodeDataUrl.value) return
+
+  generatingPDF.value = true
+  try {
+    // Dynamic import to reduce bundle size
+    const { jsPDF } = await import('jspdf')
+    
+    // Create PDF document (A4 size)
+    const doc = new jsPDF({
+      orientation: 'portrait',
+      unit: 'mm',
+      format: 'a4'
+    })
+
+    // Page dimensions
+    const pageWidth = doc.internal.pageSize.getWidth()
+    const pageHeight = doc.internal.pageSize.getHeight()
+    
+    // Title
+    doc.setFontSize(20)
+    doc.setFont('helvetica', 'bold')
+    const title = props.title || t('qrCode.pdfTitle')
+    doc.text(title, pageWidth / 2, 30, { align: 'center' })
+    
+    // Subtitle
+    if (props.subtitle) {
+      doc.setFontSize(12)
+      doc.setFont('helvetica', 'normal')
+      doc.text(props.subtitle, pageWidth / 2, 40, { align: 'center' })
+    }
+    
+    // Instructions
+    doc.setFontSize(14)
+    doc.setFont('helvetica', 'bold')
+    doc.text(t('qrCode.pdfInstructions'), pageWidth / 2, 55, { align: 'center' })
+    
+    // QR Code - centered and larger
+    const qrSize = 120 // mm
+    const qrX = (pageWidth - qrSize) / 2
+    const qrY = 70
+    doc.addImage(qrCodeDataUrl.value, 'PNG', qrX, qrY, qrSize, qrSize)
+    
+    // URL below QR code
+    doc.setFontSize(10)
+    doc.setFont('helvetica', 'normal')
+    const urlY = qrY + qrSize + 15
+    
+    // Split URL if too long
+    const maxWidth = pageWidth - 40
+    const urlLines = doc.splitTextToSize(props.url, maxWidth)
+    doc.text(urlLines, pageWidth / 2, urlY, { align: 'center' })
+    
+    // Footer with date
+    doc.setFontSize(8)
+    doc.setTextColor(100, 100, 100)
+    const footerText = `${t('qrCode.pdfGenerated')}: ${new Date().toLocaleDateString()}`
+    doc.text(footerText, pageWidth / 2, pageHeight - 20, { align: 'center' })
+    
+    // Additional instructions at bottom
+    doc.setFontSize(9)
+    doc.setTextColor(0, 0, 0)
+    const instructionLines = [
+      t('qrCode.pdfScanInstruction'),
+      t('qrCode.pdfAccessInstruction')
+    ]
+    let instructionY = urlY + (urlLines.length * 5) + 15
+    instructionLines.forEach((line) => {
+      doc.text(line, pageWidth / 2, instructionY, { align: 'center' })
+      instructionY += 7
+    })
+    
+    // Save PDF
+    const filename = `patient-qr-code-${new Date().getTime()}.pdf`
+    doc.save(filename)
+    
+    notifierStore.notify(t('qrCode.pdfDownloaded'), 'success')
+  } catch (error) {
+    logger.error('Failed to generate PDF:', error)
+    notifierStore.notify(t('qrCode.pdfError'), 'error')
+  } finally {
+    generatingPDF.value = false
+  }
 }
 </script>
 

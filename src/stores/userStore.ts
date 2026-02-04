@@ -13,6 +13,7 @@ export const useUserStore = defineStore('user', () => {
   // number of days to look back when showing consultations (per-user setting)
   const daysBeforeConsultations = useLocalStorage('daysBeforeConsultations', 7)
   const roles = useLocalStorage('roles', [] as string[])
+  const permissions = useLocalStorage('permissions', [] as string[])
   // postopWeek for kiosk users - sequential number indicating n-th kiosk user
   const postopWeek = useLocalStorage<number | undefined>('postopWeek', undefined)
 
@@ -24,6 +25,7 @@ export const useUserStore = defineStore('user', () => {
     department: string
     email?: string // Optional email field
     roles?: string[] // Optional roles array field
+    permissions?: string[] // Optional permissions array field
     postopWeek?: number // Optional postopWeek field for kiosk users
   }
 
@@ -34,6 +36,7 @@ export const useUserStore = defineStore('user', () => {
     department.value = data.department
     email.value = data.email || '' // Ensure email is set, default to empty string if not provided
     roles.value = data.roles || [] // Ensure roles is set, default to empty array if not provided
+    permissions.value = data.permissions || [] // Ensure permissions is set, default to empty array if not provided
     postopWeek.value = data.postopWeek // Set postopWeek for kiosk users
   }
 
@@ -45,6 +48,7 @@ export const useUserStore = defineStore('user', () => {
     department.value = ''
     email.value = ''
     roles.value = []
+    permissions.value = []
     postopWeek.value = undefined
   }
 
@@ -88,12 +92,16 @@ export const useUserStore = defineStore('user', () => {
     return roles.value.includes(role)
   }
 
+  const hasPermission = (permission: string) => {
+    return permissions.value.includes(permission)
+  }
+
   return {
-    username, belongsToCenter, department, email, roles,
+    username, belongsToCenter, department, email, roles, permissions,
     daysBeforeConsultations, postopWeek,
     // Methods
     setSession, clearSession, logout,
     isAuthenticated, updateUser,
-    changePassword, isKioskUser, hasRole
+    changePassword, isKioskUser, hasRole, hasPermission
   }
 })
