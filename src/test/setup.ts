@@ -30,4 +30,7 @@ global.IntersectionObserver = class IntersectionObserver {
   observe() {}
   unobserve() {}
   disconnect() {}
-}
+  takeRecords() {
+    return []
+  }
+} as any

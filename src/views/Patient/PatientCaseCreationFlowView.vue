@@ -555,7 +555,7 @@ const handleConsultationsSubmit = async (consultations: Consultation[]) => {
         createdConsultations.value = response.responseObject as Consultation[]
         logger.info('✅ Updated createdConsultations:', { 
           count: createdConsultations.value.length,
-          firstId: createdConsultations.value[0]?._id,
+          firstId: createdConsultations.value[0]?.id,
           formAccessCodeExists: !!createdConsultations.value[0]?.formAccessCode,
           formAccessCode: createdConsultations.value[0]?.formAccessCode
         })
@@ -671,7 +671,7 @@ const firstConsultationCode = computed(() => {
   logger.info('🔍 Computing firstConsultationCode:', { 
     hasFirstConsultation: !!firstConsultation.value,
     firstConsultationId: firstConsultation.value?.id,
-    firstConsultationIdField: firstConsultation.value?._id
+    firstConsultationIdField: firstConsultation.value?.id
   })
   
   if (!firstConsultation.value) {
