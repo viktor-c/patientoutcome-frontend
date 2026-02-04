@@ -862,24 +862,6 @@ defineExpose({
 
         <!-- Surgery Details -->
         <v-row>
-          <v-col cols="12" md="3">
-            <v-text-field
-                          v-model.number="form.surgeryTime"
-                          :label="t('surgery.surgeryTime')"
-                          type="number"
-                          suffix="min"
-                          outlined
-                          dense></v-text-field>
-          </v-col>
-          <v-col cols="12" md="3">
-            <v-text-field
-                          v-model.number="form.tourniquet"
-                          :label="t('surgery.tourniquet')"
-                          type="number"
-                          suffix="min"
-                          outlined
-                          dense></v-text-field>
-          </v-col>
           <v-col cols="12" md="6">
             <v-autocomplete
                             v-model="selectedAnaesthesiaTypeIds"
@@ -897,6 +879,25 @@ defineExpose({
                 <v-chip>{{ item.title }}</v-chip>
               </template>
             </v-autocomplete>
+          </v-col>
+
+          <v-col cols="12" md="3">
+            <v-text-field
+                          v-model.number="form.surgeryTime"
+                          :label="t('surgery.surgeryTime')"
+                          type="number"
+                          suffix="min"
+                          outlined
+                          dense></v-text-field>
+          </v-col>
+          <v-col cols="12" md="3">
+            <v-text-field
+                          v-model.number="form.tourniquet"
+                          :label="t('surgery.tourniquet')"
+                          type="number"
+                          suffix="min"
+                          outlined
+                          dense></v-text-field>
           </v-col>
         </v-row>
 
