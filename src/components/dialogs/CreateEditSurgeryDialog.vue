@@ -816,33 +816,37 @@ defineExpose({
           </v-col>
         </v-row>
 
-        <!-- Diagnosis -->
-        <v-combobox
-                    :label="t('surgery.diagnosis')"
-                    v-model="form.diagnosis"
-                    :items="form.diagnosis"
-                    multiple
-                    outlined
-                    dense
-                    chips
-                    clearable
-                    closable-chips
-                    :hint="t('forms.hints.required')"
-                    persistent-hint
-                    :error="hasError('diagnosis')"
-                    :error-messages="hasError('diagnosis') ? [getError('diagnosis')] : []"></v-combobox>
-
-        <!-- ICD10 Diagnosis -->
-        <v-combobox
-                    :label="t('surgery.diagnosisICD10')"
-                    v-model="form.diagnosisICD10"
-                    :items="form.diagnosisICD10"
-                    multiple
-                    outlined
-                    dense
-                    chips
-                    clearable
-                    closable-chips></v-combobox>
+        <!-- Grouped Diagnosis Fields -->
+        <v-row>
+          <v-col cols="12" md="6" lg="8">
+            <v-combobox
+                        :label="t('surgery.diagnosis')"
+                        v-model="form.diagnosis"
+                        :items="form.diagnosis"
+                        multiple
+                        outlined
+                        dense
+                        chips
+                        clearable
+                        closable-chips
+                        :hint="t('forms.hints.required')"
+                        persistent-hint
+                        :error="hasError('diagnosis')"
+                        :error-messages="hasError('diagnosis') ? [getError('diagnosis')] : []"></v-combobox>
+          </v-col>
+          <v-col cols="12" md="6" lg="4">
+            <v-combobox
+                        :label="t('surgery.diagnosisICD10')"
+                        v-model="form.diagnosisICD10"
+                        :items="form.diagnosisICD10"
+                        multiple
+                        outlined
+                        dense
+                        chips
+                        clearable
+                        closable-chips></v-combobox>
+          </v-col>
+        </v-row>
 
         <!-- OPS Codes -->
         <v-combobox
@@ -896,9 +900,22 @@ defineExpose({
           </v-col>
         </v-row>
 
-        <!-- Radiology Information -->
+        <!-- Surgeons and Radiology Information -->
         <v-row>
-          <v-col cols="12" md="6">
+          <v-col cols="12" md="6" lg="6">
+            <v-autocomplete
+                            v-model="form.surgeons"
+                            :items="users"
+                            item-value="id"
+                            item-title="name"
+                            :label="t('surgery.surgeons')"
+                            multiple
+                            chips
+                            closable-chips
+                            outlined
+                            dense></v-autocomplete>
+          </v-col>
+          <v-col cols="12" md="3" lg="3">
             <v-text-field
                           v-model.number="form.roentgenDosis"
                           :label="t('surgery.roentgenDosis')"
@@ -907,7 +924,7 @@ defineExpose({
                           outlined
                           dense></v-text-field>
           </v-col>
-          <v-col cols="12" md="6">
+          <v-col cols="12" md="3" lg="3">
             <v-text-field
                           v-model="form.roentgenTime"
                           :label="t('surgery.roentgenTime')"
@@ -915,19 +932,6 @@ defineExpose({
                           dense></v-text-field>
           </v-col>
         </v-row>
-
-        <!-- Surgeons -->
-        <v-autocomplete
-                        v-model="form.surgeons"
-                        :items="users"
-                        item-value="id"
-                        item-title="name"
-                        :label="t('surgery.surgeons')"
-                        multiple
-                        chips
-                        closable-chips
-                        outlined
-                        dense></v-autocomplete>
 
         <!-- Additional Notes -->
         <v-card class="my-4">
