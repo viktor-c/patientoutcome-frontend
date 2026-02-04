@@ -888,7 +888,8 @@ onMounted(async () => {
                                           v-model="patientData.externalPatientId![index]"
                                           :label="t('forms.patient.externalId') + (index > 0 ? ' ' + (index + 1) : '')"
                                           :hint="index === 0 ? t('forms.externalIdHint') : ''"
-                                          :persistent-hint="index === 0"></v-text-field>
+                                          :persistent-hint="index === 0"
+                                          density="compact"></v-text-field>
                           </v-col>
                           <v-col cols="2">
                             <v-btn
@@ -917,6 +918,7 @@ onMounted(async () => {
                                 :items="sexOptions"
                                 item-value="value"
                                 item-title="label"
+                                density="compact"
                                 clearable></v-select>
 
                       <v-text-field

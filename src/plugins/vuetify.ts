@@ -36,4 +36,19 @@ export default createVuetify({
       },
     },
   },
+  // Global component defaults - set compact density for all input components
+  defaults: {
+    VTextField: { density: 'compact' },
+    VTextarea: { density: 'compact' },
+    VSelect: { density: 'compact' },
+    VAutocomplete: { density: 'compact' },
+    VCombobox: { density: 'compact' },
+    VCheckbox: { density: 'compact' },
+    VSwitch: { density: 'compact' },
+    VRadioGroup: { density: 'compact' },
+    VSlider: { density: 'compact' },
+    VRangeSlider: { density: 'compact' },
+    VDatePicker: { density: 'compact' },
+    VTimePicker: { density: 'compact' },
+  },
 });
