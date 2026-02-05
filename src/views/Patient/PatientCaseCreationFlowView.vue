@@ -1203,4 +1203,9 @@ onMounted(async () => {
 .cursor-pointer {
   cursor: pointer;
 }
+
+:deep(v-row) {
+  padding: 0;
+  padding-bottom: 0.5rem;
+}
 </style>
