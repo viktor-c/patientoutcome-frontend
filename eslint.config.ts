@@ -37,5 +37,13 @@ export default defineConfigWithVueTs(
     ...pluginPlaywright.configs['flat/recommended'],
     files: ['e2e/**/*.{test,spec}.{js,ts,jsx,tsx}'],
   },
+
+  {
+    name: 'app/vue-rules',
+    rules: {
+      'vue/valid-v-slot': 'off',
+    },
+  },
+
   skipFormatting,
 )
