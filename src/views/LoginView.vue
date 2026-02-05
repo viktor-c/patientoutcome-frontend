@@ -74,16 +74,16 @@ const login = async () => {
   try {
     const response = await userApi.loginUser({ loginUserRequest: { username: username.value, password: password.value } })
     if (response.responseObject && response.success && response.statusCode == 200) {
-      // Type assertion to include permissions field (not yet in generated API types)
-      const userWithPermissions = response.responseObject as typeof response.responseObject & { permissions?: string[] }
+      // Convert API response to SessionData format
+      const apiUser = response.responseObject
       
       userStore.setSession({
         username: username.value,
-        department: response.responseObject.department,
-        belongsToCenter: response.responseObject.belongsToCenter,
-        email: response.responseObject.email || '',
-        roles: response.responseObject.roles || [],
-        permissions: userWithPermissions.permissions || []
+        department: Array.isArray(apiUser.department) ? apiUser.department[0] || '' : apiUser.department || '',
+        belongsToCenter: apiUser.belongsToCenter ? [apiUser.belongsToCenter] : [],
+        email: apiUser.email || '',
+        roles: apiUser.roles || [],
+        permissions: apiUser.permissions || []
       })
       notifierStore.notify(t('login.loginSuccessfull'), 'success')
 
