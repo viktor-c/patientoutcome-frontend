@@ -388,10 +388,8 @@ loadDefaultBlueprints()
     </p>
 
     <!-- Blueprint Selection Section -->
-    <v-card v-if="isCreating" class="mb-4">
-      <v-card-title class="text-h6">{{ t('forms.blueprint.selectBlueprint') }}</v-card-title>
-      <v-card-text>
-        <v-autocomplete
+      
+        <v-autocomplete v-if="isCreating" class="mb-4"
                         v-model="selectedBlueprint"
                         v-model:search="blueprintSearchQuery"
                         :items="blueprints"
@@ -403,16 +401,13 @@ loadDefaultBlueprints()
                         item-value="id"
                         return-object
                         clearable
-                        outlined
-                        dense
+                        variant="underlined"
                         @update:model-value="(blueprint) => blueprint && applyBlueprint(blueprint)">
           <template v-slot:item="{ props, item }">
             <v-list-item v-bind="props" :title="item.raw.title" :subtitle="item.raw.description">
             </v-list-item>
           </template>
         </v-autocomplete>
-      </v-card-text>
-    </v-card>
 
     <v-form @submit.prevent="submit">
       <!-- Full width fields -->

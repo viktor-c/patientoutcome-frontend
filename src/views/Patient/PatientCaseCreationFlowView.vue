@@ -275,6 +275,13 @@ const previousStep = async () => {
       return
     }
 
+    // Handle substep navigation within step 4
+    if (currentStep.value === 4 && consultationFlowStep.value === '4b') {
+      // Go back from 4b to 4a
+      consultationFlowStep.value = '4a'
+      return
+    }
+
     // If we skipped surgery and are on step 4, go back to step 3 (surgery step)
     if (skipSurgery.value && currentStep.value === 4) {
       skipSurgery.value = false
@@ -580,8 +587,7 @@ const handleConsultationsSubmit = async (consultations: Consultation[]) => {
 
   notifierStore.notify(t('creationFlow.consultationsCreated', { count: consultations.length }), 'success')
 
-  // Complete the flow with consultations created
-  completeCreationFlow()
+  // Don't auto-advance - let the consultation dialog handle the flow
 }
 
 // Handle manual consultation dialog state changes
@@ -1204,8 +1210,9 @@ onMounted(async () => {
   cursor: pointer;
 }
 
-:deep(v-row) {
+v-col {
   padding: 0;
-  padding-bottom: 0.5rem;
+  padding-right: 5px;
+  padding-bottom: 5px;
 }
 </style>

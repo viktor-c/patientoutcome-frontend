@@ -134,8 +134,8 @@ const displaySurgeryDate = computed<string>({
   get: () => {
     const raw = form.value.surgeryDate
     if (!raw) return ''
-    // Display only the date part (without time) for user friendliness
-    return dayjs.utc(raw).format('YYYY-MM-DD')
+    // Display date in localized format (e.g., DD.MM.YYYY or MM/DD/YYYY depending on locale)
+    return formatLocalizedCustomDate(raw, 'DD.MM.YYYY')
   },
   set: (val: string) => {
     // Allow manual date input via text field
@@ -144,11 +144,22 @@ const displaySurgeryDate = computed<string>({
       return
     }
 
-    // Try to parse YYYY-MM-DD format
+    // Try to parse YYYY-MM-DD format (standard input format)
     const isoDateMatch = val.match(/^(\d{4}-\d{2}-\d{2})$/)
     if (isoDateMatch) {
       // Set date with 11:00 time for timezone consistency
       const utcDateTime = dayjs.utc(`${isoDateMatch[1]} 11:00`, 'YYYY-MM-DD HH:mm')
+      if (utcDateTime.isValid()) {
+        form.value.surgeryDate = utcDateTime.toISOString()
+      }
+      return
+    }
+
+    // Try to parse localized format (DD.MM.YYYY)
+    const localizedDateMatch = val.match(/^(\d{1,2})\.(\d{1,2})\.(\d{4})$/)
+    if (localizedDateMatch) {
+      const [, day, month, year] = localizedDateMatch
+      const utcDateTime = dayjs.utc(`${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')} 11:00`, 'YYYY-MM-DD HH:mm')
       if (utcDateTime.isValid()) {
         form.value.surgeryDate = utcDateTime.toISOString()
       }
@@ -702,10 +713,7 @@ defineExpose({
     </v-card-title>
     <v-card-text>
       <!-- Blueprint Selection Section -->
-      <v-card v-if="!isEditMode" class="mb-4">
-        <v-card-title class="text-h6">{{ t('forms.blueprint.selectBlueprint') }}</v-card-title>
-        <v-card-text>
-          <v-autocomplete
+          <v-autocomplete v-if="!isEditMode" class="mb-4"
                           v-model="selectedBlueprint"
                           v-model:search="blueprintSearchQuery"
                           :items="blueprints"
@@ -717,16 +725,13 @@ defineExpose({
                           item-value="id"
                           return-object
                           clearable
-                          outlined
-                          dense
+                          variant="underlined"
                           @update:model-value="(blueprint) => blueprint && applyBlueprint(blueprint)">
             <template v-slot:item="{ props, item }">
               <v-list-item v-bind="props" :title="item.raw.title" :subtitle="item.raw.description">
               </v-list-item>
             </template>
           </v-autocomplete>
-        </v-card-text>
-      </v-card>
 
       <v-form @submit.prevent="saveSurgery">
         <!-- Basic Information -->
@@ -755,16 +760,22 @@ defineExpose({
             <v-text-field
                           v-model="displaySurgeryDate"
                           :label="t('surgery.surgeryDate')"
-                          placeholder="YYYY-MM-DD"
+                          :placeholder="t('forms.hints.dateFormat')"
                           outlined
                           dense
-                          prepend-icon="mdi-calendar"
                           :hint="t('forms.hints.required') + ' (Time fixed to 11:00 UTC internally)'"
                           persistent-hint
                           :error="hasError('surgeryDate')"
-                          :error-messages="hasError('surgeryDate') ? [getError('surgeryDate')] : []"
-                          @focus="openDateDialog"
-                          @click="openDateDialog" />
+                          :error-messages="hasError('surgeryDate') ? [getError('surgeryDate')] : []">
+              <template #append-inner>
+                <v-btn
+                  icon="mdi-calendar"
+                  variant="text"
+                  size="small"
+                  @click.stop="openDateDialog"
+                  :title="t('surgery.selectDate')" />
+              </template>
+            </v-text-field>
 
             <!-- Small dialog containing the Vuetify date picker and a time picker -->
             <!-- width set larger for big screens; card has max-width to remain responsive on small screens -->

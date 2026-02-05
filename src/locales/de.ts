@@ -383,6 +383,7 @@ export default {
     completionTime: 'Bearbeitungszeit: {seconds} Sekunden',
     hints: {
       required: 'Dieses Feld ist erforderlich',
+      dateFormat: 'TT.MM.JJJJ',
     },
     scoring: {
       overallProgress: 'Gesamtfortschritt',
@@ -716,6 +717,7 @@ export default {
     oPSCodes: 'OPS-Codes',
     oPSCode: 'OPS-Code',
     surgeryDate: 'Operationsdatum',
+    selectDate: 'Datum auswählen',
     surgeryTime: 'Operationsdauer (min)',
     tourniquet: 'Tourniquet-Zeit (min)',
     anaesthesiaType: 'Anästhesie-Art',

@@ -210,7 +210,7 @@ const createConsultationsFromBlueprints = async () => {
     selectedBlueprints: selectedBlueprints.value
   })
   if (selectedBlueprints.value.length === 0) {
-    // No blueprints selected - emit event to move to completion state (4b)
+    // No blueprints selected - move to manual consultation creation state (4b)
     notifierStore.notify(t('alerts.consultation.noConsultationsSelected'), 'info')
     notifierStore.clearNotifications()
     emit('consultation-flow-advance', '4b')
@@ -264,7 +264,7 @@ const createConsultationsFromBlueprints = async () => {
     // Emit consultations-created event for parent component
     emit('consultations-created', newConsultations)
     
-    // Move to completion state (4b)
+    // Move to manual consultation creation state (4b) - always show step 4b after blueprint creation
     emit('consultation-flow-advance', '4b')
 
     // Clear selected blueprints for potential next round

@@ -133,6 +133,7 @@ export default {
     completionTime: 'Completion Time: {seconds} seconds',
     hints: {
       required: 'This field is required',
+      dateFormat: 'DD.MM.YYYY',
     },
     scoring: {
       overallProgress: 'Overall Progress',
@@ -467,6 +468,7 @@ export default {
     oPSCodes: 'OPS Codes',
     oPSCode: 'OPS Code',
     surgeryDate: 'Surgery Date',
+    selectDate: 'Select Date',
     surgeryTime: 'Surgery Time (min)',
     tourniquet: 'Tourniquet Time (min)',
     anaesthesiaType: 'Anaesthesia Type',
