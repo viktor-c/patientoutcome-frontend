@@ -82,6 +82,12 @@
                    variant="text"
                    @click.stop="openEditDialog(item)" />
             <v-btn
+                   v-if="!item.isArchived"
+                   icon="mdi-content-duplicate"
+                   size="small"
+                   variant="text"
+                   @click.stop="duplicateTemplate(item)" />
+            <v-btn
                    v-if="item.isArchived"
                    icon="mdi-restore"
                    size="small"
@@ -339,8 +345,8 @@ const rules = {
   email: (v: string | undefined) => !v || /.+@.+\..+/.test(v) || t('validation.email'),
   timeDelta: (v: string) => {
     if (!v) return t('validation.required')
-    // Validate format like +6W, +3M, +1Y, +7d
-    const regex = /^[+-]?\d+[wWmMdDyY]$/
+    // Validate format like +6W, +3M, +1Y, +7d, 0, or now
+    const regex = /^([0-9]|now|[+-]?\d+[wWmMdDyY])$/
     return regex.test(v) || t('consultationTemplates.validation.timeDeltaFormat')
   }
 }
@@ -414,6 +420,20 @@ const openEditDialog = (item: TemplateItem) => {
   const formTemplatesList = item.content?.formTemplates || []
   selectedFormTemplates.value = [...formTemplatesList]
   originalFormTemplates.value = [...formTemplatesList]
+  dialog.value = true
+}
+
+const duplicateTemplate = (item: TemplateItem) => {
+  editedIndex.value = -1
+  editedTemplate.value = {
+    title: `${t('consultationTemplates.copyOf')} ${item.title}`,
+    description: item.description,
+    timeDelta: item.timeDelta,
+    notes: item.notes || '',
+  }
+  const formTemplatesList = item.content?.formTemplates || []
+  selectedFormTemplates.value = [...formTemplatesList]
+  originalFormTemplates.value = []
   dialog.value = true
 }
 
