@@ -134,42 +134,34 @@ const displaySurgeryDate = computed<string>({
   get: () => {
     const raw = form.value.surgeryDate
     if (!raw) return ''
-    return safeFormatDate(raw)
-
+    // Display only the date part (without time) for user friendliness
+    return dayjs.utc(raw).format('YYYY-MM-DD')
   },
   set: (val: string) => {
-    // v-model on the field requires a setter. Normally this field is readonly
-    // and only updated via the date/time dialog, but provide a safe setter
-    // so programmatic updates (or future direct edits) work.
+    // Allow manual date input via text field
     if (!val) {
       form.value.surgeryDate = null
-      timeOfDay.value = null
       return
     }
 
-    // If the incoming value looks like an ISO datetime, split into date/time
-    if (val.includes('T')) {
-      const parts = val.split('T')
-      form.value.surgeryDate = parts[0]
-      const t = parts[1] || ''
-      const timeParts = t.split(':')
-      if (timeParts.length >= 2) {
-        timeOfDay.value = `${timeParts[0].padStart(2, '0')}:${timeParts[1].padStart(2, '0')}`
-      } else {
-        timeOfDay.value = null
+    // Try to parse YYYY-MM-DD format
+    const isoDateMatch = val.match(/^(\d{4}-\d{2}-\d{2})$/)
+    if (isoDateMatch) {
+      // Set date with 11:00 time for timezone consistency
+      const utcDateTime = dayjs.utc(`${isoDateMatch[1]} 11:00`, 'YYYY-MM-DD HH:mm')
+      if (utcDateTime.isValid()) {
+        form.value.surgeryDate = utcDateTime.toISOString()
       }
       return
     }
 
-    // If the incoming value matches YYYY-MM-DD, set date only
-    const isoDateMatch = val.match(/^(\d{4}-\d{2}-\d{2})$/)
-    if (isoDateMatch) {
-      form.value.surgeryDate = isoDateMatch[1]
-      // keep existing timeOfDay
+    // If the incoming value looks like an ISO datetime, use it directly
+    if (val.includes('T')) {
+      form.value.surgeryDate = val
       return
     }
 
-    // Otherwise, we can't reliably parse localized input -> leave unchanged
+    // Otherwise, we can't reliably parse the input -> leave unchanged
   }
 })
 
@@ -184,7 +176,7 @@ function openDateDialog() {
     tempTime.value = utcDate.format('HH:mm')
   } else {
     tempDate.value = dayjs.utc()
-    tempTime.value = '10:00'
+    tempTime.value = '11:00'
   }
   console.debug('Initialized tempDate:', tempDate.value?.format('YYYY-MM-DD'), 'tempTime:', tempTime.value)
   dateDialog.value = true
@@ -206,8 +198,8 @@ function saveDateFromDialog() {
   // tempDate is a dayjs object from v-date-picker, so format it explicitly
   const dateString = tempDate.value.format('YYYY-MM-DD')
 
-  // Handle time - v-time-picker returns string in HH:mm format
-  const timeString = (tempTime.value || '10:00').toString().trim()
+  // Always use 11:00 for timezone consistency
+  const timeString = '11:00'
 
   console.debug('Normalized components - Date:', dateString, 'Time:', timeString)
 
@@ -759,15 +751,15 @@ defineExpose({
         <!-- Surgery Date and Side -->
         <v-row>
           <v-col cols="12" md="6">
-            <!-- Readonly text field that opens a small dialog with a v-date-picker -->
+            <!-- Text field for surgery date with manual input support -->
             <v-text-field
                           v-model="displaySurgeryDate"
                           :label="t('surgery.surgeryDate')"
-                          readonly
+                          placeholder="YYYY-MM-DD"
                           outlined
                           dense
                           prepend-icon="mdi-calendar"
-                          :hint="t('forms.hints.required')"
+                          :hint="t('forms.hints.required') + ' (Time fixed to 11:00 UTC internally)'"
                           persistent-hint
                           :error="hasError('surgeryDate')"
                           :error-messages="hasError('surgeryDate') ? [getError('surgeryDate')] : []"
@@ -776,18 +768,13 @@ defineExpose({
 
             <!-- Small dialog containing the Vuetify date picker and a time picker -->
             <!-- width set larger for big screens; card has max-width to remain responsive on small screens -->
-            <v-dialog v-model="dateDialog" width="900" :fullscreen="isFullscreen">
+            <v-dialog v-model="dateDialog" persistent :fullscreen="isFullscreen" max-width="400px">
               <v-card class="pa-2" style="max-width:95vw;">
                 <v-card-title>{{ t('surgery.surgeryDate') }}</v-card-title>
                 <v-card-text>
-                  <v-row>
-                    <v-col cols="12" md="7">
-                      <v-date-picker v-model="tempDate" :show-adjacent-months="true" />
-                    </v-col>
-                    <v-col cols="12" md="5" class="d-flex flex-column justify-center">
-                      <v-time-picker v-model="tempTime" format="24hr" />
-                    </v-col>
-                  </v-row>
+                      <v-date-picker v-model="tempDate" show-adjacent-months first-day-of-week="0" show-week/>
+                    <!-- <v-col cols="12" md="5" class="d-flex flex-column justify-center">
+                      <v-time-picker v-model="tempTime" format="24hr" /> -->
                 </v-card-text>
                 <v-card-actions>
                   <v-spacer />
