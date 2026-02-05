@@ -1066,7 +1066,7 @@ onMounted(async () => {
                                     @click="copyQRCodeUrl"
                                     class="cursor-pointer">
                         <template #append-inner>
-                          <QRCodeDisplay :url="getQRCodeUrl()" />
+                          <QRCodeDisplay :url="getQRCodeUrl()" :size="150" />
                           <v-btn
                                  icon="mdi-content-copy"
                                  size="x-small"
