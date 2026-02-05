@@ -98,7 +98,7 @@ interface Props {
 }
 
 const props = withDefaults(defineProps<Props>(), {
-  size: 150,
+  size: 75,
   title: '',
   subtitle: ''
 })
@@ -181,7 +181,7 @@ const downloadPDF = async () => {
     doc.text(t('qrCode.pdfInstructions'), pageWidth / 2, 32, { align: 'center' })
     
     // QR Code - centered and sized for A5
-    const qrSize = 70 // mm (reduced for A5 page size)
+    const qrSize = 35 // mm (reduced for A5 page size)
     const qrX = (pageWidth - qrSize) / 2
     const qrY = 42
     doc.addImage(qrCodeDataUrl.value, 'PNG', qrX, qrY, qrSize, qrSize)
