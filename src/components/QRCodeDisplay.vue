@@ -98,7 +98,7 @@ interface Props {
 }
 
 const props = withDefaults(defineProps<Props>(), {
-  size: 256,
+  size: 150,
   title: '',
   subtitle: ''
 })
@@ -151,11 +151,11 @@ const downloadPDF = async () => {
     // Dynamic import to reduce bundle size
     const { jsPDF } = await import('jspdf')
     
-    // Create PDF document (A4 size)
+    // Create PDF document (DIN A5 size - half of A4)
     const doc = new jsPDF({
       orientation: 'portrait',
       unit: 'mm',
-      format: 'a4'
+      format: 'a5'
     })
 
     // Page dimensions
@@ -163,56 +163,58 @@ const downloadPDF = async () => {
     const pageHeight = doc.internal.pageSize.getHeight()
     
     // Title
-    doc.setFontSize(20)
+    doc.setFontSize(16)
     doc.setFont('helvetica', 'bold')
     const title = props.title || t('qrCode.pdfTitle')
-    doc.text(title, pageWidth / 2, 30, { align: 'center' })
+    doc.text(title, pageWidth / 2, 15, { align: 'center' })
     
     // Subtitle
     if (props.subtitle) {
-      doc.setFontSize(12)
+      doc.setFontSize(10)
       doc.setFont('helvetica', 'normal')
-      doc.text(props.subtitle, pageWidth / 2, 40, { align: 'center' })
+      doc.text(props.subtitle, pageWidth / 2, 23, { align: 'center' })
     }
     
     // Instructions
-    doc.setFontSize(14)
+    doc.setFontSize(11)
     doc.setFont('helvetica', 'bold')
-    doc.text(t('qrCode.pdfInstructions'), pageWidth / 2, 55, { align: 'center' })
+    doc.text(t('qrCode.pdfInstructions'), pageWidth / 2, 32, { align: 'center' })
     
-    // QR Code - centered and larger
-    const qrSize = 120 // mm
+    // QR Code - centered and sized for A5
+    const qrSize = 70 // mm (reduced for A5 page size)
     const qrX = (pageWidth - qrSize) / 2
-    const qrY = 70
+    const qrY = 42
     doc.addImage(qrCodeDataUrl.value, 'PNG', qrX, qrY, qrSize, qrSize)
     
     // URL below QR code
-    doc.setFontSize(10)
+    doc.setFontSize(9)
     doc.setFont('helvetica', 'normal')
-    const urlY = qrY + qrSize + 15
+    const urlY = qrY + qrSize + 8
     
     // Split URL if too long
-    const maxWidth = pageWidth - 40
+    const maxWidth = pageWidth - 15
     const urlLines = doc.splitTextToSize(props.url, maxWidth)
     doc.text(urlLines, pageWidth / 2, urlY, { align: 'center' })
     
     // Footer with date
-    doc.setFontSize(8)
+    doc.setFontSize(7)
     doc.setTextColor(100, 100, 100)
     const footerText = `${t('qrCode.pdfGenerated')}: ${new Date().toLocaleDateString()}`
-    doc.text(footerText, pageWidth / 2, pageHeight - 20, { align: 'center' })
+    doc.text(footerText, pageWidth / 2, pageHeight - 8, { align: 'center' })
     
     // Additional instructions at bottom
-    doc.setFontSize(9)
+    doc.setFontSize(8)
     doc.setTextColor(0, 0, 0)
     const instructionLines = [
       t('qrCode.pdfScanInstruction'),
       t('qrCode.pdfAccessInstruction')
     ]
-    let instructionY = urlY + (urlLines.length * 5) + 15
+    let instructionY = urlY + (urlLines.length * 4) + 6
     instructionLines.forEach((line) => {
-      doc.text(line, pageWidth / 2, instructionY, { align: 'center' })
-      instructionY += 7
+      if (instructionY < pageHeight - 10) {
+        doc.text(line, pageWidth / 2, instructionY, { align: 'center' })
+        instructionY += 5
+      }
     })
     
     // Save PDF
