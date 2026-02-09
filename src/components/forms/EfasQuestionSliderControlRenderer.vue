@@ -154,7 +154,7 @@ const calculateEfasScore = (data: Record<string, unknown>): ScoringData => {
 
   const standardComplete = standardAnswers.length === standardQuestions.length
   const standardRawScore = standardAnswers.reduce((sum, v) => sum + v, 0)
-  const standardMaxScore = standardQuestions.length * 5 // 0-5 scale
+  const standardMaxScore = standardQuestions.length * 4 // 0-4 scale
   const standardNormalized = standardMaxScore > 0 ? (standardRawScore / standardMaxScore) * 100 : 0
 
   // Calculate sport subscale
@@ -167,7 +167,7 @@ const calculateEfasScore = (data: Record<string, unknown>): ScoringData => {
 
   const sportComplete = sportAnswers.length === sportQuestions.length
   const sportRawScore = sportAnswers.reduce((sum, v) => sum + v, 0)
-  const sportMaxScore = sportQuestions.length * 5 // 0-5 scale
+  const sportMaxScore = sportQuestions.length * 4 // 0-4 scale
   const sportNormalized = sportMaxScore > 0 ? (sportRawScore / sportMaxScore) * 100 : 0
 
   // Total metrics
@@ -284,8 +284,7 @@ const getSliderLabels = (question: { tickLabelLow: string; tickLabelHigh: string
     1: '',
     2: '',
     3: '',
-    4: '',
-    5: question.tickLabelHigh
+    4: question.tickLabelHigh
   }
 }
 
@@ -307,8 +306,8 @@ const onSliderClick = (e: MouseEvent, fullPath: string) => {
   const clickX = e.clientX - rect.left
   const ratio = rect.width > 0 ? Math.max(0, Math.min(1, clickX / rect.width)) : 0
 
-  // Convert ratio to discrete 0-5 value and update
-  const computedValue = Math.round(ratio * 5)
+  // Convert ratio to discrete 0-4 value and update
+  const computedValue = Math.round(ratio * 4)
   updateTouchedState(fullPath, computedValue)
 }
 
@@ -323,7 +322,7 @@ const showNoQuestions = ref(true)
     <!-- Instructions -->
     <div class="mb-4 text-caption text-grey">
       <p><strong>{{ translate('efas.instructions.title', 'Instructions:') }}</strong>
-        {{ translate('efas.instructions.description', 'Please rate each question on a scale from 0 to 5.') }}</p>
+        {{ translate('efas.instructions.description', 'Please rate each question on a scale from 0 to 4.') }}</p>
     </div>
 
     <!-- Questions organized by sections -->
@@ -361,7 +360,7 @@ const showNoQuestions = ref(true)
                           @update:model-value="(value: number) => updateTouchedState(question.fullPath, value)"
                           @click="onSliderClick($event, question.fullPath)"
                           min="0"
-                          max="5"
+                          max="4"
                           :step="1"
                           show-ticks="always"
                           :tick-size="question.sliderTickSize"
