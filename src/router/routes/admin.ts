@@ -10,6 +10,7 @@ import CaseBlueprints from '@/views/Admin/CaseBlueprints.vue'
 import BackupManagement from '@/views/Admin/BackupManagement.vue'
 import SettingsManagement from '@/views/Admin/SettingsManagement.vue'
 import DeletedItemsManagement from '@/views/Admin/DeletedItemsManagement.vue'
+import PluginFormDemo from '@/views/PluginFormDemo.vue'
 
 export const adminRoutes: RouteRecordRaw[] = [
   {
@@ -76,6 +77,12 @@ export const adminRoutes: RouteRecordRaw[] = [
         name: 'admin-deleted-items',
         component: DeletedItemsManagement,
         meta: { titleKey: 'pageTitles.deletedItemsManagement', requiredRole: 'admin' }
+      },
+      {
+        path: 'plugin-form-demo',
+        name: 'admin-plugin-form-demo',
+        component: PluginFormDemo,
+        meta: { titleKey: 'pageTitles.pluginFormDemo', requiredRole: 'admin' }
       },
     ]
   },

@@ -1161,6 +1161,7 @@ export default {
     backupManagement: 'Sicherungsverwaltung',
     settingsManagement: 'Einstellungsverwaltung',
     deletedItemsManagement: 'Verwaltung gelöschter Elemente',
+    pluginFormDemo: 'Formular-Plugin-System-Demo',
     setup: 'Einrichtung',
     activityLog: 'Aktivitätsprotokoll',
     statistics: 'Statistiken',

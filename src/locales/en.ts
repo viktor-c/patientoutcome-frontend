@@ -1162,6 +1162,7 @@ export default {
     backupManagement: 'Backup Management',
     settingsManagement: 'Settings Management',
     deletedItemsManagement: 'Deleted Items Management',
+    pluginFormDemo: 'Form Plugin System Demo',
     setup: 'Setup',
   },
 

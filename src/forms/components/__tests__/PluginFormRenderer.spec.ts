@@ -1,0 +1,391 @@
+import { describe, it, expect, beforeEach, vi } from 'vitest'
+import { mount, VueWrapper } from '@vue/test-utils'
+import { createVuetify } from 'vuetify'
+import * as components from 'vuetify/components'
+import * as directives from 'vuetify/directives'
+import PluginFormRenderer from '@/forms/components/PluginFormRenderer.vue'
+import type { FormPlugin, FormData } from '@/forms/types'
+import type { ScoringData } from '@/types/backend/scoring'
+import { Component, h } from 'vue'
+
+// Mock the registry module
+const mockGetFormPlugin = vi.fn()
+vi.mock('@/forms/registry', () => ({
+  getFormPlugin: (id: string) => mockGetFormPlugin(id)
+}))
+
+// Create a mock form component
+const MockFormComponent: Component = {
+  name: 'MockFormComponent',
+  props: {
+    modelValue: {
+      type: Object,
+      required: true
+    },
+    readonly: Boolean,
+    locale: String
+  },
+  emits: ['update:modelValue', 'score-change', 'validation-change'],
+  setup(props, { emit }) {
+    return () => h('div', { 
+      class: 'mock-form',
+      'data-testid': 'mock-form-component'
+    }, [
+      h('div', { class: 'form-data' }, JSON.stringify(props.modelValue)),
+      h('button', {
+        onClick: () => emit('update:modelValue', { test: { q1: 1 } })
+      }, 'Update Data'),
+      h('button', {
+        onClick: () => emit('score-change', {
+          rawData: { test: { q1: 1 } },
+          subscales: {},
+          total: { 
+            name: 'Total',
+            rawScore: 1,
+            normalizedScore: 25,
+            maxPossibleScore: 4,
+            answeredQuestions: 1,
+            totalQuestions: 1,
+            completionPercentage: 100,
+            isComplete: true
+          }
+        })
+      }, 'Emit Score'),
+      h('button', {
+        onClick: () => emit('validation-change', true)
+      }, 'Emit Validation')
+    ])
+  }
+}
+
+// Create a mock plugin
+const createMockPlugin = (): FormPlugin => ({
+  metadata: {
+    id: 'test-plugin-id',
+    name: 'Test Plugin',
+    description: 'A test plugin',
+    version: '1.0.0',
+    supportedLocales: ['en', 'de']
+  },
+  component: MockFormComponent,
+  translations: {
+    en: { 'test.key': 'Test Value' },
+    de: { 'test.key': 'Test Wert' }
+  },
+  calculateScore: (data: FormData): ScoringData => ({
+    rawData: data,
+    subscales: {},
+    total: {
+      name: 'Total',
+      rawScore: 0,
+      normalizedScore: 0,
+      maxPossibleScore: 0,
+      answeredQuestions: 0,
+      totalQuestions: 0,
+      completionPercentage: 0,
+      isComplete: false
+    }
+  }),
+  validateFormData: () => true,
+  getInitialData: () => ({ test: { q1: null } })
+})
+
+describe('PluginFormRenderer.vue', () => {
+  let wrapper: VueWrapper
+  let vuetify: ReturnType<typeof createVuetify>
+  let mockPlugin: FormPlugin
+
+  beforeEach(() => {
+    vuetify = createVuetify({
+      components,
+      directives,
+    })
+
+    mockPlugin = createMockPlugin()
+    mockGetFormPlugin.mockClear()
+  })
+
+  const mountComponent = (props: {
+    templateId: string
+    modelValue: FormData
+    readonly?: boolean
+    locale?: string
+  }) => {
+    return mount(PluginFormRenderer, {
+      props,
+      global: {
+        plugins: [vuetify],
+      },
+    })
+  }
+
+  describe('Plugin Loading', () => {
+    it('should load plugin by templateId', () => {
+      mockGetFormPlugin.mockReturnValue(mockPlugin)
+
+      wrapper = mountComponent({
+        templateId: 'test-plugin-id',
+        modelValue: { test: { q1: null } }
+      })
+
+      expect(mockGetFormPlugin).toHaveBeenCalledWith('test-plugin-id')
+      expect(wrapper.find('[data-testid="mock-form-component"]').exists()).toBe(true)
+    })
+
+    it('should show error message when plugin not found', async () => {
+      mockGetFormPlugin.mockReturnValue(undefined)
+
+      wrapper = mountComponent({
+        templateId: 'non-existent-plugin',
+        modelValue: {}
+      })
+
+      await wrapper.vm.$nextTick()
+
+      const alert = wrapper.find('.v-alert')
+      expect(alert.exists()).toBe(true)
+      expect(alert.text()).toContain('Form Not Available')
+      expect(alert.text()).toContain('non-existent-plugin')
+    })
+
+    it('should log error when plugin not found', () => {
+      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+      mockGetFormPlugin.mockReturnValue(undefined)
+
+      wrapper = mountComponent({
+        templateId: 'missing-plugin',
+        modelValue: {}
+      })
+
+      expect(consoleSpy).toHaveBeenCalledWith(
+        expect.stringContaining('[PluginFormRenderer] Plugin not found: missing-plugin')
+      )
+
+      consoleSpy.mockRestore()
+    })
+
+    it('should log success when plugin loaded', () => {
+      const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+      mockGetFormPlugin.mockReturnValue(mockPlugin)
+
+      wrapper = mountComponent({
+        templateId: 'test-plugin-id',
+        modelValue: {}
+      })
+
+      expect(consoleSpy).toHaveBeenCalledWith(
+        expect.stringContaining('[PluginFormRenderer] Loaded plugin: Test Plugin')
+      )
+
+      consoleSpy.mockRestore()
+    })
+  })
+
+  describe('Props Passing', () => {
+    beforeEach(() => {
+      mockGetFormPlugin.mockReturnValue(mockPlugin)
+    })
+
+    it('should pass modelValue prop to plugin component', () => {
+      const formData = { test: { q1: 2 } }
+      
+      wrapper = mountComponent({
+        templateId: 'test-plugin-id',
+        modelValue: formData
+      })
+
+      const mockForm = wrapper.findComponent(MockFormComponent)
+      expect(mockForm.props('modelValue')).toEqual(formData)
+    })
+
+    it('should pass readonly prop to plugin component', () => {
+      wrapper = mountComponent({
+        templateId: 'test-plugin-id',
+        modelValue: {},
+        readonly: true
+      })
+
+      const mockForm = wrapper.findComponent(MockFormComponent)
+      expect(mockForm.props('readonly')).toBe(true)
+    })
+
+    it('should default readonly to false', () => {
+      wrapper = mountComponent({
+        templateId: 'test-plugin-id',
+        modelValue: {}
+      })
+
+      const mockForm = wrapper.findComponent(MockFormComponent)
+      expect(mockForm.props('readonly')).toBe(false)
+    })
+
+    it('should pass locale prop to plugin component', () => {
+      wrapper = mountComponent({
+        templateId: 'test-plugin-id',
+        modelValue: {},
+        locale: 'de'
+      })
+
+      const mockForm = wrapper.findComponent(MockFormComponent)
+      expect(mockForm.props('locale')).toBe('de')
+    })
+
+    it('should default locale to "en"', () => {
+      wrapper = mountComponent({
+        templateId: 'test-plugin-id',
+        modelValue: {}
+      })
+
+      const mockForm = wrapper.findComponent(MockFormComponent)
+      expect(mockForm.props('locale')).toBe('en')
+    })
+  })
+
+  describe('Event Handling', () => {
+    beforeEach(() => {
+      mockGetFormPlugin.mockReturnValue(mockPlugin)
+    })
+
+    it('should emit update:modelValue when plugin component emits it', async () => {
+      wrapper = mountComponent({
+        templateId: 'test-plugin-id',
+        modelValue: {}
+      })
+
+      const updateButton = wrapper.find('button')
+      await updateButton.trigger('click')
+
+      expect(wrapper.emitted('update:modelValue')).toBeTruthy()
+      expect(wrapper.emitted('update:modelValue')?.[0]).toEqual([{ test: { q1: 1 } }])
+    })
+
+    it('should emit score-change when plugin component emits it', async () => {
+      wrapper = mountComponent({
+        templateId: 'test-plugin-id',
+        modelValue: {}
+      })
+
+      const scoreButton = wrapper.findAll('button')[1]
+      await scoreButton.trigger('click')
+
+      expect(wrapper.emitted('score-change')).toBeTruthy()
+      const emittedScore = wrapper.emitted('score-change')?.[0][0] as ScoringData
+      expect(emittedScore.total?.rawScore).toBe(1)
+      expect(emittedScore.total?.normalizedScore).toBe(25)
+    })
+
+    it('should emit validation-change when plugin component emits it', async () => {
+      wrapper = mountComponent({
+        templateId: 'test-plugin-id',
+        modelValue: {}
+      })
+
+      const validationButton = wrapper.findAll('button')[2]
+      await validationButton.trigger('click')
+
+      expect(wrapper.emitted('validation-change')).toBeTruthy()
+      expect(wrapper.emitted('validation-change')?.[0]).toEqual([true])
+    })
+  })
+
+  describe('Reactivity', () => {
+    beforeEach(() => {
+      mockGetFormPlugin.mockReturnValue(mockPlugin)
+    })
+
+    it('should update plugin component when modelValue prop changes', async () => {
+      wrapper = mountComponent({
+        templateId: 'test-plugin-id',
+        modelValue: { test: { q1: 1 } }
+      })
+
+      const newData = { test: { q1: 2 } }
+      await wrapper.setProps({ modelValue: newData })
+
+      const mockForm = wrapper.findComponent(MockFormComponent)
+      expect(mockForm.props('modelValue')).toEqual(newData)
+    })
+
+    it('should update plugin component when readonly prop changes', async () => {
+      wrapper = mountComponent({
+        templateId: 'test-plugin-id',
+        modelValue: {},
+        readonly: false
+      })
+
+      await wrapper.setProps({ readonly: true })
+
+      const mockForm = wrapper.findComponent(MockFormComponent)
+      expect(mockForm.props('readonly')).toBe(true)
+    })
+
+    it('should update plugin component when locale prop changes', async () => {
+      wrapper = mountComponent({
+        templateId: 'test-plugin-id',
+        modelValue: {},
+        locale: 'en'
+      })
+
+      await wrapper.setProps({ locale: 'de' })
+
+      const mockForm = wrapper.findComponent(MockFormComponent)
+      expect(mockForm.props('locale')).toBe('de')
+    })
+  })
+
+  describe('Edge Cases', () => {
+    it('should handle empty modelValue', () => {
+      mockGetFormPlugin.mockReturnValue(mockPlugin)
+
+      wrapper = mountComponent({
+        templateId: 'test-plugin-id',
+        modelValue: {}
+      })
+
+      expect(wrapper.find('[data-testid="mock-form-component"]').exists()).toBe(true)
+    })
+
+    it('should handle plugin with missing component gracefully', () => {
+      const brokenPlugin = { ...mockPlugin, component: undefined }
+      mockGetFormPlugin.mockReturnValue(brokenPlugin as any)
+
+      wrapper = mountComponent({
+        templateId: 'test-plugin-id',
+        modelValue: {}
+      })
+
+      // Should show loading state or handle gracefully
+      expect(wrapper.find('.v-progress-circular').exists() || 
+             wrapper.find('.v-alert').exists()).toBe(true)
+    })
+  })
+
+  describe('Accessibility', () => {
+    beforeEach(() => {
+      mockGetFormPlugin.mockReturnValue(mockPlugin)
+    })
+
+    it('should have proper wrapper element', () => {
+      wrapper = mountComponent({
+        templateId: 'test-plugin-id',
+        modelValue: {}
+      })
+
+      expect(wrapper.find('.plugin-form-renderer').exists()).toBe(true)
+    })
+
+    it('should display error alert with proper semantics', () => {
+      mockGetFormPlugin.mockReturnValue(undefined)
+
+      wrapper = mountComponent({
+        templateId: 'missing',
+        modelValue: {}
+      })
+
+      const alert = wrapper.find('.v-alert')
+      expect(alert.exists()).toBe(true)
+      // Vuetify's v-alert with type="error" adds appropriate classes
+      expect(alert.classes()).toContain('v-alert')
+    })
+  })
+})
