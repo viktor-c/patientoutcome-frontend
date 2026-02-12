@@ -21,6 +21,7 @@ import PatientCaseCreateEditForm from '@/components/forms/PatientCaseCreateEditF
 import CreateEditSurgeryDialog from '@/components/dialogs/CreateEditSurgeryDialog.vue'
 //step 4: create consultations (from surgery blueprint or manual selection)
 import ConsultationBlueprintSelectionDialog from '@/components/dialogs/ConsultationBlueprintSelectionDialog.vue'
+import CreateEditConsultationDialog from '@/components/dialogs/CreateEditConsultationDialog.vue'
 import QRCodeDisplay from '@/components/QRCodeDisplay.vue'
 import { logger } from '@/services/logger'
 
@@ -39,11 +40,6 @@ const CASE_URL_PATTERN = '/case/{id}'
 
 // Current step in the flow (1: Patient, 2: Case, 3: Surgery, 4: Consultation, 5: Completion)
 const currentStep = ref(1)
-
-// Consultation flow substeps: 4a (blueprint selection) or 4b (manual creation/completion)
-const consultationFlowStep = ref<'4a' | '4b'>('4a')
-
-
 
 // Data for each step
 const patientData = ref<CreatePatientRequest & { department?: string }>({
@@ -98,13 +94,12 @@ const isLoading = ref(false)
 // Track if manual consultation dialog is open in step 4
 const isManualConsultationDialogOpen = ref(false)
 
+// Manual consultation dialog in step 4
+const showManualConsultationDialogStep4 = ref(false)
+const manualConsultationFormRef = ref<InstanceType<typeof CreateEditConsultationDialog> | null>(null)
+
 // Department name display
 const departmentName = ref<string>('')
-
-// Listen for consultation flow substep transitions
-const handleConsultationFlowAdvance = (substep: '4a' | '4b') => {
-  consultationFlowStep.value = substep
-}
 
 // Handle manual consultation dialog state changes
 const handleManualConsultationDialogState = (isOpen: boolean) => {
@@ -155,8 +150,6 @@ watch(currentStep, (newStep, oldStep) => {
       notifierStore.notify(t('creationFlow.surgeryOptionalInfo'), 'info')
     } else if (newStep === 4) {
       // Step 4: Consultation creation
-      consultationFlowStep.value = '4a'
-
       // Show surgery status notifications
       if (createdSurgery.value) {
         notifierStore.notify(`${t('creationFlow.surgeryCreated')} - ID: ${createdSurgery.value.id}`, 'success')
@@ -238,34 +231,24 @@ const nextStep = async () => {
       await surgeryFormRef.value.submit()
     }
   } else if (currentStep.value === 4) {
-    // Step 4 has two substeps: 4a (blueprint selection) and 4b (manual creation)
-    if (consultationFlowStep.value === '4a') {
-      // Submit the consultation form to create consultations from selected blueprints
-      if (consultationFormRef.value) {
-        await consultationFormRef.value.submit()
-      }
-      // The consultation form will emit 'consultation-flow-advance' to move to 4b
-    } else {
-      // From 4b, we need to fetch all consultations and advance to step 5
-      // Fetch consultations for the case to populate the QR code and links
-      if (createdCase.value?.id) {
-        try {
-          logger.info('🔄 Fetching all consultations for case before completing flow:', createdCase.value.id)
-          const response = await consultationApi.getAllConsultations({ caseId: createdCase.value.id })
-          if (response.responseObject && Array.isArray(response.responseObject)) {
-            createdConsultations.value = response.responseObject as Consultation[]
-            logger.info('✅ Fetched consultations:', { 
-              count: createdConsultations.value.length,
-              firstConsultation: createdConsultations.value[0]
-            })
-          }
-        } catch (error) {
-          logger.error('❌ Error fetching consultations:', error)
+    // Fetch consultations for the case to populate the QR code and links
+    if (createdCase.value?.id) {
+      try {
+        logger.info('🔄 Fetching all consultations for case:', createdCase.value.id)
+        const response = await consultationApi.getAllConsultations({ caseId: createdCase.value.id })
+        if (response.responseObject && Array.isArray(response.responseObject)) {
+          createdConsultations.value = response.responseObject as Consultation[]
+          logger.info('✅ Fetched consultations:', { 
+            count: createdConsultations.value.length,
+            firstConsultation: createdConsultations.value[0]
+          })
         }
+      } catch (error) {
+        logger.error('❌ Error fetching consultations:', error)
       }
-      // Advance to step 5 (completion)
-      currentStep.value = 5
     }
+    // Advance to step 5 (completion)
+    currentStep.value = 5
   }
 }
 
@@ -278,13 +261,6 @@ const previousStep = async () => {
       setTimeout(() => {
         currentStep.value = 1
       }, 100)
-      return
-    }
-
-    // Handle substep navigation within step 4
-    if (currentStep.value === 4 && consultationFlowStep.value === '4b') {
-      // Go back from 4b to 4a
-      consultationFlowStep.value = '4a'
       return
     }
 
@@ -596,6 +572,17 @@ const handleConsultationsSubmit = async (consultations: Consultation[]) => {
   // Don't auto-advance - let the consultation dialog handle the flow
 }
 
+// Handle manual consultation creation in step 4
+const handleManualConsultationSubmitStep4 = async (consultation: Consultation) => {
+  logger.info('📝 Manual consultation created:', { consultationId: consultation.id })
+  
+  // Add the manually created consultation to the list
+  createdConsultations.value.push(consultation)
+  
+  showManualConsultationDialogStep4.value = false
+  notifierStore.notify(t('alerts.consultation.created'), 'success')
+}
+
 
 
 const cancel = () => {
@@ -871,7 +858,7 @@ onMounted(async () => {
               <v-stepper-item
                               :complete="currentStep > 4"
                               :value="4"
-                              :title="`${t('creationFlow.step4Title')} (${consultationFlowStep})`"></v-stepper-item>
+                              :title="t('creationFlow.step4Title')"></v-stepper-item>
               <v-divider></v-divider>
               <v-stepper-item
                               :complete="currentStep > 5"
@@ -977,40 +964,33 @@ onMounted(async () => {
 
               <!-- Step 4: Create Consultation -->
               <v-stepper-window-item :value="4">
-                <v-card>
-                  <!-- Embedded Consultation Blueprint Selection -->
-                  <ConsultationBlueprintSelectionDialog
-                                                        ref="consultationFormRef"
-                                                        v-if="createdCase && createdCase.patient && createdCase.id"
-                                                        v-model="selectedConsultationBlueprints"
-                                                        :surgery-date="createdSurgery?.surgeryDate || undefined"
-                                                        :patient-id="createdCase.patient.id || ''"
-                                                        :case-id="createdCase.id"
-                                                        :pre-selected-blueprint-ids="surgeryBlueprintConsultations"
-                                                        :consultation-flow-step="consultationFlowStep"
-                                                        :showButtons="false"
-                                                        @consultations-created="handleConsultationsSubmit"
-                                                        @consultation-flow-advance="handleConsultationFlowAdvance"
-                                                        @manual-consultation-dialog-state="handleManualConsultationDialogState"
-                                                        @cancel="handleConsultationBlueprintCancel" />
-
-                  <!-- Action buttons for step 4 -->
-                  <v-card-actions class="justify-end gap-2">
+                <v-card class="mb-4">
+                  <v-card-text>
+                    <!-- Button to create manual consultation -->
                     <v-btn
-                           @click="previousStep"
-                           color="primary"
-                           variant="outlined">
-                      {{ t('buttons.previous') }}
+                           @click="showManualConsultationDialogStep4 = true"
+                           color="info"
+                           variant="outlined"
+                           class="mb-4">
+                      <v-icon left>mdi-plus</v-icon>
+                      {{ t('consultation.createManual') }}
                     </v-btn>
-                    <v-btn
-                           @click="nextStep"
-                           color="primary"
-                           variant="elevated"
-                           :loading="isLoading">
-                      {{ t('buttons.next') }}
-                    </v-btn>
-                  </v-card-actions>
+                  </v-card-text>
                 </v-card>
+
+                <!-- Embedded Consultation Blueprint Selection -->
+                <ConsultationBlueprintSelectionDialog
+                                                      ref="consultationFormRef"
+                                                      v-if="createdCase && createdCase.patient && createdCase.id"
+                                                      v-model="selectedConsultationBlueprints"
+                                                      :surgery-date="createdSurgery?.surgeryDate || undefined"
+                                                      :patient-id="createdCase.patient.id || ''"
+                                                      :case-id="createdCase.id"
+                                                      :pre-selected-blueprint-ids="surgeryBlueprintConsultations"
+                                                      :showButtons="false"
+                                                      @consultations-created="handleConsultationsSubmit"
+                                                      @manual-consultation-dialog-state="handleManualConsultationDialogState"
+                                                      @cancel="handleConsultationBlueprintCancel" />
               </v-stepper-window-item>
 
               <!-- Step 5: Completion & URLs -->
@@ -1167,19 +1147,35 @@ onMounted(async () => {
             </v-card>
           </v-dialog>
 
+          <!-- Manual Consultation Dialog (Step 4) -->
+          <v-dialog v-model="showManualConsultationDialogStep4" max-width="600">
+            <v-card>
+              <v-card-title>{{ t('consultation.createManual') }}</v-card-title>
+              <v-card-text>
+                <CreateEditConsultationDialog
+                                              v-if="createdCase && createdCase.id && createdCase.patient"
+                                              ref="manualConsultationFormRef"
+                                              :patient-id="createdCase.patient.id || null"
+                                              :case-id="createdCase.id"
+                                              @submit="handleManualConsultationSubmitStep4"
+                                              @cancel="showManualConsultationDialogStep4 = false" />
+              </v-card-text>
+            </v-card>
+          </v-dialog>
+
           <!-- Action buttons -->
           <v-card-actions class="justify-space-between pa-4">
             <v-btn
                    @click="cancel"
                    color="grey"
                    variant="outlined"
-                   :disabled="isManualConsultationDialogOpen">
+                   :disabled="isManualConsultationDialogOpen || showManualConsultationDialogStep4">
               {{ t('buttons.cancel') }}
             </v-btn>
 
             <div class="d-flex gap-2">
               <v-btn
-                     v-if="currentStep >= 2 && currentStep <= 5 && !isManualConsultationDialogOpen"
+                     v-if="currentStep >= 2 && currentStep <= 5 && !isManualConsultationDialogOpen && !showManualConsultationDialogStep4"
                      @click="previousStep"
                      color="primary"
                      variant="outlined">
@@ -1195,7 +1191,7 @@ onMounted(async () => {
               </v-btn>
 
               <v-btn
-                     v-if="currentStep < 5 && !isManualConsultationDialogOpen"
+                     v-if="currentStep < 5 && !isManualConsultationDialogOpen && !showManualConsultationDialogStep4"
                      @click="nextStep"
                      color="primary"
                      variant="elevated"

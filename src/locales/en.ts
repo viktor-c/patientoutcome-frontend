@@ -796,6 +796,7 @@ export default {
     notAvailable: 'Not available',
     noNotes: 'No notes',
     goBack: 'Go Back',
+    next: 'Next',
     loading: 'Loading...',
     errorLoadingData: 'Error loading data',
     retry: 'Retry',

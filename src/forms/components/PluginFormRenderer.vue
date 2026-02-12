@@ -6,7 +6,7 @@
  */
 
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, ref, markRaw } from 'vue'
 import { getFormPlugin } from '../registry'
 import type { FormData } from '../types'
 import type { ScoringData } from '@/types/backend/scoring'
@@ -38,8 +38,8 @@ interface Emits {
 
 const emit = defineEmits<Emits>()
 
-// Load the plugin
-const plugin = ref(getFormPlugin(props.templateId))
+// Load the plugin without making it reactive (components shouldn't be reactive)
+const plugin = ref(markRaw(getFormPlugin(props.templateId)))
 
 // Check if plugin exists
 const pluginExists = computed(() => plugin.value !== undefined)
