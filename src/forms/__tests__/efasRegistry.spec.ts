@@ -103,19 +103,21 @@ describe('EFAS Plugin Registry Integration', () => {
     const efasId = '67b4e612d0feb4ad99ae2e83'
     const plugin = getFormPlugin(efasId)
     
-    const mockData = plugin?.generateMockData()
+    expect(plugin).toBeDefined()
+    expect(plugin!.generateMockData).toBeDefined()
+    const mockData = plugin!.generateMockData!()
     
     expect(mockData).toBeDefined()
-    expect(mockData?.standardfragebogen).toBeDefined()
-    expect(mockData?.sportfragebogen).toBeDefined()
+    expect(mockData.standardfragebogen).toBeDefined()
+    expect(mockData.sportfragebogen).toBeDefined()
     
     // Standard questions should have values
-    expect(typeof mockData?.standardfragebogen?.q1).toBe('number')
-    expect(typeof mockData?.standardfragebogen?.q6).toBe('number')
+    expect(typeof mockData.standardfragebogen!.q1).toBe('number')
+    expect(typeof mockData.standardfragebogen!.q6).toBe('number')
     
     // Sport questions should have values
-    expect(typeof mockData?.sportfragebogen?.s1).toBe('number')
-    expect(typeof mockData?.sportfragebogen?.s4).toBe('number')
+    expect(typeof mockData.sportfragebogen!.s1).toBe('number')
+    expect(typeof mockData.sportfragebogen!.s4).toBe('number')
     
     console.log('✅ EFAS generateMockData execution successful')
   })
@@ -124,42 +126,46 @@ describe('EFAS Plugin Registry Integration', () => {
     const efasId = '67b4e612d0feb4ad99ae2e83'
     const plugin = getFormPlugin(efasId)
     
-    const mockData = plugin?.generateMockData()
-    const score = plugin?.calculateScore(mockData!)
+    expect(plugin).toBeDefined()
+    expect(plugin!.generateMockData).toBeDefined()
+    const mockData = plugin!.generateMockData!()
+    const score = plugin!.calculateScore(mockData)
     
     expect(score).toBeDefined()
-    expect(score?.rawData).toBeDefined()
-    expect(score?.subscales).toBeDefined()
-    expect(score?.total).toBeDefined()
+    expect(score.rawData).toBeDefined()
+    expect(score.subscales).toBeDefined()
+    expect(score.total).toBeDefined()
     
     // Check subscales
-    expect(score?.subscales.standard).toBeDefined()
-    expect(score?.subscales.standard.name).toBe('Standard Questions')
-    expect(score?.subscales.standard.totalQuestions).toBe(6)
+    expect(score.subscales.standard).toBeDefined()
+    expect(score.subscales.standard!.name).toBe('Standard Questions')
+    expect(score.subscales.standard!.totalQuestions).toBe(6)
     
-    expect(score?.subscales.sport).toBeDefined()
-    expect(score?.subscales.sport.name).toBe('Sport Questions')
-    expect(score?.subscales.sport.totalQuestions).toBe(4)
+    expect(score.subscales.sport).toBeDefined()
+    expect(score.subscales.sport!.name).toBe('Sport Questions')
+    expect(score.subscales.sport!.totalQuestions).toBe(4)
     
     // Check total score
-    expect(score?.total.name).toBe('EFAS Total')
-    expect(score?.total.totalQuestions).toBe(10)
-    expect(score?.total.rawScore).toBeGreaterThan(0)
-    expect(score?.total.normalizedScore).toBeGreaterThan(0)
-    expect(score?.total.normalizedScore).toBeLessThanOrEqual(100)
+    expect(score.total!.name).toBe('EFAS Total')
+    expect(score.total!.totalQuestions).toBe(10)
+    expect(score.total!.rawScore).toBeGreaterThan(0)
+    expect(score.total!.normalizedScore).toBeGreaterThan(0)
+    expect(score.total!.normalizedScore).toBeLessThanOrEqual(100)
     
     console.log('✅ EFAS calculateScore execution successful')
-    console.log(`   Standard subscale: ${score?.subscales.standard.rawScore}/${score?.subscales.standard.maxPossibleScore}`)
-    console.log(`   Sport subscale: ${score?.subscales.sport.rawScore}/${score?.subscales.sport.maxPossibleScore}`)
-    console.log(`   Total score: ${score?.total.rawScore}/${score?.total.maxPossibleScore} (${score?.total.normalizedScore}%)`)
+    console.log(`   Standard subscale: ${score.subscales.standard!.rawScore}/${score.subscales.standard!.maxPossibleScore}`)
+    console.log(`   Sport subscale: ${score.subscales.sport!.rawScore}/${score.subscales.sport!.maxPossibleScore}`)
+    console.log(`   Total score: ${score.total!.rawScore}/${score.total!.maxPossibleScore} (${score.total!.normalizedScore}%)`)
   })
 
   it('should validate complete form data', () => {
     const efasId = '67b4e612d0feb4ad99ae2e83'
     const plugin = getFormPlugin(efasId)
     
-    const mockData = plugin?.generateMockData()
-    const isValid = plugin?.validateFormData(mockData!)
+    expect(plugin).toBeDefined()
+    expect(plugin!.generateMockData).toBeDefined()
+    const mockData = plugin!.generateMockData!()
+    const isValid = plugin!.validateFormData(mockData)
     
     expect(isValid).toBe(true)
     
@@ -170,6 +176,7 @@ describe('EFAS Plugin Registry Integration', () => {
     const efasId = '67b4e612d0feb4ad99ae2e83'
     const plugin = getFormPlugin(efasId)
     
+    expect(plugin).toBeDefined()
     const incompleteData = {
       standardfragebogen: {
         q1: 2,
@@ -188,14 +195,14 @@ describe('EFAS Plugin Registry Integration', () => {
     }
     
     // Validation passes (structure is valid)
-    const isValid = plugin?.validateFormData(incompleteData)
+    const isValid = plugin!.validateFormData(incompleteData)
     expect(isValid).toBe(true)
     
     // But completeness is tracked in scoring
-    const score = plugin?.calculateScore(incompleteData)
-    expect(score?.subscales.standard.isComplete).toBe(false)
-    expect(score?.subscales.standard.answeredQuestions).toBe(5)
-    expect(score?.subscales.standard.totalQuestions).toBe(6)
+    const score = plugin!.calculateScore(incompleteData)
+    expect(score.subscales.standard!.isComplete).toBe(false)
+    expect(score.subscales.standard!.answeredQuestions).toBe(5)
+    expect(score.subscales.standard!.totalQuestions).toBe(6)
     
     console.log('✅ EFAS validateFormData - incomplete data passes validation, incompleteness tracked in scoring')
   })
@@ -204,6 +211,7 @@ describe('EFAS Plugin Registry Integration', () => {
     const efasId = '67b4e612d0feb4ad99ae2e83'
     const plugin = getFormPlugin(efasId)
     
+    expect(plugin).toBeDefined()
     const dataWithoutSport = {
       standardfragebogen: {
         q1: 2,
@@ -221,7 +229,7 @@ describe('EFAS Plugin Registry Integration', () => {
       }
     }
     
-    const isValid = plugin?.validateFormData(dataWithoutSport)
+    const isValid = plugin!.validateFormData(dataWithoutSport)
     
     expect(isValid).toBe(true)
     
@@ -232,6 +240,7 @@ describe('EFAS Plugin Registry Integration', () => {
     const efasId = '67b4e612d0feb4ad99ae2e83'
     const plugin = getFormPlugin(efasId)
     
+    expect(plugin).toBeDefined()
     const dataWithoutSport = {
       standardfragebogen: {
         q1: 2,
@@ -249,16 +258,16 @@ describe('EFAS Plugin Registry Integration', () => {
       }
     }
     
-    const score = plugin?.calculateScore(dataWithoutSport)
+    const score = plugin!.calculateScore(dataWithoutSport)
     
     expect(score).toBeDefined()
-    expect(score?.subscales.standard.isComplete).toBe(true)
-    expect(score?.subscales.standard.answeredQuestions).toBe(6)
-    expect(score?.subscales.sport.answeredQuestions).toBe(0)
-    expect(score?.total.answeredQuestions).toBe(6)
+    expect(score.subscales.standard!.isComplete).toBe(true)
+    expect(score.subscales.standard!.answeredQuestions).toBe(6)
+    expect(score.subscales.sport!.answeredQuestions).toBe(0)
+    expect(score.total!.answeredQuestions).toBe(6)
     
     console.log('✅ EFAS calculateScore - score calculated with only standard questions')
-    console.log(`   Standard: ${score?.subscales.standard.rawScore}/${score?.subscales.standard.maxPossibleScore}`)
-    console.log(`   Total: ${score?.total.rawScore}/${score?.total.maxPossibleScore}`)
+    console.log(`   Standard: ${score.subscales.standard!.rawScore}/${score.subscales.standard!.maxPossibleScore}`)
+    console.log(`   Total: ${score.total!.rawScore}/${score.total!.maxPossibleScore}`)
   })
 })

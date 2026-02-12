@@ -4,16 +4,20 @@ import PluginFormRenderer from '@/forms/components/PluginFormRenderer.vue'
 
 import { formtemplateApi } from '@/api'
 import type { FormTemplate } from '@/api/models/FormTemplate'
-import type { ScoringData } from '@/types'
+import type { ScoringData, CustomFormData } from '@/types'
 
 // Available form templates to test
 const availableTemplates = ref<Array<{ id: string; title: string; description: string }>>([])
 const selectedTemplateId = ref<string | null>(null)
 const loading = ref(true)
-const testFormData = ref<Record<string, unknown>>({})
+const testFormData = ref<CustomFormData>({})
 const scoring = ref<ScoringData | null>(null)
 const selectedTemplate = ref<FormTemplate | null>(null)
 const loadingTemplate = ref(false)
+
+// Computed properties for template properties
+const formSchema = computed(() => selectedTemplate.value?.formSchema)
+const formSchemaUI = computed(() => selectedTemplate.value?.formSchemaUI)
 
 // Load available templates on mount
 const loadTemplates = async () => {
@@ -77,9 +81,9 @@ const resetForm = () => {
 }
 
 // Handle form changes
-const handleFormChange = (newFormData: Record<string, unknown>) => {
+const handleFormChange = (newFormData: CustomFormData) => {
   console.debug('Form data changed:', newFormData)
-  testFormData.value = newFormData as Record<string, unknown>
+  testFormData.value = newFormData
 }
 
 // Calculate scoring for the form

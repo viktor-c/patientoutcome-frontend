@@ -117,8 +117,8 @@ export interface questions {
 // };
 
 // Standard FormData types (matching backend Zod schema)
-// Questionnaire represents a set of questions with numeric or null answers
-export type Questionnaire = Record<string, number | null>;
+// Questionnaire represents a set of questions with numeric, string, or null answers
+export type Questionnaire = Record<string, string | number | null>;
 
 // CustomFormData represents form data structured as sections containing questionnaires
 export type CustomFormData = Record<string, Questionnaire>;

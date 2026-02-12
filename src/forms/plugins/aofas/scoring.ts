@@ -120,7 +120,7 @@ export function validateFormData(data: FormData): boolean {
     
     // Must be one of the valid enum values for this question
     const validValues = QUESTION_VALUES[key as keyof typeof QUESTION_VALUES]
-    if (!validValues.includes(value)) return false
+    if (!validValues.includes(value as any)) return false
   }
 
   return true

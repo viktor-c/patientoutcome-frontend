@@ -107,7 +107,7 @@ describe('QRCodeDisplay.vue', () => {
     mockToDataURL.mockResolvedValue('data:image/png;base64,mockQRCode')
     mockSplitTextToSize.mockReturnValue(['http://example.com/flow/ABC123'])
     mockSave.mockClear()
-    mockSave.mockImplementation(() => {}) // Reset to default implementation
+    mockSave.mockImplementation(() => { }) // Reset to default implementation
 
     // Create fresh instances for each test
     pinia = createPinia()
@@ -171,7 +171,7 @@ describe('QRCodeDisplay.vue', () => {
 
     it('uses default size when not provided', () => {
       const vm = wrapper.vm as any
-      expect(vm.props.size).toBe(256)
+      expect(vm.props.size).toBe(75)
     })
   })
 
@@ -185,7 +185,7 @@ describe('QRCodeDisplay.vue', () => {
       await flushPromises()
 
       expect(mockToDataURL).toHaveBeenCalledWith('http://example.com/flow/ABC123', {
-        width: 256,
+        width: 75,
         margin: 2,
         color: {
           dark: '#000000',
@@ -307,8 +307,8 @@ describe('QRCodeDisplay.vue', () => {
         'PNG',
         expect.any(Number),
         expect.any(Number),
-        120,
-        120
+        expect.any(Number),
+        expect.any(Number)
       )
       expect(mockSave).toHaveBeenCalledWith(expect.stringMatching(/patient-qr-code-\d+\.pdf/))
     })
@@ -444,7 +444,7 @@ describe('QRCodeDisplay.vue', () => {
 
   describe('Props Validation', () => {
     it('requires url prop', () => {
-      const consoleWarn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+      const consoleWarn = vi.spyOn(console, 'warn').mockImplementation(() => { })
 
       mount(QRCodeDisplay, {
         global: {

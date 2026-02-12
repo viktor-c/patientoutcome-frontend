@@ -80,14 +80,17 @@ describe('AOFAS Plugin Registry Integration', () => {
     const aofasId = '67b4e612d0feb4ad99ae2e84'
     const plugin = getFormPlugin(aofasId)
     
-    const mockData = plugin?.generateMockData()
-    const score = plugin?.calculateScore(mockData!)
+    expect(plugin).toBeDefined()
+    expect(plugin!.generateMockData).toBeDefined()
+    const mockData = plugin!.generateMockData!()
+    const score = plugin!.calculateScore(mockData)
     
     expect(score).toBeDefined()
-    expect(score?.total.rawScore).toBe(75)
-    expect(score?.total.maxPossibleScore).toBe(100)
+    expect(score.total).toBeDefined()
+    expect(score.total!.rawScore).toBe(75)
+    expect(score.total!.maxPossibleScore).toBe(100)
     
     console.log('✅ AOFAS calculateScore execution successful')
-    console.log(`   Score: ${score?.total.rawScore}/${score?.total.maxPossibleScore}`)
+    console.log(`   Score: ${score.total!.rawScore}/${score.total!.maxPossibleScore}`)
   })
 })

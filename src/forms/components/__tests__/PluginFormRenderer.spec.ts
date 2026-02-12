@@ -6,7 +6,8 @@ import * as directives from 'vuetify/directives'
 import PluginFormRenderer from '@/forms/components/PluginFormRenderer.vue'
 import type { FormPlugin, FormData } from '@/forms/types'
 import type { ScoringData } from '@/types/backend/scoring'
-import { Component, h } from 'vue'
+import { h } from 'vue'
+import type { Component } from 'vue'
 
 // Mock the registry module
 const mockGetFormPlugin = vi.fn()

@@ -196,7 +196,7 @@ describe('Form Plugin Compliance', () => {
         // Mutate data1
         if (Object.keys(data1).length > 0) {
           const firstKey = Object.keys(data1)[0]
-          data1[firstKey] = { modified: true }
+          ;(data1 as Record<string, any>)[firstKey] = { modified: true }
         }
 
         // data2 should be unaffected
@@ -248,7 +248,7 @@ describe('Form Plugin Compliance', () => {
         it('should have valid JSON schema structure', () => {
           expect(plugin.schema).toBeDefined()
           expect(typeof plugin.schema).toBe('object')
-          expect(plugin.schema.type).toBeDefined()
+          expect(plugin.schema!.type).toBeDefined()
         })
 
         it('should have object type schema', () => {
