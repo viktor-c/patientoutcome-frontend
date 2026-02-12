@@ -945,36 +945,37 @@ onMounted(async () => {
 
               <!-- Step 4: Create Consultation -->
               <v-stepper-window-item :value="4">
+                <v-card>
+                  <!-- Embedded Consultation Blueprint Selection -->
+                  <ConsultationBlueprintSelectionDialog
+                                                        ref="consultationFormRef"
+                                                        v-if="createdCase && createdCase.patient && createdCase.id"
+                                                        v-model="selectedConsultationBlueprints"
+                                                        :surgery-date="createdSurgery?.surgeryDate || undefined"
+                                                        :patient-id="createdCase.patient.id || ''"
+                                                        :case-id="createdCase.id"
+                                                        :pre-selected-blueprint-ids="surgeryBlueprintConsultations"
+                                                        :showButtons="false"
+                                                        @consultations-created="handleConsultationsSubmit"
+                                                        @cancel="handleConsultationBlueprintCancel" />
 
-                <!-- Embedded Consultation Blueprint Selection -->
-                <ConsultationBlueprintSelectionDialog
-                                                      ref="consultationFormRef"
-                                                      v-if="createdCase && createdCase.patient && createdCase.id"
-                                                      v-model="selectedConsultationBlueprints"
-                                                      :surgery-date="createdSurgery?.surgeryDate || undefined"
-                                                      :patient-id="createdCase.patient.id || ''"
-                                                      :case-id="createdCase.id"
-                                                      :pre-selected-blueprint-ids="surgeryBlueprintConsultations"
-                                                      :showButtons="false"
-                                                      @consultations-created="handleConsultationsSubmit"
-                                                      @cancel="handleConsultationBlueprintCancel" />
-
-                <!-- Action buttons for step 4 -->
-                <v-card-actions class="justify-end gap-2 mt-4">
-                  <v-btn
-                         @click="previousStep"
-                         color="primary"
-                         variant="outlined">
-                    {{ t('buttons.previous') }}
-                  </v-btn>
-                  <v-btn
-                         @click="nextStep"
-                         color="primary"
-                         variant="elevated"
-                         :loading="isLoading">
-                    {{ t('buttons.next') }}
-                  </v-btn>
-                </v-card-actions>
+                  <!-- Action buttons for step 4 -->
+                  <v-card-actions class="justify-end gap-2">
+                    <v-btn
+                           @click="previousStep"
+                           color="primary"
+                           variant="outlined">
+                      {{ t('buttons.previous') }}
+                    </v-btn>
+                    <v-btn
+                           @click="nextStep"
+                           color="primary"
+                           variant="elevated"
+                           :loading="isLoading">
+                      {{ t('buttons.next') }}
+                    </v-btn>
+                  </v-card-actions>
+                </v-card>
               </v-stepper-window-item>
 
               <!-- Step 5: Completion & URLs -->
