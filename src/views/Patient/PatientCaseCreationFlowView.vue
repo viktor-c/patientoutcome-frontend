@@ -40,6 +40,9 @@ const CASE_URL_PATTERN = '/case/{id}'
 // Current step in the flow (1: Patient, 2: Case, 3: Surgery, 4: Consultation, 5: Completion)
 const currentStep = ref(1)
 
+// Consultation flow substeps: 4a (blueprint selection) or 4b (manual creation/completion)
+const consultationFlowStep = ref<'4a' | '4b'>('4a')
+
 
 
 // Data for each step
@@ -92,8 +95,22 @@ const duplicateExternalId = ref<string>('')
 // Loading states
 const isLoading = ref(false)
 
+// Track if manual consultation dialog is open in step 4
+const isManualConsultationDialogOpen = ref(false)
+
 // Department name display
 const departmentName = ref<string>('')
+
+// Listen for consultation flow substep transitions
+const handleConsultationFlowAdvance = (substep: '4a' | '4b') => {
+  consultationFlowStep.value = substep
+}
+
+// Handle manual consultation dialog state changes
+const handleManualConsultationDialogState = (isOpen: boolean) => {
+  isManualConsultationDialogOpen.value = isOpen
+}
+
 watch(currentStep, (newStep, oldStep) => {
   if (newStep !== oldStep) {
     // Reset form state when moving to a different step
@@ -138,6 +155,8 @@ watch(currentStep, (newStep, oldStep) => {
       notifierStore.notify(t('creationFlow.surgeryOptionalInfo'), 'info')
     } else if (newStep === 4) {
       // Step 4: Consultation creation
+      consultationFlowStep.value = '4a'
+
       // Show surgery status notifications
       if (createdSurgery.value) {
         notifierStore.notify(`${t('creationFlow.surgeryCreated')} - ID: ${createdSurgery.value.id}`, 'success')
@@ -219,28 +238,34 @@ const nextStep = async () => {
       await surgeryFormRef.value.submit()
     }
   } else if (currentStep.value === 4) {
-    // Step 4: Submit consultations and move to step 5
-    if (consultationFormRef.value) {
-      await consultationFormRef.value.submit()
-    }
-    // Fetch consultations for the case to populate the QR code and links
-    if (createdCase.value?.id) {
-      try {
-        logger.info('🔄 Fetching all consultations for case before completing flow:', createdCase.value.id)
-        const response = await consultationApi.getAllConsultations({ caseId: createdCase.value.id })
-        if (response.responseObject && Array.isArray(response.responseObject)) {
-          createdConsultations.value = response.responseObject as Consultation[]
-          logger.info('✅ Fetched consultations:', { 
-            count: createdConsultations.value.length,
-            firstConsultation: createdConsultations.value[0]
-          })
-        }
-      } catch (error) {
-        logger.error('❌ Error fetching consultations:', error)
+    // Step 4 has two substeps: 4a (blueprint selection) and 4b (manual creation)
+    if (consultationFlowStep.value === '4a') {
+      // Submit the consultation form to create consultations from selected blueprints
+      if (consultationFormRef.value) {
+        await consultationFormRef.value.submit()
       }
+      // The consultation form will emit 'consultation-flow-advance' to move to 4b
+    } else {
+      // From 4b, we need to fetch all consultations and advance to step 5
+      // Fetch consultations for the case to populate the QR code and links
+      if (createdCase.value?.id) {
+        try {
+          logger.info('🔄 Fetching all consultations for case before completing flow:', createdCase.value.id)
+          const response = await consultationApi.getAllConsultations({ caseId: createdCase.value.id })
+          if (response.responseObject && Array.isArray(response.responseObject)) {
+            createdConsultations.value = response.responseObject as Consultation[]
+            logger.info('✅ Fetched consultations:', { 
+              count: createdConsultations.value.length,
+              firstConsultation: createdConsultations.value[0]
+            })
+          }
+        } catch (error) {
+          logger.error('❌ Error fetching consultations:', error)
+        }
+      }
+      // Advance to step 5 (completion)
+      currentStep.value = 5
     }
-    // Advance to step 5 (completion)
-    currentStep.value = 5
   }
 }
 
@@ -253,6 +278,13 @@ const previousStep = async () => {
       setTimeout(() => {
         currentStep.value = 1
       }, 100)
+      return
+    }
+
+    // Handle substep navigation within step 4
+    if (currentStep.value === 4 && consultationFlowStep.value === '4b') {
+      // Go back from 4b to 4a
+      consultationFlowStep.value = '4a'
       return
     }
 
@@ -839,7 +871,7 @@ onMounted(async () => {
               <v-stepper-item
                               :complete="currentStep > 4"
                               :value="4"
-                              :title="t('creationFlow.step4Title')"></v-stepper-item>
+                              :title="`${t('creationFlow.step4Title')} (${consultationFlowStep})`"></v-stepper-item>
               <v-divider></v-divider>
               <v-stepper-item
                               :complete="currentStep > 5"
@@ -955,8 +987,11 @@ onMounted(async () => {
                                                         :patient-id="createdCase.patient.id || ''"
                                                         :case-id="createdCase.id"
                                                         :pre-selected-blueprint-ids="surgeryBlueprintConsultations"
+                                                        :consultation-flow-step="consultationFlowStep"
                                                         :showButtons="false"
                                                         @consultations-created="handleConsultationsSubmit"
+                                                        @consultation-flow-advance="handleConsultationFlowAdvance"
+                                                        @manual-consultation-dialog-state="handleManualConsultationDialogState"
                                                         @cancel="handleConsultationBlueprintCancel" />
 
                   <!-- Action buttons for step 4 -->
@@ -1137,13 +1172,14 @@ onMounted(async () => {
             <v-btn
                    @click="cancel"
                    color="grey"
-                   variant="outlined">
+                   variant="outlined"
+                   :disabled="isManualConsultationDialogOpen">
               {{ t('buttons.cancel') }}
             </v-btn>
 
             <div class="d-flex gap-2">
               <v-btn
-                     v-if="currentStep >= 2 && currentStep <= 3"
+                     v-if="currentStep >= 2 && currentStep <= 5 && !isManualConsultationDialogOpen"
                      @click="previousStep"
                      color="primary"
                      variant="outlined">
@@ -1159,7 +1195,7 @@ onMounted(async () => {
               </v-btn>
 
               <v-btn
-                     v-if="currentStep < 4"
+                     v-if="currentStep < 5 && !isManualConsultationDialogOpen"
                      @click="nextStep"
                      color="primary"
                      variant="elevated"
