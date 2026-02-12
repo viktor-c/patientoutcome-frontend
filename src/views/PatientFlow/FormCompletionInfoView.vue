@@ -34,9 +34,6 @@ const { t } = useI18n()
                 </h3>
                 <v-list class="transparent-list" density="compact">
                   <v-list-item class="px-0">
-                    <template #prepend>
-                      <v-icon color="success" size="small">mdi-check</v-icon>
-                    </template>
                     <v-list-item-title class="text-body-2 text-wrap">
                       {{ t('completionInfo.collectAnswers') || 'Only the answers you provide in this form' }}
                     </v-list-item-title>

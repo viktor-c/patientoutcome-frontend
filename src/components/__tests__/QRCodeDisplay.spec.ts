@@ -171,7 +171,7 @@ describe('QRCodeDisplay.vue', () => {
 
     it('uses default size when not provided', () => {
       const vm = wrapper.vm as any
-      expect(vm.props.size).toBe(256)
+      expect(vm.props.size).toBe(75)
     })
   })
 
@@ -185,7 +185,7 @@ describe('QRCodeDisplay.vue', () => {
       await flushPromises()
 
       expect(mockToDataURL).toHaveBeenCalledWith('http://example.com/flow/ABC123', {
-        width: 256,
+        width: 75,
         margin: 2,
         color: {
           dark: '#000000',
@@ -307,8 +307,8 @@ describe('QRCodeDisplay.vue', () => {
         'PNG',
         expect.any(Number),
         expect.any(Number),
-        120,
-        120
+        35,
+        35
       )
       expect(mockSave).toHaveBeenCalledWith(expect.stringMatching(/patient-qr-code-\d+\.pdf/))
     })

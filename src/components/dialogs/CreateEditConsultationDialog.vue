@@ -309,7 +309,7 @@ defineExpose({
     <v-card-title>
       {{ isEditMode ? t('consultation.edit') : t('consultation.add') }}
     </v-card-title>
-    <v-card-text>
+    <v-card-text style="max-height: 70vh; overflow-y: auto;">
       <v-form @submit.prevent="saveConsultation">
         <v-select
                   v-model="form.reasonForConsultation"
@@ -333,7 +333,8 @@ defineExpose({
                            format="dd.MM.yyyy HH:mm"
                            week-numbers="iso"
                            :cancelText="t('buttons.cancelTimeDateText')"
-                           :selectText="t('buttons.selectTimeDateText')" />
+                           :selectText="t('buttons.selectTimeDateText')"
+                           teleport="body" />
             <v-text-field
                           v-if="errors.dateAndTime"
                           :error="true"
