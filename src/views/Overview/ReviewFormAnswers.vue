@@ -2,32 +2,13 @@
 import { ref, onMounted, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
-import { JsonForms, type JsonFormsChangeEvent } from '@jsonforms/vue'
-import { type JsonSchema, type UISchemaElement } from '@jsonforms/core'
-import { extendedVuetifyRenderers } from '@jsonforms/vue-vuetify'
-import { markRaw } from 'vue'
+import PluginFormRenderer from '@/forms/components/PluginFormRenderer.vue'
 import { type FormData, type ScoringData } from '@/types'
 import { useNotifierStore } from '@/stores/notifierStore'
 import FormProgressCard from '@/components/FormProgressCard.vue'
 
 import { ResponseError, type FindAllCodes200ResponseResponseObjectInnerConsultationIdPromsInner } from '@/api'
 import { formApi } from '@/api'
-
-import { entry as EfasQuestionSliderControlRenderer } from '@/components/forms/EfasQuestionSliderControlRenderer.entry'
-import { entry as AofasControlRenderer } from '@/components/forms/AofasControlRenderer.entry'
-import { entry as MoxfqTableRenderer } from '@/components/forms/MoxfqTableRenderer.entry'
-import { entry as VASControlRenderer } from '@/components/forms/VASControlRenderer.entry'
-import { entry as VisaaControlRenderer } from '@/components/forms/VisaaControlRenderer.entry'
-
-// JsonForms setup
-const renderers = markRaw([
-  ...extendedVuetifyRenderers,
-  EfasQuestionSliderControlRenderer,
-  AofasControlRenderer,
-  MoxfqTableRenderer,
-  VASControlRenderer,
-  VisaaControlRenderer
-])
 
 const componentName = 'ReviewFormAnswers.vue'
 const { t } = useI18n()
@@ -45,44 +26,6 @@ const originalFormData = ref<FormData>({})
 const formScoring = ref<ScoringData | null>(null)
 const loading = ref(true)
 const saving = ref(false)
-const jsonFormsKey = ref(0) // Force re-render when needed
-
-// JsonForms i18n setup using backend translations
-const { locale } = useI18n()
-
-const translator = (key: string, defaultMessage?: string): string => {
-  console.debug("JSONForms translator called with:", { key, defaultMessage })
-  console.debug("Available form translations:", form.value?.translations)
-
-  // Try to get translation from backend translations first
-  const backendTranslations = form.value?.translations as Record<string, Record<string, unknown>> | undefined
-  if (backendTranslations) {
-    const currentLocale = locale.value
-    const localeTranslations = backendTranslations[currentLocale] || backendTranslations['en'] || {}
-
-    // Navigate through nested translation keys (e.g., "moxfq.questions.q1")
-    let value: unknown = localeTranslations
-
-    if (value && typeof value === 'object' && value !== null && key in value) {
-      value = (value as Record<string, unknown>)[key]
-      if (typeof value !== 'string') {
-        return defaultMessage || key
-      }
-      return String(value) || defaultMessage || key
-    }
-    else return defaultMessage || key
-
-  }
-
-  // Final fallback
-  console.debug(`Using fallback for ${key}:`, defaultMessage || key)
-  return defaultMessage || key
-}
-
-const jsonFormsI18n = computed(() => ({
-  locale: locale.value,
-  translate: translator
-}))
 
 // Computed properties for display
 const patientId = computed(() => {
@@ -162,9 +105,6 @@ onMounted(async () => {
 
       formData.value = initialFormData
       originalFormData.value = JSON.parse(JSON.stringify(initialFormData))
-
-      // Force re-render to ensure JsonForms picks up the initial data
-      jsonFormsKey.value += 1
     }
   } catch (error: unknown) {
     let errorMessage = 'An unexpected error occurred'
@@ -178,19 +118,9 @@ onMounted(async () => {
   }
 })
 
-const onChange = (event: JsonFormsChangeEvent) => {
-  console.debug(`${componentName}: Form data changed:`, event.data)
-  if (event.data.rawData) {
-    console.debug(`${componentName}: Received ScoringData from renderer:`, formScoring.value)
-    formScoring.value = event.data as ScoringData
-    formData.value = formScoring.value.rawData as FormData
-  }
-  else {
-    console.debug(`${componentName}: rawData NOT present in event.data, using event.data as formData`)
-    // formData.value = event.data as formData
-    // formScoring.value.rawData = formData.value
-    //formScoring.value = null
-  }
+const handleFormDataChange = (newFormData: FormData) => {
+  console.debug(`${componentName}: Form data changed:`, newFormData)
+  formData.value = newFormData
 }
 
 // Save changes
@@ -260,7 +190,6 @@ const cancelChanges = () => {
   if (hasChanges.value) {
     // Reset the form data and force re-render
     formData.value = JSON.parse(JSON.stringify(originalFormData.value))
-    jsonFormsKey.value += 1 // Force JsonForms to re-render
     notifierStore.notify(t('reviewForm.changesCancelled'), 'info')
   }
 }
@@ -368,14 +297,10 @@ const goBack = () => {
       <!-- Form content -->
       <v-card>
         <v-card-text class="px-4 py-6">
-          <json-forms
-                      :data="formData"
-                      @change="onChange"
-                      :renderers="renderers"
-                      :schema="form.formSchema as JsonSchema"
-                      :uischema="form.formSchemaUI as UISchemaElement"
-                      :i18n="jsonFormsI18n"
-                      :key="jsonFormsKey" />
+          <PluginFormRenderer
+                      :template-id="(form as any)?.formTemplateId || (form as any)?._id || ''"
+                      :model-value="formData"
+                      @update:model-value="handleFormDataChange" />
         </v-card-text>
 
         <!-- Display scoring if available -->
@@ -411,8 +336,6 @@ const goBack = () => {
 </template>
 
 <style scoped>
-@import '@jsonforms/vue-vuetify/lib/jsonforms-vue-vuetify.css';
-
 .v-card {
   border-radius: 12px;
 }

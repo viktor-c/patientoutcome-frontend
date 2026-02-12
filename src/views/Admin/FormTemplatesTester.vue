@@ -1,28 +1,10 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
-import { JsonForms } from '@jsonforms/vue'
-import { type JsonSchema, type UISchemaElement } from '@jsonforms/core'
-import { extendedVuetifyRenderers } from '@jsonforms/vue-vuetify'
-import { markRaw } from 'vue'
-
-import { entry as EfasQuestionSliderControlRenderer } from '@/components/forms/EfasQuestionSliderControlRenderer.entry'
-import { entry as AofasControlRenderer } from '@/components/forms/AofasControlRenderer.entry'
-import { entry as MoxfqTableRenderer } from '@/components/forms/MoxfqTableRenderer.entry'
-import { entry as VASControlRenderer } from '@/components/forms/VASControlRenderer.entry'
-import { entry as VisaaControlRenderer } from '@/components/forms/VisaaControlRenderer.entry'
+import PluginFormRenderer from '@/forms/components/PluginFormRenderer.vue'
 
 import { formtemplateApi } from '@/api'
 import type { FormTemplate } from '@/api/models/FormTemplate'
 import type { ScoringData } from '@/types'
-
-const renderers = markRaw([
-  ...extendedVuetifyRenderers,
-  EfasQuestionSliderControlRenderer,
-  AofasControlRenderer,
-  MoxfqTableRenderer,
-  VASControlRenderer,
-  VisaaControlRenderer,
-])
 
 // Available form templates to test
 const availableTemplates = ref<Array<{ id: string; title: string; description: string }>>([])
@@ -80,37 +62,7 @@ const loadTemplateDetails = async (templateId: string) => {
   }
 }
 
-const formSchema = computed(() => {
-  const template = selectedTemplate.value
-  return template?.formSchema as JsonSchema | undefined
-})
 
-const formSchemaUI = computed(() => {
-  const template = selectedTemplate.value
-  return template?.formSchemaUI as UISchemaElement | undefined
-})
-
-const formTranslations = computed(() => {
-  const template = selectedTemplate.value
-  return template?.translations || {}
-})
-
-// JSONForms translator using template translations
-const translator = (key: string, defaultMessage?: string): string => {
-  const backendTranslations = formTranslations.value as Record<string, Record<string, unknown>> | undefined
-  if (backendTranslations) {
-    const localeTranslations = backendTranslations['en'] || {}
-
-    let value: unknown = localeTranslations
-    if (value && typeof value === 'object' && value !== null && key in value) {
-      value = (value as Record<string, unknown>)[key]
-      if (typeof value === 'string') {
-        return value
-      }
-    }
-  }
-  return defaultMessage || key
-}
 
 // Reset form data to initial state from template
 const resetForm = () => {
@@ -124,11 +76,10 @@ const resetForm = () => {
   console.debug('Form reset to template formData:', testFormData.value)
 }
 
-// Handle form changes - update without triggering recursion
-const handleFormChange = (event: { data: Record<string, unknown> }) => {
-  console.debug('Form data changed:', event.data)
-  // Simply assign the data - JsonForms already handles reactivity
-  testFormData.value = event.data as Record<string, unknown>
+// Handle form changes
+const handleFormChange = (newFormData: Record<string, unknown>) => {
+  console.debug('Form data changed:', newFormData)
+  testFormData.value = newFormData as Record<string, unknown>
 }
 
 // Calculate scoring for the form
@@ -235,16 +186,12 @@ const handleTemplateChange = () => {
             <v-skeleton-loader
                                v-if="loadingTemplate || !formSchema || !formSchemaUI"
                                type="article@5"></v-skeleton-loader>
-            <JsonForms
+            <PluginFormRenderer
                        v-else
                        :key="`form-${selectedTemplateId}`"
-                       :data="testFormData"
-                       :schema="formSchema"
-                       :uischema="formSchemaUI"
-                       :renderers="renderers"
-                       :translations="formTranslations"
-                       :i18n="{ translate: translator, locale: 'en' }"
-                       @change="handleFormChange" />
+                       :template-id="selectedTemplateId || ''"
+                       v-model="testFormData"
+                       @update:model-value="handleFormChange" />
           </v-card-text>
         </v-card>
       </v-col>

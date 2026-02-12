@@ -835,8 +835,7 @@ const patientFlowUrl = computed(() => {
                   <v-btn
                          color="primary"
                          variant="text"
-                         @click="openForm(form.id)"
-                         :disabled="!form.id">
+                         @click="openForm(form.id)">
                     {{ t('consultationOverview.reviewForm') }}
                   </v-btn>
                   <v-spacer></v-spacer>
@@ -1205,8 +1204,7 @@ const patientFlowUrl = computed(() => {
                                    color="primary"
                                    variant="text"
                                    size="small"
-                                   @click="openForm(form.id)"
-                                   :disabled="!form.id">
+                                   @click="openForm(form.id)">
                               {{ t('consultationOverview.review') }}
                             </v-btn>
                           </div>

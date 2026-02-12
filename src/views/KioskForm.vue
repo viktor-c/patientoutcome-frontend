@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import PatientForm from '@/components/PatientForm.vue'
+import PluginFormRenderer from '@/forms/components/PluginFormRenderer.vue'
 import { ref, onMounted, computed, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
@@ -180,20 +180,11 @@ const goBackToKiosk = () => {
 
       <v-card>
         <v-card-text>
-          <PatientForm
+          <PluginFormRenderer
                        :key="formId"
-                       :markdownHeader="currentForm?.markdownHeader || ''"
-                       :markdownFooter="currentForm?.markdownFooter || ''"
-                       :formSchema="currentForm?.formSchema || {}"
-                       :formSchemaUI="currentForm?.formSchemaUI || { type: 'VerticalLayout', elements: [] } as any"
-                       :formData="currentForm?.formData || {}"
-                       :translations="currentForm?.translations"
-                       :formId="formId"
-                       :formArrayIdx="currentFormIndex"
-                       @formDataChange="processFormData"
-                       @submitForm="handleSubmitForm"
-                       @gotoNextForm="handleGotoNextForm"
-                       @gotoPreviousForm="handleGotoPreviousForm" />
+                       :template-id="currentForm?.formTemplateId || formId"
+                       :model-value="currentForm?.formData || {}"
+                       @update:model-value="processFormData" />
         </v-card-text>
       </v-card>
     </div>

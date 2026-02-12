@@ -3,7 +3,7 @@ import { ref, onMounted, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import LanguageSelector from '@/components/LanguageSelector.vue'
-import PatientForm from '@/components/PatientForm.vue'
+import PluginFormRenderer from '@/forms/components/PluginFormRenderer.vue'
 import { ResponseError } from '@/api'
 import { mapApiFormsToForms } from '@/adapters/apiAdapters'
 import { useNotifierStore } from '@/stores/notifierStore'
@@ -330,21 +330,32 @@ const isSmallScreen = computed(() => window.innerWidth < 1300)
           <v-chip v-if="isReviewMode" color="info" class="ma-2" size="small">
             {{ t('flow.reviewModeLabel') }}
           </v-chip>
-          <PatientForm
-                       :markdownHeader="currentForm.markdownHeader || ''"
-                       :markdownFooter="currentForm.markdownFooter || ''"
-                       :formSchema="currentForm.formSchema || {}"
-                       :formSchemaUI="currentForm.formSchemaUI || { type: 'VerticalLayout', elements: [] } as any"
-                       :formData="currentForm.formData || {}"
-                       :translations="(currentForm as any).translations"
-                       :form-id="currentForm._id || ''"
-                       :formArrayIdx="currentFormIndex"
-                       @formDataChange="(data) => processFormData(data, currentFormIndex)"
-                       @form-completion-change="(isComplete) => processFormCompletion(isComplete, currentFormIndex)"
-                       @submit-form="submitForm"
-                       @goto-previous-form="gotoPreviousForm"
-                       @goto-next-form="submitForm"
-                       :key="currentForm._id" />
+          <PluginFormRenderer
+                       :key="currentForm._id"
+                       :template-id="currentForm.formTemplateId || currentForm._id || ''"
+                       :model-value="currentForm.formData || {}"
+                       @update:model-value="(data) => processFormData(data, currentFormIndex)" />
+          
+          <!-- Navigation buttons -->
+          <v-card-actions class="px-6 py-4 d-flex justify-space-between">
+            <v-btn
+              v-if="currentFormIndex > 0"
+              variant="outlined"
+              color="primary"
+              @click="gotoPreviousForm">
+              <v-icon start>mdi-arrow-left</v-icon>
+              {{ t('common.previous', 'Previous') }}
+            </v-btn>
+            <v-spacer v-else />
+            
+            <v-btn
+              color="primary"
+              variant="flat"
+              @click="submitForm">
+              <v-icon end>mdi-arrow-right</v-icon>
+              {{ currentFormIndex === forms.length - 1 ? t('common.review', 'Review') : t('common.next', 'Next') }}
+            </v-btn>
+          </v-card-actions>
         </v-card>
       </transition>
     </v-container>

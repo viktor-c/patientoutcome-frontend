@@ -98,35 +98,31 @@ const handleScoreChange = async (scoring: ScoringData, formIndex: number) => {
   if (!form || !form._id) return
 
   try {
-    // Update local state
-    form.scoring = scoring
-    
-    // Save scoring to backend
-    await formApi.updateForm({
-      formId: form._id,
-      updateFormRequest: {
-        scoring: scoring as unknown as Record<string, unknown>,
-      },
-    })
-    
-    logger.debug('Form scoring saved', { formId: form._id, formIndex })
+    logger.debug('Scoring data received', { formIndex, scoring })
+    // Optionally save scoring if needed
   } catch (err) {
-    logger.error('Failed to save form scoring', { error: err, formIndex })
+    logger.error('Failed to handle scoring', { error: err, formIndex })
   }
 }
 
-// Navigation handlers
+// Handle validation changes
+const handleValidationChange = (isValid: boolean, formIndex: number) => {
+  logger.debug('Form validation status', { formIndex, isValid })
+}
+
+// Navigate to previous form
 const handleGotoPreviousForm = (formIndex: number) => {
   if (formIndex > 0) {
     tab.value = String(formIndex - 1)
   }
 }
 
+// Navigate to next form
 const handleGotoNextForm = (formIndex: number) => {
   if (formIndex < forms.value.length - 1) {
     tab.value = String(formIndex + 1)
   } else {
-    // Go to the finish tab
+    // Go to finish tab
     tab.value = String(forms.value.length)
   }
 }
@@ -161,184 +157,105 @@ const handleSubmitAll = async () => {
 </script>
 
 <template>
-  <v-container class="w-75">
-    <!-- Loading state -->
-    <v-card v-if="loading" class="pa-4">
-      <v-progress-circular indeterminate color="primary" />
-      <p class="mt-4">{{ t('forms.consultation.loading') }}</p>
-    </v-card>
+  <v-container class="py-6">
+    <v-row>
+      <v-col cols="12">
+        <h1 class="mb-4 text-h4">{{ t('form.title', 'Forms') }}</h1>
 
-    <!-- Error state -->
-    <v-card v-else-if="error" color="error" class="pa-4">
-      <v-card-title>{{ t('forms.consultation.error') }}</v-card-title>
-      <v-card-text>{{ error }}</v-card-text>
-    </v-card>
+        <!-- Loading indicator -->
+        <v-progress-linear v-if="loading" indeterminate color="primary" />
 
-    <!-- Main content -->
-    <v-card v-else>
-      <v-tabs v-model="tab" bg-color="primary">
-        <v-tab v-for="(form, index) in forms" :key="index" :value="String(index)">
-          <span>{{ form.title || t('forms.consultation.untitledForm') }}</span>
-          <v-icon v-if="savingStates[index]" size="small" class="ml-2">mdi-loading mdi-spin</v-icon>
-          <v-icon v-else-if="form.formFillStatus === 'completed'" size="small" class="ml-2" color="success">
-            mdi-check-circle
-          </v-icon>
-        </v-tab>
-        <v-tab :value="String(forms.length)">
-          {{ t('forms.consultation.finish') }}
-        </v-tab>
-      </v-tabs>
+        <!-- Error display -->
+        <v-alert v-if="error" type="error" closable @click="error = null" class="mb-4">
+          {{ error }}
+        </v-alert>
 
-      <v-card-text>
-        <v-tabs-window v-model="tab">
-          <!-- Form tabs -->
-          <v-tabs-window-item v-for="(form, index) in forms" :key="index" :value="String(index)">
+        <!-- Forms tabs -->
+        <v-tabs v-if="!loading && forms.length > 0" v-model="tab" class="mb-4">
+          <v-tab v-for="(form, index) in forms" :key="form._id || index" :value="String(index)">
+            <span class="text-caption">{{ form.title || `Form ${index + 1}` }}</span>
+          </v-tab>
+          <v-tab :value="String(forms.length)">
+            <span class="text-caption">{{ t('form.summary', 'Summary') }}</span>
+          </v-tab>
+        </v-tabs>
+
+        <!-- Form content tab -->
+        <v-window v-model="tab" v-if="forms.length > 0">
+          <v-window-item v-for="(form, formIndex) in forms" :key="form._id || formIndex" :value="String(formIndex)">
             <div class="form-container">
-              <!-- Plugin-based form rendering -->
-              <PluginFormRenderer
-                v-if="canUsePlugin(form) && form.formTemplateId"
-                :template-id="form.formTemplateId"
-                :model-value="(form.formData as unknown as PluginFormData) || {}"
-                :locale="locale"
-                :readonly="form.formFillStatus === 'completed'"
-                @update:model-value="(data) => handleFormDataChange(data, index)"
+              <v-card class="pa-6">
+                <template v-if="canUsePlugin(form) && form.formTemplateId && form.formData">
+                  <!-- Plugin-based form renderer -->
+                  <PluginFormRenderer
+                    :template-id="form.formTemplateId"
+                    :model-value="(form.formData as PluginFormData)"
+                    :locale="locale"
+                    @update:model-value="(data) => handleFormDataChange(data, formIndex)"
+                    @score-change="(score) => handleScoreChange(score, formIndex)"
+                    @validation-change="(valid) => handleValidationChange(valid, formIndex)"
+                  />
+                </template>
+
+                <!-- Fallback for legacy forms -->
+                <div v-else class="alert-fallback">
+                  <v-alert type="warning">
+                    {{ t('form.legacyNotSupported', 'This form is not yet supported in the new form system') }}
+                  </v-alert>
+                </div>
+              </v-card>
+            </div>
+          </v-window-item>
+
+          <!-- Summary tab -->
+          <v-window-item :value="String(forms.length)">
+            <v-card class="pa-6">
+              <h2 class="text-h5 mb-4">{{ t('form.reviewAnswers', 'Review Your Answers') }}</h2>
+
+              <!-- Show all form submissions -->
+              <v-expansion-panels class="mb-4">
+                <v-expansion-panel v-for="(form, idx) in forms" :key="form._id || idx">
+                  <template #title>
+                    <span>{{ form.title || `Form ${idx + 1}` }}</span>
+                  </template>
+                  <template #text>
+                    <pre class="text-body2">{{ JSON.stringify(form.formData, null, 2) }}</pre>
+                  </template>
+                </v-expansion-panel>
+              </v-expansion-panels>
+
+              <!-- Submit button -->
+              <div class="d-flex gap-2">
+                <v-btn variant="outlined" @click="tab = String(forms.length - 1)">
+                  {{ t('common.back', 'Back') }}
+                </v-btn>
+                <v-btn color="success" @click="handleSubmitAll">
+                  {{ t('form.submit', 'Submit All Forms') }}
+                </v-btn>
+              </div>
+            </v-card>
+          </v-window-item>
+        </v-window>
+      </v-col>
+    </v-row>
+  </v-container>
+</template>
+<style scoped>
+.form-view {
+  min-height: 100vh;
+  background-color: #fafafa;
+}
+
 .form-container {
   min-height: 400px;
 }
 
-.form-navigation {
-  display: flex;
-  gap: 1rem;
-  padding-top: 2rem;
-  border-top: 1px solid rgba(0, 0, 0, 0.12);
-}
-
-.finish-container {
-  text-align: center;
-  max-width: 800px;
-  margin: 0 auto;
+.alert-fallback {
+  padding: 2rem;
 }
 
 @media (max-width: 600px) {
-  /* Minimize container padding */
-  .v-container {
-    padding: 0px !important;
+  .form-view {
+    padding: 0;
   }
-
-  /* Make any fixed-width container full width on small screens (e.g., .w-75 -> 100%) */
-  .w-75 {
-    width: 100% !important;
-    max-width: 100% !important;
-  }
-
-  .form-navigation {
-    flex-direction: column;
-  }
-
-  .finish-container {
-    padding: 1rem })
-                  }}
-                </p>
-                <p class="text-caption mt-2">
-                  Template ID: {{ form.formTemplateId || t('forms.consultation.noTemplateId') }}
-                </p>
-              </v-alert>
-
-              <!-- Navigation buttons -->
-              <div class="form-navigation mt-6">
-                <v-btn
-                  v-if="index > 0"
-                  variant="outlined"
-                  color="primary"
-                  @click="handleGotoPreviousForm(index)"
-                >
-                  <v-icon start>mdi-chevron-left</v-icon>
-                  {{ t('buttons.previous') }}
-                </v-btn>
-
-                <v-spacer />
-
-                <v-btn color="primary" @click="handleGotoNextForm(index)">
-                  {{
-                    index < forms.length - 1 ? t('buttons.next') : t('buttons.review')
-                  }}
-                  <v-icon end>mdi-chevron-right</v-icon>
-                </v-btn>
-              </div>
-            </div>
-          </v-tabs-window-item>
-
-          <!-- Finish/Review tab -->
-          <v-tabs-window-item :value="String(forms.length)">
-            <div class="finish-container pa-6">
-              <v-icon size="64" color="success" class="mb-4">mdi-check-circle-outline</v-icon>
-              <h2 class="text-h4 mb-4">{{ t('forms.consultation.completed') }}</h2>
-              <p class="text-body-1 mb-6">
-                {{ t('forms.consultation.reviewMessage') }}
-              </p>
-
-              <!-- Form completion summary -->
-              <v-card variant="outlined" class="mb-6">
-                <v-card-title>{{ t('forms.consultation.summary') }}</v-card-title>
-                <v-list>
-                  <v-list-item
-                    v-for="(form, index) in forms"
-                    :key="index"
-                    @click="tab = String(index)"
-                  >
-                    <template #prepend>
-                      <v-icon v-if="form.formFillStatus === 'completed'" color="success">
-                        mdi-check-circle
-                      </v-icon>
-                      <v-icon v-else color="warning">mdi-alert-circle</v-icon>
-                    </template>
-                    <v-list-item-title>{{ form.title }}</v-list-item-title>
-                    <v-list-item-subtitle>
-                      {{
-                        form.formFillStatus === 'completed'
-                          ? t('forms.consultation.statusCompleted')
-                          : t('forms.consultation.statusIncomplete')
-                      }}
-                    </v-list-item-subtitle>
-                  </v-list-item>
-                </v-list>
-              </v-card>
-
-              <!-- Action buttons -->
-              <div class="d-flex gap-4">
-                <v-btn
-                  variant="outlined"
-                  color="primary"
-                  @click="tab = String(forms.length - 1)"
-                >
-                  <v-icon start>mdi-chevron-left</v-icon>
-                  {{ t('buttons.back') }}
-                </v-btn>
-                
-                <v-btn color="primary" size="large" @click="handleSubmitAll">
-                  {{ t('buttons.submit') }}
-                  <v-icon end>mdi-send</v-icon>
-                </v-btn>
-              </div>
-            </div>
-          </v-tabs-window-item>
-        </v-tabs-window>
-      </v-card-text>
-    </v-card>
-  </v-container>
-</template>
-<style scoped>
-@media (max-width: 600px) {
-
-  /* Minimize container padding */
-  .v-container {
-    padding: 0px !important;
-  }
-
-  /* Make any fixed-width container full width on small screens (e.g., .w-75 -> 100%) */
-  .w-75 {
-    width: 100% !important;
-    max-width: 100% !important;
-  }
-}
-</style>
+}</style>
