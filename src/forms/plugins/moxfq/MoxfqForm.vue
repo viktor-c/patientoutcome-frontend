@@ -3,7 +3,7 @@ import { computed, toRef } from 'vue'
 import { useForm } from '../../composables/useForm'
 import { calculateScore } from './scoring'
 import { translations } from './translations'
-import type { FormComponentProps, FormComponentEvents, FormData as PluginFormData } from '../../types'
+import type { FormComponentProps, FormComponentEvents, FormSubmissionData } from '../../types'
 import type { ScoringData } from '@/types/backend/scoring'
 
 // Component props following the plugin interface
@@ -23,11 +23,7 @@ const { updateQuestion, getQuestion, t } = useForm({
   locale: toRef(props, 'locale'),
   emit: (event: string, ...args: unknown[]) => {
     if (event === 'update:modelValue') {
-      emit('update:modelValue', args[0] as PluginFormData)
-    } else if (event === 'score-change') {
-      emit('score-change', args[0] as ScoringData)
-    } else if (event === 'validation-change') {
-      emit('validation-change', args[0] as boolean)
+      emit('update:modelValue', args[0] as FormSubmissionData)
     }
   }
 })
@@ -116,30 +112,27 @@ function getCurrentValue(questionKey: string): number | null {
     <!-- Mobile card-based layout -->
     <div class="mobile-layout">
       <v-card
-        v-for="(question, questionIndex) in questionsData"
-        :key="question.key"
-        class="question-card"
-        elevation="1"
-      >
+              v-for="(question, questionIndex) in questionsData"
+              :key="question.key"
+              class="question-card"
+              elevation="1">
         <v-card-title class="card-header">
           <span class="card-number">{{ questionIndex + 1 }}</span>
           <div class="card-title-text">{{ question.title }}</div>
         </v-card-title>
         <v-card-text class="card-options">
           <v-radio-group
-            :model-value="getCurrentValue(question.key)"
-            :readonly="readonly"
-            @update:model-value="(value) => handleUpdate(question.key, value as number)"
-            class="mobile-radio-group"
-          >
+                         :model-value="getCurrentValue(question.key)"
+                         :readonly="readonly"
+                         @update:model-value="(value) => handleUpdate(question.key, value as number)"
+                         class="mobile-radio-group">
             <v-radio
-              v-for="option in getQuestionOptions(question.options)"
-              :key="option.value"
-              :value="option.value"
-              :label="`${option.value} - ${option.label}`"
-              density="compact"
-              class="mobile-radio"
-            />
+                     v-for="option in getQuestionOptions(question.options)"
+                     :key="option.value"
+                     :value="option.value"
+                     :label="`${option.value} - ${option.label}`"
+                     density="compact"
+                     class="mobile-radio" />
           </v-radio-group>
         </v-card-text>
       </v-card>
@@ -157,10 +150,9 @@ function getCurrentValue(questionKey: string): number | null {
               <strong>Question</strong>
             </th>
             <th
-              v-for="option in headerOptions"
-              :key="option.value"
-              class="answer-column text-center"
-            >
+                v-for="option in headerOptions"
+                :key="option.value"
+                class="answer-column text-center">
               <div class="answer-header">
                 <div class="answer-value">({{ option.value }})</div>
                 <div class="answer-label">{{ option.label }}</div>
@@ -171,10 +163,9 @@ function getCurrentValue(questionKey: string): number | null {
         <tbody>
           <!-- Standard questions 1-14 -->
           <tr
-            v-for="(question, questionIndex) in questionsData.slice(0, 14)"
-            :key="question.key"
-            class="question-row"
-          >
+              v-for="(question, questionIndex) in questionsData.slice(0, 14)"
+              :key="question.key"
+              class="question-row">
             <td class="number-cell text-center">
               {{ questionIndex + 1 }}
             </td>
@@ -182,32 +173,28 @@ function getCurrentValue(questionKey: string): number | null {
               <div class="question-text">{{ question.title }}</div>
             </td>
             <td
-              v-for="option in getQuestionOptions(question.options)"
-              :key="option.value"
-              class="answer-cell text-center"
-            >
+                v-for="option in getQuestionOptions(question.options)"
+                :key="option.value"
+                class="answer-cell text-center">
               <v-radio-group
-                :model-value="getCurrentValue(question.key)"
-                :readonly="readonly"
-                @update:model-value="(value) => handleUpdate(question.key, value as number)"
-                class="answer-radio-group"
-                hide-details
-              >
+                             :model-value="getCurrentValue(question.key)"
+                             :readonly="readonly"
+                             @update:model-value="(value) => handleUpdate(question.key, value as number)"
+                             class="answer-radio-group"
+                             hide-details>
                 <v-radio
-                  :value="option.value"
-                  color="primary"
-                  density="compact"
-                />
+                         :value="option.value"
+                         color="primary"
+                         density="compact" />
               </v-radio-group>
             </td>
           </tr>
 
           <!-- Special questions 15-16 with different answer scales -->
           <tr
-            v-for="(question, questionIndex) in questionsData.slice(14)"
-            :key="question.key"
-            class="question-row special-question"
-          >
+              v-for="(question, questionIndex) in questionsData.slice(14)"
+              :key="question.key"
+              class="question-row special-question">
             <td class="number-cell text-center">
               {{ questionIndex + 15 }}
             </td>
@@ -215,23 +202,20 @@ function getCurrentValue(questionKey: string): number | null {
               <div class="question-text">{{ question.title }}</div>
             </td>
             <td
-              v-for="option in getQuestionOptions(question.options)"
-              :key="option.value"
-              class="answer-cell-special text-center"
-            >
+                v-for="option in getQuestionOptions(question.options)"
+                :key="option.value"
+                class="answer-cell-special text-center">
               <div class="special-answer-container">
                 <v-radio-group
-                  :model-value="getCurrentValue(question.key)"
-                  :readonly="readonly"
-                  @update:model-value="(value) => handleUpdate(question.key, value as number)"
-                  class="answer-radio-group"
-                  hide-details
-                >
+                               :model-value="getCurrentValue(question.key)"
+                               :readonly="readonly"
+                               @update:model-value="(value) => handleUpdate(question.key, value as number)"
+                               class="answer-radio-group"
+                               hide-details>
                   <v-radio
-                    :value="option.value"
-                    color="primary"
-                    density="compact"
-                  />
+                           :value="option.value"
+                           color="primary"
+                           density="compact" />
                 </v-radio-group>
                 <div class="answer-caption">{{ option.label }}</div>
               </div>

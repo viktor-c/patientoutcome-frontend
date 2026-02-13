@@ -26,9 +26,9 @@ const MockFormComponent: Component = {
     readonly: Boolean,
     locale: String
   },
-  emits: ['update:modelValue', 'score-change', 'validation-change'],
+  emits: ['update:modelValue'],
   setup(props, { emit }) {
-    return () => h('div', { 
+    return () => h('div', {
       class: 'mock-form',
       'data-testid': 'mock-form-component'
     }, [
@@ -36,22 +36,6 @@ const MockFormComponent: Component = {
       h('button', {
         onClick: () => emit('update:modelValue', { test: { q1: 1 } })
       }, 'Update Data'),
-      h('button', {
-        onClick: () => emit('score-change', {
-          rawData: { test: { q1: 1 } },
-          subscales: {},
-          total: { 
-            name: 'Total',
-            rawScore: 1,
-            normalizedScore: 25,
-            maxPossibleScore: 4,
-            answeredQuestions: 1,
-            totalQuestions: 1,
-            completionPercentage: 100,
-            isComplete: true
-          }
-        })
-      }, 'Emit Score'),
       h('button', {
         onClick: () => emit('validation-change', true)
       }, 'Emit Validation')
@@ -150,7 +134,7 @@ describe('PluginFormRenderer.vue', () => {
     })
 
     it('should log error when plugin not found', () => {
-      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => { })
       mockGetFormPlugin.mockReturnValue(undefined)
 
       wrapper = mountComponent({
@@ -166,7 +150,7 @@ describe('PluginFormRenderer.vue', () => {
     })
 
     it('should log success when plugin loaded', () => {
-      const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+      const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => { })
       mockGetFormPlugin.mockReturnValue(mockPlugin)
 
       wrapper = mountComponent({
@@ -189,7 +173,7 @@ describe('PluginFormRenderer.vue', () => {
 
     it('should pass modelValue prop to plugin component', () => {
       const formData = { test: { q1: 2 } }
-      
+
       wrapper = mountComponent({
         templateId: 'test-plugin-id',
         modelValue: formData
@@ -258,21 +242,6 @@ describe('PluginFormRenderer.vue', () => {
 
       expect(wrapper.emitted('update:modelValue')).toBeTruthy()
       expect(wrapper.emitted('update:modelValue')?.[0]).toEqual([{ test: { q1: 1 } }])
-    })
-
-    it('should emit score-change when plugin component emits it', async () => {
-      wrapper = mountComponent({
-        templateId: 'test-plugin-id',
-        modelValue: {}
-      })
-
-      const scoreButton = wrapper.findAll('button')[1]
-      await scoreButton.trigger('click')
-
-      expect(wrapper.emitted('score-change')).toBeTruthy()
-      const emittedScore = wrapper.emitted('score-change')?.[0][0] as ScoringData
-      expect(emittedScore.total?.rawScore).toBe(1)
-      expect(emittedScore.total?.normalizedScore).toBe(25)
     })
 
     it('should emit validation-change when plugin component emits it', async () => {
@@ -356,8 +325,8 @@ describe('PluginFormRenderer.vue', () => {
       })
 
       // Should show loading state or handle gracefully
-      expect(wrapper.find('.v-progress-circular').exists() || 
-             wrapper.find('.v-alert').exists()).toBe(true)
+      expect(wrapper.find('.v-progress-circular').exists() ||
+        wrapper.find('.v-alert').exists()).toBe(true)
     })
   })
 

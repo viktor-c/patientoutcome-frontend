@@ -3,8 +3,7 @@ import { computed, toRef } from 'vue'
 import { useForm } from '../../composables/useForm'
 import { calculateScore } from './scoring'
 import { translations } from './translations'
-import type { FormComponentProps, FormComponentEvents, FormData as PluginFormData } from '../../types'
-import type { ScoringData } from '@/types/backend/scoring'
+import type { FormComponentProps, FormComponentEvents, FormSubmissionData } from '../../types'
 
 // Component props following the plugin interface
 const props = withDefaults(defineProps<FormComponentProps>(), {
@@ -23,11 +22,7 @@ const { updateQuestion, getQuestion, t } = useForm({
   locale: toRef(props, 'locale'),
   emit: (event: string, ...args: unknown[]) => {
     if (event === 'update:modelValue') {
-      emit('update:modelValue', args[0] as PluginFormData)
-    } else if (event === 'score-change') {
-      emit('score-change', args[0] as ScoringData)
-    } else if (event === 'validation-change') {
-      emit('validation-change', args[0] as boolean)
+      emit('update:modelValue', args[0] as FormSubmissionData)
     }
   }
 })
@@ -135,30 +130,27 @@ function getCurrentValue(questionKey: string): number | null {
     <!-- Mobile card-based layout -->
     <div class="mobile-layout">
       <v-card
-        v-for="(question, questionIndex) in questionsData"
-        :key="question.key"
-        class="question-card"
-        elevation="1"
-      >
+              v-for="(question, questionIndex) in questionsData"
+              :key="question.key"
+              class="question-card"
+              elevation="1">
         <v-card-title class="card-header">
           <span class="card-number">{{ questionIndex + 1 }}</span>
           <div class="card-title-text">{{ question.title }}</div>
         </v-card-title>
         <v-card-text class="card-options">
           <v-radio-group
-            :model-value="getCurrentValue(question.key)"
-            :readonly="readonly"
-            @update:model-value="(value) => handleUpdate(question.key, value as number)"
-            class="mobile-radio-group"
-          >
+                         :model-value="getCurrentValue(question.key)"
+                         :readonly="readonly"
+                         @update:model-value="(value) => handleUpdate(question.key, value as number)"
+                         class="mobile-radio-group">
             <v-radio
-              v-for="option in question.options"
-              :key="option.value"
-              :value="option.value"
-              :label="`${option.value} pts - ${option.label}`"
-              density="compact"
-              class="mobile-radio"
-            />
+                     v-for="option in question.options"
+                     :key="option.value"
+                     :value="option.value"
+                     :label="`${option.value} pts - ${option.label}`"
+                     density="compact"
+                     class="mobile-radio" />
           </v-radio-group>
         </v-card-text>
       </v-card>
@@ -182,10 +174,9 @@ function getCurrentValue(questionKey: string): number | null {
         </thead>
         <tbody>
           <tr
-            v-for="(question, questionIndex) in questionsData"
-            :key="question.key"
-            class="question-row"
-          >
+              v-for="(question, questionIndex) in questionsData"
+              :key="question.key"
+              class="question-row">
             <td class="number-cell text-center">
               {{ questionIndex + 1 }}
             </td>
@@ -194,21 +185,19 @@ function getCurrentValue(questionKey: string): number | null {
             </td>
             <td class="answer-cell">
               <v-radio-group
-                :model-value="getCurrentValue(question.key)"
-                :readonly="readonly"
-                @update:model-value="(value) => handleUpdate(question.key, value as number)"
-                hide-details
-                class="answer-radio-group"
-              >
+                             :model-value="getCurrentValue(question.key)"
+                             :readonly="readonly"
+                             @update:model-value="(value) => handleUpdate(question.key, value as number)"
+                             hide-details
+                             class="answer-radio-group">
                 <v-radio
-                  v-for="option in question.options"
-                  :key="option.value"
-                  :value="option.value"
-                  :label="`(${option.value}) ${option.label}`"
-                  color="primary"
-                  density="compact"
-                  class="mb-1"
-                />
+                         v-for="option in question.options"
+                         :key="option.value"
+                         :value="option.value"
+                         :label="`(${option.value}) ${option.label}`"
+                         color="primary"
+                         density="compact"
+                         class="mb-1" />
               </v-radio-group>
             </td>
           </tr>

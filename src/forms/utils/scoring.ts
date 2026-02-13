@@ -147,7 +147,7 @@ export function extractQuestions(
  */
 export function createEmptyScoring(): ScoringData {
   return {
-    rawData: null,
+    rawData: {},
     subscales: {},
     total: null
   }

@@ -35,7 +35,7 @@ export interface SubscaleScore {
  * This structure allows forms to have multiple subscales and a total score
  */
 export interface ScoringData {
-  rawData: FormQuestions | null;
+  rawData: FormQuestions;
   subscales: {
     [key: string]: SubscaleScore | null;
   };

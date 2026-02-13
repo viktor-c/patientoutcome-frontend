@@ -3,7 +3,7 @@ import { computed, toRef } from 'vue'
 import { useForm } from '../../composables/useForm'
 import { calculateScore } from './scoring'
 import { translations } from './translations'
-import type { FormComponentProps, FormComponentEvents, FormData as PluginFormData } from '../../types'
+import type { FormComponentProps, FormComponentEvents, FormSubmissionData } from '../../types'
 import type { ScoringData } from '@/types/backend/scoring'
 
 // Component props following the plugin interface
@@ -23,11 +23,7 @@ const { updateQuestion, getQuestion, t } = useForm({
   locale: toRef(props, 'locale'),
   emit: (event: string, ...args: unknown[]) => {
     if (event === 'update:modelValue') {
-      emit('update:modelValue', args[0] as PluginFormData)
-    } else if (event === 'score-change') {
-      emit('score-change', args[0] as ScoringData)
-    } else if (event === 'validation-change') {
-      emit('validation-change', args[0] as boolean)
+      emit('update:modelValue', args[0] as FormSubmissionData)
     }
   }
 })
@@ -105,15 +101,14 @@ function getTickLabels(section: string, questionKey: string): { low: string; hig
     <!-- Standard Questions Section (Required) -->
     <div class="section-container mb-6">
       <h4 class="section-title mb-4">{{ t('standardfragebogen.title') }}</h4>
-      
+
       <!-- Mobile card-based layout -->
       <div class="mobile-layout">
         <v-card
-          v-for="(question, questionIndex) in standardQuestions"
-          :key="question.key"
-          class="question-card"
-          elevation="1"
-        >
+                v-for="(question, questionIndex) in standardQuestions"
+                :key="question.key"
+                class="question-card"
+                elevation="1">
           <v-card-title class="card-header">
             <span class="card-number">{{ questionIndex + 1 }}</span>
             <div class="card-title-text">{{ getQuestionLabel(question.section, question.key) }}</div>
@@ -123,20 +118,18 @@ function getTickLabels(section: string, questionKey: string): { low: string; hig
           </v-card-subtitle>
           <v-card-text class="card-options">
             <v-radio-group
-              :model-value="getCurrentValue(question.section, question.key)"
-              :readonly="readonly"
-              @update:model-value="(value) => handleUpdate(question.section, question.key, value as number)"
-              class="mobile-radio-group"
-              inline
-            >
+                           :model-value="getCurrentValue(question.section, question.key)"
+                           :readonly="readonly"
+                           @update:model-value="(value) => handleUpdate(question.section, question.key, value as number)"
+                           class="mobile-radio-group"
+                           inline>
               <v-radio
-                v-for="option in answerOptions"
-                :key="option.value"
-                :value="option.value"
-                :label="option.label"
-                density="compact"
-                class="mobile-radio"
-              />
+                       v-for="option in answerOptions"
+                       :key="option.value"
+                       :value="option.value"
+                       :label="option.label"
+                       density="compact"
+                       class="mobile-radio" />
             </v-radio-group>
             <div class="tick-labels mt-2">
               <span class="tick-label-low">{{ getTickLabels(question.section, question.key).low }}</span>
@@ -153,20 +146,18 @@ function getTickLabels(section: string, questionKey: string): { low: string; hig
             <tr>
               <th class="text-left">{{ t('standardfragebogen.title') }}</th>
               <th
-                v-for="option in answerOptions"
-                :key="option.value"
-                class="text-center option-header"
-              >
+                  v-for="option in answerOptions"
+                  :key="option.value"
+                  class="text-center option-header">
                 {{ option.label }}
               </th>
             </tr>
           </thead>
           <tbody>
             <tr
-              v-for="(question, questionIndex) in standardQuestions"
-              :key="question.key"
-              :class="{ 'readonly-row': readonly }"
-            >
+                v-for="(question, questionIndex) in standardQuestions"
+                :key="question.key"
+                :class="{ 'readonly-row': readonly }">
               <td class="question-cell">
                 <div class="question-number">{{ questionIndex + 1 }}.</div>
                 <div class="question-text">
@@ -181,18 +172,16 @@ function getTickLabels(section: string, questionKey: string): { low: string; hig
                 </div>
               </td>
               <td
-                v-for="option in answerOptions"
-                :key="option.value"
-                class="text-center option-cell"
-              >
+                  v-for="option in answerOptions"
+                  :key="option.value"
+                  class="text-center option-cell">
                 <v-radio
-                  :model-value="getCurrentValue(question.section, question.key)"
-                  :value="option.value"
-                  :readonly="readonly"
-                  @click="handleUpdate(question.section, question.key, option.value)"
-                  density="compact"
-                  hide-details
-                />
+                         :model-value="getCurrentValue(question.section, question.key)"
+                         :value="option.value"
+                         :readonly="readonly"
+                         @click="handleUpdate(question.section, question.key, option.value)"
+                         density="compact"
+                         hide-details />
               </td>
             </tr>
           </tbody>
@@ -206,15 +195,14 @@ function getTickLabels(section: string, questionKey: string): { low: string; hig
       <v-alert type="info" variant="tonal" class="mb-4" density="compact">
         {{ t('efas.sportQuestions.info') }}
       </v-alert>
-      
+
       <!-- Mobile card-based layout -->
       <div class="mobile-layout">
         <v-card
-          v-for="(question, questionIndex) in sportQuestions"
-          :key="question.key"
-          class="question-card"
-          elevation="1"
-        >
+                v-for="(question, questionIndex) in sportQuestions"
+                :key="question.key"
+                class="question-card"
+                elevation="1">
           <v-card-title class="card-header">
             <span class="card-number">S{{ questionIndex + 1 }}</span>
             <div class="card-title-text">{{ getQuestionLabel(question.section, question.key) }}</div>
@@ -224,20 +212,18 @@ function getTickLabels(section: string, questionKey: string): { low: string; hig
           </v-card-subtitle>
           <v-card-text class="card-options">
             <v-radio-group
-              :model-value="getCurrentValue(question.section, question.key)"
-              :readonly="readonly"
-              @update:model-value="(value) => handleUpdate(question.section, question.key, value as number)"
-              class="mobile-radio-group"
-              inline
-            >
+                           :model-value="getCurrentValue(question.section, question.key)"
+                           :readonly="readonly"
+                           @update:model-value="(value) => handleUpdate(question.section, question.key, value as number)"
+                           class="mobile-radio-group"
+                           inline>
               <v-radio
-                v-for="option in answerOptions"
-                :key="option.value"
-                :value="option.value"
-                :label="option.label"
-                density="compact"
-                class="mobile-radio"
-              />
+                       v-for="option in answerOptions"
+                       :key="option.value"
+                       :value="option.value"
+                       :label="option.label"
+                       density="compact"
+                       class="mobile-radio" />
             </v-radio-group>
             <div class="tick-labels mt-2">
               <span class="tick-label-low">{{ getTickLabels(question.section, question.key).low }}</span>
@@ -254,20 +240,18 @@ function getTickLabels(section: string, questionKey: string): { low: string; hig
             <tr>
               <th class="text-left">{{ t('sportfragebogen.title') }}</th>
               <th
-                v-for="option in answerOptions"
-                :key="option.value"
-                class="text-center option-header"
-              >
+                  v-for="option in answerOptions"
+                  :key="option.value"
+                  class="text-center option-header">
                 {{ option.label }}
               </th>
             </tr>
           </thead>
           <tbody>
             <tr
-              v-for="(question, questionIndex) in sportQuestions"
-              :key="question.key"
-              :class="{ 'readonly-row': readonly }"
-            >
+                v-for="(question, questionIndex) in sportQuestions"
+                :key="question.key"
+                :class="{ 'readonly-row': readonly }">
               <td class="question-cell">
                 <div class="question-number">S{{ questionIndex + 1 }}.</div>
                 <div class="question-text">
@@ -282,18 +266,16 @@ function getTickLabels(section: string, questionKey: string): { low: string; hig
                 </div>
               </td>
               <td
-                v-for="option in answerOptions"
-                :key="option.value"
-                class="text-center option-cell"
-              >
+                  v-for="option in answerOptions"
+                  :key="option.value"
+                  class="text-center option-cell">
                 <v-radio
-                  :model-value="getCurrentValue(question.section, question.key)"
-                  :value="option.value"
-                  :readonly="readonly"
-                  @click="handleUpdate(question.section, question.key, option.value)"
-                  density="compact"
-                  hide-details
-                />
+                         :model-value="getCurrentValue(question.section, question.key)"
+                         :value="option.value"
+                         :readonly="readonly"
+                         @click="handleUpdate(question.section, question.key, option.value)"
+                         density="compact"
+                         hide-details />
               </td>
             </tr>
           </tbody>
@@ -464,7 +446,7 @@ function getTickLabels(section: string, questionKey: string): { low: string; hig
   .mobile-layout {
     display: none;
   }
-  
+
   .table-wrapper {
     display: block;
   }
@@ -475,11 +457,11 @@ function getTickLabels(section: string, questionKey: string): { low: string; hig
   .mobile-layout {
     display: none;
   }
-  
+
   .table-wrapper {
     display: block;
   }
-  
+
   .efas-table {
     page-break-inside: avoid;
   }

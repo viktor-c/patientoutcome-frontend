@@ -224,7 +224,6 @@ function handleScoreChange(scoring) {
     v-model="formData"
     :readonly="false"
     locale="en"
-    @score-change="handleScoreChange"
   />
 </template>
 ```
@@ -255,12 +254,14 @@ console.log('Available forms:', allPlugins.map(p => p.metadata.name))
 ## Migration from JsonForms
 
 ### Before (JsonForms)
+
 - Form data included translations ❌
 - Manual renderer registration ❌
 - Duplicate scoring in frontend/backend ❌
 - JsonForms abstraction overhead ❌
 
 ### After (Plugins)
+
 - Translations in plugin, not data ✅
 - Auto-discovery ✅
 - Shared scoring logic ✅
@@ -281,6 +282,7 @@ console.log('Available forms:', allPlugins.map(p => p.metadata.name))
 ### `useForm` Composable
 
 Provides common form functionality:
+
 - v-model integration
 - Score calculation with auto-emit
 - Validation tracking
@@ -300,6 +302,7 @@ The plugin ID must match the backend `templateId`. The backend will use the same
 ### Sharing Scoring Logic
 
 For maximum code reuse, the scoring logic in `scoring.ts` can be imported by both:
+
 - Frontend: For real-time score display
 - Backend: For server-side validation and persistence
 
@@ -342,6 +345,7 @@ describe('MyForm Scoring', () => {
 ### Plugin not found
 
 Check that:
+
 1. Plugin directory is in `src/forms/plugins/`
 2. `index.ts` exports default plugin object
 3. Plugin ID matches backend templateId
@@ -349,6 +353,7 @@ Check that:
 ### Translations not working
 
 Check that:
+
 1. Translation keys match what's used in `t()` calls
 2. Supported locales are declared in metadata
 3. Fallback to English is working
@@ -356,6 +361,7 @@ Check that:
 ### Scoring doesn't update
 
 Check that:
+
 1. `updateQuestion` is called when values change
 2. emit is passed to `useForm`
 3. Parent component listens to `@score-change`
@@ -363,6 +369,7 @@ Check that:
 ## Example: MOXFQ
 
 See `src/forms/plugins/moxfq/` for a complete, real-world example of:
+
 - Complex table layout
 - Multiple question scales
 - Subscale scoring

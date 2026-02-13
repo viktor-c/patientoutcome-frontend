@@ -3,8 +3,7 @@ import { computed, toRef } from 'vue'
 import { useForm } from '../../composables/useForm'
 import { calculateScore } from './scoring'
 import { translations } from './translations'
-import type { FormComponentProps, FormComponentEvents, FormData as PluginFormData } from '../../types'
-import type { ScoringData } from '@/types/backend/scoring'
+import type { FormComponentProps, FormComponentEvents, FormSubmissionData } from '../../types'
 
 // Component props following the plugin interface
 const props = withDefaults(defineProps<FormComponentProps>(), {
@@ -23,11 +22,7 @@ const { updateQuestion, getQuestion, t } = useForm({
   locale: toRef(props, 'locale'),
   emit: (event: string, ...args: unknown[]) => {
     if (event === 'update:modelValue') {
-      emit('update:modelValue', args[0] as PluginFormData)
-    } else if (event === 'score-change') {
-      emit('score-change', args[0] as ScoringData)
-    } else if (event === 'validation-change') {
-      emit('validation-change', args[0] as boolean)
+      emit('update:modelValue', args[0] as FormSubmissionData)
     }
   }
 })
@@ -114,19 +109,18 @@ const conditionalQ8 = computed(() => {
               <span class="label-max">{{ t('visaa.q1_max') }}</span>
             </div>
             <v-slider
-              :model-value="getCurrentValue('q1') as number | undefined"
-              :readonly="readonly"
-              @update:model-value="(value) => handleUpdate('q1', value)"
-              :min="0"
-              :max="100"
-              :step="1"
-              show-ticks="always"
-              :ticks="{ 0: '100+', 20: '80', 40: '60', 60: '40', 80: '20', 100: '0' }"
-              thumb-label="always"
-              color="primary"
-              track-color="grey-lighten-2"
-              class="slider-input"
-            >
+                      :model-value="getCurrentValue('q1') as number | undefined"
+                      :readonly="readonly"
+                      @update:model-value="(value) => handleUpdate('q1', value)"
+                      :min="0"
+                      :max="100"
+                      :step="1"
+                      show-ticks="always"
+                      :ticks="{ 0: '100+', 20: '80', 40: '60', 60: '40', 80: '20', 100: '0' }"
+                      thumb-label="always"
+                      color="primary"
+                      track-color="grey-lighten-2"
+                      class="slider-input">
               <template #thumb-label="{ modelValue }">
                 {{ 100 - (modelValue as number) }}
               </template>
@@ -148,18 +142,17 @@ const conditionalQ8 = computed(() => {
               <span class="label-max">{{ t('visaa.q2_max') }}</span>
             </div>
             <v-slider
-              :model-value="getCurrentValue('q2') as number | undefined"
-              :readonly="readonly"
-              @update:model-value="(value) => handleUpdate('q2', value)"
-              :min="0"
-              :max="10"
-              :step="1"
-              show-ticks
-              thumb-label="always"
-              color="primary"
-              track-color="grey-lighten-2"
-              class="slider-input"
-            />
+                      :model-value="getCurrentValue('q2') as number | undefined"
+                      :readonly="readonly"
+                      @update:model-value="(value) => handleUpdate('q2', value)"
+                      :min="0"
+                      :max="10"
+                      :step="1"
+                      show-ticks
+                      thumb-label="always"
+                      color="primary"
+                      track-color="grey-lighten-2"
+                      class="slider-input" />
           </div>
         </v-card-text>
       </v-card>
@@ -177,18 +170,17 @@ const conditionalQ8 = computed(() => {
               <span class="label-max">{{ t('visaa.q3_max') }}</span>
             </div>
             <v-slider
-              :model-value="getCurrentValue('q3') as number | undefined"
-              :readonly="readonly"
-              @update:model-value="(value) => handleUpdate('q3', value)"
-              :min="0"
-              :max="10"
-              :step="1"
-              show-ticks
-              thumb-label="always"
-              color="primary"
-              track-color="grey-lighten-2"
-              class="slider-input"
-            />
+                      :model-value="getCurrentValue('q3') as number | undefined"
+                      :readonly="readonly"
+                      @update:model-value="(value) => handleUpdate('q3', value)"
+                      :min="0"
+                      :max="10"
+                      :step="1"
+                      show-ticks
+                      thumb-label="always"
+                      color="primary"
+                      track-color="grey-lighten-2"
+                      class="slider-input" />
           </div>
         </v-card-text>
       </v-card>
@@ -206,18 +198,17 @@ const conditionalQ8 = computed(() => {
               <span class="label-max">{{ t('visaa.q4_max') }}</span>
             </div>
             <v-slider
-              :model-value="getCurrentValue('q4') as number | undefined"
-              :readonly="readonly"
-              @update:model-value="(value) => handleUpdate('q4', value)"
-              :min="0"
-              :max="10"
-              :step="1"
-              show-ticks
-              thumb-label="always"
-              color="primary"
-              track-color="grey-lighten-2"
-              class="slider-input"
-            />
+                      :model-value="getCurrentValue('q4') as number | undefined"
+                      :readonly="readonly"
+                      @update:model-value="(value) => handleUpdate('q4', value)"
+                      :min="0"
+                      :max="10"
+                      :step="1"
+                      show-ticks
+                      thumb-label="always"
+                      color="primary"
+                      track-color="grey-lighten-2"
+                      class="slider-input" />
           </div>
         </v-card-text>
       </v-card>
@@ -235,18 +226,17 @@ const conditionalQ8 = computed(() => {
               <span class="label-max">{{ t('visaa.q5_max') }}</span>
             </div>
             <v-slider
-              :model-value="getCurrentValue('q5') as number | undefined"
-              :readonly="readonly"
-              @update:model-value="(value) => handleUpdate('q5', value)"
-              :min="0"
-              :max="10"
-              :step="1"
-              show-ticks
-              thumb-label="always"
-              color="primary"
-              track-color="grey-lighten-2"
-              class="slider-input"
-            />
+                      :model-value="getCurrentValue('q5') as number | undefined"
+                      :readonly="readonly"
+                      @update:model-value="(value) => handleUpdate('q5', value)"
+                      :min="0"
+                      :max="10"
+                      :step="1"
+                      show-ticks
+                      thumb-label="always"
+                      color="primary"
+                      track-color="grey-lighten-2"
+                      class="slider-input" />
           </div>
         </v-card-text>
       </v-card>
@@ -264,18 +254,17 @@ const conditionalQ8 = computed(() => {
               <span class="label-max">{{ t('visaa.q6_max') }}</span>
             </div>
             <v-slider
-              :model-value="getCurrentValue('q6') as number | undefined"
-              :readonly="readonly"
-              @update:model-value="(value) => handleUpdate('q6', value)"
-              :min="0"
-              :max="10"
-              :step="1"
-              show-ticks
-              thumb-label="always"
-              color="primary"
-              track-color="grey-lighten-2"
-              class="slider-input"
-            />
+                      :model-value="getCurrentValue('q6') as number | undefined"
+                      :readonly="readonly"
+                      @update:model-value="(value) => handleUpdate('q6', value)"
+                      :min="0"
+                      :max="10"
+                      :step="1"
+                      show-ticks
+                      thumb-label="always"
+                      color="primary"
+                      track-color="grey-lighten-2"
+                      class="slider-input" />
           </div>
         </v-card-text>
       </v-card>
@@ -288,19 +277,17 @@ const conditionalQ8 = computed(() => {
         </v-card-title>
         <v-card-text class="card-content">
           <v-radio-group
-            :model-value="getCurrentValue('q7') as number | undefined"
-            :readonly="readonly"
-            @update:model-value="(value) => handleUpdate('q7', value)"
-            class="radio-group"
-          >
+                         :model-value="getCurrentValue('q7') as number | undefined"
+                         :readonly="readonly"
+                         @update:model-value="(value) => handleUpdate('q7', value)"
+                         class="radio-group">
             <v-radio
-              v-for="option in q7Options"
-              :key="option.value"
-              :value="option.value"
-              :label="`${option.value} - ${option.label}`"
-              density="compact"
-              color="primary"
-            />
+                     v-for="option in q7Options"
+                     :key="option.value"
+                     :value="option.value"
+                     :label="`${option.value} - ${option.label}`"
+                     density="compact"
+                     color="primary" />
           </v-radio-group>
         </v-card-text>
       </v-card>
@@ -313,19 +300,17 @@ const conditionalQ8 = computed(() => {
         </v-card-title>
         <v-card-text class="card-content">
           <v-radio-group
-            :model-value="getCurrentValue('q8_type') as string | undefined"
-            :readonly="readonly"
-            @update:model-value="handleQ8TypeChange"
-            class="radio-group"
-          >
+                         :model-value="getCurrentValue('q8_type') as string | undefined"
+                         :readonly="readonly"
+                         @update:model-value="handleQ8TypeChange"
+                         class="radio-group">
             <v-radio
-              v-for="option in q8TypeOptions"
-              :key="option.value"
-              :value="option.value"
-              :label="option.label"
-              density="compact"
-              color="primary"
-            />
+                     v-for="option in q8TypeOptions"
+                     :key="option.value"
+                     :value="option.value"
+                     :label="option.label"
+                     density="compact"
+                     color="primary" />
           </v-radio-group>
         </v-card-text>
       </v-card>
@@ -343,20 +328,19 @@ const conditionalQ8 = computed(() => {
               <span class="label-max">{{ t('visaa.q8_max') }}</span>
             </div>
             <v-slider
-              v-if="conditionalQ8"
-              :model-value="getCurrentValue(conditionalQ8.key) as number | undefined"
-              :readonly="readonly"
-              @update:model-value="(value) => conditionalQ8 && handleUpdate(conditionalQ8.key, value)"
-              :min="0"
-              :max="30"
-              :step="1"
-              show-ticks="always"
-              :ticks="{ 0: '0', 10: '10', 20: '20', 30: '30+' }"
-              thumb-label="always"
-              color="primary"
-              track-color="grey-lighten-2"
-              class="slider-input"
-            />
+                      v-if="conditionalQ8"
+                      :model-value="getCurrentValue(conditionalQ8.key) as number | undefined"
+                      :readonly="readonly"
+                      @update:model-value="(value) => conditionalQ8 && handleUpdate(conditionalQ8.key, value)"
+                      :min="0"
+                      :max="30"
+                      :step="1"
+                      show-ticks="always"
+                      :ticks="{ 0: '0', 10: '10', 20: '20', 30: '30+' }"
+                      thumb-label="always"
+                      color="primary"
+                      track-color="grey-lighten-2"
+                      class="slider-input" />
           </div>
         </v-card-text>
       </v-card>

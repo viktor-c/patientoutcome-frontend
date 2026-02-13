@@ -46,7 +46,7 @@ export function calculateScore(data: FormData): ScoringData {
 
   for (const key of questionKeys) {
     const value = forefootSection[key]
-    
+
     // Check if value is a valid number
     if (typeof value === 'number' && !Number.isNaN(value)) {
       validAnswers.push(value)
@@ -106,18 +106,18 @@ export function calculateScore(data: FormData): ScoringData {
  */
 export function validateFormData(data: FormData): boolean {
   const forefootSection = data.forefoot || {}
-  
+
   const questionKeys = ['q1', 'q2', 'q3', 'q4', 'q5', 'q6', 'q7', 'q8']
 
   for (const key of questionKeys) {
     const value = forefootSection[key]
-    
+
     // Null/undefined is valid (unanswered)
     if (value === null || value === undefined) continue
-    
+
     // Must be a number
     if (typeof value !== 'number') return false
-    
+
     // Must be one of the valid enum values for this question
     const validValues = QUESTION_VALUES[key as keyof typeof QUESTION_VALUES]
     if (!validValues.includes(value as any)) return false

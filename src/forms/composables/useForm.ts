@@ -10,7 +10,7 @@
 
 import { computed, ref, watch } from 'vue'
 import type { Ref } from 'vue'
-import type { FormData } from '../types'
+import type { FormData, FormSubmissionData } from '../types'
 import type { ScoringData } from '@/types/backend/scoring'
 
 export interface UseFormOptions {
@@ -18,27 +18,27 @@ export interface UseFormOptions {
    * Current form data (v-model)
    */
   modelValue: Ref<FormData>
-  
+
   /**
    * Scoring calculation function
    */
   calculateScore: (data: FormData) => ScoringData
-  
+
   /**
    * Optional validation function
    */
   validate?: (data: FormData) => boolean
-  
+
   /**
    * Translations for the current form
    */
   translations: Record<string, Record<string, string>>
-  
+
   /**
    * Current locale
    */
   locale: Ref<string>
-  
+
   /**
    * Emit function from component
    */
@@ -64,6 +64,51 @@ export function useForm(options: UseFormOptions) {
   // Validation state
   const isValid = ref(true)
 
+  // Track previous data to detect changes
+  let previousDataString = JSON.stringify(localData.value)
+
+  /**
+   * Check if form is complete based on scoring data
+   * Uses the scoring plugin's isComplete logic which handles conditional fields correctly
+   */
+  function isFormComplete(): boolean {
+    // Use scoring data if available - it handles conditional fields correctly
+    if (scoring.value?.total?.isComplete !== undefined) {
+      return scoring.value.total.isComplete
+    }
+    
+    // Fallback: check if all values are filled (works for simple forms without conditional fields)
+    for (const section of Object.values(localData.value)) {
+      if (typeof section === 'object' && section !== null) {
+        for (const value of Object.values(section)) {
+          if (value === null || value === '') {
+            return false
+          }
+        }
+      }
+    }
+    return true
+  }
+
+  /**
+   * Create submission data combining raw data, scoring, and completion status
+   * This structure is emitted to parent components and eventually sent to the backend
+   * 
+   * FormSubmissionData structure:
+   * - rawData: The raw form answers (FormData)
+   * - scoring: Calculated scoring data (ScoringData)
+   * - isComplete: Whether all questions are answered
+   * - completedAt: Timestamp when form was completed (if complete)
+   */
+  function createSubmissionData(): FormSubmissionData {
+    return {
+      rawData: localData.value,
+      scoring: scoring.value || { rawData: {}, total: null, subscales: {} },
+      isComplete: isFormComplete(),
+      completedAt: isFormComplete() ? new Date() : undefined
+    }
+  }
+
   /**
    * Update a question value
    */
@@ -72,17 +117,25 @@ export function useForm(options: UseFormOptions) {
       localData.value[section] = {}
     }
     localData.value[section][question] = value
-    
-    // Emit changes
-    emit('update:modelValue', localData.value)
-    
-    // Recalculate scoring
-    recalculateScore()
-    
-    // Revalidate
-    if (validate) {
-      isValid.value = validate(localData.value)
-      emit('validation-change', isValid.value)
+
+    // Check if data actually changed
+    const newDataString = JSON.stringify(localData.value)
+    const dataChanged = newDataString !== previousDataString
+
+    if (dataChanged) {
+      previousDataString = newDataString
+
+      // Emit changes only if data actually changed
+      emit('update:modelValue', createSubmissionData())
+
+      // Recalculate scoring
+      recalculateScore()
+
+      // Revalidate
+      if (validate) {
+        isValid.value = validate(localData.value)
+        emit('validation-change', isValid.value)
+      }
     }
   }
 
@@ -99,7 +152,6 @@ export function useForm(options: UseFormOptions) {
   function recalculateScore() {
     try {
       scoring.value = calculateScore(localData.value)
-      emit('score-change', scoring.value)
     } catch (error) {
       console.error('[useForm] Error calculating score:', error)
       scoring.value = null
@@ -120,6 +172,7 @@ export function useForm(options: UseFormOptions) {
    */
   function reset() {
     localData.value = { ...modelValue.value }
+    previousDataString = JSON.stringify(localData.value)
     recalculateScore()
   }
 
@@ -128,6 +181,7 @@ export function useForm(options: UseFormOptions) {
     () => modelValue.value,
     (newValue) => {
       localData.value = { ...newValue }
+      previousDataString = JSON.stringify(localData.value)
       recalculateScore()
     },
     { deep: true }

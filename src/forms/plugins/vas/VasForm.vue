@@ -3,8 +3,7 @@ import { computed, toRef } from 'vue'
 import { useForm } from '../../composables/useForm'
 import { calculateScore } from './scoring'
 import { translations } from './translations'
-import type { FormComponentProps, FormComponentEvents, FormData as PluginFormData } from '../../types'
-import type { ScoringData } from '@/types/backend/scoring'
+import type { FormComponentProps, FormComponentEvents, FormSubmissionData } from '../../types'
 
 // Component props following the plugin interface
 const props = withDefaults(defineProps<FormComponentProps>(), {
@@ -23,11 +22,7 @@ const { localData, updateQuestion, t } = useForm({
   locale: toRef(props, 'locale'),
   emit: (event: string, ...args: unknown[]) => {
     if (event === 'update:modelValue') {
-      emit('update:modelValue', args[0] as PluginFormData)
-    } else if (event === 'score-change') {
-      emit('score-change', args[0] as ScoringData)
-    } else if (event === 'validation-change') {
-      emit('validation-change', args[0] as boolean)
+      emit('update:modelValue', args[0] as FormSubmissionData)
     }
   }
 })
@@ -50,7 +45,7 @@ const currentPainLevel = computed(() => {
 // Get current face based on pain level
 const currentFace = computed(() => {
   if (currentPainLevel.value === null) return null
-  
+
   // Find the closest face to current pain level
   return painFaces.reduce((closest, face) => {
     const currentDiff = Math.abs((currentPainLevel.value as number) - face.value)
@@ -62,7 +57,7 @@ const currentFace = computed(() => {
 // Get slider color based on pain level
 const sliderColor = computed(() => {
   if (currentPainLevel.value === null) return '#9E9E9E'
-  
+
   const painValue = currentPainLevel.value as number
   if (painValue <= 2) return '#4CAF50'
   if (painValue <= 4) return '#8BC34A'
@@ -116,20 +111,19 @@ function handleFaceClick(value: number) {
       <v-label class="mb-2">
         {{ t('painScale.painLevel.label') }}
       </v-label>
-      
+
       <v-slider
-        :model-value="currentPainLevel ?? undefined"
-        @update:model-value="handlePainLevelChange"
-        :min="0"
-        :max="10"
-        :step="0.1"
-        :ticks="painFaces.reduce((acc, face) => ({ ...acc, [face.value]: '' }), {})"
-        :color="sliderColor"
-        :readonly="readonly"
-        show-ticks="always"
-        thumb-label="always"
-        class="pain-slider"
-      >
+                :model-value="currentPainLevel ?? undefined"
+                @update:model-value="handlePainLevelChange"
+                :min="0"
+                :max="10"
+                :step="0.1"
+                :ticks="painFaces.reduce((acc, face) => ({ ...acc, [face.value]: '' }), {})"
+                :color="sliderColor"
+                :readonly="readonly"
+                show-ticks="always"
+                thumb-label="always"
+                class="pain-slider">
         <template #prepend>
           <div class="slider-label">
             {{ t('painScale.tick.low') }}
@@ -146,15 +140,14 @@ function handleFaceClick(value: number) {
     <!-- Pain Faces Grid -->
     <div class="pain-faces-grid">
       <div
-        v-for="face in painFaces"
-        :key="face.value"
-        class="pain-face-item"
-        :class="{ 
-          active: currentPainLevel === face.value,
-          readonly: readonly
-        }"
-        @click="handleFaceClick(face.value)"
-      >
+           v-for="face in painFaces"
+           :key="face.value"
+           class="pain-face-item"
+           :class="{
+            active: currentPainLevel === face.value,
+            readonly: readonly
+          }"
+           @click="handleFaceClick(face.value)">
         <div class="pain-face-emoji" :style="{ color: face.color }">
           {{ face.emoji }}
         </div>
