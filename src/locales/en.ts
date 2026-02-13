@@ -362,6 +362,8 @@ export default {
       confirmPermanentDelete: 'Are you sure you want to permanently delete this form? This action cannot be undone.',
       fetchDeletedFailed: 'Failed to fetch deleted forms.',
       deleteFailed: 'Failed to delete form.',
+      saved: 'Form saved successfully!',
+      submitFailed: 'Failed to save form. Please try again.',
     },
     validation: {
       failed: 'Form validation failed. Please check all required fields.',
@@ -797,6 +799,8 @@ export default {
     noNotes: 'No notes',
     goBack: 'Go Back',
     next: 'Next',
+    previous: "Previous",
+    review: "Review",
     loading: 'Loading...',
     errorLoadingData: 'Error loading data',
     retry: 'Retry',

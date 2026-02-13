@@ -612,6 +612,8 @@ export default {
       confirmPermanentDelete: 'Sind Sie sicher, dass Sie dieses Formular endgültig löschen möchten? Diese Aktion kann nicht rückgängig gemacht werden.',
       fetchDeletedFailed: 'Fehler beim Abrufen gelöschter Formulare.',
       deleteFailed: 'Fehler beim Löschen des Formulars.',
+      saved: 'Formular erfolgreich gespeichert!',
+      submitFailed: 'Fehler beim Speichern des Formulars. Bitte versuchen Sie es erneut.',
     },
     validation: {
       failed: 'Formularvalidierung fehlgeschlagen. Bitte überprüfen Sie alle erforderlichen Felder.',
@@ -798,6 +800,8 @@ export default {
     noNotes: 'Keine Notizen',
     goBack: 'Zurück',
     next: 'Weiter',
+    previous: "Zurück",
+    review: 'Überprüfen',
     loading: 'Wird geladen...',
     errorLoadingData: 'Fehler beim Laden der Daten',
     retry: 'Wiederholen',
