@@ -4,13 +4,14 @@ import PluginFormRenderer from '@/forms/components/PluginFormRenderer.vue'
 
 import { formtemplateApi } from '@/api'
 import type { FormTemplate } from '@/api/models/FormTemplate'
-import type { ScoringData, CustomFormData } from '@/types'
+import type { ScoringData } from '@/types'
+import type { FormSubmissionData, FormData } from '@/forms/types'
 
 // Available form templates to test
 const availableTemplates = ref<Array<{ id: string; title: string; description: string }>>([])
 const selectedTemplateId = ref<string | null>(null)
 const loading = ref(true)
-const testFormData = ref<CustomFormData>({})
+const testFormData = ref<Record<string, unknown>>({})
 const scoring = ref<ScoringData | null>(null)
 const selectedTemplate = ref<FormTemplate | null>(null)
 const loadingTemplate = ref(false)
@@ -80,10 +81,14 @@ const resetForm = () => {
   console.debug('Form reset to template formData:', testFormData.value)
 }
 
-// Handle form changes
-const handleFormChange = (newFormData: CustomFormData) => {
-  console.debug('Form data changed:', newFormData)
-  testFormData.value = newFormData
+// Handle form changes - receives FormSubmissionData from plugin
+const handleFormChange = (submissionData: FormSubmissionData) => {
+  console.debug('Form submission data changed:', submissionData)
+  testFormData.value = submissionData.rawData as unknown as Record<string, unknown>
+  scoring.value = submissionData.scoring
+  console.debug('- Raw data:', submissionData.rawData)
+  console.debug('- Scoring:', submissionData.scoring)
+  console.debug('- Is complete:', submissionData.isComplete)
 }
 
 // Calculate scoring for the form
@@ -191,11 +196,11 @@ const handleTemplateChange = () => {
                                v-if="loadingTemplate || !formSchema || !formSchemaUI"
                                type="article@5"></v-skeleton-loader>
             <PluginFormRenderer
-                       v-else
-                       :key="`form-${selectedTemplateId}`"
-                       :template-id="selectedTemplateId || ''"
-                       v-model="testFormData"
-                       @update:model-value="handleFormChange" />
+                                v-else
+                                :key="`form-${selectedTemplateId}`"
+                                :template-id="selectedTemplateId || ''"
+                                :model-value="(testFormData as FormData)"
+                                @update:model-value="handleFormChange" />
           </v-card-text>
         </v-card>
       </v-col>

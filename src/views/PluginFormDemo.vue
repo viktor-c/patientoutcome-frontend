@@ -1,15 +1,15 @@
 /**
- * Form Plugin System Demo/Test Page
- * 
- * This page demonstrates how to use the new plugin-based form system.
- * It can also serve as a testing ground for new plugins.
- */
+* Form Plugin System Demo/Test Page
+*
+* This page demonstrates how to use the new plugin-based form system.
+* It can also serve as a testing ground for new plugins.
+*/
 
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 import { getAllFormPlugins } from '@/forms/registry'
 import PluginFormRenderer from '@/forms/components/PluginFormRenderer.vue'
-import type { FormData } from '@/forms/types'
+import type { FormSubmissionData } from '@/forms/types'
 import type { ScoringData } from '@/types/backend/scoring'
 
 // Get all available plugins
@@ -23,8 +23,8 @@ const selectedPluginId = ref<string>(
 // Current locale
 const currentLocale = ref<string>('en')
 
-// Form data
-const formData = ref<FormData>({})
+// Form data - store raw form data
+const formData = ref<Record<string, unknown>>({})
 
 // Scoring data
 const scoring = ref<ScoringData | null>(null)
@@ -66,10 +66,14 @@ function clearForm() {
   }
 }
 
-// Handle form data changes
-function handleDataChange(newData: FormData) {
-  formData.value = newData
-  console.log('[PluginDemo] Form data updated:', newData)
+// Handle form data changes - receives FormSubmissionData from plugin
+function handleDataChange(submissionData: FormSubmissionData) {
+  formData.value = submissionData.rawData as unknown as Record<string, unknown>
+  scoring.value = submissionData.scoring
+  console.log('[PluginDemo] Form submission data updated:', submissionData)
+  console.log('[PluginDemo] - Raw data:', submissionData.rawData)
+  console.log('[PluginDemo] - Scoring:', submissionData.scoring)
+  console.log('[PluginDemo] - Is complete:', submissionData.isComplete)
 }
 
 // Handle scoring changes
@@ -119,13 +123,12 @@ if (selectedPluginId.value) {
           <v-card-text>
             <!-- Plugin selector -->
             <v-select
-              v-model="selectedPluginId"
-              :items="availablePlugins"
-              item-title="metadata.name"
-              item-value="metadata.id"
-              label="Select Form"
-              @update:model-value="handlePluginChange"
-            >
+                      v-model="selectedPluginId"
+                      :items="availablePlugins"
+                      item-title="metadata.name"
+                      item-value="metadata.id"
+                      label="Select Form"
+                      @update:model-value="handlePluginChange">
               <template #item="{ props, item }">
                 <v-list-item v-bind="props">
                   <v-list-item-title>{{ item.raw.metadata.name }}</v-list-item-title>
@@ -136,36 +139,32 @@ if (selectedPluginId.value) {
 
             <!-- Locale selector -->
             <v-select
-              v-model="currentLocale"
-              :items="selectedPlugin?.metadata.supportedLocales || ['en']"
-              label="Language"
-              class="mt-4"
-            />
+                      v-model="currentLocale"
+                      :items="selectedPlugin?.metadata.supportedLocales || ['en']"
+                      label="Language"
+                      class="mt-4" />
 
             <!-- Read-only toggle -->
             <v-switch
-              v-model="readonly"
-              label="Read-only mode"
-              color="primary"
-              class="mt-2"
-            />
+                      v-model="readonly"
+                      label="Read-only mode"
+                      color="primary"
+                      class="mt-2" />
 
             <!-- Action buttons -->
             <div class="mt-4">
               <v-btn
-                color="primary"
-                variant="outlined"
-                @click="loadMockData"
-                class="mr-2"
-                :disabled="!selectedPlugin?.generateMockData"
-              >
+                     color="primary"
+                     variant="outlined"
+                     @click="loadMockData"
+                     class="mr-2"
+                     :disabled="!selectedPlugin?.generateMockData">
                 Load Mock Data
               </v-btn>
               <v-btn
-                color="error"
-                variant="outlined"
-                @click="clearForm"
-              >
+                     color="error"
+                     variant="outlined"
+                     @click="clearForm">
                 Clear Form
               </v-btn>
             </div>
@@ -200,10 +199,9 @@ if (selectedPluginId.value) {
                 <v-list-item-title>Validation</v-list-item-title>
                 <v-list-item-subtitle>
                   <v-chip
-                    :color="isValid ? 'success' : 'error'"
-                    size="small"
-                    variant="flat"
-                  >
+                          :color="isValid ? 'success' : 'error'"
+                          size="small"
+                          variant="flat">
                     {{ isValid ? 'Valid' : 'Invalid' }}
                   </v-chip>
                 </v-list-item-subtitle>
@@ -221,15 +219,13 @@ if (selectedPluginId.value) {
           <v-card-title>Form</v-card-title>
           <v-card-text>
             <PluginFormRenderer
-              v-if="selectedPluginId"
-              :template-id="selectedPluginId"
-              v-model="formData"
-              :readonly="readonly"
-              :locale="currentLocale"
-              @score-change="handleScoreChange"
-              @update:model-value="handleDataChange"
-              @validation-change="handleValidationChange"
-            />
+                                v-if="selectedPluginId"
+                                :template-id="selectedPluginId"
+                                :model-value="(formData as any)"
+                                :readonly="readonly"
+                                :locale="currentLocale"
+                                @update:model-value="handleDataChange"
+                                @validation-change="handleValidationChange" />
           </v-card-text>
         </v-card>
       </v-col>
@@ -281,9 +277,8 @@ if (selectedPluginId.value) {
                       <div class="text-caption">Status</div>
                       <div class="text-h6">
                         <v-chip
-                          :color="scoring.total.isComplete ? 'success' : 'warning'"
-                          size="small"
-                        >
+                                :color="scoring.total.isComplete ? 'success' : 'warning'"
+                                size="small">
                           {{ scoring.total.isComplete ? 'Complete' : 'Incomplete' }}
                         </v-chip>
                       </div>
@@ -298,11 +293,10 @@ if (selectedPluginId.value) {
               <h3>Subscale Scores</h3>
               <v-row class="mt-2">
                 <v-col
-                  v-for="(subscale, key) in scoring.subscales"
-                  :key="key"
-                  cols="12"
-                  md="4"
-                >
+                       v-for="(subscale, key) in scoring.subscales"
+                       :key="key"
+                       cols="12"
+                       md="4">
                   <v-card variant="outlined" v-if="subscale">
                     <v-card-title class="text-subtitle-1">
                       {{ subscale.name }}
@@ -341,10 +335,9 @@ if (selectedPluginId.value) {
             Raw Data
             <v-spacer />
             <v-btn
-              size="small"
-              variant="text"
-              @click="copyToClipboard"
-            >
+                   size="small"
+                   variant="text"
+                   @click="copyToClipboard">
               Copy JSON
             </v-btn>
           </v-card-title>

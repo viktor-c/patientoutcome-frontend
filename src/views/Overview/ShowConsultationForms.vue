@@ -386,6 +386,7 @@ const isSmallScreen = computed(() => window.innerWidth < 1300)
           <v-chip v-if="isReviewMode" color="info" class="ma-2" size="small">
             {{ t('flow.reviewModeLabel') }}
           </v-chip>
+          <!-- formData coming from backend has less info than FormSubmissionData, the backend should fix this  -->
           <PluginFormRenderer
                               :key="currentForm._id"
                               :template-id="currentForm.formTemplateId || currentForm._id || ''"

@@ -3,7 +3,7 @@ import { ref, onMounted, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import PluginFormRenderer from '@/forms/components/PluginFormRenderer.vue'
-import { type ScoringData } from '@/types'
+import { type Form, type ScoringData } from '@/types'
 import { type FormSubmissionData } from '@/forms/types'
 import { useNotifierStore } from '@/stores/notifierStore'
 import FormProgressCard from '@/components/FormProgressCard.vue'
@@ -23,9 +23,10 @@ const formId = route.params.formId as string
 
 // State
 const form = ref<FindAllCodes200ResponseResponseObjectInnerConsultationIdPromsInner | null>(null)
-const formData = ref<Record<string, unknown>>({})
-const originalFormData = ref<Record<string, unknown>>({})
+const formData = ref<FormData>({} as unknown as FormData)
+const originalFormData = ref<FormData>({} as unknown as FormData)
 const formScoring = ref<ScoringData | null>(null)
+const formCompletionStatus = ref<'draft' | 'incomplete' | 'completed'>("draft")
 const loading = ref(true)
 const saving = ref(false)
 
@@ -97,35 +98,19 @@ const templateId = computed(() => {
 onMounted(async () => {
   try {
     const response = await formApi.getFormById({ formId })
-    form.value = response.responseObject || null
-    if (form.value) {
-      logger.debug("Form translations are ", (form.value as any).translations)
-      logger.debug("Form caseId (patientId) is ", form.value.caseId)
-      logger.debug("Form consultationId is ", form.value.consultationId)
-      logger.debug("Form data is ", form.value.formData)
-
-      // Ensure we have form data, even if empty
-      let initialFormData = form.value.formData as FormData || {}
+    const formReponseData = response.responseObject as Form
+    if (response.responseObject) {
+      logger.debug("Form response data is", formReponseData)
+      logger.debug("Form caseId (patientId) is ", formReponseData.caseId?._id)
+      logger.debug("Form consultationId is ", formReponseData.consultationId?._id)
+      logger.debug("Form data is ", formReponseData.formData)
+      logger.debug("Form completion status is, ", formReponseData.formFillStatus)
 
       // FIX: Unwrap any incorrectly nested data structure
       // Check if formData has a 'body' wrapper (from old corrupted data)
-      if (initialFormData && typeof initialFormData === 'object' && 'body' in initialFormData) {
-        logger.warn('⚠️  Detected nested body structure in loaded form data, unwrapping...')
-        const nestedData = initialFormData as Record<string, unknown>
-        const bodyContent = nestedData.body
-        if (bodyContent && typeof bodyContent === 'object' && 'formData' in bodyContent) {
-          // Use body.formData as the actual form data
-          const bodyRecord = bodyContent as Record<string, unknown>
-          initialFormData = bodyRecord.formData as FormData
-        } else if (bodyContent) {
-          // Use body directly
-          initialFormData = bodyContent as FormData
-        }
-        logger.info('Unwrapped formData:', initialFormData)
-      }
-
-      formData.value = initialFormData as unknown as Record<string, unknown>
-      originalFormData.value = JSON.parse(JSON.stringify(initialFormData))
+      originalFormData.value = formReponseData.formData as unknown as FormData
+      formCompletionStatus.value = formReponseData.formFillStatus ? formReponseData.formFillStatus : "draft"
+      form.value = formReponseData as unknown as Form
     }
   } catch (error: unknown) {
     let errorMessage = 'An unexpected error occurred'
@@ -143,11 +128,10 @@ onMounted(async () => {
 const handleFormDataChange = (submissionData: FormSubmissionData) => {
   logger.debug(`${componentName}: Form data changed:`, submissionData)
   // Extract rawData from FormSubmissionData
-  formData.value = submissionData.rawData as unknown as Record<string, unknown>
-  // Also update scoring if provided
-  if (submissionData.scoring) {
-    formScoring.value = submissionData.scoring
-  }
+  formData.value = submissionData.rawData as unknown as FormData
+  formScoring.value = submissionData.scoring
+  formCompletionStatus.value = submissionData.formFillStatus ? submissionData.formFillStatus : "draft"
+
 }
 
 // Save changes
@@ -159,24 +143,13 @@ const saveChanges = async () => {
 
   saving.value = true
   try {
-    // Determine if form is complete
-    let isComplete = false
-    if (formData.value && typeof formData.value === 'object') {
-      isComplete = Object.values(formData.value).every(section => {
-        if (typeof section === 'object' && section !== null) {
-          return Object.values(section).every(value => value !== null && value !== '')
-        }
-        return false
-      })
-    }
-
     // Prepare update payload with full structure
     const updatePayload = {
       formId,
       updateFormRequest: {
         formData: formData.value,
         scoring: formScoring.value || undefined,
-        formFillStatus: isComplete ? ('completed' as const) : ('incomplete' as const),
+        formFillStatus: formCompletionStatus.value
       }
     }
     logger.debug('=== ReviewFormAnswers FRONTEND: Data being sent to API ===')
@@ -335,7 +308,7 @@ const goBack = () => {
         <v-card-text class="px-4 py-6">
           <PluginFormRenderer
                               :template-id="templateId"
-                              :model-value="(formData as any)"
+                              :model-value="(form.formData as FormData)"
                               @update:model-value="handleFormDataChange" />
         </v-card-text>
 

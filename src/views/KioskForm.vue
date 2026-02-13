@@ -6,7 +6,8 @@ import { useI18n } from 'vue-i18n'
 import { ResponseError } from '@/api'
 import { formApi, kioskApi } from '@/api'
 import { mapApiFormToForm } from '@/adapters/apiAdapters'
-import type { Form, FormData } from '@/types/index'
+import type { Form } from '@/types/index'
+import type { FormSubmissionData } from '@/forms/types'
 
 const { t } = useI18n()
 const route = useRoute()
@@ -89,11 +90,26 @@ onMounted(() => {
   fetchFormData()
 })
 
-// Handle form data changes
-const processFormData = (newFormData: FormData) => {
-  console.debug('Form data changed:', newFormData)
-  if (form.value) {
-    form.value.formData = newFormData
+// Handle form data changes from FormSubmissionData structure
+const processFormData = async (submissionData: FormSubmissionData) => {
+  console.debug('Form data changed:', submissionData)
+  if (form.value && form.value._id) {
+    // Update local state
+    form.value.formData = submissionData.rawData as unknown as Form['formData']
+    
+    // Auto-save to backend with full structure
+    try {
+      await formApi.updateForm({
+        formId: form.value._id,
+        updateFormRequest: {
+          formData: submissionData.rawData as unknown as Record<string, unknown>,
+          scoring: submissionData.scoring,
+          formFillStatus: submissionData.isComplete ? 'completed' : 'incomplete',
+        },
+      })
+    } catch (err) {
+      console.error('Failed to auto-save form data:', err)
+    }
   }
 }
 
@@ -183,7 +199,7 @@ const goBackToKiosk = () => {
           <PluginFormRenderer
                        :key="formId"
                        :template-id="currentForm?.formTemplateId || formId"
-                       :model-value="currentForm?.formData || {}"
+                       :model-value="(currentForm?.formData as any) || {}"
                        @update:model-value="processFormData" />
         </v-card-text>
       </v-card>

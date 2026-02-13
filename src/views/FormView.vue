@@ -6,7 +6,7 @@ import { useI18n } from 'vue-i18n'
 import { ResponseError, formApi } from '@/api'
 
 import type { Form } from '@/types/index'
-import type { FormData as PluginFormData } from '@/forms/types'
+import type { FormSubmissionData } from '@/forms/types'
 import type { ScoringData } from '@/types/backend/scoring'
 import { mapApiFormToForm } from '@/adapters/apiAdapters'
 import { consultationApi } from '@/api'
@@ -32,13 +32,13 @@ onMounted(async () => {
     loading.value = true
     const response = await consultationApi.getConsultationById({ consultationId })
     const consultationData = response.responseObject
-    
+
     if (!consultationData) {
       error.value = 'No consultation data found'
       logger.error('No consultation data found', { consultationId })
       return
     }
-    
+
     // Map API forms to internal Form type
     forms.value = (consultationData.proms || []).map(mapApiFormToForm)
     logger.info('FormView: Forms loaded', { count: forms.value.length })
@@ -66,24 +66,26 @@ const currentForm = computed(() => {
 })
 
 // Handle form data changes with auto-save
-const handleFormDataChange = async (formData: PluginFormData, formIndex: number) => {
+const handleFormDataChange = async (submissionData: FormSubmissionData, formIndex: number) => {
   const form = forms.value[formIndex]
   if (!form || !form._id) return
 
   try {
-    // Update local state immediately
-    form.formData = formData as unknown as Form['formData']
-    
-    // Auto-save to backend (debounced in real implementation)
+    // Update local state immediately - store the full submission data
+    form.formData = submissionData.rawData as unknown as Form['formData']
+
+    // Auto-save to backend with full FormSubmissionData structure
     savingStates.value[formIndex] = true
-    
+
     await formApi.updateForm({
       formId: form._id,
       updateFormRequest: {
-        formData: formData as unknown as Record<string, unknown>,
+        formData: submissionData.rawData as unknown as Record<string, unknown>,
+        scoring: submissionData.scoring,
+        formFillStatus: submissionData.isComplete ? 'completed' : 'incomplete',
       },
     })
-    
+
     logger.debug('Form data auto-saved', { formId: form._id, formIndex })
   } catch (err) {
     logger.error('Failed to save form data', { error: err, formIndex })
@@ -135,18 +137,18 @@ const handleSubmitAll = async () => {
       forms.value.map((form) =>
         form._id
           ? formApi.updateForm({
-              formId: form._id,
-              updateFormRequest: {
-                formFillStatus: 'completed',
-                formEndTime: new Date().toISOString(),
-              },
-            })
+            formId: form._id,
+            updateFormRequest: {
+              formFillStatus: 'completed',
+              formEndTime: new Date().toISOString(),
+            },
+          })
           : Promise.resolve()
       )
     )
-    
+
     logger.info('All forms submitted successfully')
-    
+
     // Navigate back to consultation overview
     router.push(`/consultations/${consultationId}`)
   } catch (err) {
@@ -188,13 +190,11 @@ const handleSubmitAll = async () => {
                 <template v-if="canUsePlugin(form) && form.formTemplateId && form.formData">
                   <!-- Plugin-based form renderer -->
                   <PluginFormRenderer
-                    :template-id="form.formTemplateId"
-                    :model-value="(form.formData as PluginFormData)"
-                    :locale="locale"
-                    @update:model-value="(data) => handleFormDataChange(data, formIndex)"
-                    @score-change="(score) => handleScoreChange(score, formIndex)"
-                    @validation-change="(valid) => handleValidationChange(valid, formIndex)"
-                  />
+                                      :template-id="form.formTemplateId"
+                                      :model-value="(form.formData as any)"
+                                      :locale="locale"
+                                      @update:model-value="(data) => handleFormDataChange(data, formIndex)"
+                                      @validation-change="(valid: boolean) => handleValidationChange(valid, formIndex)" />
                 </template>
 
                 <!-- Fallback for legacy forms -->
@@ -258,4 +258,5 @@ const handleSubmitAll = async () => {
   .form-view {
     padding: 0;
   }
-}</style>
+}
+</style>
