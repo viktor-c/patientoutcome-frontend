@@ -7,8 +7,10 @@ import PluginFormRenderer from '@/forms/components/PluginFormRenderer.vue'
 import { ResponseError } from '@/api'
 import { mapApiFormsToForms } from '@/adapters/apiAdapters'
 import { useNotifierStore } from '@/stores/notifierStore'
+import { logger } from '@/services/logger'
 
-import type { Form, FormData } from '@/types/index'
+import type { Form } from '@/types/index'
+import type { FormSubmissionData } from '@/forms/types'
 
 import { useWindowScroll, useWindowSize } from '@vueuse/core'
 const { height } = useWindowSize()
@@ -22,11 +24,10 @@ const { t } = useI18n()
 
 // Define props for the component
 const { consultationId, externalCode } = defineProps<{ consultationId?: string; externalCode?: string }>()
-console.debug(`external code ${externalCode}, consultation ID ${consultationId}`)
+logger.debug(`external code ${externalCode}, consultation ID ${consultationId}`)
 const router = useRouter()
 
-// Use centralized API instance
-import { consultationApi, codeApi } from '@/api'
+import { consultationApi, codeApi, formApi } from '@/api'
 
 // State for forms
 const forms = ref<Form[]>([])
@@ -42,18 +43,17 @@ const completedForms = ref<Form[]>([]) // Forms that were already completed befo
 const allForms = ref<Form[]>([]) // All forms including completed ones for review
 const isReviewMode = ref(false) // True when reviewing completed forms
 const isFinalized = ref(false) // True after code is deactivated
-const formCompletionStatus = ref<Map<string, boolean>>(new Map()) // Track completion status per form ID
 
 const notifierStore = useNotifierStore()
 
 onMounted(async () => {
   try {
-    console.debug('Fetching consultation forms...')
+    logger.debug('Fetching consultation forms...')
     // Fetch consultation ID using the code
     const consultationResponse = externalCode
       ? await consultationApi.getConsultationByCode({ code: externalCode })
       : await consultationApi.getConsultationById({ consultationId: consultationId || '' })
-    console.debug('response from consultationApi:', consultationResponse)
+    logger.debug('response from consultationApi:', consultationResponse)
     if (!consultationResponse.responseObject) {
       throw new Error('Consultation not found for the provided code.')
     }
@@ -67,7 +67,7 @@ onMounted(async () => {
     completedForms.value = mappedForms.filter(f => f.formFillStatus === 'completed')
     forms.value = mappedForms.filter(f => f.formFillStatus !== 'completed')
 
-    console.debug(`Found ${completedForms.value.length} completed forms and ${forms.value.length} pending forms`)
+    logger.debug(`Found ${completedForms.value.length} completed forms and ${forms.value.length} pending forms`)
 
     // If all forms are already completed, show review option directly
     if (forms.value.length === 0 && completedForms.value.length > 0) {
@@ -80,7 +80,7 @@ onMounted(async () => {
     if (error instanceof ResponseError) {
       errorMessage = (await error.response.json()).message
     }
-    console.error('Error fetching consultation forms:', errorMessage)
+    logger.error('Error fetching consultation forms:', errorMessage)
     // errorMessage.value = t('alerts.consultation.fetchFormsFailed');
   } finally {
     isLoading.value = false
@@ -91,30 +91,28 @@ onMounted(async () => {
   }
 })
 
-// Handle form data changes
-const processFormData = (formData: FormData, formIndex: number) => {
+// Handle form data changes - receives FormSubmissionData from plugin
+const processFormData = (submissionData: FormSubmissionData, formIndex: number) => {
   const currentFormId = forms.value[formIndex]?._id
-  console.debug(`ShowConsultationForms: processFormData called - formIndex=${formIndex}, formId=${currentFormId}`)
-  console.debug(`ShowConsultationForms: Received formData:`, formData)
-  // Store the form data  - scoring is now handled by the renderer
+  logger.debug(`ShowConsultationForms: processFormData called - formIndex=${formIndex}, formId=${currentFormId}`)
+  logger.debug(`ShowConsultationForms: Received submission data:`, submissionData)
+
+  if (!currentFormId || !submissionData) return
+
+  // Store the raw form data (extract rawData from FormSubmissionData)
   if (currentFormId) {
-    console.debug(`ShowConsultationForms: Updating forms[${formIndex}].formData`)
-    forms.value[formIndex].formData = formData
+    logger.debug(`ShowConsultationForms: Updating forms[${formIndex}].formData with rawData`)
+    forms.value[formIndex].formData = submissionData.rawData as unknown as Form['formData']
+    forms.value[formIndex].scoring = submissionData.scoring // Store scoring data if available
+    forms.value[formIndex].formFillStatus = submissionData.isComplete ? 'completed' : 'incomplete' // Mark form as incomplete until submission
     // Also update in allForms to keep data in sync
     const allFormIndex = allForms.value.findIndex(f => f._id === currentFormId)
     if (allFormIndex !== -1) {
-      console.debug(`ShowConsultationForms: Also updating allForms[${allFormIndex}].formData`)
-      allForms.value[allFormIndex].formData = formData
+      logger.debug(`ShowConsultationForms: Also updating allForms[${allFormIndex}].formData`)
+      allForms.value[allFormIndex].formData = submissionData.rawData as unknown as Form['formData']
+      allForms.value[allFormIndex].scoring = submissionData.scoring
+      allForms.value[allFormIndex].formFillStatus = submissionData.isComplete ? 'completed' : 'incomplete'
     }
-  }
-}
-
-// Handle form completion status changes
-const processFormCompletion = (isComplete: boolean, formIndex: number) => {
-  const formId = forms.value[formIndex]?._id
-  if (formId) {
-    console.debug(`Form ${formIndex} (ID: ${formId}) completion status changed: ${isComplete}`)
-    formCompletionStatus.value.set(formId, isComplete)
   }
 }
 
@@ -124,13 +122,22 @@ const incompleteForms = computed(() => {
   for (const form of forms.value) {
     const formId = form._id
     if (!formId) continue
-    
-    const status = formCompletionStatus.value.get(formId)
-    // Check if form was previously completed
-    const wasCompleted = form.formFillStatus === 'completed'
-    
-    // Form is incomplete if not completed before AND not marked complete now
-    if (!wasCompleted && (status === false || status === undefined)) {
+    // Check if form data exists and has values
+    const hasData = form.formData && Object.keys(form.formData).length > 0
+
+    // Check if all fields are filled
+    let isComplete = false
+    if (hasData && typeof form.formData === 'object') {
+      isComplete = Object.values(form.formData).every(section => {
+        if (typeof section === 'object' && section !== null) {
+          return Object.values(section).every(value => value !== null && value !== '')
+        }
+        return false
+      })
+    }
+
+    // Form is incomplete if not completed
+    if (!isComplete) {
       incomplete.push(formId)
     }
   }
@@ -138,28 +145,77 @@ const incompleteForms = computed(() => {
 })
 
 // Handle form submission
-const submitForm = () => {
-  console.debug(`========== submitForm() called ==========`)
-  console.debug(`Current form index: ${currentFormIndex.value}, Total forms: ${forms.value.length}`)
-  console.debug(`Stack trace:`, new Error().stack)
-  console.debug(`Form ${currentFormIndex.value} submitted.`)
+const submitForm = async () => {
+  logger.debug(`========== submitForm() called ==========`)
+  logger.debug(`Current form index: ${currentFormIndex.value}, Total forms: ${forms.value.length}`)
+
+  const currentForm = forms.value[currentFormIndex.value]
+  if (!currentForm) {
+    logger.error('ShowConsultationForms: Current form not found')
+    notifierStore.notify(t('alerts.form.submitFailed'), 'error')
+    return
+  }
+
+  if (!currentForm._id) {
+    logger.error('ShowConsultationForms: Form ID missing, cannot save form data')
+    notifierStore.notify(t('alerts.form.submitFailed'), 'error')
+    return
+  }
+
+  try {
+    // Save the form data to the backend
+    logger.debug(`Saving form ${currentFormIndex.value}: ${currentForm._id}`)
+
+    // form data should be saved even if the form is incomplete
+    const updatePayload = {
+      formId: currentForm._id,
+      updateFormRequest: {
+        code: externalCode ? externalCode : "", // Include code if available for authorization
+        formData: currentForm.formData || {},
+        scoring: currentForm.scoring || undefined,
+        formFillStatus: currentForm.formFillStatus,
+      }
+    }
+
+    logger.debug('Form submission payload:', JSON.stringify(updatePayload, null, 2))
+
+    await formApi.updateForm(updatePayload)
+    logger.info(`Form ${currentForm._id} saved successfully`)
+    notifierStore.notify(t('alerts.form.saved'), 'success')
+  } catch (error: unknown) {
+    logger.error(`Failed to save form ${currentForm._id}:`, error)
+    let errorMessage = t('alerts.form.submitFailed')
+    if (error instanceof ResponseError) {
+      try {
+        const errorData = await error.response.json()
+        errorMessage = errorData.message || errorMessage
+      } catch {
+        errorMessage = error.message || errorMessage
+      }
+    }
+    notifierStore.notify(errorMessage, 'error')
+    return
+  }
+
+  // Proceed to next form only after successful save
+  logger.debug(`Form ${currentFormIndex.value} submitted.`)
   if (currentFormIndex.value < forms.value.length - 1) {
-    console.debug(`Moving to next form: ${currentFormIndex.value} -> ${currentFormIndex.value + 1}`)
+    logger.debug(`Moving to next form: ${currentFormIndex.value} -> ${currentFormIndex.value + 1}`)
     currentFormIndex.value++
     // Reset scroll position for the next form
     y.value = 0
   } else if (isReviewMode.value) {
-    console.debug(`In review mode, moving past last form`)
+    logger.debug(`In review mode, moving past last form`)
     // In review mode, go to review complete screen
     currentFormIndex.value++
     y.value = 0
   } else {
-    console.debug(`All forms filled, showing review option`)
+    logger.debug(`All forms filled, showing review option`)
     // All new forms are filled, show review option
     showReviewOption.value = true
     y.value = 0
   }
-  console.debug(`========== submitForm() done ==========`)
+  logger.debug(`========== submitForm() done ==========`)
 }
 
 const startCountdown = () => {
@@ -189,14 +245,14 @@ const finalizeAndClose = async () => {
   try {
     if (externalCode) {
       await codeApi.deactivateCode({ code: externalCode })
-      console.debug(`Code ${externalCode} deactivated successfully`)
+      logger.debug(`Code ${externalCode} deactivated successfully`)
     }
     isFinalized.value = true
     showSuccessMessage.value = true
     showReviewOption.value = false
     startCountdown()
   } catch (error) {
-    console.error('Error deactivating code:', error)
+    logger.error('Error deactivating code:', error)
     // Still show success even if deactivation fails - forms are saved
     showSuccessMessage.value = true
     showReviewOption.value = false
@@ -271,20 +327,20 @@ const isSmallScreen = computed(() => window.innerWidth < 1300)
             </p>
             <!-- Show incomplete forms warning -->
             <v-alert
-              v-if="incompleteForms.length > 0"
-              type="warning"
-              variant="tonal"
-              class="mb-4 text-left">
+                     v-if="incompleteForms.length > 0"
+                     type="warning"
+                     variant="tonal"
+                     class="mb-4 text-left">
               <div class="d-flex flex-column">
                 <strong>{{ t('flow.incompleteFormsWarning', { count: incompleteForms.length }) }}</strong>
                 <span class="text-body-2 mt-2">{{ t('flow.incompleteFormsExplanation') }}</span>
               </div>
             </v-alert>
             <v-alert
-              v-else
-              type="success"
-              variant="tonal"
-              class="mb-4">
+                     v-else
+                     type="success"
+                     variant="tonal"
+                     class="mb-4">
               {{ t('flow.allFormsComplete') }}
             </v-alert>
             <p class="mb-4">{{ t('flow.reviewQuestion') }}</p>
@@ -331,27 +387,27 @@ const isSmallScreen = computed(() => window.innerWidth < 1300)
             {{ t('flow.reviewModeLabel') }}
           </v-chip>
           <PluginFormRenderer
-                       :key="currentForm._id"
-                       :template-id="currentForm.formTemplateId || currentForm._id || ''"
-                       :model-value="currentForm.formData || {}"
-                       @update:model-value="(data) => processFormData(data, currentFormIndex)" />
-          
+                              :key="currentForm._id"
+                              :template-id="currentForm.formTemplateId || currentForm._id || ''"
+                              :model-value="(currentForm.formData as any) || {}"
+                              @update:model-value="(data) => processFormData(data, currentFormIndex)" />
+
           <!-- Navigation buttons -->
           <v-card-actions class="px-6 py-4 d-flex justify-space-between">
             <v-btn
-              v-if="currentFormIndex > 0"
-              variant="outlined"
-              color="primary"
-              @click="gotoPreviousForm">
+                   v-if="currentFormIndex > 0"
+                   variant="outlined"
+                   color="primary"
+                   @click="gotoPreviousForm">
               <v-icon start>mdi-arrow-left</v-icon>
               {{ t('common.previous', 'Previous') }}
             </v-btn>
             <v-spacer v-else />
-            
+
             <v-btn
-              color="primary"
-              variant="flat"
-              @click="submitForm">
+                   color="primary"
+                   variant="flat"
+                   @click="submitForm">
               <v-icon end>mdi-arrow-right</v-icon>
               {{ currentFormIndex === forms.length - 1 ? t('common.review', 'Review') : t('common.next', 'Next') }}
             </v-btn>

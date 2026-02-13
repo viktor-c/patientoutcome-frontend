@@ -3,12 +3,14 @@ import { ref, onMounted, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import PluginFormRenderer from '@/forms/components/PluginFormRenderer.vue'
-import { type FormData, type ScoringData } from '@/types'
+import { type ScoringData } from '@/types'
+import { type FormSubmissionData } from '@/forms/types'
 import { useNotifierStore } from '@/stores/notifierStore'
 import FormProgressCard from '@/components/FormProgressCard.vue'
 
 import { ResponseError, type FindAllCodes200ResponseResponseObjectInnerConsultationIdPromsInner } from '@/api'
 import { formApi } from '@/api'
+import { logger } from '@/services/logger'
 
 const componentName = 'ReviewFormAnswers.vue'
 const { t } = useI18n()
@@ -21,8 +23,8 @@ const formId = route.params.formId as string
 
 // State
 const form = ref<FindAllCodes200ResponseResponseObjectInnerConsultationIdPromsInner | null>(null)
-const formData = ref<FormData>({})
-const originalFormData = ref<FormData>({})
+const formData = ref<Record<string, unknown>>({})
+const originalFormData = ref<Record<string, unknown>>({})
 const formScoring = ref<ScoringData | null>(null)
 const loading = ref(true)
 const saving = ref(false)
@@ -71,17 +73,36 @@ const hasChanges = computed(() => {
   return JSON.stringify(formData.value) !== JSON.stringify(originalFormData.value)
 })
 
+// Extract the template ID (handle both string and populated object)
+const templateId = computed(() => {
+  if (!form.value) return ''
+
+  const formTemplateId = (form.value as any).formTemplateId
+
+  // If it's already a string, return it
+  if (typeof formTemplateId === 'string') {
+    return formTemplateId
+  }
+
+  // If it's an object with _id or id, extract the string
+  if (formTemplateId && typeof formTemplateId === 'object') {
+    return formTemplateId._id || formTemplateId.id || ''
+  }
+
+  // Fallback to form's own _id
+  return (form.value as any)._id || ''
+})
+
 // Load form data
 onMounted(async () => {
   try {
     const response = await formApi.getFormById({ formId })
     form.value = response.responseObject || null
     if (form.value) {
-      console.debug("Form schema is ", form.value.formSchema)
-      console.debug("Form ui-schema is ", form.value.formSchemaUI)
-      console.debug("Form translations are ", form.value.translations)
-      console.debug("Form caseId (patientId) is ", form.value.caseId)
-      console.debug("Form consultationId is ", form.value.consultationId)
+      logger.debug("Form translations are ", (form.value as any).translations)
+      logger.debug("Form caseId (patientId) is ", form.value.caseId)
+      logger.debug("Form consultationId is ", form.value.consultationId)
+      logger.debug("Form data is ", form.value.formData)
 
       // Ensure we have form data, even if empty
       let initialFormData = form.value.formData as FormData || {}
@@ -89,7 +110,7 @@ onMounted(async () => {
       // FIX: Unwrap any incorrectly nested data structure
       // Check if formData has a 'body' wrapper (from old corrupted data)
       if (initialFormData && typeof initialFormData === 'object' && 'body' in initialFormData) {
-        console.warn('⚠️  Detected nested body structure in loaded form data, unwrapping...')
+        logger.warn('⚠️  Detected nested body structure in loaded form data, unwrapping...')
         const nestedData = initialFormData as Record<string, unknown>
         const bodyContent = nestedData.body
         if (bodyContent && typeof bodyContent === 'object' && 'formData' in bodyContent) {
@@ -100,10 +121,10 @@ onMounted(async () => {
           // Use body directly
           initialFormData = bodyContent as FormData
         }
-        console.log('Unwrapped formData:', initialFormData)
+        logger.info('Unwrapped formData:', initialFormData)
       }
 
-      formData.value = initialFormData
+      formData.value = initialFormData as unknown as Record<string, unknown>
       originalFormData.value = JSON.parse(JSON.stringify(initialFormData))
     }
   } catch (error: unknown) {
@@ -111,16 +132,22 @@ onMounted(async () => {
     if (error instanceof ResponseError) {
       errorMessage = (await error.response.json()).message
     }
-    console.error(`${componentName}: Failed to load form:`, errorMessage)
+    logger.error(`${componentName}: Failed to load form:`, errorMessage)
     notifierStore.notify(t('reviewForm.loadError'), 'error')
   } finally {
     loading.value = false
   }
 })
 
-const handleFormDataChange = (newFormData: FormData) => {
-  console.debug(`${componentName}: Form data changed:`, newFormData)
-  formData.value = newFormData
+// Handle form data changes - receives FormSubmissionData from plugin
+const handleFormDataChange = (submissionData: FormSubmissionData) => {
+  logger.debug(`${componentName}: Form data changed:`, submissionData)
+  // Extract rawData from FormSubmissionData
+  formData.value = submissionData.rawData as unknown as Record<string, unknown>
+  // Also update scoring if provided
+  if (submissionData.scoring) {
+    formScoring.value = submissionData.scoring
+  }
 }
 
 // Save changes
@@ -132,20 +159,29 @@ const saveChanges = async () => {
 
   saving.value = true
   try {
-    // Debug: Log the data being sent
+    // Determine if form is complete
+    let isComplete = false
+    if (formData.value && typeof formData.value === 'object') {
+      isComplete = Object.values(formData.value).every(section => {
+        if (typeof section === 'object' && section !== null) {
+          return Object.values(section).every(value => value !== null && value !== '')
+        }
+        return false
+      })
+    }
+
+    // Prepare update payload with full structure
     const updatePayload = {
       formId,
       updateFormRequest: {
         formData: formData.value,
-        scoring: formScoring.value || undefined
+        scoring: formScoring.value || undefined,
+        formFillStatus: isComplete ? ('completed' as const) : ('incomplete' as const),
       }
     }
-    console.log('=== ReviewFormAnswers FRONTEND: Data being sent to API ===')
-    console.log('Full payload:', JSON.stringify(updatePayload, null, 2))
-    console.log('formData.value:', JSON.stringify(formData.value, null, 2))
-    console.log('formScoring.value:', JSON.stringify(formScoring.value, null, 2))
-    console.log('updateFormRequest:', JSON.stringify(updatePayload.updateFormRequest, null, 2))
-    console.log('========================================')
+    logger.debug('=== ReviewFormAnswers FRONTEND: Data being sent to API ===')
+    logger.debug('Full payload:', JSON.stringify(updatePayload, null, 2))
+    logger.debug('========================================')
 
     await formApi.updateForm(updatePayload)
 
@@ -167,7 +203,7 @@ const saveChanges = async () => {
         consultationId = String(form.value.consultationId)
       }
 
-      console.debug('Navigating to consultation overview with ID:', consultationId)
+      logger.debug('Navigating to consultation overview with ID:', consultationId)
       router.push({
         name: 'consultationoverview',
         params: { consultationId }
@@ -178,7 +214,7 @@ const saveChanges = async () => {
     if (error instanceof ResponseError) {
       errorMessage = (await error.response.json()).message
     }
-    console.error(`${componentName}: Failed to save form:`, errorMessage)
+    logger.error(`${componentName}: Failed to save form:`, errorMessage)
     notifierStore.notify(t('reviewForm.saveError'), 'error')
   } finally {
     saving.value = false
@@ -298,9 +334,9 @@ const goBack = () => {
       <v-card>
         <v-card-text class="px-4 py-6">
           <PluginFormRenderer
-                      :template-id="(form as any)?.formTemplateId || (form as any)?._id || ''"
-                      :model-value="formData"
-                      @update:model-value="handleFormDataChange" />
+                              :template-id="templateId"
+                              :model-value="(formData as any)"
+                              @update:model-value="handleFormDataChange" />
         </v-card-text>
 
         <!-- Display scoring if available -->
