@@ -285,7 +285,7 @@ const goBack = () => {
                   <template #prepend>
                     <v-icon>mdi-check-circle</v-icon>
                   </template>
-                  <v-list-item-title>{{ t('reviewForm.patientFormData?.completedAt') }}</v-list-item-title>
+                  <v-list-item-title>{{ t('reviewForm.completedDate') }}</v-list-item-title>
                   <v-list-item-subtitle>{{ completedDate }}</v-list-item-subtitle>
                 </v-list-item>
 
