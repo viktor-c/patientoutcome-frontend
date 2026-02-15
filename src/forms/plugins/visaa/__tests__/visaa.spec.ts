@@ -180,11 +180,11 @@ describe('VISA-A Plugin', () => {
       const result = calculateScore(data)
       
       // Total: 10 + 10 + 10 + 10 + 10 + 10 + 10 + 21 = 91 points
-      expect(result.total).toBeDefined()
-      expect(result.total).not.toBeNull()
-      expect(result.total!.rawScore).toBe(91)
-      expect(result.total!.isComplete).toBe(true)
-      expect(result.total!.answeredQuestions).toBe(8)
+      expect(result.totalScore).toBeDefined()
+      expect(result.totalScore).not.toBeNull()
+      expect(result.totalScore!.rawScore).toBe(91)
+      expect(result.totalScore!.isComplete).toBe(true)
+      expect(result.totalScore!.answeredQuestions).toBe(8)
     })
 
     it('should calculate score with q8b (pain no stop)', () => {
@@ -207,10 +207,10 @@ describe('VISA-A Plugin', () => {
       const result = calculateScore(data)
       
       // Total: 5 + 5 + 5 + 5 + 5 + 5 + 7 + 10 = 47 points
-      expect(result.total).toBeDefined()
-      expect(result.total).not.toBeNull()
-      expect(result.total!.rawScore).toBe(47)
-      expect(result.total!.isComplete).toBe(true)
+      expect(result.totalScore).toBeDefined()
+      expect(result.totalScore).not.toBeNull()
+      expect(result.totalScore!.rawScore).toBe(47)
+      expect(result.totalScore!.isComplete).toBe(true)
     })
 
     it('should calculate score with q8c (pain stops)', () => {
@@ -233,10 +233,10 @@ describe('VISA-A Plugin', () => {
       const result = calculateScore(data)
       
       // Total: 0 + 0 + 0 + 0 + 0 + 0 + 0 + 7 = 7 points
-      expect(result.total).not.toBeNull()
-      expect(result.total!.rawScore).toBe(7)
-      expect(result.total!.rawScore).toBe(7)
-      expect(result.total!.isComplete).toBe(true)
+      expect(result.totalScore).not.toBeNull()
+      expect(result.totalScore!.rawScore).toBe(7)
+      expect(result.totalScore!.rawScore).toBe(7)
+      expect(result.totalScore!.isComplete).toBe(true)
     })
 
     it('should handle incomplete form data', () => {
@@ -258,10 +258,10 @@ describe('VISA-A Plugin', () => {
       
       const result = calculateScore(data)
       
-      expect(result.total).not.toBeNull()
-      expect(result.total!.isComplete).toBe(false)
-      expect(result.total!.isComplete).toBe(false)
-      expect(result.total!.answeredQuestions).toBeLessThan(8)
+      expect(result.totalScore).not.toBeNull()
+      expect(result.totalScore!.isComplete).toBe(false)
+      expect(result.totalScore!.isComplete).toBe(false)
+      expect(result.totalScore!.answeredQuestions).toBeLessThan(8)
     })
 
     it('should calculate subscales correctly', () => {
@@ -284,28 +284,28 @@ describe('VISA-A Plugin', () => {
       const result = calculateScore(data)
       
       // Symptoms (q1-q3): 8 + 8 + 7 =).toBeDefined()
-      expect(result.subscales.symptoms?.rawScore).toBe(23)
-      expect(result.subscales.symptoms?.maxPossibleScore).toBe(30)
+      expect(result.subscales!.symptoms?.rawScore).toBe(23)
+      expect(result.subscales!.symptoms?.maxScore).toBe(30)
       
       // Daily Function (q4): 8 points (max 10)
-      expect(result.subscales.dailyFunction).toBeDefined()
-      expect(result.subscales.dailyFunction?.rawScore).toBe(8)
-      expect(result.subscales.dailyFunction?.maxPossibleScore).toBe(10)
+      expect(result.subscales!.dailyFunction).toBeDefined()
+      expect(result.subscales!.dailyFunction?.rawScore).toBe(8)
+      expect(result.subscales!.dailyFunction?.maxScore).toBe(10)
       
       // Sport Function (q5-q6): 7 + 8 = 15 points (max 20)
-      expect(result.subscales.sportFunction).toBeDefined()
-      expect(result.subscales.sportFunction?.rawScore).toBe(15)
-      expect(result.subscales.sportFunction?.maxPossibleScore).toBe(20)
+      expect(result.subscales!.sportFunction).toBeDefined()
+      expect(result.subscales!.sportFunction?.rawScore).toBe(15)
+      expect(result.subscales!.sportFunction?.maxScore).toBe(20)
       
       // Activity (q7-q8): 7 + 10 = 17 points (max 40)
-      expect(result.subscales.activity).toBeDefined()
-      expect(result.subscales.activity?.rawScore).toBe(17)
-      expect(result.subscales.activity?.maxPossibleScore).toBe(40)
+      expect(result.subscales!.activity).toBeDefined()
+      expect(result.subscales!.activity?.rawScore).toBe(17)
+      expect(result.subscales!.activity?.maxScore).toBe(40)
       
       // Total: 23 + 8 + 15 + 17 = 63 points
-      expect(result.total).toBeDefined()
-      expect(result.total).not.toBeNull()
-      expect(result.total!.rawScore).toBe(63)
+      expect(result.totalScore).toBeDefined()
+      expect(result.totalScore).not.toBeNull()
+      expect(result.totalScore!.rawScore).toBe(63)
     })
 
     it('should handle q1 boundary values correctly', () => {
@@ -327,8 +327,8 @@ describe('VISA-A Plugin', () => {
       }
       
       const result1 = calculateScore(data1)
-      expect(result1.subscales.symptoms).toBeDefined()
-      expect(result1.subscales.symptoms?.rawScore).toBe(10)
+      expect(result1.subscales!.symptoms).toBeDefined()
+      expect(result1.subscales!.symptoms?.rawScore).toBe(10)
       
       // Test q1 = 100 mins → 0 points
       const data2: FormData = {
@@ -348,8 +348,8 @@ describe('VISA-A Plugin', () => {
       }
       
       const result2 = calculateScore(data2)
-      expect(result2.subscales.symptoms).toBeDefined()
-      expect(result2.subscales.symptoms?.rawScore).toBe(0)
+      expect(result2.subscales!.symptoms).toBeDefined()
+      expect(result2.subscales!.symptoms?.rawScore).toBe(0)
     })
 
     it('should handle q8 boundary values correctly', () => {
@@ -380,8 +380,8 @@ describe('VISA-A Plugin', () => {
         }
         
         const result = calculateScore(data)
-        expect(result.subscales.activity).toBeDefined()
-        expect(result.subscales.activity?.rawScore).toBe(expectedPoints)
+        expect(result.subscales!.activity).toBeDefined()
+        expect(result.subscales!.activity?.rawScore).toBe(expectedPoints)
       })
     })
   })

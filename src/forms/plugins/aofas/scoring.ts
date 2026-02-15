@@ -60,10 +60,10 @@ export function calculateScore(data: FormData): ScoringData {
   const isComplete = answeredQuestions === totalQuestions
 
   // Maximum possible score is always 100 for AOFAS
-  const maxPossibleScore = 100
+  const maxScore = 100
 
   // Calculate normalized score (percentage of maximum)
-  const normalizedScore = maxPossibleScore > 0 ? Math.round((rawScore / maxPossibleScore) * 100 * 100) / 100 : 0
+  const normalizedScore = maxScore > 0 ? Math.round((rawScore / maxScore) * 100 * 100) / 100 : 0
 
   // Create subscale score
   const forefootScore: SubscaleScore = {
@@ -71,7 +71,7 @@ export function calculateScore(data: FormData): ScoringData {
     description: 'American Orthopaedic Foot & Ankle Society Forefoot Score',
     rawScore: rawScore,  // Always return number, 0 if no answers
     normalizedScore: normalizedScore,  // Always return number, 0 if no answers
-    maxPossibleScore,
+    maxScore,
     answeredQuestions,
     totalQuestions,
     completionPercentage,
@@ -84,7 +84,7 @@ export function calculateScore(data: FormData): ScoringData {
     description: 'American Orthopaedic Foot & Ankle Society Score',
     rawScore: rawScore,  // Always return number, 0 if no answers
     normalizedScore: normalizedScore,  // Always return number, 0 if no answers
-    maxPossibleScore,
+    maxScore,
     answeredQuestions,
     totalQuestions,
     completionPercentage,
@@ -92,11 +92,11 @@ export function calculateScore(data: FormData): ScoringData {
   }
 
   return {
-    rawData: { forefoot: forefootSection },
+    rawFormData: { forefoot: forefootSection },
     subscales: {
       forefoot: forefootScore
     },
-    total: totalScore
+    totalScore: totalScore
   }
 }
 

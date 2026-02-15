@@ -68,12 +68,12 @@ function clearForm() {
 
 // Handle form data changes - receives FormSubmissionData from plugin
 function handleDataChange(submissionData: FormSubmissionData) {
-  formData.value = submissionData.rawData as unknown as Record<string, unknown>
-  scoring.value = submissionData.scoring
+  formData.value = submissionData.rawFormData as unknown as Record<string, unknown>
+  scoring.value = submissionData as any
   console.log('[PluginDemo] Form submission data updated:', submissionData)
-  console.log('[PluginDemo] - Raw data:', submissionData.rawData)
-  console.log('[PluginDemo] - Scoring:', submissionData.scoring)
-  console.log('[PluginDemo] - Is complete:', submissionData.isComplete)
+  console.log('[PluginDemo] - Raw data:', submissionData.rawFormData)
+  console.log('[PluginDemo] - Scoring:', submissionData.subscales)
+  console.log('[PluginDemo] - Fill status:', submissionData.fillStatus)
 }
 
 // Handle scoring changes
@@ -238,7 +238,7 @@ if (selectedPluginId.value) {
           <v-card-title>Scoring Results</v-card-title>
           <v-card-text>
             <!-- Total score -->
-            <div v-if="scoring.total" class="mb-4">
+            <div v-if="scoring.totalScore" class="mb-4">
               <h3>Total Score</h3>
               <v-row class="mt-2">
                 <v-col cols="6" md="3">
@@ -246,7 +246,7 @@ if (selectedPluginId.value) {
                     <v-card-text>
                       <div class="text-caption">Raw Score</div>
                       <div class="text-h5">
-                        {{ scoring.total.rawScore }} / {{ scoring.total.maxPossibleScore }}
+                        {{ scoring.totalScore.rawScore }} / {{ scoring.totalScore.maxScore }}
                       </div>
                     </v-card-text>
                   </v-card>
@@ -256,7 +256,7 @@ if (selectedPluginId.value) {
                     <v-card-text>
                       <div class="text-caption">Normalized (0-100)</div>
                       <div class="text-h5">
-                        {{ formatScore(scoring.total.normalizedScore) }}
+                        {{ formatScore(scoring.totalScore.normalizedScore) }}
                       </div>
                     </v-card-text>
                   </v-card>
@@ -266,7 +266,7 @@ if (selectedPluginId.value) {
                     <v-card-text>
                       <div class="text-caption">Completion</div>
                       <div class="text-h5">
-                        {{ formatScore(scoring.total.completionPercentage) }}%
+                        {{ formatScore(scoring.totalScore.completionPercentage) }}%
                       </div>
                     </v-card-text>
                   </v-card>
@@ -277,9 +277,9 @@ if (selectedPluginId.value) {
                       <div class="text-caption">Status</div>
                       <div class="text-h6">
                         <v-chip
-                                :color="scoring.total.isComplete ? 'success' : 'warning'"
+                                :color="scoring.totalScore.isComplete ? 'success' : 'warning'"
                                 size="small">
-                          {{ scoring.total.isComplete ? 'Complete' : 'Incomplete' }}
+                          {{ scoring.totalScore.isComplete ? 'Complete' : 'Incomplete' }}
                         </v-chip>
                       </div>
                     </v-card-text>
@@ -289,7 +289,7 @@ if (selectedPluginId.value) {
             </div>
 
             <!-- Subscales -->
-            <div v-if="Object.keys(scoring.subscales).length > 0">
+            <div v-if="scoring.subscales && Object.keys(scoring.subscales).length > 0">
               <h3>Subscale Scores</h3>
               <v-row class="mt-2">
                 <v-col
@@ -307,7 +307,7 @@ if (selectedPluginId.value) {
                       </div>
                       <div class="d-flex justify-space-between">
                         <span>Raw:</span>
-                        <strong>{{ subscale.rawScore }} / {{ subscale.maxPossibleScore }}</strong>
+                        <strong>{{ subscale.rawScore }} / {{ subscale.maxScore }}</strong>
                       </div>
                       <div class="d-flex justify-space-between">
                         <span>Normalized:</span>

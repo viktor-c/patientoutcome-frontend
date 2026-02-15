@@ -272,11 +272,11 @@ onMounted(async () => {
                       <span v-else>{{ t('forms.consultation.untitledForm') }}</span>
                     </td>
                     <td>
-                      {{ form.formFillStatus === "completed" ?
-                        `Completed at ${safeFormatDate(form.completedAt)}`
+                      {{ form.patientFormData?.fillStatus === "complete" ?
+                        `Completed at ${safeFormatDate(form.patientFormData?.completedAt)}`
                         : 'Not completed' }}
                     </td>
-                    <td>{{ form.scoring?.total?.rawScore || 'N/A' }}</td>
+                    <td>{{ form.patientFormData?.totalScore?.rawScore || 'N/A' }}</td>
                   </tr>
                 </tbody>
               </v-table>

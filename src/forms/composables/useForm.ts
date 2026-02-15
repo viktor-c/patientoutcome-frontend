@@ -73,8 +73,8 @@ export function useForm(options: UseFormOptions) {
    */
   function isFormComplete(): boolean {
     // Use scoring data if available - it handles conditional fields correctly
-    if (scoring.value?.total?.isComplete !== undefined) {
-      return scoring.value.total.isComplete
+    if (scoring.value?.totalScore?.isComplete !== undefined) {
+      return scoring.value.totalScore.isComplete
     }
     
     // Fallback: check if all values are filled (works for simple forms without conditional fields)
@@ -94,18 +94,25 @@ export function useForm(options: UseFormOptions) {
    * Create submission data combining raw data, scoring, and completion status
    * This structure is emitted to parent components and eventually sent to the backend
    * 
-   * FormSubmissionData structure:
-   * - rawData: The raw form answers (FormData)
-   * - scoring: Calculated scoring data (ScoringData)
-   * - isComplete: Whether all questions are answered
+   * FormSubmissionData (PatientFormData) structure:
+   * - rawFormData: The raw form answers (FormQuestions)
+   * - subscales: Calculated subscale scores
+   * - totalScore: Calculated total score
+   * - fillStatus: "draft" | "incomplete" | "complete"
    * - completedAt: Timestamp when form was completed (if complete)
+   * - beginFill: Timestamp when form filling began
    */
   function createSubmissionData(): FormSubmissionData {
+    const isComplete = isFormComplete()
+    const currentScoring = scoring.value || { rawFormData: {}, totalScore: null, subscales: {} }
+    
     return {
-      rawData: localData.value,
-      scoring: scoring.value || { rawData: {}, total: null, subscales: {} },
-      isComplete: isFormComplete(),
-      completedAt: isFormComplete() ? new Date() : undefined
+      rawFormData: localData.value,
+      subscales: currentScoring.subscales,
+      totalScore: currentScoring.totalScore,
+      fillStatus: isComplete ? 'complete' : (Object.keys(localData.value).length > 0 ? 'incomplete' : 'draft'),
+      completedAt: isComplete ? new Date() : null,
+      beginFill: new Date()
     }
   }
 
@@ -125,11 +132,11 @@ export function useForm(options: UseFormOptions) {
     if (dataChanged) {
       previousDataString = newDataString
 
-      // Emit changes only if data actually changed
-      emit('update:modelValue', createSubmissionData())
-
-      // Recalculate scoring
+      // Recalculate scoring BEFORE emitting to ensure emission has fresh data
       recalculateScore()
+
+      // Emit changes with fresh scoring data
+      emit('update:modelValue', createSubmissionData())
 
       // Revalidate
       if (validate) {

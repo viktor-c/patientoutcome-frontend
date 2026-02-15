@@ -59,7 +59,7 @@ export function calculateSubscaleScore(
     description: description || null,
     rawScore,
     normalizedScore: Math.round(normalizedScore * 100) / 100, // Round to 2 decimals
-    maxPossibleScore,
+    maxScore: maxPossibleScore,
     answeredQuestions,
     totalQuestions,
     completionPercentage: Math.round(completionPercentage * 100) / 100,
@@ -85,9 +85,9 @@ export function calculateTotalScore(
 
   for (const subscale of subscales) {
     totalRawScore += subscale.rawScore
-    totalMaxScore += subscale.maxPossibleScore
-    totalAnswered += subscale.answeredQuestions
-    totalQuestions += subscale.totalQuestions
+    totalMaxScore += subscale.maxScore || 0
+    totalAnswered += subscale.answeredQuestions || 0
+    totalQuestions += subscale.totalQuestions || 0
   }
 
   const completionPercentage = totalQuestions > 0 
@@ -104,7 +104,7 @@ export function calculateTotalScore(
     description: null,
     rawScore: totalRawScore,
     normalizedScore: Math.round(normalizedScore * 100) / 100,
-    maxPossibleScore: totalMaxScore,
+    maxScore: totalMaxScore,
     answeredQuestions: totalAnswered,
     totalQuestions,
     completionPercentage: Math.round(completionPercentage * 100) / 100,
@@ -147,9 +147,9 @@ export function extractQuestions(
  */
 export function createEmptyScoring(): ScoringData {
   return {
-    rawData: {},
+    rawFormData: {},
     subscales: {},
-    total: null
+    totalScore: null
   }
 }
 
@@ -164,16 +164,16 @@ export function isValidScore(value: number | null, min: number, max: number): bo
 /**
  * Get completion status based on scoring data
  */
-export function getFormCompletionStatus(scoring: ScoringData | null): 'draft' | 'incomplete' | 'completed' {
-  if (!scoring || !scoring.total) {
+export function getFormCompletionStatus(scoring: ScoringData | null): 'draft' | 'incomplete' | 'complete' {
+  if (!scoring || !scoring.totalScore) {
     return 'draft'
   }
 
-  if (scoring.total.isComplete) {
-    return 'completed'
+  if (scoring.totalScore.isComplete) {
+    return 'complete'
   }
 
-  if (scoring.total.answeredQuestions > 0) {
+  if ((scoring.totalScore.answeredQuestions || 0) > 0) {
     return 'incomplete'
   }
 

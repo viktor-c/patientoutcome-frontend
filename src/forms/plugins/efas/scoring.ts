@@ -62,7 +62,7 @@ export function calculateScore(data: FormData): ScoringData {
   const totalScore = calculateTotalScore(allSubscales, 'EFAS Total')
 
   return {
-    rawData: {
+    rawFormData: {
       standardfragebogen: standardSection,
       sportfragebogen: sportSection
     },
@@ -70,7 +70,7 @@ export function calculateScore(data: FormData): ScoringData {
       standard: standardScore,
       sport: sportScore
     },
-    total: totalScore
+    totalScore: totalScore
   }
 }
 

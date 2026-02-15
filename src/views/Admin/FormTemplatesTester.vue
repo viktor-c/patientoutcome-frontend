@@ -4,21 +4,16 @@ import PluginFormRenderer from '@/forms/components/PluginFormRenderer.vue'
 
 import { formtemplateApi } from '@/api'
 import type { FormTemplate } from '@/api/models/FormTemplate'
-import type { ScoringData } from '@/types'
-import type { FormSubmissionData, FormData } from '@/forms/types'
+import type { PatientFormData } from '@/types'
+import type { FormSubmissionData } from '@/forms/types'
 
 // Available form templates to test
 const availableTemplates = ref<Array<{ id: string; title: string; description: string }>>([])
 const selectedTemplateId = ref<string | null>(null)
 const loading = ref(true)
-const testFormData = ref<Record<string, unknown>>({})
-const scoring = ref<ScoringData | null>(null)
+const formData = ref<PatientFormData | null>(null)
 const selectedTemplate = ref<FormTemplate | null>(null)
 const loadingTemplate = ref(false)
-
-// Computed properties for template properties
-const formSchema = computed(() => selectedTemplate.value?.formSchema)
-const formSchemaUI = computed(() => selectedTemplate.value?.formSchemaUI)
 
 // Load available templates on mount
 const loadTemplates = async () => {
@@ -50,15 +45,9 @@ const loadTemplateDetails = async (templateId: string) => {
     const response = await formtemplateApi.getFormTemplateById({ templateId })
     selectedTemplate.value = response.responseObject || null
 
-    // Use the formData from the template directly - it already has the correct structure
-    if (response.responseObject?.formData) {
-      testFormData.value = JSON.parse(JSON.stringify(response.responseObject.formData))
-      console.debug('Loaded template formData:', testFormData.value)
-    } else {
-      // Fallback to empty object if no formData exists
-      testFormData.value = {}
-      console.warn('No formData found in template, using empty object')
-    }
+    // FormTemplates no longer have sample data - start with empty form
+    formData.value = null
+    console.debug('Loaded template (no sample data available):', selectedTemplate.value)
   } catch (error) {
     console.error('Failed to load form template:', error)
     selectedTemplate.value = null
@@ -71,38 +60,30 @@ const loadTemplateDetails = async (templateId: string) => {
 
 // Reset form data to initial state from template
 const resetForm = () => {
-  // Use the formData from the template (clone it to avoid mutations)
-  if (selectedTemplate.value?.formData) {
-    testFormData.value = JSON.parse(JSON.stringify(selectedTemplate.value.formData))
-  } else {
-    testFormData.value = {}
-  }
-  scoring.value = null
-  console.debug('Form reset to template formData:', testFormData.value)
+  // Start with empty form data
+  formData.value = null
+  console.debug('Form reset to empty data')
 }
 
-// Handle form changes - receives FormSubmissionData from plugin
-const handleFormChange = (submissionData: FormSubmissionData) => {
+// Handle form changes - receives PatientFormData from plugin
+const handleFormChange = (submissionData: PatientFormData) => {
   console.debug('Form submission data changed:', submissionData)
-  testFormData.value = submissionData.rawData as unknown as Record<string, unknown>
-  scoring.value = submissionData.scoring
-  console.debug('- Raw data:', submissionData.rawData)
-  console.debug('- Scoring:', submissionData.scoring)
-  console.debug('- Is complete:', submissionData.isComplete)
+  formData.value = submissionData
+  console.debug('- Raw data:', submissionData.rawFormData)
+  console.debug('- Subscales:', submissionData.subscales)
+  console.debug('- Fill status:', submissionData.fillStatus)
 }
 
 // Calculate scoring for the form
 const calculateScoring = async () => {
   try {
-    if (!selectedTemplateId.value || !testFormData.value) return
+    if (!selectedTemplateId.value || !formData.value) return
 
     // TODO: Implement scoring calculation via backend API
     // For now, scoring is disabled until backend scoring endpoint is available
     console.warn('Scoring calculation not yet implemented for frontend')
-    scoring.value = null
   } catch (error) {
     console.error('Failed to calculate form score:', error)
-    scoring.value = null
   }
 }
 
@@ -175,7 +156,7 @@ const handleTemplateChange = () => {
                    variant="outlined"
                    @click="calculateScoring"
                    block
-                   :disabled="!testFormData || Object.keys(testFormData).length === 0">
+                   :disabled="!formData || !formData.rawFormData || Object.keys(formData.rawFormData).length === 0">
               <v-icon left>mdi-calculator</v-icon>
               Calculate Score
             </v-btn>
@@ -193,13 +174,13 @@ const handleTemplateChange = () => {
           </v-card-title>
           <v-card-text class="pa-6">
             <v-skeleton-loader
-                               v-if="loadingTemplate || !formSchema || !formSchemaUI"
+                               v-if="loadingTemplate"
                                type="article@5"></v-skeleton-loader>
             <PluginFormRenderer
                                 v-else
                                 :key="`form-${selectedTemplateId}`"
                                 :template-id="selectedTemplateId || ''"
-                                :model-value="(testFormData as FormData)"
+                                :model-value="formData"
                                 @update:model-value="handleFormChange" />
           </v-card-text>
         </v-card>
@@ -207,7 +188,7 @@ const handleTemplateChange = () => {
     </v-row>
 
     <!-- Scoring Display -->
-    <v-row v-if="scoring" class="mb-6">
+    <v-row v-if="formData?.subscales || formData?.totalScore" class="mb-6">
       <v-col cols="12">
         <v-card variant="outlined" class="scoring-card">
           <v-card-title class="bg-success text-white">
@@ -217,7 +198,7 @@ const handleTemplateChange = () => {
             <!-- Subscales -->
             <v-row class="mb-6">
               <v-col
-                     v-for="(subscale, key) in scoring.subscales"
+                     v-for="(subscale, key) in formData?.subscales"
                      :key="key"
                      cols="12"
                      sm="6"
@@ -225,7 +206,7 @@ const handleTemplateChange = () => {
                 <v-card v-if="subscale" variant="tonal" color="primary" class="pa-4 h-100">
                   <div class="text-subtitle-2 font-weight-medium mb-1">{{ subscale.name }}</div>
                   <div class="text-h5 font-weight-bold mb-2">
-                    {{ subscale.rawScore }}/{{ subscale.maxPossibleScore }}
+                    {{ subscale.rawScore }}/{{ subscale.maxScore }}
                   </div>
                   <v-progress-linear
                                      :model-value="subscale.normalizedScore || 0"
@@ -242,22 +223,22 @@ const handleTemplateChange = () => {
 
             <!-- Total Score -->
             <v-divider class="my-4"></v-divider>
-            <v-card v-if="scoring.total" variant="tonal" color="success" class="pa-6">
+            <v-card v-if="formData?.totalScore" variant="tonal" color="success" class="pa-6">
               <div class="text-h6 mb-2">Total Score</div>
               <div class="text-h3 font-weight-bold mb-2">
-                {{ scoring.total.rawScore }}/{{ scoring.total.maxPossibleScore }}
+                {{ formData.totalScore.rawScore }}/{{ formData.totalScore.maxScore }}
               </div>
               <v-progress-linear
-                                 :model-value="scoring.total.rawScore || 0"
-                                 :max="scoring.total.maxPossibleScore"
+                                 :model-value="formData.totalScore.rawScore || 0"
+                                 :max="formData.totalScore.maxScore"
                                  height="12"
                                  rounded
                                  color="white"
                                  class="mb-4"></v-progress-linear>
-              <div class="text-body2">{{ scoring.total.description }}</div>
+              <div class="text-body2">{{ formData.totalScore.description }}</div>
               <div class="text-caption mt-2">
-                {{ scoring.total.completionPercentage }}% Complete ({{ scoring.total.answeredQuestions }}/{{
-                  scoring.total.totalQuestions }} questions)
+                {{ formData.totalScore.completionPercentage }}% Complete ({{ formData.totalScore.answeredQuestions }}/{{
+                  formData.totalScore.totalQuestions }} questions)
               </div>
             </v-card>
           </v-card-text>
@@ -275,13 +256,13 @@ const handleTemplateChange = () => {
               <v-expansion-panel>
                 <v-expansion-panel-title>View Raw Data</v-expansion-panel-title>
                 <v-expansion-panel-text>
-                  <pre class="text-caption" style="overflow: auto;">{{ JSON.stringify(testFormData, null, 2) }}</pre>
+                  <pre class="text-caption" style="overflow: auto;">{{ JSON.stringify(formData?.rawFormData, null, 2) }}</pre>
                 </v-expansion-panel-text>
               </v-expansion-panel>
               <v-expansion-panel>
-                <v-expansion-panel-title>View Scoring Data</v-expansion-panel-title>
+                <v-expansion-panel-title>View Form Metadata</v-expansion-panel-title>
                 <v-expansion-panel-text>
-                  <pre class="text-caption" style="overflow: auto;">{{ JSON.stringify(scoring, null, 2) }}</pre>
+                  <pre class="text-caption" style="overflow: auto;">{{ JSON.stringify(formData ? { fillStatus: formData.fillStatus, completedAt: formData.completedAt, beginFill: formData.beginFill } : null, null, 2) }}</pre>
                 </v-expansion-panel-text>
               </v-expansion-panel>
             </v-expansion-panels>
@@ -303,7 +284,7 @@ const handleTemplateChange = () => {
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
 }
 
-.scoring-card {
+.subscales-card {
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
 }
 

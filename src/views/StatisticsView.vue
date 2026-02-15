@@ -289,7 +289,7 @@ const computeScoreDataFromConsultations = (consultations: GetCaseStatistics200Re
   consultations.forEach((consultation) => {
     const firstPromWithScore = consultation.proms && consultation.proms.length > 0
       ? (consultation.proms as GetCaseStatistics200ResponseResponseObjectConsultationsInnerPromsInner[]).find(
-        p => p.scoring && (p.scoring as PromScoring).total != null,
+        p => p.scoring && p.scoring.totalScore != null,
       )
       : null;
     const dateStr = (firstPromWithScore?.createdAt ?? new Date()).toString();
@@ -348,11 +348,11 @@ const computeScoreDataFromConsultations = (consultations: GetCaseStatistics200Re
         for (const promRaw of consultation.proms as GetCaseStatistics200ResponseResponseObjectConsultationsInnerPromsInner[]) {
           const prom = promRaw as PromWithTemplate;
           // Skip proms that have no scoring or no total score
-          const hasTotal = !!prom.scoring && (prom.scoring as PromScoring).total != null;
+          const hasTotal = !!prom.scoring && prom.scoring.totalScore != null;
           if (!hasTotal) continue;
 
           const tplId = prom.formTemplateId ? String(prom.formTemplateId) : null;
-          const score = prom.scoring?.total?.normalizedScore ?? null;
+          const score = prom.scoring?.totalScore?.normalizedScore ?? null;
 
           if (tplId && TEMPLATE_ID_TO_CATEGORY[tplId]) {
             const cat = TEMPLATE_ID_TO_CATEGORY[tplId];
@@ -375,14 +375,14 @@ const computeScoreDataFromConsultations = (consultations: GetCaseStatistics200Re
       if (consultation.proms && Array.isArray(consultation.proms)) {
         for (const promRaw of consultation.proms as GetCaseStatistics200ResponseResponseObjectConsultationsInnerPromsInner[]) {
           const prom = promRaw as PromWithTemplate;
-          const hasTotal = !!prom.scoring && (prom.scoring as PromScoring).total != null;
+          const hasTotal = !!prom.scoring && prom.scoring.totalScore != null;
           if (!hasTotal) continue;
 
           // Check if this is a VAS form (pain scale) by looking at title or structure
-          if (prom.scoring?.total?.normalizedScore !== undefined) {
-            const score = prom.scoring.total.normalizedScore;
+          if (prom.scoring?.totalScore?.normalizedScore !== undefined) {
+            const score = prom.scoring.totalScore.normalizedScore ?? null;
             // VAS has a specific structure, check if rawData contains painScale
-            const rawData = (prom.scoring?.rawData as Record<string, unknown>) ?? {};
+            const rawData = (prom.scoring?.rawFormData as Record<string, unknown>) ?? {};
             if ((rawData as Record<string, unknown>)?.painScale !== undefined) {
               vasScore = score;
             }

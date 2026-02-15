@@ -69,13 +69,13 @@ export function calculateScore(data: FormData): ScoringData {
   )
 
   return {
-    rawData: { moxfq: moxfqSection },
+    rawFormData: { moxfq: moxfqSection },
     subscales: {
       walkingStanding: walkingStandingScore,
       pain: painScore,
       socialInteraction: socialInteractionScore
     },
-    total: totalScore
+    totalScore: totalScore
   }
 }
 

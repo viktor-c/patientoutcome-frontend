@@ -9,7 +9,7 @@ import {
   type CreateConsultation,
   type UserNoPassword,
   type Note,
-  type GetFormTemplatesShortlist200ResponseResponseObjectInner as FormTemplateShortList,
+  type GetFormTemplates200ResponseResponseObjectInner as FormTemplateShortList,
   ResponseError,
   type FindAllCodes200ResponseResponseObjectInner as Code,
 } from '@/api'

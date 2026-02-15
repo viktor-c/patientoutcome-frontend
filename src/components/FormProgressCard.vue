@@ -27,27 +27,27 @@ const { t } = useI18n()
 const getScoreInterpretation = (normalizedScore: number | null) => {
   if (normalizedScore === null) return null
 
-  if (normalizedScore <= 25) return { level: 'mild', color: 'success', text: t('forms.scoring.interpretation.mild') }
-  if (normalizedScore <= 50) return { level: 'moderate', color: 'warning', text: t('forms.scoring.interpretation.moderate') }
-  if (normalizedScore <= 75) return { level: 'severe', color: 'error', text: t('forms.scoring.interpretation.severe') }
-  return { level: 'verySevere', color: 'error', text: t('forms.scoring.interpretation.verySevere') }
+  if (normalizedScore <= 25) return { level: 'mild', color: 'success', text: t('forms.subscales.interpretation.mild') }
+  if (normalizedScore <= 50) return { level: 'moderate', color: 'warning', text: t('forms.subscales.interpretation.moderate') }
+  if (normalizedScore <= 75) return { level: 'severe', color: 'error', text: t('forms.subscales.interpretation.severe') }
+  return { level: 'verySevere', color: 'error', text: t('forms.subscales.interpretation.verySevere') }
 }
 
 const hasScoring = computed(() => {
-  if (!props.scoring || !props.scoring.total) return false
-  return props.scoring && props.scoring.total?.answeredQuestions > 0
+  if (!props.scoring || !props.scoring.totalScore) return false
+  return props.scoring && (props.scoring.totalScore?.answeredQuestions ?? 0) > 0
 })
 
 const isComplete = computed(() => {
-  if (!props.scoring || !props.scoring.total) return false
-  return props.scoring?.total.isComplete || false
+  if (!props.scoring || !props.scoring.totalScore) return false
+  return props.scoring?.totalScore.isComplete || false
 })
 
 const showIncomplete = ref(true)
 
 const showScoring = computed(() => {
-  if (!props.scoring || !props.scoring.total) return false
-  return hasScoring.value && props.scoring!.total.answeredQuestions > 0
+  if (!props.scoring || !props.scoring.totalScore) return false
+  return hasScoring.value && (props.scoring!.totalScore.answeredQuestions ?? 0) > 0
 })
 </script>
 
@@ -62,17 +62,17 @@ const showScoring = computed(() => {
       <!-- Overall Progress -->
       <div class="mb-4">
         <div class="d-flex justify-space-between align-center mb-2">
-          <span class="text-subtitle-1 font-weight-medium">{{ t('forms.scoring.overallProgress') }}</span>
+          <span class="text-subtitle-1 font-weight-medium">{{ t('forms.subscales.overallProgress') }}</span>
           <v-chip
                   :color="isComplete ? 'success' : 'warning'"
                   size="small"
                   variant="flat">
-            {{ scoring!.total?.answeredQuestions }}/{{ scoring!.total?.totalQuestions }}
-            {{ t('forms.scoring.questions') }}
+            {{ scoring!.totalScore?.answeredQuestions }}/{{ scoring!.totalScore?.totalQuestions }}
+            {{ t('forms.subscales.questions') }}
           </v-chip>
         </div>
         <v-progress-linear
-                           :model-value="scoring!.total?.completionPercentage"
+                           :model-value="scoring!.totalScore?.completionPercentage"
                            :color="isComplete ? 'success' : 'primary'"
                            height="8"
                            rounded />
@@ -80,7 +80,7 @@ const showScoring = computed(() => {
 
       <!-- Subscale Scores (if available and complete) -->
       <div v-if="isComplete && scoring!.subscales">
-        <h4 class="text-subtitle-1 mb-3">{{ t('forms.scoring.subscaleScores') }}</h4>
+        <h4 class="text-subtitle-1 mb-3">{{ t('forms.subscales.subscaleScores') }}</h4>
 
         <v-row>
           <v-col
@@ -90,19 +90,19 @@ const showScoring = computed(() => {
                  :md="Object.keys(scoring!.subscales).length <= 3 ? 4 : 6">
             <v-card v-if="subscale" variant="outlined" class="h-100">
               <v-card-text class="text-center">
-                <div class="text-h6 font-weight-bold mb-1">{{ t(`forms.scoring.subscales.${key}`) }}</div>
+                <div class="text-h6 font-weight-bold mb-1">{{ t(`forms.subscales.subscales.${key}`) }}</div>
                 <div class="text-h4 font-weight-bold mb-2"
-                     :class="`text-${getScoreInterpretation(subscale.normalizedScore)?.color}`">
+                     :class="`text-${getScoreInterpretation(subscale.normalizedScore ?? null)?.color}`">
                   {{ subscale.normalizedScore }}
                 </div>
                 <v-chip
-                        :color="getScoreInterpretation(subscale.normalizedScore)?.color"
+                        :color="getScoreInterpretation(subscale.normalizedScore ?? null)?.color"
                         size="small"
                         variant="flat">
-                  {{ getScoreInterpretation(subscale.normalizedScore)?.text }}
+                  {{ getScoreInterpretation(subscale.normalizedScore ?? null)?.text }}
                 </v-chip>
                 <div class="text-caption text-grey mt-2">
-                  {{ t('forms.scoring.rawScore') }}: {{ subscale.rawScore }}/{{ subscale.maxPossibleScore }}
+                  {{ t('forms.subscales.rawScore') }}: {{ subscale.rawScore }}/{{ subscale.maxScore }}
                 </div>
               </v-card-text>
             </v-card>
@@ -111,23 +111,23 @@ const showScoring = computed(() => {
       </div>
 
       <!-- Total Score -->
-      <v-row v-if="isComplete && scoring!.total" class="mt-4">
+      <v-row v-if="isComplete && scoring!.totalScore" class="mt-4">
         <v-col cols="12">
           <v-card variant="outlined" color="primary">
             <v-card-text class="text-center">
-              <div class="text-h6 font-weight-bold mb-2 text-white">{{ t('forms.scoring.totalScore') }}</div>
+              <div class="text-h6 font-weight-bold mb-2 text-white">{{ t('forms.subscales.totalScore') }}</div>
               <div class="text-h3 font-weight-bold mb-2 text-white">
-                {{ scoring!.total.normalizedScore }}
+                {{ scoring!.totalScore.normalizedScore }}
               </div>
               <v-chip
-                      :color="getScoreInterpretation(scoring!.total.normalizedScore)?.color"
+                      :color="getScoreInterpretation(scoring!.totalScore.normalizedScore ?? null)?.color"
                       size="small"
                       variant="outlined"
                       class="text-white border-white">
-                {{ getScoreInterpretation(scoring!.total.normalizedScore)?.text }}
+                {{ getScoreInterpretation(scoring!.totalScore.normalizedScore ?? null)?.text }}
               </v-chip>
               <div class="text-caption text-blue-grey-100 mt-3">
-                {{ t('forms.scoring.rawScore') }}: {{ scoring!.total.rawScore }}/{{ scoring!.total.maxPossibleScore }}
+                {{ t('forms.subscales.rawScore') }}: {{ scoring!.totalScore.rawScore }}/{{ scoring!.totalScore.maxScore }}
               </div>
             </v-card-text>
           </v-card>
@@ -153,9 +153,9 @@ const showScoring = computed(() => {
                class="mt-4">
         <div class="d-flex align-center justify-space-between" style="width:100%">
           <div>
-            <strong>{{ t('forms.scoring.completeAllQuestions') }}</strong><br>
-            {{ scoring!.total?.answeredQuestions }} {{ t('forms.scoring.of') }} {{ scoring!.total?.totalQuestions }} {{
-              t('forms.scoring.questionsAnswered') }}.
+            <strong>{{ t('forms.subscales.completeAllQuestions') }}</strong><br>
+            {{ scoring!.totalScore?.answeredQuestions }} {{ t('forms.subscales.of') }} {{ scoring!.totalScore?.totalQuestions }} {{
+              t('forms.subscales.questionsAnswered') }}.
           </div>
           <v-btn icon variant="text" aria-label="Close notification" @click="showIncomplete = false">
             <v-icon>mdi-close</v-icon>

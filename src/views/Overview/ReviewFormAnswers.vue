@@ -22,11 +22,11 @@ const notifierStore = useNotifierStore()
 const formId = route.params.formId as string
 
 // State
-const form = ref<FindAllCodes200ResponseResponseObjectInnerConsultationIdPromsInner | null>(null)
-const formData = ref<FormData>({} as unknown as FormData)
-const originalFormData = ref<FormData>({} as unknown as FormData)
+const form = ref<Form | null>(null)
+const formData = ref<any>({})
+const originalFormData = ref<any>({})
 const formScoring = ref<ScoringData | null>(null)
-const formCompletionStatus = ref<'draft' | 'incomplete' | 'completed'>("draft")
+const formCompletionStatus = ref<'draft' | 'incomplete' | 'complete'>("draft")
 const loading = ref(true)
 const saving = ref(false)
 
@@ -35,35 +35,35 @@ const patientId = computed(() => {
   if (!form.value?.caseId) return t('common.notAvailable')
 
   // Handle both string and object cases for caseId (which represents patientId)
-  if (typeof form.value.caseId === 'string') {
-    return form.value.caseId
-  } else if (typeof form.value.caseId === 'object' && form.value.caseId !== null) {
-    const idObj = form.value.caseId as Record<string, unknown>
-    return String(idObj._id || idObj.id || form.value.caseId)
-  } else {
-    return String(form.value.caseId)
+  const caseId = form.value.caseId
+  if (typeof caseId === 'string') {
+    return caseId
+  } else if (caseId && typeof caseId === 'object') {
+    const idObj = caseId as any
+    return String(idObj._id || idObj.id || '')
   }
+  return String(caseId)
 })
 const consultationId = computed(() => {
   if (!form.value?.consultationId) return t('common.notAvailable')
 
   // Handle both string and object cases for consultationId
-  if (typeof form.value.consultationId === 'string') {
-    return form.value.consultationId
-  } else if (typeof form.value.consultationId === 'object' && form.value.consultationId !== null) {
-    const idObj = form.value.consultationId as Record<string, unknown>
-    return String(idObj._id || idObj.id || form.value.consultationId)
-  } else {
-    return String(form.value.consultationId)
+  const consId = form.value.consultationId
+  if (typeof consId === 'string') {
+    return consId
+  } else if (consId && typeof consId === 'object') {
+    const idObj = consId as any
+    return String(idObj._id || idObj.id || '')
   }
+  return String(consId)
 })
 const consultationDate = computed(() => {
   // This will need to be adapted based on actual data structure
   return t('common.notAvailable')
 })
 const completedDate = computed(() => {
-  if (!form.value?.completedAt) return t('common.notAvailable')
-  return new Date(form.value.completedAt).toLocaleString()
+  if (!form.value?.patientFormData?.completedAt) return t('common.notAvailable')
+  return new Date(form.value.patientFormData.completedAt).toLocaleString()
 })
 const lastUpdatedDate = computed(() => {
   if (!form.value?.updatedAt) return t('common.notAvailable')
@@ -101,15 +101,15 @@ onMounted(async () => {
     const formReponseData = response.responseObject as Form
     if (response.responseObject) {
       logger.debug("Form response data is", formReponseData)
-      logger.debug("Form caseId (patientId) is ", formReponseData.caseId?._id)
-      logger.debug("Form consultationId is ", formReponseData.consultationId?._id)
-      logger.debug("Form data is ", formReponseData.formData)
-      logger.debug("Form completion status is, ", formReponseData.formFillStatus)
+      logger.debug("Form caseId (patientId) is ", formReponseData.caseId)
+      logger.debug("Form consultationId is ", formReponseData.consultationId)
+      logger.debug("Form data is ", formReponseData.patientFormData)
+      logger.debug("Form completion status is, ", formReponseData.patientFormData?.fillStatus)
 
       // FIX: Unwrap any incorrectly nested data structure
       // Check if formData has a 'body' wrapper (from old corrupted data)
-      originalFormData.value = formReponseData.formData as unknown as FormData
-      formCompletionStatus.value = formReponseData.formFillStatus ? formReponseData.formFillStatus : "draft"
+      originalFormData.value = formReponseData.patientFormData?.rawFormData as unknown as FormData
+      formCompletionStatus.value = formReponseData.patientFormData?.fillStatus ? formReponseData.patientFormData.fillStatus : "draft"
       form.value = formReponseData as unknown as Form
     }
   } catch (error: unknown) {
@@ -127,10 +127,10 @@ onMounted(async () => {
 // Handle form data changes - receives FormSubmissionData from plugin
 const handleFormDataChange = (submissionData: FormSubmissionData) => {
   logger.debug(`${componentName}: Form data changed:`, submissionData)
-  // Extract rawData from FormSubmissionData
-  formData.value = submissionData.rawData as unknown as FormData
-  formScoring.value = submissionData.scoring
-  formCompletionStatus.value = submissionData.formFillStatus ? submissionData.formFillStatus : "draft"
+  // Store full submission data
+  formData.value = submissionData
+  formScoring.value = submissionData as unknown as ScoringData
+  formCompletionStatus.value = submissionData.fillStatus
 
 }
 
@@ -143,13 +143,11 @@ const saveChanges = async () => {
 
   saving.value = true
   try {
-    // Prepare update payload with full structure
+    // Prepare update payload with PatientFormData structure
     const updatePayload = {
       formId,
       updateFormRequest: {
-        formData: formData.value,
-        scoring: formScoring.value || undefined,
-        formFillStatus: formCompletionStatus.value
+        patientFormData: formData.value as any
       }
     }
     logger.debug('=== ReviewFormAnswers FRONTEND: Data being sent to API ===')
@@ -167,13 +165,14 @@ const saveChanges = async () => {
       // Handle both string and object cases for consultationId
       let consultationId: string
 
-      if (typeof form.value.consultationId === 'string') {
-        consultationId = form.value.consultationId
-      } else if (typeof form.value.consultationId === 'object' && form.value.consultationId !== null) {
-        const idObj = form.value.consultationId as Record<string, unknown>
-        consultationId = String(idObj._id || idObj.id || form.value.consultationId)
+      const consId = form.value.consultationId
+      if (typeof consId === 'string') {
+        consultationId = consId
+      } else if (consId && typeof consId === 'object') {
+        const idObj = consId as any
+        consultationId = String(idObj._id || idObj.id || '')
       } else {
-        consultationId = String(form.value.consultationId)
+        consultationId = String(consId)
       }
 
       logger.debug('Navigating to consultation overview with ID:', consultationId)
@@ -282,11 +281,11 @@ const goBack = () => {
                   <v-list-item-subtitle>{{ consultationDate }}</v-list-item-subtitle>
                 </v-list-item>
 
-                <v-list-item v-if="form.completedAt">
+                <v-list-item v-if="form.patientFormData?.completedAt">
                   <template #prepend>
                     <v-icon>mdi-check-circle</v-icon>
                   </template>
-                  <v-list-item-title>{{ t('reviewForm.completedAt') }}</v-list-item-title>
+                  <v-list-item-title>{{ t('reviewForm.patientFormData?.completedAt') }}</v-list-item-title>
                   <v-list-item-subtitle>{{ completedDate }}</v-list-item-subtitle>
                 </v-list-item>
 
@@ -308,7 +307,7 @@ const goBack = () => {
         <v-card-text class="px-4 py-6">
           <PluginFormRenderer
                               :template-id="templateId"
-                              :model-value="(form.formData as FormData)"
+                              :model-value="form?.patientFormData ?? null"
                               @update:model-value="handleFormDataChange" />
         </v-card-text>
 
@@ -316,7 +315,7 @@ const goBack = () => {
         <v-card-text v-if="formScoring" class="px-4 pt-0">
           <FormProgressCard
                             :scoring="formScoring"
-                            :title="t('forms.scoring.overallProgress')"
+                            :title="t('forms.subscales.overallProgress')"
                             :showSubmitButton="false" />
         </v-card-text>
 

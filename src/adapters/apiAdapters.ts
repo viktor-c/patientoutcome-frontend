@@ -11,21 +11,18 @@ export function mapApiFormToForm(api: FormFromApi): Form {
     _id: api.id || '', // For backward compatibility 
     title: api.title || '',
     description: api.description || '',
-    formSchema: (api.formSchema || {}) as Record<string, unknown>,
-    formSchemaUI: (api.formSchemaUI || {}) as Record<string, unknown>,
-    formData: (api.formData as FormData) || {},
-    translations: (api as any).translations as Record<string, Record<string, unknown>> | undefined,
+    patientFormData: (api as any).patientFormData || null,
     caseId: api.caseId || null,
     consultationId: api.consultationId || null,
     formTemplateId: api.formTemplateId || null,
-    scoring: api.scoring as unknown as ScoringData || undefined,
     createdAt: api.createdAt,
-    formFillStatus: api.formFillStatus as 'draft' | 'incomplete' | 'completed' | undefined,
     updatedAt: api.updatedAt,
-    completedAt: api.completedAt,
     formStartTime: api.formStartTime,
     formEndTime: api.formEndTime,
     completionTimeSeconds: api.completionTimeSeconds,
+    deletedAt: (api as any).deletedAt || null,
+    deletedBy: (api as any).deletedBy || null,
+    deletionReason: (api as any).deletionReason || null,
   }
 }
 

@@ -39,7 +39,7 @@ const safeFormatDate = (date: string | null | undefined, format: string = 'DD.MM
 // Helper functions
 const getConsultationStatusColor = (consultation: Consultation): string => {
   const formCount = consultation.proms?.length || 0
-  const completedForms = consultation.proms?.filter((form) => form.formFillStatus === 'completed').length || 0
+  const completedForms = consultation.proms?.filter((form) => form.patientFormData?.fillStatus === 'complete').length || 0
 
   if (formCount === 0) return 'grey'
   if (completedForms === formCount) return 'success'
@@ -49,7 +49,7 @@ const getConsultationStatusColor = (consultation: Consultation): string => {
 
 const getConsultationStatusText = (consultation: Consultation): string => {
   const formCount = consultation.proms?.length || 0
-  const completedForms = consultation.proms?.filter((form) => form.formFillStatus === 'completed').length || 0
+  const completedForms = consultation.proms?.filter((form) => form.patientFormData?.fillStatus === 'complete').length || 0
 
   if (formCount === 0) return t('patientOverview.noForms')
   return `${completedForms}/${formCount} ${t('patientOverview.formsCompleted')}`
@@ -275,12 +275,12 @@ defineExpose({
                         v-for="(form, formIndex) in consultation.proms"
                         :key="form.id || `form-${formIndex}`"
                         size="x-small"
-                        :color="form.formFillStatus === 'completed' ? 'success' : 'warning'"
+                        :color="form.patientFormData?.fillStatus === 'complete' ? 'success' : 'warning'"
                         class="me-1">
                   {{ form.title || t('patientOverview.unnamedForm') }}
                   <template
-                            v-if="form.scoring?.total !== undefined && form.scoring?.total !== null && form.scoring.total.rawScore !== undefined && form.scoring.total.rawScore !== null">
-                    ({{ form.scoring?.total.rawScore }})
+                            v-if="form.patientFormData?.subscales?.total !== undefined && form.patientFormData?.subscales?.total !== null && form.patientFormData?.subscales.totalScore.rawScore !== undefined && form.patientFormData?.subscales.totalScore.rawScore !== null">
+                    ({{ form.patientFormData?.subscales?.total.rawScore }})
                   </template>
                 </v-chip>
               </div>

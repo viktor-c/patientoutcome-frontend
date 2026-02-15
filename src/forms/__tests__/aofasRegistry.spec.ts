@@ -86,11 +86,11 @@ describe('AOFAS Plugin Registry Integration', () => {
     const score = plugin!.calculateScore(mockData)
     
     expect(score).toBeDefined()
-    expect(score.total).toBeDefined()
-    expect(score.total!.rawScore).toBe(75)
-    expect(score.total!.maxPossibleScore).toBe(100)
+    expect(score.totalScore).toBeDefined()
+    expect(score.totalScore!.rawScore).toBe(75)
+    expect(score.totalScore!.maxScore).toBe(100)
     
     console.log('✅ AOFAS calculateScore execution successful')
-    console.log(`   Score: ${score.total!.rawScore}/${score.total!.maxPossibleScore}`)
+    console.log(`   Score: ${score.totalScore!.rawScore}/${score.totalScore!.maxScore}`)
   })
 })

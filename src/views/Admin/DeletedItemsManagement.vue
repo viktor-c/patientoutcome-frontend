@@ -42,8 +42,8 @@ const fetchDeletedPatients = async () => {
 
     if (response.responseObject) {
       deletedPatients.value = response.responseObject.patients || []
-      patientsTotal.value = response.responseObject.total || 0
-      patientsTotalPages.value = response.responseObject.totalPages || 0
+      patientsTotal.value = (response.responseObject as any).total || deletedPatients.value.length
+      patientsTotalPages.value = (response.responseObject as any).totalPages || 1
     }
   } catch (error: unknown) {
     let errorMessage = 'An unexpected error occurred'
@@ -65,8 +65,8 @@ const fetchDeletedCases = async () => {
 
     if (response.responseObject) {
       deletedCases.value = (response.responseObject.cases || []) as any
-      casesTotal.value = response.responseObject.total || 0
-      casesTotalPages.value = response.responseObject.totalPages || 0
+      casesTotal.value = (response.responseObject as any).total || deletedCases.value.length
+      casesTotalPages.value = (response.responseObject as any).totalPages || 1
     }
   } catch (error: unknown) {
     let errorMessage = 'An unexpected error occurred'
@@ -88,8 +88,8 @@ const fetchDeletedForms = async () => {
 
     if (response.responseObject) {
       deletedForms.value = (response.responseObject.forms || []) as any
-      formsTotal.value = response.responseObject.total || 0
-      formsTotalPages.value = response.responseObject.totalPages || 0
+      formsTotal.value = (response.responseObject as any).total || deletedForms.value.length
+      formsTotalPages.value = (response.responseObject as any).totalPages || 1
     }
   } catch (error: unknown) {
     let errorMessage = 'An unexpected error occurred'

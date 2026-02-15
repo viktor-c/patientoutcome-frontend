@@ -71,18 +71,16 @@ const handleFormDataChange = async (submissionData: FormSubmissionData, formInde
   if (!form || !form._id) return
 
   try {
-    // Update local state immediately - store the full submission data
-    form.formData = submissionData.rawData as unknown as Form['formData']
+    // Update local state immediately - store the full PatientFormData structure
+    form.patientFormData = submissionData as any
 
-    // Auto-save to backend with full FormSubmissionData structure
+    // Auto-save to backend with full PatientFormData structure
     savingStates.value[formIndex] = true
 
     await formApi.updateForm({
       formId: form._id,
       updateFormRequest: {
-        formData: submissionData.rawData as unknown as Record<string, unknown>,
-        scoring: submissionData.scoring,
-        formFillStatus: submissionData.isComplete ? 'completed' : 'incomplete',
+        patientFormData: submissionData as any,
       },
     })
 
@@ -135,11 +133,15 @@ const handleSubmitAll = async () => {
     // Mark all forms as completed
     await Promise.all(
       forms.value.map((form) =>
-        form._id
+        form._id && form.patientFormData
           ? formApi.updateForm({
             formId: form._id,
             updateFormRequest: {
-              formFillStatus: 'completed',
+              patientFormData: {
+                ...form.patientFormData,
+                fillStatus: 'complete',
+                completedAt: new Date().toISOString(),
+              } as any,
               formEndTime: new Date().toISOString(),
             },
           })
@@ -187,11 +189,11 @@ const handleSubmitAll = async () => {
           <v-window-item v-for="(form, formIndex) in forms" :key="form._id || formIndex" :value="String(formIndex)">
             <div class="form-container">
               <v-card class="pa-6">
-                <template v-if="canUsePlugin(form) && form.formTemplateId && form.formData">
+                <template v-if="canUsePlugin(form) && form.formTemplateId && form.patientFormData">
                   <!-- Plugin-based form renderer -->
                   <PluginFormRenderer
                                       :template-id="form.formTemplateId"
-                                      :model-value="(form.formData as any)"
+                                      :model-value="(form.patientFormData as any)"
                                       :locale="locale"
                                       @update:model-value="(data) => handleFormDataChange(data, formIndex)"
                                       @validation-change="(valid: boolean) => handleValidationChange(valid, formIndex)" />
@@ -219,7 +221,7 @@ const handleSubmitAll = async () => {
                     <span>{{ form.title || `Form ${idx + 1}` }}</span>
                   </template>
                   <template #text>
-                    <pre class="text-body2">{{ JSON.stringify(form.formData, null, 2) }}</pre>
+                    <pre class="text-body2">{{ JSON.stringify(form.patientFormData, null, 2) }}</pre>
                   </template>
                 </v-expansion-panel>
               </v-expansion-panels>

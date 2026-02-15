@@ -15,14 +15,14 @@ describe('apiAdapters', () => {
         formData: { question1: { answer: 'test' } },
         formFillStatus: 'completed',
         createdAt: '2024-01-01T00:00:00Z',
-      } as FormFromApi
+      } as any
 
       const result = mapApiFormToForm(apiForm)
 
       expect(result.id).toBe('form-123')
       expect(result._id).toBe('form-123')
       expect(result.title).toBe('Test Form')
-      expect(result.formFillStatus).toBe('completed')
+      expect((result as any).formFillStatus).toBe('completed')
     })
 
     it('should handle null/undefined fields gracefully', () => {

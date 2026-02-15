@@ -638,8 +638,8 @@ const cancelArchiveForm = () => {
 
 // Get form scores
 const getFormScore = (form: FindAllCodes200ResponseResponseObjectInnerConsultationIdPromsInner): string => {
-  if (form.scoring?.total?.rawScore !== undefined && form.scoring?.total?.rawScore !== null) {
-    return form.scoring.total.rawScore.toString()
+  if (form.patientFormData?.totalScore?.rawScore !== undefined && form.patientFormData?.totalScore?.rawScore !== null) {
+    return form.patientFormData.totalScore.rawScore.toString()
   }
   return t('common.notAvailable')
 }
@@ -814,17 +814,17 @@ const patientFlowUrl = computed(() => {
                 </v-card-title>
                 <v-card-text>
                   <v-chip
-                          :color="getFormStatusColor(form.formFillStatus)"
+                          :color="getFormStatusColor(form.patientFormData?.fillStatus)"
                           size="small"
                           class="mb-2">
-                    {{ form.formFillStatus }}
+                    {{ form.patientFormData?.fillStatus }}
                   </v-chip>
                   <p class="text-body-2 mb-2">
                     <strong>{{ t('consultationOverview.score') }}:</strong> {{ getFormScore(form) }}
                   </p>
-                  <p class="text-body-2 mb-2" v-if="form.completedAt">
+                  <p class="text-body-2 mb-2" v-if="form.patientFormData?.completedAt">
                     <strong>{{ t('consultationOverview.completedAt') }}:</strong>
-                    {{ safeFormatDate(form.completedAt, 'DD.MM.YYYY HH:mm') }}
+                    {{ safeFormatDate(form.patientFormData?.completedAt, 'DD.MM.YYYY HH:mm') }}
                   </p>
                   <p class="text-body-2 mb-2" v-if="form.updatedAt">
                     <strong>{{ t('consultationOverview.lastUpdated') }}:</strong>
@@ -1191,9 +1191,9 @@ const patientFlowUrl = computed(() => {
                               </p>
                               <div class="d-flex align-center gap-2">
                                 <v-chip
-                                        :color="getFormStatusColor(form.formFillStatus)"
+                                        :color="getFormStatusColor(form.patientFormData?.fillStatus)"
                                         size="x-small">
-                                  {{ form.formFillStatus }}
+                                  {{ form.patientFormData?.fillStatus }}
                                 </v-chip>
                                 <span class="text-caption">
                                   {{ t('consultationOverview.score') }}: {{ getFormScore(form) }}

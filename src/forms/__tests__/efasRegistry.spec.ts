@@ -132,30 +132,30 @@ describe('EFAS Plugin Registry Integration', () => {
     const score = plugin!.calculateScore(mockData)
     
     expect(score).toBeDefined()
-    expect(score.rawData).toBeDefined()
+    expect(score.rawFormData).toBeDefined()
     expect(score.subscales).toBeDefined()
-    expect(score.total).toBeDefined()
+    expect(score.totalScore).toBeDefined()
     
     // Check subscales
-    expect(score.subscales.standard).toBeDefined()
-    expect(score.subscales.standard!.name).toBe('Standard Questions')
-    expect(score.subscales.standard!.totalQuestions).toBe(6)
+    expect(score.subscales!.standard).toBeDefined()
+    expect(score.subscales!.standard!.name).toBe('Standard Questions')
+    expect(score.subscales!.standard!.totalQuestions).toBe(6)
     
-    expect(score.subscales.sport).toBeDefined()
-    expect(score.subscales.sport!.name).toBe('Sport Questions')
-    expect(score.subscales.sport!.totalQuestions).toBe(4)
+    expect(score.subscales!.sport).toBeDefined()
+    expect(score.subscales!.sport!.name).toBe('Sport Questions')
+    expect(score.subscales!.sport!.totalQuestions).toBe(4)
     
     // Check total score
-    expect(score.total!.name).toBe('EFAS Total')
-    expect(score.total!.totalQuestions).toBe(10)
-    expect(score.total!.rawScore).toBeGreaterThan(0)
-    expect(score.total!.normalizedScore).toBeGreaterThan(0)
-    expect(score.total!.normalizedScore).toBeLessThanOrEqual(100)
+    expect(score.totalScore!.name).toBe('EFAS Total')
+    expect(score.totalScore!.totalQuestions).toBe(10)
+    expect(score.totalScore!.rawScore).toBeGreaterThan(0)
+    expect(score.totalScore!.normalizedScore).toBeGreaterThan(0)
+    expect(score.totalScore!.normalizedScore).toBeLessThanOrEqual(100)
     
     console.log('✅ EFAS calculateScore execution successful')
-    console.log(`   Standard subscale: ${score.subscales.standard!.rawScore}/${score.subscales.standard!.maxPossibleScore}`)
-    console.log(`   Sport subscale: ${score.subscales.sport!.rawScore}/${score.subscales.sport!.maxPossibleScore}`)
-    console.log(`   Total score: ${score.total!.rawScore}/${score.total!.maxPossibleScore} (${score.total!.normalizedScore}%)`)
+    console.log(`   Standard subscale: ${score.subscales!.standard!.rawScore}/${score.subscales!.standard!.maxScore}`)
+    console.log(`   Sport subscale: ${score.subscales!.sport!.rawScore}/${score.subscales!.sport!.maxScore}`)
+    console.log(`   Total score: ${score.totalScore!.rawScore}/${score.totalScore!.maxScore} (${score.totalScore!.normalizedScore}%)`)
   })
 
   it('should validate complete form data', () => {
@@ -200,9 +200,9 @@ describe('EFAS Plugin Registry Integration', () => {
     
     // But completeness is tracked in scoring
     const score = plugin!.calculateScore(incompleteData)
-    expect(score.subscales.standard!.isComplete).toBe(false)
-    expect(score.subscales.standard!.answeredQuestions).toBe(5)
-    expect(score.subscales.standard!.totalQuestions).toBe(6)
+    expect(score.subscales!.standard!.isComplete).toBe(false)
+    expect(score.subscales!.standard!.answeredQuestions).toBe(5)
+    expect(score.subscales!.standard!.totalQuestions).toBe(6)
     
     console.log('✅ EFAS validateFormData - incomplete data passes validation, incompleteness tracked in scoring')
   })
@@ -261,13 +261,13 @@ describe('EFAS Plugin Registry Integration', () => {
     const score = plugin!.calculateScore(dataWithoutSport)
     
     expect(score).toBeDefined()
-    expect(score.subscales.standard!.isComplete).toBe(true)
-    expect(score.subscales.standard!.answeredQuestions).toBe(6)
-    expect(score.subscales.sport!.answeredQuestions).toBe(0)
-    expect(score.total!.answeredQuestions).toBe(6)
+    expect(score.subscales!.standard!.isComplete).toBe(true)
+    expect(score.subscales!.standard!.answeredQuestions).toBe(6)
+    expect(score.subscales!.sport!.answeredQuestions).toBe(0)
+    expect(score.totalScore!.answeredQuestions).toBe(6)
     
     console.log('✅ EFAS calculateScore - score calculated with only standard questions')
-    console.log(`   Standard: ${score.subscales.standard!.rawScore}/${score.subscales.standard!.maxPossibleScore}`)
-    console.log(`   Total: ${score.total!.rawScore}/${score.total!.maxPossibleScore}`)
+    console.log(`   Standard: ${score.subscales!.standard!.rawScore}/${score.subscales!.standard!.maxScore}`)
+    console.log(`   Total: ${score.totalScore!.rawScore}/${score.totalScore!.maxScore}`)
   })
 })

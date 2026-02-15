@@ -5,6 +5,7 @@ import * as components from 'vuetify/components'
 import * as directives from 'vuetify/directives'
 import PluginFormRenderer from '@/forms/components/PluginFormRenderer.vue'
 import type { FormPlugin, FormData } from '@/forms/types'
+import type { PatientFormData } from '@/types'
 import type { ScoringData } from '@/types/backend/scoring'
 import { h } from 'vue'
 import type { Component } from 'vue'
@@ -58,13 +59,13 @@ const createMockPlugin = (): FormPlugin => ({
     de: { 'test.key': 'Test Wert' }
   },
   calculateScore: (data: FormData): ScoringData => ({
-    rawData: data,
+    rawFormData: data,
     subscales: {},
-    total: {
+    totalScore: {
       name: 'Total',
       rawScore: 0,
       normalizedScore: 0,
-      maxPossibleScore: 0,
+      maxScore: 0,
       answeredQuestions: 0,
       totalQuestions: 0,
       completionPercentage: 0,
@@ -92,7 +93,7 @@ describe('PluginFormRenderer.vue', () => {
 
   const mountComponent = (props: {
     templateId: string
-    modelValue: FormData
+    modelValue: PatientFormData | null | any
     readonly?: boolean
     locale?: string
   }) => {

@@ -64,8 +64,8 @@ onMounted(async () => {
     allForms.value = mappedForms
 
     // Separate completed forms from pending forms
-    completedForms.value = mappedForms.filter(f => f.formFillStatus === 'completed')
-    forms.value = mappedForms.filter(f => f.formFillStatus !== 'completed')
+    completedForms.value = mappedForms.filter(f => f.patientFormData?.fillStatus === 'complete')
+    forms.value = mappedForms.filter(f => f.patientFormData?.fillStatus !== 'complete')
 
     logger.debug(`Found ${completedForms.value.length} completed forms and ${forms.value.length} pending forms`)
 
@@ -101,17 +101,13 @@ const processFormData = (submissionData: FormSubmissionData, formIndex: number) 
 
   // Store the raw form data (extract rawData from FormSubmissionData)
   if (currentFormId) {
-    logger.debug(`ShowConsultationForms: Updating forms[${formIndex}].formData with rawData`)
-    forms.value[formIndex].formData = submissionData.rawData as unknown as Form['formData']
-    forms.value[formIndex].scoring = submissionData.scoring // Store scoring data if available
-    forms.value[formIndex].formFillStatus = submissionData.isComplete ? 'completed' : 'incomplete' // Mark form as incomplete until submission
+    logger.debug(`ShowConsultationForms: Updating forms[${formIndex}].patientFormData`)
+    forms.value[formIndex].patientFormData = submissionData as any
     // Also update in allForms to keep data in sync
     const allFormIndex = allForms.value.findIndex(f => f._id === currentFormId)
     if (allFormIndex !== -1) {
-      logger.debug(`ShowConsultationForms: Also updating allForms[${allFormIndex}].formData`)
-      allForms.value[allFormIndex].formData = submissionData.rawData as unknown as Form['formData']
-      allForms.value[allFormIndex].scoring = submissionData.scoring
-      allForms.value[allFormIndex].formFillStatus = submissionData.isComplete ? 'completed' : 'incomplete'
+      logger.debug(`ShowConsultationForms: Also updating allForms[${allFormIndex}].patientFormData`)
+      allForms.value[allFormIndex].patientFormData = submissionData as any
     }
   }
 }
@@ -122,21 +118,10 @@ const incompleteForms = computed(() => {
   for (const form of forms.value) {
     const formId = form._id
     if (!formId) continue
-    // Check if form data exists and has values
-    const hasData = form.formData && Object.keys(form.formData).length > 0
-
-    // Check if all fields are filled
-    let isComplete = false
-    if (hasData && typeof form.formData === 'object') {
-      isComplete = Object.values(form.formData).every(section => {
-        if (typeof section === 'object' && section !== null) {
-          return Object.values(section).every(value => value !== null && value !== '')
-        }
-        return false
-      })
-    }
-
-    // Form is incomplete if not completed
+    
+    // Form is incomplete if not in 'complete' status or if patientFormData doesn't exist
+    const isComplete = form.patientFormData?.fillStatus === 'complete'
+    
     if (!isComplete) {
       incomplete.push(formId)
     }
@@ -171,9 +156,7 @@ const submitForm = async () => {
       formId: currentForm._id,
       updateFormRequest: {
         code: externalCode ? externalCode : "", // Include code if available for authorization
-        formData: currentForm.formData || {},
-        scoring: currentForm.scoring || undefined,
-        formFillStatus: currentForm.formFillStatus,
+        patientFormData: currentForm.patientFormData as any,
       }
     }
 
@@ -390,7 +373,7 @@ const isSmallScreen = computed(() => window.innerWidth < 1300)
           <PluginFormRenderer
                               :key="currentForm._id"
                               :template-id="currentForm.formTemplateId || currentForm._id || ''"
-                              :model-value="(currentForm.formData as any) || {}"
+                              :model-value="(currentForm.patientFormData as any) || {}"
                               @update:model-value="(data) => processFormData(data, currentFormIndex)" />
 
           <!-- Navigation buttons -->

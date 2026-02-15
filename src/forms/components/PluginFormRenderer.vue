@@ -5,35 +5,33 @@
 * Loads the appropriate plugin based on templateId and renders it.
 *
 * DATA FLOW:
-* 1. Receives modelValue as either FormSubmissionData or FormData (for backward compatibility)
-* 2. Extracts rawData and passes it to the form component
-* 3. Form component emits FormSubmissionData with structure:
+* 1. Receives modelValue as PatientFormData (which may be null from backend)
+* 2. If null, initializes empty PatientFormData using plugin's getInitialData()
+* 3. Extracts rawFormData and passes it to the form component
+* 4. Form component emits PatientFormData with structure:
 * {
-* rawData: FormData, // The actual form answers
-* scoring: ScoringData, // Calculated scoring
-* isComplete: boolean, // Whether all fields are filled
-* completedAt?: Date // Timestamp when completed
+*   rawFormData: FormQuestions, // The actual form answers
+*   subscales?: { [key: string]: SubscaleScore | null }, // Calculated scoring per subscale
+*   totalScore?: SubscaleScore | null, // Total score
+*   fillStatus: "draft" | "incomplete" | "complete", // Form completion status
+*   completedAt: Date | null, // Timestamp when completed
+*   beginFill: Date | null // Timestamp when form filling began
 * }
-* 4. Emits this structure to parent components
-* 5. Parent components send this to backend API which expects:
-* - formData: the rawData (stored in DB as formData)
-* - scoring: the scoring data (stored as scoring)
-* - formFillStatus: mapped from isComplete (stored as formFillStatus)
-* - completedAt: timestamp (stored as completedAt)
+* 5. Emits this structure to parent components
+* 6. Parent components send this to backend API which stores it in patientFormData field
 */
 
 <script setup lang="ts">
 import { computed, onMounted, ref, markRaw } from 'vue'
 import { getFormPlugin } from '../registry'
 import type { FormData, FormSubmissionData, FormPlugin } from '../types'
-import type { ScoringData } from '@/types/backend/scoring'
 
 interface Props {
   /** Form template ID (matches plugin metadata.id) */
   templateId: string
 
-  /** Current form data */
-  modelValue: FormSubmissionData | FormData
+  /** Current form data - PatientFormData structure (may be null) */
+  modelValue: FormSubmissionData | null
 
   /** Whether the form is read-only */
   readonly?: boolean
@@ -44,7 +42,8 @@ interface Props {
 
 const props = withDefaults(defineProps<Props>(), {
   readonly: false,
-  locale: 'en'
+  locale: 'en',
+  modelValue: null
 })
 
 interface Emits {
@@ -63,11 +62,18 @@ const pluginExists = computed(() => plugin.value !== undefined)
 // Get the component to render
 const FormComponent = computed(() => plugin.value?.component)
 
-// Extract raw form data from props (handle both old FormData and new FormSubmissionData formats)
+// Extract or initialize form data
+// If backend sends null, use plugin's getInitialData() to create empty structure
 const formDataToPass = computed(() => {
-  if (!props.modelValue) return {}
-  const isSubmissionData = 'rawData' in props.modelValue
-  return isSubmissionData ? (props.modelValue as FormSubmissionData).rawData : (props.modelValue as FormData)
+  if (!plugin.value) return {}
+  
+  // If modelValue is null (new form), initialize with empty data
+  if (!props.modelValue) {
+    return plugin.value.getInitialData()
+  }
+  
+  // If modelValue exists, extract rawFormData
+  return props.modelValue.rawFormData || plugin.value.getInitialData()
 })
 
 // Error message if plugin not found

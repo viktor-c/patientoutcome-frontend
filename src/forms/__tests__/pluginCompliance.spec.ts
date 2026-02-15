@@ -108,24 +108,24 @@ describe('Form Plugin Compliance', () => {
         const scoring = plugin.calculateScore(initialData)
 
         expect(scoring).toBeDefined()
-        expect(scoring.rawData).toBeDefined()
+        expect(scoring.rawFormData).toBeDefined()
         expect(scoring.subscales).toBeDefined()
-        expect(scoring.total).toBeDefined()
+        expect(scoring.totalScore).toBeDefined()
       })
 
       it('should have valid total score in ScoringData', () => {
         const initialData = plugin.getInitialData()
         const scoring = plugin.calculateScore(initialData)
 
-        if (scoring.total) {
-          expect(scoring.total.name).toBeTruthy()
-          expect(typeof scoring.total.rawScore).toBe('number')
-          expect(typeof scoring.total.normalizedScore).toBe('number')
-          expect(typeof scoring.total.maxPossibleScore).toBe('number')
-          expect(typeof scoring.total.answeredQuestions).toBe('number')
-          expect(typeof scoring.total.totalQuestions).toBe('number')
-          expect(typeof scoring.total.completionPercentage).toBe('number')
-          expect(typeof scoring.total.isComplete).toBe('boolean')
+        if (scoring.totalScore) {
+          expect(scoring.totalScore.name).toBeTruthy()
+          expect(typeof scoring.totalScore.rawScore).toBe('number')
+          expect(typeof scoring.totalScore.normalizedScore).toBe('number')
+          expect(typeof scoring.totalScore.maxScore).toBe('number')
+          expect(typeof scoring.totalScore.answeredQuestions).toBe('number')
+          expect(typeof scoring.totalScore.totalQuestions).toBe('number')
+          expect(typeof scoring.totalScore.completionPercentage).toBe('number')
+          expect(typeof scoring.totalScore.isComplete).toBe('boolean')
         }
       })
 
@@ -133,9 +133,9 @@ describe('Form Plugin Compliance', () => {
         const initialData = plugin.getInitialData()
         const scoring = plugin.calculateScore(initialData)
 
-        if (scoring.total) {
-          expect(scoring.total.normalizedScore).toBeGreaterThanOrEqual(0)
-          expect(scoring.total.normalizedScore).toBeLessThanOrEqual(100)
+        if (scoring.totalScore) {
+          expect(scoring.totalScore.normalizedScore).toBeGreaterThanOrEqual(0)
+          expect(scoring.totalScore.normalizedScore).toBeLessThanOrEqual(100)
         }
       })
 
@@ -235,9 +235,9 @@ describe('Form Plugin Compliance', () => {
           const scoring = plugin.calculateScore(mockData)
           
           expect(scoring).toBeDefined()
-          expect(scoring.total).toBeDefined()
-          if (scoring.total) {
-            expect(scoring.total.rawScore).toBeGreaterThan(0)
+          expect(scoring.totalScore).toBeDefined()
+          if (scoring.totalScore) {
+            expect(scoring.totalScore.rawScore).toBeGreaterThan(0)
           }
         })
       }
@@ -267,7 +267,7 @@ describe('Form Plugin Compliance', () => {
         const scoring = plugin.calculateScore(initialData)
         
         // The rawData in scoring should match input structure
-        expect(scoring.rawData).toBeDefined()
+        expect(scoring.rawFormData).toBeDefined()
       })
 
       it('should handle partially filled data', () => {
@@ -283,16 +283,16 @@ describe('Form Plugin Compliance', () => {
 
         expect(() => plugin.calculateScore(initialData)).not.toThrow()
         const scoring = plugin.calculateScore(initialData)
-        expect(scoring.total).toBeDefined()
+        expect(scoring.totalScore).toBeDefined()
       })
 
       it('should calculate completion percentage correctly', () => {
         const mockData = plugin.generateMockData ? plugin.generateMockData() : plugin.getInitialData()
         const scoring = plugin.calculateScore(mockData)
 
-        if (scoring.total) {
-          const expectedPercentage = (scoring.total.answeredQuestions / scoring.total.totalQuestions) * 100
-          expect(scoring.total.completionPercentage).toBeCloseTo(expectedPercentage, 1)
+        if (scoring.totalScore) {
+          const expectedPercentage = (scoring.totalScore.answeredQuestions! / scoring.totalScore.totalQuestions!) * 100
+          expect(scoring.totalScore.completionPercentage).toBeCloseTo(expectedPercentage, 1)
         }
       })
     })

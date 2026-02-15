@@ -5,7 +5,7 @@
 // Backend Zod schemas are the single source of truth
 
 // Import shared scoring types
-import type { FormQuestions, ScoringData } from './scoring'
+import type { FormQuestions, PatientFormData } from './scoring'
 
 export interface Patient {
   _id?: string
@@ -41,17 +41,18 @@ export interface Form {
   id?: string | null // For OpenAPI compatibility (can be null)
   title?: string
   description?: string
-  formData?: FormData
+  patientFormData?: PatientFormData | null
   caseId?: string | null
   consultationId?: string | null
   formTemplateId?: string | null
   createdAt?: string | null
-  formFillStatus?: 'draft' | 'incomplete' | 'completed'
   updatedAt?: string | null
-  completedAt?: string | null
   formStartTime?: string | null
   formEndTime?: string | null
   completionTimeSeconds?: number
+  deletedAt?: string | null
+  deletedBy?: string | null
+  deletionReason?: string | null
 }
 
 export interface Surgery {
@@ -115,15 +116,12 @@ export interface questions {
 export type Questionnaire = Record<string, string | number | null>;
 
 /**
- * FormData represents the complete form submission with raw data and scoring results
- * @property rawData - Raw form answers organized by form section (e.g., { moxfq: { q1: 0, q2: null, ... } })
- * @property scoring - Computed scoring results including subscales and total scores
- * @property isComplete - Whether the form has been fully completed
- * @property completedAt - ISO timestamp when the form was completed, or undefined if not yet completed
+ * Legacy FormData interface - deprecated, use PatientFormData instead
+ * @deprecated Use PatientFormData from './scoring' instead
  */
 export interface FormData {
   rawData: FormQuestions | null;
-  scoring: ScoringData;
+  scoring: import('./scoring').ScoringData;
   isComplete: boolean;
   completedAt?: string | null;
 }

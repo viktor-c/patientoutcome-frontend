@@ -6,32 +6,19 @@
  */
 
 import type { Component } from 'vue'
-import type { ScoringData } from '@/types/backend/scoring'
+import type { PatientFormData, FormQuestions, ScoringData } from '@/types/backend/scoring'
 
 /**
  * Base form data structure - flexible to accommodate different form types
+ * This is now an alias for FormQuestions from the backend
  */
-export type FormData = Record<string, Record<string, number | string | null>>
+export type FormData = FormQuestions
 
 /**
  * Combined form submission data including raw data, scoring, and completion status
+ * This matches the backend PatientFormData structure
  */
-export interface FormSubmissionData {
-  /** Raw form data */
-  rawData: FormData
-
-  /** Scoring calculation results */
-  scoring: ScoringData
-
-  /** Whether the form is considered complete */
-  isComplete: boolean
-
-  /** Timestamp of when the form was completed/submitted */
-  completedAt?: Date
-
-  /** Optional field to indicate form fill status (e.g., for backend compatibility) */
-  formFillStatus?: "draft" | "incomplete" | "completed"
-}
+export type FormSubmissionData = PatientFormData
 
 /**
  * Translation structure for a form

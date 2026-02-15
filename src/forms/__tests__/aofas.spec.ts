@@ -15,17 +15,17 @@ describe('AOFAS Plugin Verification', () => {
     const result = calculateScore(mockData)
     
     expect(result).toBeDefined()
-    expect(result.total).toBeDefined()
-    expect(result.total!.rawScore).toBe(75)
-    expect(result.total!.normalizedScore).toBe(75) // 75/100 * 100 = 75%
-    expect(result.total!.maxPossibleScore).toBe(100)
-    expect(result.total!.answeredQuestions).toBe(8)
-    expect(result.total!.totalQuestions).toBe(8)
-    expect(result.total!.isComplete).toBe(true)
+    expect(result.totalScore).toBeDefined()
+    expect(result.totalScore!.rawScore).toBe(75)
+    expect(result.totalScore!.normalizedScore).toBe(75) // 75/100 * 100 = 75%
+    expect(result.totalScore!.maxScore).toBe(100)
+    expect(result.totalScore!.answeredQuestions).toBe(8)
+    expect(result.totalScore!.totalQuestions).toBe(8)
+    expect(result.totalScore!.isComplete).toBe(true)
     
     // Check subscale
-    expect(result.subscales.forefoot).toBeDefined()
-    expect(result.subscales.forefoot!.rawScore).toBe(75)
+    expect(result.subscales!.forefoot).toBeDefined()
+    expect(result.subscales!.forefoot!.rawScore).toBe(75)
     
     console.log('✅ AOFAS Score Calculation: PASSED')
     console.log('   Raw Score: 75/100')
@@ -57,9 +57,9 @@ describe('AOFAS Plugin Verification', () => {
     
     const result = calculateScore(perfectData)
     
-    expect(result.total!.rawScore).toBe(100)
-    expect(result.total!.normalizedScore).toBe(100)
-    expect(result.total!.isComplete).toBe(true)
+    expect(result.totalScore!.rawScore).toBe(100)
+    expect(result.totalScore!.normalizedScore).toBe(100)
+    expect(result.totalScore!.isComplete).toBe(true)
     
     console.log('✅ AOFAS Perfect Score: PASSED')
     console.log('   Raw Score: 100/100')
@@ -82,9 +82,9 @@ describe('AOFAS Plugin Verification', () => {
     
     const result = calculateScore(worstData)
     
-    expect(result.total!.rawScore).toBe(0)
-    expect(result.total!.normalizedScore).toBe(0)
-    expect(result.total!.isComplete).toBe(true)
+    expect(result.totalScore!.rawScore).toBe(0)
+    expect(result.totalScore!.normalizedScore).toBe(0)
+    expect(result.totalScore!.isComplete).toBe(true)
     
     console.log('✅ AOFAS Minimum Score: PASSED')
     console.log('   Raw Score: 0/100')
@@ -107,11 +107,11 @@ describe('AOFAS Plugin Verification', () => {
     
     const result = calculateScore(partialData)
     
-    expect(result.total!.rawScore).toBe(55)
-    expect(result.total!.answeredQuestions).toBe(5)
-    expect(result.total!.totalQuestions).toBe(8)
-    expect(result.total!.isComplete).toBe(false)
-    expect(result.total!.completionPercentage).toBe(63) // rounded
+    expect(result.totalScore!.rawScore).toBe(55)
+    expect(result.totalScore!.answeredQuestions).toBe(5)
+    expect(result.totalScore!.totalQuestions).toBe(8)
+    expect(result.totalScore!.isComplete).toBe(false)
+    expect(result.totalScore!.completionPercentage).toBe(63) // rounded
     
     console.log('✅ AOFAS Partial Form: PASSED')
     console.log(`   Answered: 5/8 questions`)

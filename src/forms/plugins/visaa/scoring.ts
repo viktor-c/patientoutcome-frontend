@@ -89,7 +89,7 @@ function calculateSubscaleScore(
     description,
     rawScore,
     normalizedScore: Math.round(normalizedScore * 100) / 100,
-    maxPossibleScore: maxScore,
+    maxScore: maxScore,
     answeredQuestions,
     totalQuestions,
     completionPercentage: Math.round(completionRate * 100),
@@ -206,7 +206,7 @@ export function calculateScore(data: FormData): ScoringData {
     description: 'Overall Achilles tendon pain and function assessment (0-100, higher is better)',
     rawScore: totalRawScore,
     normalizedScore: totalAnswered === totalQuestions ? totalRawScore : 0,
-    maxPossibleScore: 100,
+    maxScore: 100,
     answeredQuestions: totalAnswered,
     totalQuestions,
     completionPercentage: Math.round((totalAnswered / totalQuestions) * 100),
@@ -214,14 +214,14 @@ export function calculateScore(data: FormData): ScoringData {
   }
 
   return {
-    rawData: data,
+    rawFormData: data,
     subscales: {
       symptoms: symptomsScore,
       dailyFunction: dailyFunctionScore,
       sportFunction: sportFunctionScore,
       activity: activityScore
     },
-    total: totalScore
+    totalScore: totalScore
   }
 }
 

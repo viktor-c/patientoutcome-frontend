@@ -37,14 +37,14 @@ export function calculateScore(data: FormData): ScoringData {
   const isComplete = answeredQuestions === totalQuestions
 
   return {
-    rawData: { painScale },
+    rawFormData: { painScale },
     subscales: {},
-    total: {
+    totalScore: {
       name: 'Total',
       description: null,
       rawScore,
       normalizedScore,
-      maxPossibleScore: 10,
+      maxScore: 10,
       answeredQuestions,
       totalQuestions,
       completionPercentage,

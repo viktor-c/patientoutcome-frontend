@@ -249,7 +249,7 @@ import { useI18n } from 'vue-i18n'
 import { blueprintApi, formtemplateApi } from '@/api'
 import { useNotifierStore } from '@/stores/notifierStore'
 import type {
-  GetFormTemplatesShortlist200ResponseResponseObjectInner
+  GetFormTemplates200ResponseResponseObjectInner
 } from '@/api'
 
 const { t } = useI18n()
@@ -291,7 +291,7 @@ const archiveDialog = ref(false)
 const archiveDialogSecond = ref(false)
 const showArchived = ref(false)
 const templates = ref<TemplateItem[]>([])
-const formTemplates = ref<GetFormTemplatesShortlist200ResponseResponseObjectInner[]>([])
+const formTemplates = ref<GetFormTemplates200ResponseResponseObjectInner[]>([])
 const formTemplateSearch = ref('')
 const selectedFormTemplates = ref<string[]>([])
 const originalFormTemplates = ref<string[]>([])

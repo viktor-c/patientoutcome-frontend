@@ -94,17 +94,15 @@ onMounted(() => {
 const processFormData = async (submissionData: FormSubmissionData) => {
   console.debug('Form data changed:', submissionData)
   if (form.value && form.value._id) {
-    // Update local state
-    form.value.formData = submissionData.rawData as unknown as Form['formData']
+    // Update local state with full PatientFormData structure
+    form.value.patientFormData = submissionData as any
     
-    // Auto-save to backend with full structure
+    // Auto-save to backend with full PatientFormData structure
     try {
       await formApi.updateForm({
         formId: form.value._id,
         updateFormRequest: {
-          formData: submissionData.rawData as unknown as Record<string, unknown>,
-          scoring: submissionData.scoring,
-          formFillStatus: submissionData.isComplete ? 'completed' : 'incomplete',
+          patientFormData: submissionData as any,
         },
       })
     } catch (err) {
@@ -199,7 +197,7 @@ const goBackToKiosk = () => {
           <PluginFormRenderer
                        :key="formId"
                        :template-id="currentForm?.formTemplateId || formId"
-                       :model-value="(currentForm?.formData as any) || {}"
+                       :model-value="(currentForm?.patientFormData as any) || {}"
                        @update:model-value="processFormData" />
         </v-card-text>
       </v-card>

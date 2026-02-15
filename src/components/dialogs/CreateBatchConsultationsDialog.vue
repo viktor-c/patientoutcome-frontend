@@ -9,7 +9,7 @@ import {
   CreateConsultationReasonForConsultationEnum,
   type UpdatePatientCaseByIdRequestNotesInner as ConsultationNote,
   type UserNoPassword,
-  type GetFormTemplatesShortlist200ResponseResponseObjectInner as FormTemplateShortList,
+  type GetFormTemplates200ResponseResponseObjectInner as FormTemplateShortList,
   ResponseError,
   type FindAllCodes200ResponseResponseObjectInner as Code,
   SearchBlueprintsBlueprintForEnum,
