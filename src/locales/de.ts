@@ -819,7 +819,7 @@ export default {
     patientId: 'Patienten-ID',
     consultationId: 'Konsultations-ID',
     consultationDate: 'Konsultationsdatum',
-    completedAt: 'Abgeschlossen am',
+    completedDate: 'Abgeschlossen am',
     lastUpdated: 'Zuletzt aktualisiert',
     hasChanges: 'Ungespeicherte Änderungen',
     saved: 'Gespeichert',

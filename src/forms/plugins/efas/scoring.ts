@@ -8,7 +8,134 @@
 
 import type { FormData } from '../../types'
 import type { ScoringData } from '@/types/backend/scoring'
-import { calculateSubscaleScore, extractQuestions, calculateTotalScore } from '../../utils/scoring'
+import { calculateSubscaleScore, calculateTotalScore } from '../../utils/scoring'
+
+/**
+ * Extract EFAS questions handling {value, na} format
+ * 
+ * EFAS supports N/A answers marked as {value, na}:
+ * - When na === true: scores 0 points (but treats as answered)
+ * - When na === false or not set: uses the numeric value
+ * - When value is null/undefined: treats as unanswered
+ * 
+ * @param section Form data section
+ * @param questionKeys Array of question keys to extract
+ * @returns Filtered questions object
+ */
+function extractEFASQuestions(
+  section: Record<string, any> | undefined,
+  questionKeys: string[]
+): Record<string, number | null> {
+  const result: Record<string, number | null> = {}
+  
+  if (!section) {
+    for (const key of questionKeys) {
+      result[key] = null
+    }
+    return result
+  }
+
+  for (const key of questionKeys) {
+    const value = section[key]
+    
+    // Handle {value, na} format
+    if (typeof value === 'object' && value !== null) {
+      if (value.na === true) {
+        // N/A answers score 0 points
+        result[key] = 0
+      } else if (typeof value.value === 'number') {
+        result[key] = value.value
+      } else {
+        result[key] = null
+      }
+    } 
+    // Handle legacy format (plain numbers)
+    else if (typeof value === 'number') {
+      result[key] = value
+    } 
+    // Unanswered
+    else {
+      result[key] = null
+    }
+  }
+
+  return result
+}
+
+/**
+ * Validate EFAS form data
+ * 
+ * Handles both legacy format (plain numbers) and {value, na} format
+ * All answers must be in range 0-4, or null (unanswered), or {value, na} object
+ * 
+ * @param data Form data to validate
+ * @returns true if valid, false otherwise
+ */
+function validateEFASFormData(data: FormData): boolean {
+  // Validate standard questions
+  const standardSection = data.standardfragebogen || {}
+  const standardKeys = ['q1', 'q2', 'q3', 'q4', 'q5', 'q6']
+
+  for (const key of standardKeys) {
+    const value = standardSection[key]
+    
+    // Null/undefined is valid (unanswered)
+    if (value === null || value === undefined) continue
+    
+    // Handle {value, na} format
+    if (typeof value === 'object' && value !== null) {
+      if (value.na === true) {
+        // N/A is valid
+        continue
+      }
+      if (typeof value.value === 'number') {
+        if (value.value < 0 || value.value > 4) return false
+      } else if (value.value === null || value.value === undefined) {
+        continue
+      } else {
+        return false
+      }
+    }
+    // Handle legacy format (plain numbers)
+    else if (typeof value === 'number') {
+      if (value < 0 || value > 4) return false
+    } else {
+      return false
+    }
+  }
+
+  // Validate sport questions
+  const sportSection = data.sportfragebogen || {}
+  const sportKeys = ['s1', 's2', 's3', 's4']
+
+  for (const key of sportKeys) {
+    const value = sportSection[key]
+    
+    if (value === null || value === undefined) continue
+    
+    // Handle {value, na} format
+    if (typeof value === 'object' && value !== null) {
+      if (value.na === true) {
+        continue
+      }
+      if (typeof value.value === 'number') {
+        if (value.value < 0 || value.value > 4) return false
+      } else if (value.value === null || value.value === undefined) {
+        continue
+      } else {
+        return false
+      }
+    }
+    // Handle legacy format (plain numbers)
+    else if (typeof value === 'number') {
+      if (value < 0 || value > 4) return false
+    } else {
+      return false
+    }
+  }
+
+  return true
+}
 
 /**
  * Calculate EFAS score from form data
@@ -34,11 +161,11 @@ export function calculateScore(data: FormData): ScoringData {
   const sportSection = data.sportfragebogen || {}
 
   // Define question groups for each subscale
-  const standardQuestions = extractQuestions(standardSection, [
+  const standardQuestions = extractEFASQuestions(standardSection, [
     'q1', 'q2', 'q3', 'q4', 'q5', 'q6'
   ])
 
-  const sportQuestions = extractQuestions(sportSection, [
+  const sportQuestions = extractEFASQuestions(sportSection, [
     's1', 's2', 's3', 's4'
   ])
 
@@ -77,47 +204,11 @@ export function calculateScore(data: FormData): ScoringData {
 /**
  * Validate EFAS form data
  * 
- * This validates the data structure and value ranges, not completeness.
- * Completeness is tracked separately via the scoring's isComplete flag.
- * 
+ * Delegates to the EFAS-specific validation function that handles {value, na} format.
  * All answers must be in range 0-4, or null (unanswered)
  */
 export function validateFormData(data: FormData): boolean {
-  // Validate standard questions
-  const standardSection = data.standardfragebogen || {}
-  const standardKeys = ['q1', 'q2', 'q3', 'q4', 'q5', 'q6']
-
-  for (const key of standardKeys) {
-    const value = standardSection[key]
-    
-    // Null/undefined is valid (unanswered) - completeness is checked via scoring
-    if (value === null || value === undefined) continue
-    
-    // Must be a number
-    if (typeof value !== 'number') return false
-    
-    // Must be in valid range
-    if (value < 0 || value > 4) return false
-  }
-
-  // Validate sport questions (optional, but if answered must be valid)
-  const sportSection = data.sportfragebogen || {}
-  const sportKeys = ['s1', 's2', 's3', 's4']
-
-  for (const key of sportKeys) {
-    const value = sportSection[key]
-    
-    // Null/undefined is valid (unanswered)
-    if (value === null || value === undefined) continue
-    
-    // Must be a number
-    if (typeof value !== 'number') return false
-    
-    // Must be in valid range
-    if (value < 0 || value > 4) return false
-  }
-
-  return true
+  return validateEFASFormData(data)
 }
 
 /**

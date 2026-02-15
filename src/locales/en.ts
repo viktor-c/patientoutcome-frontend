@@ -818,7 +818,7 @@ export default {
     patientId: 'Patient ID',
     consultationId: 'Consultation ID',
     consultationDate: 'Consultation Date',
-    completedAt: 'Completed At',
+    completedDate: 'Completed Date',
     lastUpdated: 'Last Updated',
     hasChanges: 'Unsaved Changes',
     saved: 'Saved',

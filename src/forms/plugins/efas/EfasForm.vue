@@ -55,16 +55,43 @@ const answerOptions = computed(() => [
   { value: 4, label: '4' },
 ])
 
+// Check if a question is marked as N/A
+function isNA(section: string, questionKey: string): boolean {
+  const qData = props.modelValue[section]?.[questionKey] as any
+  return qData?.na === true
+}
+
+// Toggle N/A status
+function toggleNA(section: string, questionKey: string) {
+  if (!props.readonly) {
+    const qData = props.modelValue[section]?.[questionKey] as any
+    const currentNA = qData?.na === true
+    const newNA = !currentNA
+    
+    // When toggling N/A to true, ensure value is set (use 0 if no value exists)
+    const value = newNA ? (qData?.value ?? 0) : (qData?.value ?? null)
+    updateQuestion(section, questionKey, { value, na: newNA })
+  }
+}
+
 // Handle value update
 function handleUpdate(section: string, questionKey: string, value: number) {
   if (!props.readonly) {
-    updateQuestion(section, questionKey, value)
+    const qData = props.modelValue[section]?.[questionKey] as any
+    updateQuestion(section, questionKey, { value, na: false })
   }
 }
 
 // Get current value for a question
 function getCurrentValue(section: string, questionKey: string): number | null {
-  return getQuestion(section, questionKey) as number | null
+  const qData = props.modelValue[section]?.[questionKey] as any
+  if (typeof qData === 'object' && qData?.value !== undefined) {
+    return qData.value as number
+  }
+  if (typeof qData === 'number') {
+    return qData
+  }
+  return null
 }
 
 // Get question label
@@ -88,10 +115,10 @@ function getTickLabels(section: string, questionKey: string): { low: string; hig
 
 <template>
   <div class="efas-container">
-    <h3 class="mb-4">{{ t('efas.title.description') }}</h3>
+    <h3 class="mb-4 title-text">{{ t('efas.title.description') }}</h3>
 
     <!-- Instructions -->
-    <div class="mb-4 text-caption text-grey">
+    <div class="mb-4 instructions-text text-grey">
       <p>
         <strong>{{ t('efas.instructions.title') }}:</strong>
         {{ t('efas.instructions.description') }}
@@ -113,27 +140,33 @@ function getTickLabels(section: string, questionKey: string): { low: string; hig
             <span class="card-number">{{ questionIndex + 1 }}</span>
             <div class="card-title-text">{{ getQuestionLabel(question.section, question.key) }}</div>
           </v-card-title>
-          <v-card-subtitle class="px-4 pt-2 text-caption">
-            {{ getQuestionDescription(question.section, question.key) }}
-          </v-card-subtitle>
+
           <v-card-text class="card-options">
-            <v-radio-group
-                           :model-value="getCurrentValue(question.section, question.key)"
-                           :readonly="readonly"
-                           @update:model-value="(value) => handleUpdate(question.section, question.key, value as number)"
-                           class="mobile-radio-group"
-                           inline>
-              <v-radio
-                       v-for="option in answerOptions"
-                       :key="option.value"
-                       :value="option.value"
-                       :label="option.label"
-                       density="compact"
-                       class="mobile-radio" />
-            </v-radio-group>
+            <div class="slider-container">
+              <div class="slider-header">
+                <v-checkbox
+                            :model-value="isNA(question.section, question.key)"
+                            @update:model-value="toggleNA(question.section, question.key)"
+                            :disabled="readonly"
+                            label="N/A"
+                            density="compact"
+                            hide-details />
+              </div>
+              <v-slider
+                        :model-value="getCurrentValue(question.section, question.key) ?? 0"
+                        :min="0"
+                        :max="4"
+                        :step="1"
+                        :disabled="isNA(question.section, question.key) || readonly"
+                        :readonly="readonly"
+                        @update:model-value="(value) => handleUpdate(question.section, question.key, value as number)"
+                        class="mobile-slider"
+                        hide-details
+                        thumb-label="always" />
+            </div>
             <div class="tick-labels mt-2">
-              <span class="tick-label-low">{{ getTickLabels(question.section, question.key).low }}</span>
-              <span class="tick-label-high">{{ getTickLabels(question.section, question.key).high }}</span>
+              <span class="tick-label-low">0 - {{ getTickLabels(question.section, question.key).low }}</span>
+              <span class="tick-label-high">4 - {{ getTickLabels(question.section, question.key).high }}</span>
             </div>
           </v-card-text>
         </v-card>
@@ -141,51 +174,51 @@ function getTickLabels(section: string, questionKey: string): { low: string; hig
 
       <!-- Desktop table layout -->
       <div class="table-wrapper">
-        <v-table class="efas-table" density="compact" fixed-header>
-          <thead>
-            <tr>
-              <th class="text-left">{{ t('standardfragebogen.title') }}</th>
-              <th
-                  v-for="option in answerOptions"
-                  :key="option.value"
-                  class="text-center option-header">
-                {{ option.label }}
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr
-                v-for="(question, questionIndex) in standardQuestions"
-                :key="question.key"
-                :class="{ 'readonly-row': readonly }">
-              <td class="question-cell">
-                <div class="question-number">{{ questionIndex + 1 }}.</div>
-                <div class="question-text">
-                  <div class="question-label">{{ getQuestionLabel(question.section, question.key) }}</div>
-                  <div class="question-description text-caption text-grey">
-                    {{ getQuestionDescription(question.section, question.key) }}
-                  </div>
-                  <div class="tick-labels-desktop">
-                    <span class="tick-label-low">{{ getTickLabels(question.section, question.key).low }}</span>
-                    <span class="tick-label-high">{{ getTickLabels(question.section, question.key).high }}</span>
-                  </div>
+        <div class="desktop-layout">
+          <div
+               v-for="(question, questionIndex) in standardQuestions"
+               :key="question.key"
+               class="question-row">
+            <div class="question-info">
+              <div class="question-number">{{ questionIndex + 1 }}.</div>
+              <div class="question-text">
+                <div class="question-label">{{ getQuestionLabel(question.section, question.key) }}</div>
+                <div class="question-description question-description-desktop text-grey">
+                  {{ getQuestionDescription(question.section, question.key) }}
                 </div>
-              </td>
-              <td
-                  v-for="option in answerOptions"
-                  :key="option.value"
-                  class="text-center option-cell">
-                <v-radio
-                         :model-value="getCurrentValue(question.section, question.key)"
-                         :value="option.value"
-                         :readonly="readonly"
-                         @click="handleUpdate(question.section, question.key, option.value)"
-                         density="compact"
-                         hide-details />
-              </td>
-            </tr>
-          </tbody>
-        </v-table>
+              </div>
+            </div>
+            <div class="question-controls">
+              <div class="slider-wrapper">
+                <div class="slider-header-desktop">
+                  <v-checkbox
+                              :model-value="isNA(question.section, question.key)"
+                              @update:model-value="toggleNA(question.section, question.key)"
+                              :disabled="readonly"
+                              :label="t('efas.notApplicable')"
+                              density="compact"
+                              hide-details
+                              class="na-checkbox" />
+                </div>
+                <v-slider
+                          :model-value="getCurrentValue(question.section, question.key) ?? 0"
+                          :min="0"
+                          :max="4"
+                          :step="1"
+                          :disabled="isNA(question.section, question.key) || readonly"
+                          :readonly="readonly"
+                          @update:model-value="(value) => handleUpdate(question.section, question.key, value as number)"
+                          class="desktop-slider"
+                          hide-details
+                          thumb-label="always" />
+                <div class="tick-labels-desktop">
+                  <span class="tick-label-low">0 - {{ getTickLabels(question.section, question.key).low }}</span>
+                  <span class="tick-label-high">4 - {{ getTickLabels(question.section, question.key).high }}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -207,27 +240,36 @@ function getTickLabels(section: string, questionKey: string): { low: string; hig
             <span class="card-number">S{{ questionIndex + 1 }}</span>
             <div class="card-title-text">{{ getQuestionLabel(question.section, question.key) }}</div>
           </v-card-title>
-          <v-card-subtitle class="px-4 pt-2 text-caption">
+          <v-card-subtitle class="px-4 pt-2 question-description-text">
             {{ getQuestionDescription(question.section, question.key) }}
           </v-card-subtitle>
           <v-card-text class="card-options">
-            <v-radio-group
-                           :model-value="getCurrentValue(question.section, question.key)"
-                           :readonly="readonly"
-                           @update:model-value="(value) => handleUpdate(question.section, question.key, value as number)"
-                           class="mobile-radio-group"
-                           inline>
-              <v-radio
-                       v-for="option in answerOptions"
-                       :key="option.value"
-                       :value="option.value"
-                       :label="option.label"
-                       density="compact"
-                       class="mobile-radio" />
-            </v-radio-group>
+            <div class="slider-container">
+              <div class="slider-header">
+                <div class="slider-value-display">{{ getCurrentValue(question.section, question.key) ?? '-' }}</div>
+                <v-checkbox
+                            :model-value="isNA(question.section, question.key)"
+                            @update:model-value="toggleNA(question.section, question.key)"
+                            :disabled="readonly"
+                            label="N/A"
+                            density="compact"
+                            hide-details />
+              </div>
+              <v-slider
+                        :model-value="getCurrentValue(question.section, question.key) ?? 0"
+                        :min="0"
+                        :max="4"
+                        :step="1"
+                        :disabled="isNA(question.section, question.key) || readonly"
+                        :readonly="readonly"
+                        @update:model-value="(value) => handleUpdate(question.section, question.key, value as number)"
+                        class="mobile-slider"
+                        hide-details
+                        thumb-label="always" />
+            </div>
             <div class="tick-labels mt-2">
-              <span class="tick-label-low">{{ getTickLabels(question.section, question.key).low }}</span>
-              <span class="tick-label-high">{{ getTickLabels(question.section, question.key).high }}</span>
+              <span class="tick-label-low">0 - {{ getTickLabels(question.section, question.key).low }}</span>
+              <span class="tick-label-high">4 - {{ getTickLabels(question.section, question.key).high }}</span>
             </div>
           </v-card-text>
         </v-card>
@@ -235,51 +277,52 @@ function getTickLabels(section: string, questionKey: string): { low: string; hig
 
       <!-- Desktop table layout -->
       <div class="table-wrapper">
-        <v-table class="efas-table" density="compact" fixed-header>
-          <thead>
-            <tr>
-              <th class="text-left">{{ t('sportfragebogen.title') }}</th>
-              <th
-                  v-for="option in answerOptions"
-                  :key="option.value"
-                  class="text-center option-header">
-                {{ option.label }}
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr
-                v-for="(question, questionIndex) in sportQuestions"
-                :key="question.key"
-                :class="{ 'readonly-row': readonly }">
-              <td class="question-cell">
-                <div class="question-number">S{{ questionIndex + 1 }}.</div>
-                <div class="question-text">
-                  <div class="question-label">{{ getQuestionLabel(question.section, question.key) }}</div>
-                  <div class="question-description text-caption text-grey">
-                    {{ getQuestionDescription(question.section, question.key) }}
-                  </div>
-                  <div class="tick-labels-desktop">
-                    <span class="tick-label-low">{{ getTickLabels(question.section, question.key).low }}</span>
-                    <span class="tick-label-high">{{ getTickLabels(question.section, question.key).high }}</span>
-                  </div>
+        <div class="desktop-layout">
+          <div
+               v-for="(question, questionIndex) in sportQuestions"
+               :key="question.key"
+               class="question-row">
+            <div class="question-info">
+              <div class="question-number">S{{ questionIndex + 1 }}.</div>
+              <div class="question-text">
+                <div class="question-label">{{ getQuestionLabel(question.section, question.key) }}</div>
+                <div class="question-description question-description-desktop text-grey">
+                  {{ getQuestionDescription(question.section, question.key) }}
                 </div>
-              </td>
-              <td
-                  v-for="option in answerOptions"
-                  :key="option.value"
-                  class="text-center option-cell">
-                <v-radio
-                         :model-value="getCurrentValue(question.section, question.key)"
-                         :value="option.value"
-                         :readonly="readonly"
-                         @click="handleUpdate(question.section, question.key, option.value)"
-                         density="compact"
-                         hide-details />
-              </td>
-            </tr>
-          </tbody>
-        </v-table>
+              </div>
+            </div>
+            <div class="question-controls">
+              <div class="slider-wrapper">
+                <div class="slider-header-desktop">
+                  <div class="slider-value-display">{{ getCurrentValue(question.section, question.key) ?? '-' }}</div>
+                  <v-checkbox
+                              :model-value="isNA(question.section, question.key)"
+                              @update:model-value="toggleNA(question.section, question.key)"
+                              :disabled="readonly"
+                              :label="t('efas.notApplicable')"
+                              density="compact"
+                              hide-details
+                              class="na-checkbox" />
+                </div>
+                <v-slider
+                          :model-value="getCurrentValue(question.section, question.key) ?? 0"
+                          :min="0"
+                          :max="4"
+                          :step="1"
+                          :disabled="isNA(question.section, question.key) || readonly"
+                          :readonly="readonly"
+                          @update:model-value="(value) => handleUpdate(question.section, question.key, value as number)"
+                          class="desktop-slider"
+                          hide-details
+                          thumb-label="always" />
+                <div class="tick-labels-desktop">
+                  <span class="tick-label-low">0 - {{ getTickLabels(question.section, question.key).low }}</span>
+                  <span class="tick-label-high">4 - {{ getTickLabels(question.section, question.key).high }}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   </div>
@@ -343,14 +386,34 @@ function getTickLabels(section: string, questionKey: string): { low: string; hig
   padding: 1rem;
 }
 
-.mobile-radio-group {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
+.slider-container {
+  margin-bottom: 1rem;
 }
 
-.mobile-radio {
-  margin-right: 0.5rem;
+.slider-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.75rem;
+}
+
+.slider-header-desktop {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.75rem;
+}
+
+.slider-value-display {
+  text-align: center;
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: rgb(var(--v-theme-primary));
+  margin-bottom: 0.5rem;
+}
+
+.mobile-slider {
+  margin-bottom: 0.5rem;
 }
 
 .tick-labels {
@@ -369,41 +432,50 @@ function getTickLabels(section: string, questionKey: string): { low: string; hig
   font-style: italic;
 }
 
-/* Desktop Layout (Table) */
+.title-text {
+  font-size: 1.5rem;
+  font-weight: 500;
+}
+
+.instructions-text {
+  font-size: 1rem;
+}
+
+.question-description-text {
+  font-size: 1.25rem;
+  line-height: 1.5;
+}
+
+.question-description-desktop {
+  font-size: 0.95rem;
+  line-height: 1.4;
+}
+
+/* Desktop Layout */
 .table-wrapper {
   display: none;
   overflow-x: auto;
 }
 
-.efas-table {
-  width: 100%;
-  border-collapse: collapse;
+.desktop-layout {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
 }
 
-.efas-table thead th {
-  background-color: rgba(var(--v-theme-primary), 0.1);
-  font-weight: 600;
-  padding: 0.75rem;
-  border-bottom: 2px solid rgba(var(--v-theme-primary), 0.3);
-}
-
-.option-header {
-  min-width: 60px;
-}
-
-.efas-table tbody tr {
-  border-bottom: 1px solid rgba(0, 0, 0, 0.1);
-}
-
-.efas-table tbody tr:hover:not(.readonly-row) {
+.question-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.5rem;
+  padding: 1rem;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  border-radius: 4px;
   background-color: rgba(var(--v-theme-primary), 0.02);
 }
 
-.question-cell {
+.question-info {
   display: flex;
   gap: 0.75rem;
-  padding: 1rem;
-  align-items: flex-start;
 }
 
 .question-number {
@@ -411,6 +483,7 @@ function getTickLabels(section: string, questionKey: string): { low: string; hig
   font-weight: 600;
   color: rgb(var(--v-theme-primary));
   min-width: 2rem;
+  line-height: 1.5;
 }
 
 .question-text {
@@ -420,11 +493,35 @@ function getTickLabels(section: string, questionKey: string): { low: string; hig
 .question-label {
   font-weight: 500;
   margin-bottom: 0.25rem;
+  line-height: 1.4;
 }
 
 .question-description {
   font-size: 0.875rem;
   margin-bottom: 0.25rem;
+}
+
+.question-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  justify-content: flex-start;
+}
+
+.slider-wrapper {
+  flex: 1;
+}
+
+.slider-value-display {
+  text-align: center;
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: rgb(var(--v-theme-primary));
+  margin-bottom: 0.5rem;
+}
+
+.desktop-slider {
+  margin-bottom: 0.5rem;
 }
 
 .tick-labels-desktop {
@@ -436,9 +533,8 @@ function getTickLabels(section: string, questionKey: string): { low: string; hig
   font-style: italic;
 }
 
-.option-cell {
-  padding: 0.5rem;
-  vertical-align: middle;
+.na-checkbox {
+  align-self: flex-start;
 }
 
 /* Responsive breakpoint */
@@ -460,10 +556,6 @@ function getTickLabels(section: string, questionKey: string): { low: string; hig
 
   .table-wrapper {
     display: block;
-  }
-
-  .efas-table {
-    page-break-inside: avoid;
   }
 }
 </style>
