@@ -57,40 +57,35 @@ const answerOptions = computed(() => [
 
 // Check if a question is marked as N/A
 function isNA(section: string, questionKey: string): boolean {
-  const qData = props.modelValue[section]?.[questionKey] as any
-  return qData?.na === true
+  const qData = props.modelValue[section]?.[questionKey]
+  return qData === 'na'
 }
 
 // Toggle N/A status
 function toggleNA(section: string, questionKey: string) {
   if (!props.readonly) {
-    const qData = props.modelValue[section]?.[questionKey] as any
-    const currentNA = qData?.na === true
-    const newNA = !currentNA
-    
-    // When toggling N/A to true, ensure value is set (use 0 if no value exists)
-    const value = newNA ? (qData?.value ?? 0) : (qData?.value ?? null)
-    updateQuestion(section, questionKey, { value, na: newNA })
+    const qData = props.modelValue[section]?.[questionKey]
+    const currentNA = qData === 'na'
+    // Toggle between 'na' and null (unanswered)
+    updateQuestion(section, questionKey, currentNA ? null : 'na')
   }
 }
 
 // Handle value update
 function handleUpdate(section: string, questionKey: string, value: number) {
   if (!props.readonly) {
-    const qData = props.modelValue[section]?.[questionKey] as any
-    updateQuestion(section, questionKey, { value, na: false })
+    // Set numeric value, clearing N/A status
+    updateQuestion(section, questionKey, value)
   }
 }
 
 // Get current value for a question
 function getCurrentValue(section: string, questionKey: string): number | null {
-  const qData = props.modelValue[section]?.[questionKey] as any
-  if (typeof qData === 'object' && qData?.value !== undefined) {
-    return qData.value as number
-  }
+  const qData = props.modelValue[section]?.[questionKey]
   if (typeof qData === 'number') {
     return qData
   }
+  // 'na' string or null returns null for slider display
   return null
 }
 
@@ -246,7 +241,6 @@ function getTickLabels(section: string, questionKey: string): { low: string; hig
           <v-card-text class="card-options">
             <div class="slider-container">
               <div class="slider-header">
-                <div class="slider-value-display">{{ getCurrentValue(question.section, question.key) ?? '-' }}</div>
                 <v-checkbox
                             :model-value="isNA(question.section, question.key)"
                             @update:model-value="toggleNA(question.section, question.key)"
@@ -294,7 +288,6 @@ function getTickLabels(section: string, questionKey: string): { low: string; hig
             <div class="question-controls">
               <div class="slider-wrapper">
                 <div class="slider-header-desktop">
-                  <div class="slider-value-display">{{ getCurrentValue(question.section, question.key) ?? '-' }}</div>
                   <v-checkbox
                               :model-value="isNA(question.section, question.key)"
                               @update:model-value="toggleNA(question.section, question.key)"

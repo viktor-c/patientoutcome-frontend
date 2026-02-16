@@ -11,11 +11,11 @@ import type { ScoringData } from '@/types/backend/scoring'
 import { calculateSubscaleScore, calculateTotalScore } from '../../utils/scoring'
 
 /**
- * Extract EFAS questions handling {value, na} format
+ * Extract EFAS questions handling 'na' string format
  * 
- * EFAS supports N/A answers marked as {value, na}:
- * - When na === true: scores 0 points (but treats as answered)
- * - When na === false or not set: uses the numeric value
+ * EFAS supports N/A answers represented as 'na' string:
+ * - When value === 'na': scores 0 points (but treats as answered)
+ * - When value is a number (0-4): uses the numeric value
  * - When value is null/undefined: treats as unanswered
  * 
  * @param section Form data section
@@ -38,22 +38,15 @@ function extractEFASQuestions(
   for (const key of questionKeys) {
     const value = section[key]
     
-    // Handle {value, na} format
-    if (typeof value === 'object' && value !== null) {
-      if (value.na === true) {
-        // N/A answers score 0 points
-        result[key] = 0
-      } else if (typeof value.value === 'number') {
-        result[key] = value.value
-      } else {
-        result[key] = null
-      }
-    } 
-    // Handle legacy format (plain numbers)
+    // Handle 'na' string - scores 0 points
+    if (value === 'na') {
+      result[key] = 0
+    }
+    // Handle numeric format
     else if (typeof value === 'number') {
       result[key] = value
-    } 
-    // Unanswered
+    }
+    // Unanswered (null, undefined, or any other value)
     else {
       result[key] = null
     }
@@ -65,8 +58,7 @@ function extractEFASQuestions(
 /**
  * Validate EFAS form data
  * 
- * Handles both legacy format (plain numbers) and {value, na} format
- * All answers must be in range 0-4, or null (unanswered), or {value, na} object
+ * Handles numeric answers (0-4), 'na' string, null (unanswered)
  * 
  * @param data Form data to validate
  * @returns true if valid, false otherwise
@@ -82,22 +74,11 @@ function validateEFASFormData(data: FormData): boolean {
     // Null/undefined is valid (unanswered)
     if (value === null || value === undefined) continue
     
-    // Handle {value, na} format
-    if (typeof value === 'object' && value !== null) {
-      if (value.na === true) {
-        // N/A is valid
-        continue
-      }
-      if (typeof value.value === 'number') {
-        if (value.value < 0 || value.value > 4) return false
-      } else if (value.value === null || value.value === undefined) {
-        continue
-      } else {
-        return false
-      }
-    }
-    // Handle legacy format (plain numbers)
-    else if (typeof value === 'number') {
+    // 'na' string is valid
+    if (value === 'na') continue
+    
+    // Must be a number in valid range
+    if (typeof value === 'number') {
       if (value < 0 || value > 4) return false
     } else {
       return false
@@ -112,22 +93,9 @@ function validateEFASFormData(data: FormData): boolean {
     const value = sportSection[key]
     
     if (value === null || value === undefined) continue
+    if (value === 'na') continue
     
-    // Handle {value, na} format
-    if (typeof value === 'object' && value !== null) {
-      if (value.na === true) {
-        continue
-      }
-      if (typeof value.value === 'number') {
-        if (value.value < 0 || value.value > 4) return false
-      } else if (value.value === null || value.value === undefined) {
-        continue
-      } else {
-        return false
-      }
-    }
-    // Handle legacy format (plain numbers)
-    else if (typeof value === 'number') {
+    if (typeof value === 'number') {
       if (value < 0 || value > 4) return false
     } else {
       return false

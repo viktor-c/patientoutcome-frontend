@@ -24,7 +24,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, markRaw } from 'vue'
 import { getFormPlugin } from '../registry'
-import type { FormData, FormSubmissionData, FormPlugin } from '../types'
+import type { FormSubmissionData, FormPlugin } from '../types'
 
 interface Props {
   /** Form template ID (matches plugin metadata.id) */
@@ -52,6 +52,9 @@ interface Emits {
 
 const emit = defineEmits<Emits>()
 
+// Store the initial beginFill timestamp when form is first loaded
+const initialBeginFill = ref<Date | null>(null)
+
 // Load the plugin without making it reactive (components shouldn't be reactive)
 const pluginData = getFormPlugin(props.templateId)
 const plugin = ref<FormPlugin | undefined>(pluginData ? markRaw(pluginData) : undefined)
@@ -69,7 +72,19 @@ const formDataToPass = computed(() => {
   
   // If modelValue is null (new form), initialize with empty data
   if (!props.modelValue) {
+    // Set beginFill on first load if not already set
+    if (!initialBeginFill.value) {
+      initialBeginFill.value = new Date()
+    }
     return plugin.value.getInitialData()
+  }
+  
+  // Preserve existing beginFill from loaded form data
+  if (props.modelValue.beginFill && !initialBeginFill.value) {
+    initialBeginFill.value = new Date(props.modelValue.beginFill)
+  } else if (!initialBeginFill.value) {
+    // If no beginFill exists yet, set it now (form was just opened)
+    initialBeginFill.value = new Date()
   }
   
   // If modelValue exists, extract rawFormData
@@ -86,7 +101,11 @@ const errorMessage = computed(() => {
 
 // Handle model value updates from the form component
 function handleModelUpdate(value: FormSubmissionData) {
-  emit('update:modelValue', value)
+  // Preserve the initial beginFill timestamp
+  emit('update:modelValue', {
+    ...value,
+    beginFill: initialBeginFill.value || value.beginFill || new Date()
+  })
 }
 
 // Log plugin load for debugging
@@ -95,6 +114,12 @@ onMounted(() => {
     console.log(`[PluginFormRenderer] Loaded plugin: ${plugin.value?.metadata.name}`)
   } else {
     console.error(`[PluginFormRenderer] Plugin not found: ${props.templateId}`)
+  }
+  
+  // Initialize beginFill if this is a new form
+  if (!props.modelValue?.beginFill && !initialBeginFill.value) {
+    initialBeginFill.value = new Date()
+    console.log(`[PluginFormRenderer] Form opened at: ${initialBeginFill.value.toISOString()}`)
   }
 })
 </script>

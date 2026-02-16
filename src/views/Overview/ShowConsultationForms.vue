@@ -20,7 +20,7 @@ import { useTemplateRef } from 'vue'
 const el = useTemplateRef('formContainer')
 const { height: containerHeight } = useElementSize(el)
 
-const { t } = useI18n()
+const { t, locale } = useI18n()
 
 // Define props for the component
 const { consultationId, externalCode } = defineProps<{ consultationId?: string; externalCode?: string }>()
@@ -371,9 +371,10 @@ const isSmallScreen = computed(() => window.innerWidth < 1300)
           </v-chip>
           <!-- formData coming from backend has less info than FormSubmissionData, the backend should fix this  -->
           <PluginFormRenderer
-                              :key="currentForm._id"
+                              :key="`${currentForm._id}-${locale}`"
                               :template-id="currentForm.formTemplateId || currentForm._id || ''"
                               :model-value="(currentForm.patientFormData as any) || {}"
+                              :locale="locale"
                               @update:model-value="(data) => processFormData(data, currentFormIndex)" />
 
           <!-- Navigation buttons -->
@@ -423,12 +424,13 @@ const isSmallScreen = computed(() => window.innerWidth < 1300)
 
 .language-selector-floating {
   position: fixed;
-  top: 20px;
+  top: 00px;
   right: 15%;
   z-index: 10;
   background: white;
   border-radius: 4px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  opacity: 0.8;
 }
 
 .small-container {

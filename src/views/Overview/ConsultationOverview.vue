@@ -655,6 +655,41 @@ const getFormStatusColor = (status: string | undefined): string => {
   }
 }
 
+// Format duration in seconds to hh:mm:ss format
+const formatDuration = (seconds: number | undefined): string => {
+  if (!seconds || seconds <= 0) return t('common.notAvailable')
+  
+  const minutes = Math.floor(seconds / 60)
+  const secs = Math.floor(seconds % 60)
+  
+  return `${minutes}:${String(secs).padStart(2, '0')} min`
+}
+
+// Calculate duration from form start and end times
+const calculateFormDuration = (form: FindAllCodes200ResponseResponseObjectInnerConsultationIdPromsInner): string => {
+  // Try to use completionTimeSeconds first
+  const seconds = (form as any)?.completionTimeSeconds
+  if (seconds && seconds > 0) {
+    return formatDuration(seconds)
+  }
+  
+  // Calculate from start and end times if completionTimeSeconds is not available
+  const startTime = form.patientFormData?.beginFill || (form as any)?.formStartTime
+  const endTime = form.patientFormData?.completedAt
+  
+  if (!startTime || !endTime) return t('common.notAvailable')
+  
+  const start = new Date(startTime).getTime()
+  const end = new Date(endTime).getTime()
+  const durationSeconds = Math.floor((end - start) / 1000)
+  
+  if (durationSeconds <= 0) return t('common.notAvailable')
+  
+  const minutes = Math.floor(durationSeconds / 60)
+  const secs = Math.floor(durationSeconds % 60)
+  return `${minutes}:${String(secs).padStart(2, '0')} min`
+}
+
 // Compute the patient flow URL for QR code
 const patientFlowUrl = computed(() => {
   const code = assignedCode.value
@@ -822,13 +857,21 @@ const patientFlowUrl = computed(() => {
                   <p class="text-body-2 mb-2">
                     <strong>{{ t('consultationOverview.score') }}:</strong> {{ getFormScore(form) }}
                   </p>
+                  <p class="text-body-2 mb-2" v-if="form.patientFormData?.beginFill || (form as any)?.formStartTime">
+                    <strong>{{ t('consultationOverview.formStartTime') }}:</strong>
+                    {{ safeFormatDate(form.patientFormData?.beginFill || (form as any)?.formStartTime, 'DD.MM.YYYY HH:mm:ss') }}
+                  </p>
+                  <p class="text-body-2 mb-2" v-if="(form.patientFormData?.beginFill || (form as any)?.formStartTime) && (form.patientFormData?.completedAt || (form as any)?.completionTimeSeconds)">
+                    <strong>{{ t('consultationOverview.formDuration') }}:</strong>
+                    {{ calculateFormDuration(form) }}
+                  </p>
                   <p class="text-body-2 mb-2" v-if="form.patientFormData?.completedAt">
                     <strong>{{ t('consultationOverview.completedAt') }}:</strong>
-                    {{ safeFormatDate(form.patientFormData?.completedAt, 'DD.MM.YYYY HH:mm') }}
+                    {{ safeFormatDate(form.patientFormData?.completedAt, 'DD.MM.YYYY HH:mm:ss') }}
                   </p>
                   <p class="text-body-2 mb-2" v-if="form.updatedAt">
                     <strong>{{ t('consultationOverview.lastUpdated') }}:</strong>
-                    {{ safeFormatDate(form.updatedAt, 'DD.MM.YYYY HH:mm') }}
+                    {{ safeFormatDate(form.updatedAt, 'DD.MM.YYYY HH:mm:ss') }}
                   </p>
                 </v-card-text>
                 <v-card-actions>

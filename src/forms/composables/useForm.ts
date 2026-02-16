@@ -100,7 +100,7 @@ export function useForm(options: UseFormOptions) {
    * - totalScore: Calculated total score
    * - fillStatus: "draft" | "incomplete" | "complete"
    * - completedAt: Timestamp when form was completed (if complete)
-   * - beginFill: Timestamp when form filling began
+   * - beginFill: Will be set by PluginFormRenderer (not set here)
    */
   function createSubmissionData(): FormSubmissionData {
     const isComplete = isFormComplete()
@@ -112,7 +112,7 @@ export function useForm(options: UseFormOptions) {
       totalScore: currentScoring.totalScore,
       fillStatus: isComplete ? 'complete' : (Object.keys(localData.value).length > 0 ? 'incomplete' : 'draft'),
       completedAt: isComplete ? new Date() : null,
-      beginFill: new Date()
+      beginFill: null // Will be set by PluginFormRenderer
     }
   }
 

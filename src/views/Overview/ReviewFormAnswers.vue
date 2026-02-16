@@ -2,6 +2,7 @@
 import { ref, onMounted, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
+import { useDateFormat } from '@/composables/useDateFormat'
 import PluginFormRenderer from '@/forms/components/PluginFormRenderer.vue'
 import { type Form, type ScoringData } from '@/types'
 import { type FormSubmissionData } from '@/forms/types'
@@ -17,6 +18,7 @@ const { t } = useI18n()
 const route = useRoute()
 const router = useRouter()
 const notifierStore = useNotifierStore()
+const { formatLocalizedCustomDate } = useDateFormat()
 
 // Get formId from route params
 const formId = route.params.formId as string
@@ -63,11 +65,44 @@ const consultationDate = computed(() => {
 })
 const completedDate = computed(() => {
   if (!form.value?.patientFormData?.completedAt) return t('common.notAvailable')
-  return new Date(form.value.patientFormData.completedAt).toLocaleString()
+  return formatLocalizedCustomDate(form.value.patientFormData.completedAt, 'DD.MM.YYYY HH:mm:ss')
 })
 const lastUpdatedDate = computed(() => {
   if (!form.value?.updatedAt) return t('common.notAvailable')
-  return new Date(form.value.updatedAt).toLocaleString()
+  return formatLocalizedCustomDate(form.value.updatedAt, 'DD.MM.YYYY HH:mm:ss')
+})
+
+const formStartTime = computed(() => {
+  // Use patientFormData.beginFill if available, otherwise formStartTime
+  const startTime = form.value?.patientFormData?.beginFill || (form.value as any)?.formStartTime
+  if (!startTime) return t('common.notAvailable')
+  return formatLocalizedCustomDate(startTime, 'DD.MM.YYYY HH:mm:ss')
+})
+
+const formDuration = computed(() => {
+  // Try to use completionTimeSeconds first
+  const seconds = (form.value as any)?.completionTimeSeconds
+  if (seconds && seconds > 0) {
+    const minutes = Math.floor(seconds / 60)
+    const secs = Math.floor(seconds % 60)
+    return `${minutes}:${String(secs).padStart(2, '0')} min`
+  }
+  
+  // Calculate from start and end times if completionTimeSeconds is not available
+  const startTime = form.value?.patientFormData?.beginFill || (form.value as any)?.formStartTime
+  const endTime = form.value?.patientFormData?.completedAt
+  
+  if (!startTime || !endTime) return t('common.notAvailable')
+  
+  const start = new Date(startTime).getTime()
+  const end = new Date(endTime).getTime()
+  const durationSeconds = Math.floor((end - start) / 1000)
+  
+  if (durationSeconds <= 0) return t('common.notAvailable')
+  
+  const minutes = Math.floor(durationSeconds / 60)
+  const secs = Math.floor(durationSeconds % 60)
+  return `${minutes}:${String(secs).padStart(2, '0')} min`
 })
 
 const hasChanges = computed(() => {
@@ -279,6 +314,22 @@ const goBack = () => {
                   </template>
                   <v-list-item-title>{{ t('reviewForm.consultationDate') }}</v-list-item-title>
                   <v-list-item-subtitle>{{ consultationDate }}</v-list-item-subtitle>
+                </v-list-item>
+
+                <v-list-item v-if="form.patientFormData?.beginFill || (form as any)?.formStartTime">
+                  <template #prepend>
+                    <v-icon>mdi-play-circle</v-icon>
+                  </template>
+                  <v-list-item-title>{{ t('reviewForm.formStartTime') }}</v-list-item-title>
+                  <v-list-item-subtitle>{{ formStartTime }}</v-list-item-subtitle>
+                </v-list-item>
+
+                <v-list-item v-if="(form.patientFormData?.beginFill || (form as any)?.formStartTime) && (form.patientFormData?.completedAt || (form as any)?.completionTimeSeconds)">
+                  <template #prepend>
+                    <v-icon>mdi-timer</v-icon>
+                  </template>
+                  <v-list-item-title>{{ t('reviewForm.formDuration') }}</v-list-item-title>
+                  <v-list-item-subtitle>{{ formDuration }}</v-list-item-subtitle>
                 </v-list-item>
 
                 <v-list-item v-if="form.patientFormData?.completedAt">

@@ -274,6 +274,9 @@ function getCurrentValue(questionKey: string): number | null {
 .card-title-text {
   flex: 1;
   font-size: 0.95rem;
+  word-break: break-word;
+  overflow-wrap: break-word;
+  white-space: normal;
 }
 
 .card-options {
