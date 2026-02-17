@@ -15,7 +15,9 @@ import {
 import { consultationApi, userApi, kioskApi, codeApi, formApi } from '@/api'
 import CreateEditConsultationDialog from '@/components/dialogs/CreateEditConsultationDialog.vue'
 import QRCodeDisplay from '@/components/QRCodeDisplay.vue'
+import ScoreScale from '@/components/ScoreScale.vue'
 import { useUserStore } from '@/stores/userStore'
+import { generateScaleInfo } from '@/utils/scaleInfo'
 
 const componentName = 'ConsultationOverview.vue'
 const { t } = useI18n()
@@ -857,6 +859,10 @@ const patientFlowUrl = computed(() => {
                   <p class="text-body-2 mb-2">
                     <strong>{{ t('consultationOverview.score') }}:</strong> {{ getFormScore(form) }}
                   </p>
+                  <!-- Visual scale representation -->
+                  <div v-if="form.patientFormData?.totalScore && form.formTemplateId" class="mb-3">
+                    <ScoreScale :scale-info="generateScaleInfo(form.patientFormData.totalScore, form.formTemplateId)" />
+                  </div>
                   <p class="text-body-2 mb-2" v-if="form.patientFormData?.beginFill || (form as any)?.formStartTime">
                     <strong>{{ t('consultationOverview.formStartTime') }}:</strong>
                     {{ safeFormatDate(form.patientFormData?.beginFill || (form as any)?.formStartTime, 'DD.MM.YYYY HH:mm:ss') }}
@@ -1228,11 +1234,11 @@ const patientFlowUrl = computed(() => {
                       <v-card variant="outlined" size="small">
                         <v-card-text class="py-2">
                           <div class="d-flex align-center justify-space-between">
-                            <div>
+                            <div class="flex-grow-1 me-3">
                               <p class="text-body-2 font-weight-medium mb-1">
                                 {{ form.title || t('forms.consultation.untitledForm') }}
                               </p>
-                              <div class="d-flex align-center gap-2">
+                              <div class="d-flex align-center gap-2 mb-2">
                                 <v-chip
                                         :color="getFormStatusColor(form.patientFormData?.fillStatus)"
                                         size="x-small">
@@ -1241,6 +1247,10 @@ const patientFlowUrl = computed(() => {
                                 <span class="text-caption">
                                   {{ t('consultationOverview.score') }}: {{ getFormScore(form) }}
                                 </span>
+                              </div>
+                              <!-- Visual scale representation -->
+                              <div v-if="form.patientFormData?.totalScore && form.formTemplateId" class="mt-2">
+                                <ScoreScale :scale-info="generateScaleInfo(form.patientFormData.totalScore, form.formTemplateId)" :height="6" />
                               </div>
                             </div>
                             <v-btn

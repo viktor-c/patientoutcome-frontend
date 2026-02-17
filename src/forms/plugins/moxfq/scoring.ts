@@ -6,8 +6,9 @@
  */
 
 import type { FormData } from '../../types'
-import type { ScoringData } from '@/types/backend/scoring'
+import type { ScoringData, SubscaleScore } from '@/types/backend/scoring'
 import { calculateSubscaleScore, extractQuestions, calculateTotalScore } from '../../utils/scoring'
+import type { ScaleInfo } from '@/utils/scaleInfo'
 
 /**
  * Calculate MOXFQ score from form data
@@ -144,5 +145,41 @@ export function generateMockData(): FormData {
       q15: 2,
       q16: 1
     }
+  }
+}
+
+/**
+ * Get scale information for MOXFQ scores
+ * MOXFQ: Normalized to 100, lower is better
+ * Differentiates between subscales: Walking & Standing, Pain, Social Interaction
+ */
+export function getScaleInfo(score: SubscaleScore, subscaleKey?: string): ScaleInfo {
+  const normalizedScore = score.normalizedScore ?? 0
+  const scoreName = score.name?.toLowerCase() || ''
+  
+  // Determine labels based on subscale
+  let goodLabel = 'No issues'
+  let badLabel = 'Severe issues'
+  
+  // Check subscaleKey first (most explicit), then score name
+  if (subscaleKey === 'pain' || scoreName.includes('pain')) {
+    goodLabel = 'No pain'
+    badLabel = 'Severe pain'
+  } else if (subscaleKey === 'walkingStanding' || scoreName.includes('walking') || scoreName.includes('standing')) {
+    goodLabel = 'No difficulty'
+    badLabel = 'Severe difficulty'
+  } else if (subscaleKey === 'socialInteraction' || scoreName.includes('social') || scoreName.includes('interaction')) {
+    goodLabel = 'No impact'
+    badLabel = 'Severe impact'
+  }
+  // else: use default labels for total score
+
+  return {
+    min: 0,
+    max: 100,
+    normalizedValue: normalizedScore,
+    polarity: 'lower-is-better',
+    goodLabel,
+    badLabel
   }
 }

@@ -6,7 +6,8 @@
  */
 
 import type { FormData } from '../../types'
-import type { ScoringData } from '@/types/backend/scoring'
+import type { ScoringData, SubscaleScore } from '@/types/backend/scoring'
+import type { ScaleInfo } from '@/utils/scaleInfo'
 
 /**
  * Calculate VAS score from form data
@@ -92,5 +93,25 @@ export function generateMockData(): FormData {
     painScale: {
       painLevel: 5.5
     }
+  }
+}
+
+/**
+ * Get scale information for VAS scores
+ * VAS: 0-10 pain scale, lower is better
+ */
+export function getScaleInfo(score: SubscaleScore, subscaleKey?: string): ScaleInfo {
+  const rawScore = score.rawScore ?? 0
+  
+  // VAS uses raw score (0-10), normalize to 0-100 for positioning
+  const normalizedValue = rawScore * 10
+
+  return {
+    min: 0,
+    max: 10,
+    normalizedValue,
+    polarity: 'lower-is-better',
+    goodLabel: 'No pain',
+    badLabel: 'Worst pain'
   }
 }

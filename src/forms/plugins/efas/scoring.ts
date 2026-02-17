@@ -7,8 +7,9 @@
  */
 
 import type { FormData } from '../../types'
-import type { ScoringData } from '@/types/backend/scoring'
+import type { ScoringData, SubscaleScore } from '@/types/backend/scoring'
 import { calculateSubscaleScore, calculateTotalScore } from '../../utils/scoring'
+import type { ScaleInfo } from '@/utils/scaleInfo'
 
 /**
  * Extract EFAS questions handling 'na' string format
@@ -220,5 +221,44 @@ export function generateMockData(): FormData {
       s3: 2,
       s4: 3
     }
+  }
+}
+
+/**
+ * Get scale information for EFAS scores
+ * EFAS: 0-40 scale (total), 0-24 (standard), 0-16 (sport), higher is better
+ * Differentiates between total score, standard questions, and sport questions
+ */
+export function getScaleInfo(score: SubscaleScore, subscaleKey?: string): ScaleInfo {
+  const rawScore = score.rawScore ?? 0
+  const scoreName = score.name?.toLowerCase() || ''
+  
+  // Determine which subscale based on name, subscaleKey, or maxScore
+  let maxScore = score.maxScore ?? 40
+  let scaleLabel = 'EFAS'
+  
+  // Check subscaleKey first (most explicit)
+  if (subscaleKey === 'standard' || scoreName.includes('standard')) {
+    maxScore = 24 // 6 questions × 4 points
+    scaleLabel = 'Standard'
+  } else if (subscaleKey === 'sport' || scoreName.includes('sport')) {
+    maxScore = 16 // 4 questions × 4 points
+    scaleLabel = 'Sport'
+  } else {
+    // Total score - use actual maxScore or default to 40
+    maxScore = score.maxScore ?? 40
+    scaleLabel = 'Total'
+  }
+  
+  // Calculate normalized value for positioning (0-100 scale)
+  const normalizedValue = maxScore > 0 ? (rawScore / maxScore) * 100 : 0
+
+  return {
+    min: 0,
+    max: maxScore,
+    normalizedValue: Math.round(normalizedValue * 100) / 100,
+    polarity: 'higher-is-better',
+    goodLabel: 'Good',
+    badLabel: 'Bad'
   }
 }

@@ -8,6 +8,7 @@
 
 import type { FormData } from '../../types'
 import type { ScoringData, SubscaleScore } from '@/types/backend/scoring'
+import type { ScaleInfo } from '@/utils/scaleInfo'
 
 /**
  * Point value mapping for each AOFAS question
@@ -160,5 +161,25 @@ export function generateMockData(): FormData {
       q8: 8     // Moderate malalignment - 8 points
       // Total: 75 points
     }
+  }
+}
+
+/**
+ * Get scale information for AOFAS scores
+ * AOFAS: 0-100 scale, higher is better
+ */
+export function getScaleInfo(score: SubscaleScore, subscaleKey?: string): ScaleInfo {
+  const rawScore = score.rawScore ?? 0
+  
+  // AOFAS uses raw score directly (0-100)
+  const normalizedValue = rawScore
+
+  return {
+    min: 0,
+    max: 100,
+    normalizedValue,
+    polarity: 'higher-is-better',
+    goodLabel: 'Excellent',
+    badLabel: 'Poor'
   }
 }

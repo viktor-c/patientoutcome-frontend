@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
+import ScoreScale from '@/components/ScoreScale.vue'
+import { generateScaleInfo } from '@/utils/scaleInfo'
 
 import type { ScoringData } from '@/types'
 
@@ -8,6 +10,7 @@ interface Props {
   scoring?: ScoringData
   title?: string
   showSubmitButton?: boolean
+  formTemplateId?: string
 }
 
 interface Emits {
@@ -104,6 +107,10 @@ const showScoring = computed(() => {
                 <div class="text-caption text-grey mt-2">
                   {{ t('forms.subscales.rawScore') }}: {{ subscale.rawScore }}/{{ subscale.maxScore }}
                 </div>
+                <!-- Visual scale for subscale -->
+                <div v-if="formTemplateId" class="mt-3 px-2">
+                  <ScoreScale :scale-info="generateScaleInfo(subscale, formTemplateId, key)" :height="6" />
+                </div>
               </v-card-text>
             </v-card>
           </v-col>
@@ -125,6 +132,10 @@ const showScoring = computed(() => {
                       variant="outlined"
                       class="text-white border-white">
                 {{ getScoreInterpretation(scoring!.totalScore.normalizedScore ?? null)?.text }}
+              <!-- Visual scale for total score -->
+              <div v-if="scoring!.totalScore.scaleInfo" class="mt-4 px-4">
+                <ScoreScale :scale-info="scoring!.totalScore.scaleInfo" :height="8" />
+              </div>
               </v-chip>
               <div class="text-caption text-blue-grey-100 mt-3">
                 {{ t('forms.subscales.rawScore') }}: {{ scoring!.totalScore.rawScore }}/{{ scoring!.totalScore.maxScore }}

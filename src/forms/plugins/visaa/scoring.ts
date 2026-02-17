@@ -19,6 +19,7 @@
 
 import type { FormData } from '../../types'
 import type { ScoringData, SubscaleScore } from '@/types/backend/scoring'
+import type { ScaleInfo } from '@/utils/scaleInfo'
 
 /**
  * Map Q1 slider value (0-100 minutes) to points (10-0)
@@ -309,5 +310,44 @@ export function generateMockData(): FormData {
       q8b: 15, // 11-20 mins with pain → 10 points
       q8c: null
     }
+  }
+}
+
+/**
+ * Get scale information for VISA-A scores
+ * VISA-A: 0-100 scale, higher is better
+ */
+export function getScaleInfo(score: SubscaleScore, subscaleKey?: string): ScaleInfo {
+  const rawScore = score.rawScore ?? 0
+  const maxScore = score.maxScore ?? 100
+  
+  // Calculate normalized value for positioning (0-100 scale)
+  const normalizedValue = maxScore > 0 ? (rawScore / maxScore) * 100 : 0
+
+  // Customize labels based on subscale
+  let goodLabel = 'Excellent'
+  let badLabel = 'Poor'
+  
+  if (subscaleKey === 'symptoms') {
+    goodLabel = 'No symptoms'
+    badLabel = 'Severe symptoms'
+  } else if (subscaleKey === 'dailyFunction') {
+    goodLabel = 'No limitation'
+    badLabel = 'Severe limitation'
+  } else if (subscaleKey === 'sportFunction') {
+    goodLabel = 'Full function'
+    badLabel = 'No function'
+  } else if (subscaleKey === 'activity') {
+    goodLabel = 'Full activity'
+    badLabel = 'No activity'
+  }
+
+  return {
+    min: 0,
+    max: maxScore,
+    normalizedValue: Math.round(normalizedValue * 100) / 100,
+    polarity: 'higher-is-better',
+    goodLabel,
+    badLabel
   }
 }
