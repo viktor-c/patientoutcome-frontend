@@ -109,7 +109,7 @@ const showScoring = computed(() => {
                 </div>
                 <!-- Visual scale for subscale -->
                 <div v-if="formTemplateId" class="mt-3 px-2">
-                  <ScoreScale :scale-info="generateScaleInfo(subscale, formTemplateId, key)" :height="6" />
+                  <ScoreScale :scale-info="generateScaleInfo(subscale, formTemplateId, String(key))" :height="6" />
                 </div>
               </v-card-text>
             </v-card>
@@ -132,11 +132,11 @@ const showScoring = computed(() => {
                       variant="outlined"
                       class="text-white border-white">
                 {{ getScoreInterpretation(scoring!.totalScore.normalizedScore ?? null)?.text }}
-              <!-- Visual scale for total score -->
-              <div v-if="scoring!.totalScore.scaleInfo" class="mt-4 px-4">
-                <ScoreScale :scale-info="scoring!.totalScore.scaleInfo" :height="8" />
-              </div>
               </v-chip>
+              <!-- Visual scale for total score -->
+              <div v-if="formTemplateId" class="mt-4 px-4">
+                <ScoreScale :scale-info="generateScaleInfo(scoring!.totalScore, formTemplateId)" :height="8" />
+              </div>
               <div class="text-caption text-blue-grey-100 mt-3">
                 {{ t('forms.subscales.rawScore') }}: {{ scoring!.totalScore.rawScore }}/{{ scoring!.totalScore.maxScore }}
               </div>

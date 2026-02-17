@@ -235,19 +235,16 @@ export function getScaleInfo(score: SubscaleScore, subscaleKey?: string): ScaleI
   
   // Determine which subscale based on name, subscaleKey, or maxScore
   let maxScore = score.maxScore ?? 40
-  let scaleLabel = 'EFAS'
+  const scaleLabel = 'EFAS'
   
   // Check subscaleKey first (most explicit)
   if (subscaleKey === 'standard' || scoreName.includes('standard')) {
     maxScore = 24 // 6 questions × 4 points
-    scaleLabel = 'Standard'
   } else if (subscaleKey === 'sport' || scoreName.includes('sport')) {
     maxScore = 16 // 4 questions × 4 points
-    scaleLabel = 'Sport'
   } else {
     // Total score - use actual maxScore or default to 40
     maxScore = score.maxScore ?? 40
-    scaleLabel = 'Total'
   }
   
   // Calculate normalized value for positioning (0-100 scale)

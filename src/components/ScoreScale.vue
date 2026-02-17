@@ -3,7 +3,7 @@ import { computed } from 'vue'
 import type { ScaleInfo } from '@/utils/scaleInfo'
 
 interface Props {
-  scaleInfo: ScaleInfo
+  scaleInfo?: ScaleInfo | null
   height?: number
 }
 
@@ -13,6 +13,7 @@ const props = withDefaults(defineProps<Props>(), {
 
 // Calculate position (0-100%)
 const markerPosition = computed(() => {
+  if (!props.scaleInfo) return '0%'
   return `${Math.max(0, Math.min(100, props.scaleInfo.normalizedValue))}%`
 })
 
@@ -20,6 +21,7 @@ const markerPosition = computed(() => {
 // If higher-is-better: green on right (100%), red on left (0%)
 // If lower-is-better: green on left (0%), red on right (100%)
 const gradientDirection = computed(() => {
+  if (!props.scaleInfo) return 'to right, #ef5350, #ffa726, #ffee58, #9ccc65, #66bb6a'
   if (props.scaleInfo.polarity === 'higher-is-better') {
     return 'to right, #ef5350, #ffa726, #ffee58, #9ccc65, #66bb6a' // red to green
   } else {
@@ -29,12 +31,14 @@ const gradientDirection = computed(() => {
 
 // Determine label positions based on polarity
 const leftLabel = computed(() => {
+  if (!props.scaleInfo) return ''
   return props.scaleInfo.polarity === 'higher-is-better' 
     ? props.scaleInfo.badLabel 
     : props.scaleInfo.goodLabel
 })
 
 const rightLabel = computed(() => {
+  if (!props.scaleInfo) return ''
   return props.scaleInfo.polarity === 'higher-is-better' 
     ? props.scaleInfo.goodLabel 
     : props.scaleInfo.badLabel
@@ -42,7 +46,7 @@ const rightLabel = computed(() => {
 </script>
 
 <template>
-  <div class="score-scale">
+  <div v-if="scaleInfo" class="score-scale">
     <!-- Labels -->
     <div class="scale-labels mb-1">
       <span class="text-caption text-medium-emphasis">{{ leftLabel }}</span>

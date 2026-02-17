@@ -168,7 +168,7 @@ export function generateMockData(): FormData {
  * Get scale information for AOFAS scores
  * AOFAS: 0-100 scale, higher is better
  */
-export function getScaleInfo(score: SubscaleScore, subscaleKey?: string): ScaleInfo {
+export function getScaleInfo(score: SubscaleScore, _subscaleKey?: string): ScaleInfo {
   const rawScore = score.rawScore ?? 0
   
   // AOFAS uses raw score directly (0-100)

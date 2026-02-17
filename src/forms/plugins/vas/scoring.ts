@@ -100,7 +100,8 @@ export function generateMockData(): FormData {
  * Get scale information for VAS scores
  * VAS: 0-10 pain scale, lower is better
  */
-export function getScaleInfo(score: SubscaleScore, subscaleKey?: string): ScaleInfo {
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+export function getScaleInfo(score: SubscaleScore, _subscaleKey?: string): ScaleInfo {
   const rawScore = score.rawScore ?? 0
   
   // VAS uses raw score (0-10), normalize to 0-100 for positioning
