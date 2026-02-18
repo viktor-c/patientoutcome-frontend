@@ -268,6 +268,9 @@ export default {
     createConsultations: 'Create {count} Consultations',
     skipConsultations: 'Skip Consultations',
     confirmBlueprints: 'Confirm Selected Blueprints',
+    selectAll: 'Select All',
+    selectNone: 'Select None',
+    selectDefaults: 'Select Defaults',
     close: 'Close',
   },
   qrCode: {

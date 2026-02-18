@@ -518,6 +518,9 @@ export default {
     createConsultations: '{count} Konsultationen erstellen',
     skipConsultations: 'Konsultationen überspringen',
     confirmBlueprints: 'Ausgewählte Vorlagen bestätigen',
+    selectAll: 'Alle auswählen',
+    selectNone: 'Auswahl aufheben',
+    selectDefaults: 'Standard auswählen',
     close: 'Schließen',
   },
   qrCode: {

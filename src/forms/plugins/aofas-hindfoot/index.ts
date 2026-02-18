@@ -10,7 +10,7 @@ import type { FormPlugin } from '../../types'
 
 const plugin: FormPlugin = {
   metadata: {
-    id: '67b4e612d0feb4ad99ae2e85',
+    id: '67b4e612d0feb4ad99ae2e88', // Must match backend FormTemplate _id
     name: 'AOFAS Hindfoot',
     description: 'American Orthopaedic Foot & Ankle Society Ankle-Hindfoot Score - Clinical rating system for hindfoot and ankle assessment',
     version: '1.0.0',

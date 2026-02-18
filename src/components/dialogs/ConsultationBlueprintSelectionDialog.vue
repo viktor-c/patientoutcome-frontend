@@ -162,6 +162,32 @@ const removeBlueprint = (blueprint: Blueprint) => {
   }
 }
 
+/**
+ * @description Selects all available blueprints.
+ */
+const selectAll = () => {
+  selectedBlueprints.value = [...availableBlueprints.value]
+  emit('update:modelValue', selectedBlueprints.value)
+}
+
+/**
+ * @description Deselects all blueprints.
+ */
+const selectNone = () => {
+  selectedBlueprints.value = []
+  emit('update:modelValue', selectedBlueprints.value)
+}
+
+/**
+ * @description Selects blueprints tagged as 'default'.
+ */
+const selectDefaults = () => {
+  selectedBlueprints.value = availableBlueprints.value.filter(blueprint =>
+    blueprint.tags?.some(tag => tag.toLowerCase() === 'default')
+  )
+  emit('update:modelValue', selectedBlueprints.value)
+}
+
 // Actions for handling creation flow
 /**
  * @description Resets the form to allow creating more consultations from blueprints.
@@ -533,7 +559,13 @@ defineExpose({
     selectedBlueprints.value = []
     searchQuery.value = ''
     createdConsultations.value = []
-  }
+  },
+  /** @description Selects all available blueprints. */
+  selectAll,
+  /** @description Deselects all blueprints. */
+  selectNone,
+  /** @description Selects blueprints tagged as 'default'. */
+  selectDefaults
 })
 </script>
 
@@ -625,6 +657,34 @@ defineExpose({
                           outlined
                           dense
                           class="mb-4" />
+
+            <!-- Template selection helper buttons -->
+            <div class="d-flex gap-2 mb-4">
+              <v-btn
+                     @click="selectAll"
+                     color="primary"
+                     variant="outlined"
+                     size="small">
+                <v-icon left size="small">mdi-checkbox-multiple-marked</v-icon>
+                {{ t('buttons.selectAll') }}
+              </v-btn>
+              <v-btn
+                     @click="selectNone"
+                     color="grey"
+                     variant="outlined"
+                     size="small">
+                <v-icon left size="small">mdi-checkbox-multiple-blank-outline</v-icon>
+                {{ t('buttons.selectNone') }}
+              </v-btn>
+              <v-btn
+                     @click="selectDefaults"
+                     color="success"
+                     variant="outlined"
+                     size="small">
+                <v-icon left size="small">mdi-star</v-icon>
+                {{ t('buttons.selectDefaults') }}
+              </v-btn>
+            </div>
 
             <!-- Loading state -->
             <v-progress-linear

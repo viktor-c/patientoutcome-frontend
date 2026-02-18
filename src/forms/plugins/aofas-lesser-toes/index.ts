@@ -10,7 +10,7 @@ import type { FormPlugin } from '../../types'
 
 const plugin: FormPlugin = {
   metadata: {
-    id: '67b4e612d0feb4ad99ae2e87',
+    id: '67b4e612d0feb4ad99ae2e8a', // Must match backend FormTemplate _id
     name: 'AOFAS Lesser Toes',
     description: 'American Orthopaedic Foot & Ankle Society Lesser Toes (MTP-IP) Score - Clinical rating system for lesser toes (rays 2-5) assessment',
     version: '1.0.0',
