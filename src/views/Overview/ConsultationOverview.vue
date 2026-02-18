@@ -512,9 +512,9 @@ const createAndAssignNewCode = async () => {
       throw new Error('Failed to create new code')
     }
     const newCode = newCodes[0].code
-    
+
     await codeApi.activateCode({ code: newCode, consultationId: consultation.value.id })
-    
+
     notifierStore.notify(t('consultationOverview.codeCreatedAndAssigned'), 'success')
     // Reset selected code first to prevent watch from re-triggering
     selectedCode.value = null
@@ -611,7 +611,7 @@ const archiveForm = async () => {
     })
     notifierStore.notify(t('consultationOverview.formArchived'), 'success')
     archiveFormDialog.value = false
-    
+
     // Refresh consultation to show updated form list
     const resp = await consultationApi.getConsultationById({ consultationId })
     consultation.value = resp.responseObject || null
@@ -660,10 +660,10 @@ const getFormStatusColor = (status: string | undefined): string => {
 // Format duration in seconds to hh:mm:ss format
 const formatDuration = (seconds: number | undefined): string => {
   if (!seconds || seconds <= 0) return t('common.notAvailable')
-  
+
   const minutes = Math.floor(seconds / 60)
   const secs = Math.floor(seconds % 60)
-  
+
   return `${minutes}:${String(secs).padStart(2, '0')} min`
 }
 
@@ -674,19 +674,19 @@ const calculateFormDuration = (form: FindAllCodes200ResponseResponseObjectInnerC
   if (seconds && seconds > 0) {
     return formatDuration(seconds)
   }
-  
+
   // Calculate from start and end times if completionTimeSeconds is not available
   const startTime = form.patientFormData?.beginFill || (form as any)?.formStartTime
   const endTime = form.patientFormData?.completedAt
-  
+
   if (!startTime || !endTime) return t('common.notAvailable')
-  
+
   const start = new Date(startTime).getTime()
   const end = new Date(endTime).getTime()
   const durationSeconds = Math.floor((end - start) / 1000)
-  
+
   if (durationSeconds <= 0) return t('common.notAvailable')
-  
+
   const minutes = Math.floor(durationSeconds / 60)
   const secs = Math.floor(durationSeconds % 60)
   return `${minutes}:${String(secs).padStart(2, '0')} min`
@@ -848,14 +848,15 @@ const patientFlowUrl = computed(() => {
               <v-card variant="outlined" class="h-100">
                 <v-card-title class="text-subtitle-1">
                   {{ form.title || t('forms.consultation.untitledForm') }}
-                </v-card-title>
-                <v-card-text>
                   <v-chip
                           :color="getFormStatusColor(form.patientFormData?.fillStatus)"
                           size="small"
                           class="mb-2">
                     {{ form.patientFormData?.fillStatus }}
                   </v-chip>
+                </v-card-title>
+                <v-card-text>
+
                   <p class="text-body-2 mb-2">
                     <strong>{{ t('consultationOverview.score') }}:</strong> {{ getFormScore(form) }}
                   </p>
@@ -865,9 +866,11 @@ const patientFlowUrl = computed(() => {
                   </div>
                   <p class="text-body-2 mb-2" v-if="form.patientFormData?.beginFill || (form as any)?.formStartTime">
                     <strong>{{ t('consultationOverview.formStartTime') }}:</strong>
-                    {{ safeFormatDate(form.patientFormData?.beginFill || (form as any)?.formStartTime, 'DD.MM.YYYY HH:mm:ss') }}
+                    {{ safeFormatDate(form.patientFormData?.beginFill ||
+                      (form as any)?.formStartTime, 'DD.MM.YYYY HH:mm:ss') }}
                   </p>
-                  <p class="text-body-2 mb-2" v-if="(form.patientFormData?.beginFill || (form as any)?.formStartTime) && (form.patientFormData?.completedAt || (form as any)?.completionTimeSeconds)">
+                  <p class="text-body-2 mb-2"
+                     v-if="(form.patientFormData?.beginFill || (form as any)?.formStartTime) && (form.patientFormData?.completedAt || (form as any)?.completionTimeSeconds)">
                     <strong>{{ t('consultationOverview.formDuration') }}:</strong>
                     {{ calculateFormDuration(form) }}
                   </p>
@@ -1250,7 +1253,8 @@ const patientFlowUrl = computed(() => {
                               </div>
                               <!-- Visual scale representation -->
                               <div v-if="form.patientFormData?.totalScore && form.formTemplateId" class="mt-2">
-                                <ScoreScale :scale-info="generateScaleInfo(form.patientFormData.totalScore, form.formTemplateId)" :height="6" />
+                                <ScoreScale :scale-info="generateScaleInfo(form.patientFormData.totalScore, form.formTemplateId)"
+                                            :height="6" />
                               </div>
                             </div>
                             <v-btn
@@ -1357,16 +1361,16 @@ const patientFlowUrl = computed(() => {
         </v-card-text>
         <v-card-actions>
           <v-spacer></v-spacer>
-          <v-btn 
-                 color="grey" 
-                 variant="text" 
+          <v-btn
+                 color="grey"
+                 variant="text"
                  @click="cancelArchiveForm"
                  :disabled="archivingForm">
             {{ t('common.cancel') }}
           </v-btn>
-          <v-btn 
-                 color="warning" 
-                 variant="flat" 
+          <v-btn
+                 color="warning"
+                 variant="flat"
                  @click="archiveForm"
                  :loading="archivingForm"
                  :disabled="!archiveFormReason.trim()">

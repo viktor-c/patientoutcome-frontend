@@ -12,36 +12,47 @@ const props = withDefaults(defineProps<Props>(), {
 })
 
 // Calculate position (0-100%)
+// For consistent visual presentation: always show good on right, bad on left
+// If scale is "lower-is-better", invert the position
 const markerPosition = computed(() => {
   if (!props.scaleInfo) return '0%'
-  return `${Math.max(0, Math.min(100, props.scaleInfo.normalizedValue))}%`
-})
-
-// Determine gradient direction based on polarity
-// If higher-is-better: green on right (100%), red on left (0%)
-// If lower-is-better: green on left (0%), red on right (100%)
-const gradientDirection = computed(() => {
-  if (!props.scaleInfo) return 'to right, #ef5350, #ffa726, #ffee58, #9ccc65, #66bb6a'
-  if (props.scaleInfo.polarity === 'higher-is-better') {
-    return 'to right, #ef5350, #ffa726, #ffee58, #9ccc65, #66bb6a' // red to green
-  } else {
-    return 'to right, #66bb6a, #9ccc65, #ffee58, #ffa726, #ef5350' // green to red
+  let position = props.scaleInfo.normalizedValue
+  
+  // Invert position for lower-is-better scales so good scores appear on right
+  if (props.scaleInfo.polarity === 'lower-is-better') {
+    position = 100 - position
   }
+  
+  return `${Math.max(0, Math.min(100, position))}%`
 })
 
-// Determine label positions based on polarity
+// Always use red-to-green gradient (bad on left, good on right)
+const gradientDirection = 'to right, #ef5350, #ffa726, #ffee58, #9ccc65, #66bb6a'
+
+// Always show bad label on left, good label on right for consistent visual assessment
 const leftLabel = computed(() => {
   if (!props.scaleInfo) return ''
-  return props.scaleInfo.polarity === 'higher-is-better' 
-    ? props.scaleInfo.badLabel 
-    : props.scaleInfo.goodLabel
+  return props.scaleInfo.badLabel
 })
 
 const rightLabel = computed(() => {
   if (!props.scaleInfo) return ''
-  return props.scaleInfo.polarity === 'higher-is-better' 
-    ? props.scaleInfo.goodLabel 
-    : props.scaleInfo.badLabel
+  return props.scaleInfo.goodLabel
+})
+
+// Invert min/max values for lower-is-better scales to match inverted display
+const leftValue = computed(() => {
+  if (!props.scaleInfo) return ''
+  return props.scaleInfo.polarity === 'lower-is-better' 
+    ? props.scaleInfo.max 
+    : props.scaleInfo.min
+})
+
+const rightValue = computed(() => {
+  if (!props.scaleInfo) return ''
+  return props.scaleInfo.polarity === 'lower-is-better' 
+    ? props.scaleInfo.min 
+    : props.scaleInfo.max
 })
 </script>
 
@@ -73,8 +84,8 @@ const rightLabel = computed(() => {
     
     <!-- Min/Max labels -->
     <div class="scale-values mt-1">
-      <span class="text-caption">{{ scaleInfo.min }}</span>
-      <span class="text-caption">{{ scaleInfo.max }}</span>
+      <span class="text-caption">{{ leftValue }}</span>
+      <span class="text-caption">{{ rightValue }}</span>
     </div>
   </div>
 </template>

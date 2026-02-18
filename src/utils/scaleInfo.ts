@@ -38,7 +38,7 @@ export const FORM_TYPES = {
   MOXFQ: '67b4e612d0feb4ad99ae2e85',
   EFAS: 'efas',
   AOFAS: 'aofas',
-  VAS: 'vas',
+  VAS: '67b4e612d0feb4ad99ae2e86',
   VISAA: 'visa-a'
 } as const
 
@@ -87,7 +87,7 @@ function getFormType(templateId: string): string {
   if (id.includes('moxfq') || id === FORM_TYPES.MOXFQ) return 'moxfq'
   if (id.includes('efas')) return 'efas'
   if (id.includes('aofas')) return 'aofas'
-  if (id.includes('vas')) return 'vas'
+  if (id.includes('vas') || id === FORM_TYPES.VAS) return 'vas'
   if (id.includes('visa-a') || id.includes('visaa')) return 'visaa'
   return 'unknown'
 }
