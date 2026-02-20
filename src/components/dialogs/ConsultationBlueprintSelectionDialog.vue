@@ -50,6 +50,7 @@ const { formatLocalizedCustomDate, dateFormats } = useDateFormat()
 // State management
 const availableBlueprints = ref<Blueprint[]>([])
 const selectedBlueprints = ref<Blueprint[]>([...props.modelValue])
+const initialSelectedBlueprints = ref<Blueprint[]>([]) // Store initial selection for "restore defaults"
 const loadingBlueprints = ref(false)
 const searchQuery = ref('')
 
@@ -179,12 +180,10 @@ const selectNone = () => {
 }
 
 /**
- * @description Selects blueprints tagged as 'default'.
+ * @description Restores the initial default selection (from pre-selected blueprint IDs).
  */
 const selectDefaults = () => {
-  selectedBlueprints.value = availableBlueprints.value.filter(blueprint =>
-    blueprint.tags?.some(tag => tag.toLowerCase() === 'default')
-  )
+  selectedBlueprints.value = [...initialSelectedBlueprints.value]
   emit('update:modelValue', selectedBlueprints.value)
 }
 
@@ -286,10 +285,10 @@ const createConsultationsFromBlueprints = async () => {
 
     notifierStore.notify(t('alerts.consultation.batchCreated', { count: newConsultations.length }), 'success')
     notifierStore.clearNotifications()
-    
+
     // Emit consultations-created event for parent component
     emit('consultations-created', newConsultations)
-    
+
     // Move to manual consultation creation state (4b) - always show step 4b after blueprint creation
     emit('consultation-flow-advance', '4b')
 
@@ -528,6 +527,7 @@ const handlePreSelectedBlueprints = async () => {
 
   if (preSelectedBlueprints.length > 0) {
     selectedBlueprints.value = preSelectedBlueprints
+    initialSelectedBlueprints.value = [...preSelectedBlueprints] // Store initial selection
     emit('update:modelValue', selectedBlueprints.value)
     logger.info('Pre-selected blueprints from surgery', { count: preSelectedBlueprints.length })
   }
@@ -557,6 +557,7 @@ defineExpose({
   /** @description Resets the form state to initial values. */
   resetFormState: () => {
     selectedBlueprints.value = []
+    initialSelectedBlueprints.value = []
     searchQuery.value = ''
     createdConsultations.value = []
   },
@@ -564,7 +565,7 @@ defineExpose({
   selectAll,
   /** @description Deselects all blueprints. */
   selectNone,
-  /** @description Selects blueprints tagged as 'default'. */
+  /** @description Restores the initial default selection. */
   selectDefaults
 })
 </script>
