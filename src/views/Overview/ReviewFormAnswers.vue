@@ -9,7 +9,7 @@ import { type FormSubmissionData } from '@/forms/types'
 import { useNotifierStore } from '@/stores/notifierStore'
 import FormProgressCard from '@/components/FormProgressCard.vue'
 
-import { ResponseError, type FindAllCodes200ResponseResponseObjectInnerConsultationIdPromsInner } from '@/api'
+import { ResponseError } from '@/api'
 import { formApi } from '@/api'
 import { logger } from '@/services/logger'
 
@@ -23,10 +23,21 @@ const { formatLocalizedCustomDate } = useDateFormat()
 // Get formId from route params
 const formId = route.params.formId as string
 
+const getIdFromUnknown = (value: unknown): string => {
+  if (typeof value === 'string') return value
+  if (value && typeof value === 'object') {
+    const idObj = value as Record<string, unknown>
+    return String(idObj._id || idObj.id || '')
+  }
+  return String(value ?? '')
+}
+
+const getFormRecord = () => (form.value || {}) as Record<string, unknown>
+
 // State
 const form = ref<Form | null>(null)
-const formData = ref<any>({})
-const originalFormData = ref<any>({})
+const formData = ref<unknown>({})
+const originalFormData = ref<unknown>({})
 const formScoring = ref<ScoringData | null>(null)
 const formCompletionStatus = ref<'draft' | 'incomplete' | 'complete'>("draft")
 const loading = ref(true)
@@ -41,7 +52,7 @@ const patientId = computed(() => {
   if (typeof caseId === 'string') {
     return caseId
   } else if (caseId && typeof caseId === 'object') {
-    const idObj = caseId as any
+    const idObj = caseId as Record<string, unknown>
     return String(idObj._id || idObj.id || '')
   }
   return String(caseId)
@@ -54,7 +65,7 @@ const consultationId = computed(() => {
   if (typeof consId === 'string') {
     return consId
   } else if (consId && typeof consId === 'object') {
-    const idObj = consId as any
+    const idObj = consId as Record<string, unknown>
     return String(idObj._id || idObj.id || '')
   }
   return String(consId)
@@ -74,14 +85,14 @@ const lastUpdatedDate = computed(() => {
 
 const formStartTime = computed(() => {
   // Use patientFormData.beginFill if available, otherwise formStartTime
-  const startTime = form.value?.patientFormData?.beginFill || (form.value as any)?.formStartTime
+  const startTime = form.value?.patientFormData?.beginFill || (getFormRecord().formStartTime as string | undefined)
   if (!startTime) return t('common.notAvailable')
   return formatLocalizedCustomDate(startTime, 'DD.MM.YYYY HH:mm:ss')
 })
 
 const formDuration = computed(() => {
   // Try to use completionTimeSeconds first
-  const seconds = (form.value as any)?.completionTimeSeconds
+  const seconds = Number(getFormRecord().completionTimeSeconds || 0)
   if (seconds && seconds > 0) {
     const minutes = Math.floor(seconds / 60)
     const secs = Math.floor(seconds % 60)
@@ -89,7 +100,7 @@ const formDuration = computed(() => {
   }
   
   // Calculate from start and end times if completionTimeSeconds is not available
-  const startTime = form.value?.patientFormData?.beginFill || (form.value as any)?.formStartTime
+  const startTime = form.value?.patientFormData?.beginFill || (getFormRecord().formStartTime as string | undefined)
   const endTime = form.value?.patientFormData?.completedAt
   
   if (!startTime || !endTime) return t('common.notAvailable')
@@ -113,7 +124,7 @@ const hasChanges = computed(() => {
 const templateId = computed(() => {
   if (!form.value) return ''
 
-  const formTemplateId = (form.value as any).formTemplateId
+  const formTemplateId = getFormRecord().formTemplateId
 
   // If it's already a string, return it
   if (typeof formTemplateId === 'string') {
@@ -122,11 +133,12 @@ const templateId = computed(() => {
 
   // If it's an object with _id or id, extract the string
   if (formTemplateId && typeof formTemplateId === 'object') {
-    return formTemplateId._id || formTemplateId.id || ''
+    const templateObj = formTemplateId as Record<string, unknown>
+    return String(templateObj._id || templateObj.id || '')
   }
 
   // Fallback to form's own _id
-  return (form.value as any)._id || ''
+  return String(getFormRecord()._id || '')
 })
 
 // Load form data
@@ -143,7 +155,7 @@ onMounted(async () => {
 
       // FIX: Unwrap any incorrectly nested data structure
       // Check if formData has a 'body' wrapper (from old corrupted data)
-      originalFormData.value = formReponseData.patientFormData?.rawFormData as unknown as FormData
+      originalFormData.value = formReponseData.patientFormData?.rawFormData || {}
       formCompletionStatus.value = formReponseData.patientFormData?.fillStatus ? formReponseData.patientFormData.fillStatus : "draft"
       form.value = formReponseData as unknown as Form
     }
@@ -179,10 +191,10 @@ const saveChanges = async () => {
   saving.value = true
   try {
     // Prepare update payload with PatientFormData structure
-    const updatePayload = {
+    const updatePayload: Parameters<typeof formApi.updateForm>[0] = {
       formId,
       updateFormRequest: {
-        patientFormData: formData.value as any
+        patientFormData: formData.value as never
       }
     }
     logger.debug('=== ReviewFormAnswers FRONTEND: Data being sent to API ===')
@@ -198,17 +210,8 @@ const saveChanges = async () => {
     // Navigate to consultation overview if we have a consultation ID
     if (form.value?.consultationId) {
       // Handle both string and object cases for consultationId
-      let consultationId: string
-
       const consId = form.value.consultationId
-      if (typeof consId === 'string') {
-        consultationId = consId
-      } else if (consId && typeof consId === 'object') {
-        const idObj = consId as any
-        consultationId = String(idObj._id || idObj.id || '')
-      } else {
-        consultationId = String(consId)
-      }
+      const consultationId = getIdFromUnknown(consId)
 
       logger.debug('Navigating to consultation overview with ID:', consultationId)
       router.push({
@@ -358,6 +361,9 @@ const goBack = () => {
         <v-card-text class="px-4 py-6">
           <PluginFormRenderer
                               :template-id="templateId"
+                              :form-id="formId"
+                              :show-version-controls="true"
+                              :current-version="(form as any)?.currentVersion || 1"
                               :model-value="form?.patientFormData ?? null"
                               @update:model-value="handleFormDataChange" />
         </v-card-text>

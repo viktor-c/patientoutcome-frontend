@@ -18,6 +18,7 @@ import QRCodeDisplay from '@/components/QRCodeDisplay.vue'
 import ScoreScale from '@/components/ScoreScale.vue'
 import { useUserStore } from '@/stores/userStore'
 import { generateScaleInfo } from '@/utils/scaleInfo'
+import { getAccessLevelColor } from '@/services/formVersionService'
 
 const componentName = 'ConsultationOverview.vue'
 const { t } = useI18n()
@@ -595,6 +596,10 @@ const initiateArchiveForm = (formId: string | null | undefined, formTitle: strin
   archiveFormDialog.value = true
 }
 
+const normalizeFormId = (id: unknown): string => {
+  return id == null ? '' : String(id)
+}
+
 const archiveForm = async () => {
   if (!archiveFormId.value || !archiveFormReason.value.trim()) {
     notifierStore.notify(t('consultationOverview.archiveFormReasonRequired'), 'warning')
@@ -657,6 +662,11 @@ const getFormStatusColor = (status: string | undefined): string => {
   }
 }
 
+const getFormAccessLevel = (form: FindAllCodes200ResponseResponseObjectInnerConsultationIdPromsInner): string => {
+  const formRecord = form as unknown as Record<string, unknown>
+  return (formRecord.accessLevel || 'patient').toString()
+}
+
 // Format duration in seconds to hh:mm:ss format
 const formatDuration = (seconds: number | undefined): string => {
   if (!seconds || seconds <= 0) return t('common.notAvailable')
@@ -669,14 +679,16 @@ const formatDuration = (seconds: number | undefined): string => {
 
 // Calculate duration from form start and end times
 const calculateFormDuration = (form: FindAllCodes200ResponseResponseObjectInnerConsultationIdPromsInner): string => {
+  const formRecord = form as unknown as Record<string, unknown>
+
   // Try to use completionTimeSeconds first
-  const seconds = (form as any)?.completionTimeSeconds
+  const seconds = Number(formRecord.completionTimeSeconds || 0)
   if (seconds && seconds > 0) {
     return formatDuration(seconds)
   }
 
   // Calculate from start and end times if completionTimeSeconds is not available
-  const startTime = form.patientFormData?.beginFill || (form as any)?.formStartTime
+  const startTime = form.patientFormData?.beginFill || (formRecord.formStartTime as string | undefined)
   const endTime = form.patientFormData?.completedAt
 
   if (!startTime || !endTime) return t('common.notAvailable')
@@ -841,7 +853,7 @@ const patientFlowUrl = computed(() => {
           <v-row>
             <v-col
                    v-for="(form, index) in consultation.proms.filter(form => !form.deletedAt)"
-                   :key="form.id || `form-${index}`"
+                   :key="form.id == null ? `form-${index}` : String(form.id)"
                    cols="12"
                    md="6"
                    lg="4">
@@ -853,6 +865,13 @@ const patientFlowUrl = computed(() => {
                           size="small"
                           class="mb-2">
                     {{ form.patientFormData?.fillStatus }}
+                  </v-chip>
+                  <v-chip
+                          :color="getAccessLevelColor(getFormAccessLevel(form))"
+                          size="small"
+                          class="mb-2 ml-2"
+                          variant="tonal">
+                    {{ getFormAccessLevel(form) }}
                   </v-chip>
                 </v-card-title>
                 <v-card-text>
@@ -887,7 +906,7 @@ const patientFlowUrl = computed(() => {
                   <v-btn
                          color="primary"
                          variant="text"
-                         @click="openForm(form.id)">
+                        @click="openForm(normalizeFormId(form.id))">
                     {{ t('consultationOverview.reviewForm') }}
                   </v-btn>
                   <v-spacer></v-spacer>
@@ -898,8 +917,8 @@ const patientFlowUrl = computed(() => {
                              color="warning"
                              variant="text"
                              icon="mdi-archive"
-                             @click="initiateArchiveForm(form.id, form.title || t('forms.consultation.untitledForm'))"
-                             :disabled="!form.id">
+                             @click="initiateArchiveForm(normalizeFormId(form.id), form.title || t('forms.consultation.untitledForm'))"
+                             :disabled="!normalizeFormId(form.id)">
                       </v-btn>
                     </template>
                     <span>{{ t('consultationOverview.archiveFormTooltip') }}</span>
@@ -1231,7 +1250,7 @@ const patientFlowUrl = computed(() => {
                   <v-row>
                     <v-col
                            v-for="(form, formIndex) in prevConsultation.proms"
-                           :key="form.id || `prev-form-${formIndex}`"
+                            :key="form.id == null ? `prev-form-${formIndex}` : String(form.id)"
                            cols="12"
                            md="6">
                       <v-card variant="outlined" size="small">
@@ -1247,6 +1266,12 @@ const patientFlowUrl = computed(() => {
                                         size="x-small">
                                   {{ form.patientFormData?.fillStatus }}
                                 </v-chip>
+                                <v-chip
+                                        :color="getAccessLevelColor(getFormAccessLevel(form))"
+                                        size="x-small"
+                                        variant="tonal">
+                                  {{ getFormAccessLevel(form) }}
+                                </v-chip>
                                 <span class="text-caption">
                                   {{ t('consultationOverview.score') }}: {{ getFormScore(form) }}
                                 </span>
@@ -1261,7 +1286,7 @@ const patientFlowUrl = computed(() => {
                                    color="primary"
                                    variant="text"
                                    size="small"
-                                   @click="openForm(form.id)">
+                              @click="openForm(normalizeFormId(form.id))">
                               {{ t('consultationOverview.review') }}
                             </v-btn>
                           </div>

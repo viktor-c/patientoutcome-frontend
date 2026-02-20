@@ -1,19 +1,28 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { ref } from 'vue'
 import PluginFormRenderer from '@/forms/components/PluginFormRenderer.vue'
 
 import { formtemplateApi } from '@/api'
 import type { FormTemplate } from '@/api/models/FormTemplate'
 import type { PatientFormData } from '@/types'
-import type { FormSubmissionData } from '@/forms/types'
+import { getAccessLevelColor, getAccessLevelDescription } from '@/services/formVersionService'
 
 // Available form templates to test
-const availableTemplates = ref<Array<{ id: string; title: string; description: string }>>([])
+const availableTemplates = ref<Array<{ id: string; title: string; description: string; accessLevel: string }>>([])
 const selectedTemplateId = ref<string | null>(null)
 const loading = ref(true)
 const formData = ref<PatientFormData | null>(null)
 const selectedTemplate = ref<FormTemplate | null>(null)
 const loadingTemplate = ref(false)
+const savingAccessLevel = ref(false)
+const editableAccessLevel = ref<'patient' | 'authenticated' | 'inactive'>('patient')
+const saveStatus = ref<{ type: 'success' | 'error' | 'info'; message: string } | null>(null)
+
+const accessLevelOptions = [
+  { title: 'Patient', value: 'patient' },
+  { title: 'Authenticated', value: 'authenticated' },
+  { title: 'Inactive', value: 'inactive' }
+]
 
 // Load available templates on mount
 const loadTemplates = async () => {
@@ -22,9 +31,10 @@ const loadTemplates = async () => {
     const response = await formtemplateApi.getFormTemplatesShortlist()
     if (response.responseObject) {
       availableTemplates.value = response.responseObject.map(template => ({
-        id: template.id || '',
+        id: template.id == null ? '' : String(template.id),
         title: template.title,
         description: template.description,
+        accessLevel: (template as { accessLevel?: string }).accessLevel || 'patient'
       }))
       if (availableTemplates.value.length > 0) {
         selectedTemplateId.value = availableTemplates.value[0].id
@@ -44,6 +54,7 @@ const loadTemplateDetails = async (templateId: string) => {
     loadingTemplate.value = true
     const response = await formtemplateApi.getFormTemplateById({ templateId })
     selectedTemplate.value = response.responseObject || null
+    editableAccessLevel.value = ((selectedTemplate.value as { accessLevel?: 'patient' | 'authenticated' | 'inactive' } | null)?.accessLevel) || 'patient'
 
     // FormTemplates no longer have sample data - start with empty form
     formData.value = null
@@ -53,6 +64,42 @@ const loadTemplateDetails = async (templateId: string) => {
     selectedTemplate.value = null
   } finally {
     loadingTemplate.value = false
+  }
+}
+
+const saveTemplateAccessLevel = async () => {
+  if (!selectedTemplateId.value || !selectedTemplate.value) return
+
+  try {
+    savingAccessLevel.value = true
+    saveStatus.value = null
+
+    await formtemplateApi.updateFormTemplate({
+      templateId: selectedTemplateId.value,
+      updateFormTemplateRequest: {
+        id: selectedTemplate.value.id,
+        title: selectedTemplate.value.title,
+        description: selectedTemplate.value.description,
+        accessLevel: editableAccessLevel.value
+      }
+    })
+
+    selectedTemplate.value = {
+      ...selectedTemplate.value,
+      accessLevel: editableAccessLevel.value
+    }
+
+    const index = availableTemplates.value.findIndex(template => template.id === selectedTemplateId.value)
+    if (index !== -1) {
+      availableTemplates.value[index].accessLevel = editableAccessLevel.value
+    }
+
+    saveStatus.value = { type: 'success', message: 'Access level updated successfully.' }
+  } catch (error) {
+    console.error('Failed to update access level:', error)
+    saveStatus.value = { type: 'error', message: 'Failed to update access level.' }
+  } finally {
+    savingAccessLevel.value = false
   }
 }
 
@@ -126,7 +173,16 @@ const handleTemplateChange = () => {
                       dense
                       @update:model-value="handleTemplateChange">
               <template #item="{ item, props }">
-                <v-list-item v-bind="props" :title="item.raw.title" :subtitle="item.raw.description" />
+                <v-list-item v-bind="props" :title="item.raw.title" :subtitle="item.raw.description">
+                  <template #append>
+                    <v-chip
+                            size="x-small"
+                            :color="getAccessLevelColor(item.raw.accessLevel)"
+                            variant="tonal">
+                      {{ item.raw.accessLevel }}
+                    </v-chip>
+                  </template>
+                </v-list-item>
               </template>
               <template #selection="{ item }">
                 <div>
@@ -143,6 +199,50 @@ const handleTemplateChange = () => {
         <v-card variant="outlined">
           <v-card-title>Actions</v-card-title>
           <v-card-text>
+            <v-alert
+                     v-if="saveStatus"
+                     :type="saveStatus.type"
+                     variant="tonal"
+                     class="mb-3">
+              {{ saveStatus.message }}
+            </v-alert>
+
+            <v-select
+                      v-model="editableAccessLevel"
+                      :items="accessLevelOptions"
+                      item-title="title"
+                      item-value="value"
+                      label="Template access level"
+                      outlined
+                      dense
+                      :disabled="!selectedTemplate"
+                      class="mb-3">
+              <template #selection>
+                <v-chip
+                        size="small"
+                        :color="getAccessLevelColor(editableAccessLevel)"
+                        variant="tonal">
+                  {{ editableAccessLevel }}
+                </v-chip>
+              </template>
+            </v-select>
+
+            <div class="text-caption text-medium-emphasis mb-3" v-if="selectedTemplate">
+              {{ getAccessLevelDescription(editableAccessLevel) }}
+            </div>
+
+            <v-btn
+                   color="success"
+                   variant="outlined"
+                   @click="saveTemplateAccessLevel"
+                   :loading="savingAccessLevel"
+                   :disabled="!selectedTemplate"
+                   block
+                   class="mb-2">
+              <v-icon left>mdi-content-save</v-icon>
+              Save Access Level
+            </v-btn>
+
             <v-btn
                    color="primary"
                    variant="outlined"

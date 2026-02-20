@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useConsultationStore } from '@/stores/'
 import { useDateFormat } from '@/composables/useDateFormat'
@@ -9,12 +9,14 @@ import {
   type CreateConsultation,
   type UserNoPassword,
   type Note,
-  type GetFormTemplates200ResponseResponseObjectInner as FormTemplateShortList,
+  type GetFormTemplatesShortlist200ResponseResponseObjectInner as FormTemplateShortList,
   ResponseError,
   type FindAllCodes200ResponseResponseObjectInner as Code,
 } from '@/api'
 import { useNotifierStore } from '@/stores/notifierStore'
 import { consultationApi, userApi, formtemplateApi, codeApi } from '@/api'
+import { getAccessLevelColor, getAccessLevelDescription } from '@/services/formVersionService'
+import { useUserStore } from '@/stores/userStore'
 
 const props = defineProps<{
   patientId: string | null | undefined
@@ -26,6 +28,7 @@ const emit = defineEmits(['submit', 'cancel'])
 
 const { t, locale } = useI18n()
 const notifierStore = useNotifierStore()
+const userStore = useUserStore()
 const consultationStore = useConsultationStore()
 const { formatLocalizedCustomDate, getLocalizedDayjs, dateFormats } = useDateFormat()
 const { errors, validateForm, clearAllErrors, resetFormState } = useFormValidation()
@@ -59,6 +62,28 @@ const codes = ref<Code[]>([])
 const selectedCode = ref<Code | null>(null)
 const generatingCode = ref(false)
 const formSubmitted = ref(false)
+
+// Filter form templates based on user role
+const availableFormTemplates = computed(() => {
+  const isAuthenticated = userStore.hasRole('admin') || userStore.hasRole('doctor') || userStore.hasRole('student')
+
+  type TemplateWithAccess = FormTemplateShortList & { accessLevel?: string }
+
+  return formTemplates.value.filter((template: TemplateWithAccess) => {
+    const accessLevel = template.accessLevel || 'patient'
+    
+    // Everyone can see patient-accessible forms
+    if (accessLevel === 'patient') return true
+    
+    // Authenticated users can see authenticated forms
+    if (accessLevel === 'authenticated' && isAuthenticated) return true
+    
+    // Admins can see inactive forms
+    if (accessLevel === 'inactive' && userStore.hasRole('admin')) return true
+    
+    return false
+  })
+})
 
 async function fetchUsers() {
   try {
@@ -377,18 +402,65 @@ defineExpose({
           </v-list>
           <v-btn color="primary" @click="addNote">{{ t('consultation.addNote') }}</v-btn>
         </v-card>
-        <v-autocomplete
-                        multiple
-                        chips
-                        clearable
-                        closable-chips
-                        v-model="selectedFormTemplates"
-                        :items="formTemplates"
-                        item-value="id"
-                        item-title="title"
-                        :label="t('consultation.formTemplate')"
-                        outlined
-                        dense></v-autocomplete>
+        
+        <!-- Form Templates Selection with Access Level -->
+        <v-card class="my-4">
+          <v-card-title class="text-subtitle-1 py-2">
+            {{ t('consultation.formTemplate') }}
+          </v-card-title>
+          <v-card-text>
+            <v-autocomplete
+              multiple
+              chips
+              clearable
+              closable-chips
+              v-model="selectedFormTemplates"
+              :items="availableFormTemplates"
+              item-value="id"
+              item-title="title"
+              :label="t('consultation.formTemplate')"
+              outlined
+              dense
+            >
+              <!-- Custom chip display with access level -->
+              <template #chip="{ item, props: chipProps }">
+                <v-chip
+                  v-bind="chipProps"
+                  :color="getAccessLevelColor((item.raw as any).accessLevel || 'patient')"
+                  closable
+                >
+                  <span>{{ (item.raw as any).title }}</span>
+                </v-chip>
+              </template>
+              
+              <!-- Custom item display with badge -->
+              <template #item="{ item, props: itemProps }">
+                <v-list-item v-bind="itemProps">
+                  <template #prepend>
+                    <v-chip
+                      size="x-small"
+                      :color="getAccessLevelColor((item.raw as any).accessLevel || 'patient')"
+                      class="mr-2"
+                    >
+                      {{ ((item.raw as any).accessLevel || 'patient').toUpperCase() }}
+                    </v-chip>
+                  </template>
+                  <v-list-item-title>{{ (item.raw as any).title }}</v-list-item-title>
+                  <v-list-item-subtitle class="text-caption">
+                    {{ getAccessLevelDescription((item.raw as any).accessLevel || 'patient') }}
+                  </v-list-item-subtitle>
+                </v-list-item>
+              </template>
+            </v-autocomplete>
+            
+            <!-- Access Level Legend -->
+            <div class="text-caption text-medium-emphasis mt-2">
+              <v-icon size="x-small" class="mr-1">mdi-information</v-icon>
+              Form templates are filtered based on your role
+            </div>
+          </v-card-text>
+        </v-card>
+        
         <v-autocomplete
                         v-model="form.visitedBy"
                         :items="users"

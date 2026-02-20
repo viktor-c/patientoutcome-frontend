@@ -72,7 +72,7 @@
                 {{ t('consultationTemplates.noForms') }}
               </span>
             </div>
-          </template>
+              </template>
 
           <template #[`item.actions`]="{ item }">
             <v-btn
@@ -157,6 +157,33 @@
                             closable-chips
                             :rules="[rules.required]"
                             required>
+              <template #chip="{ item, props: chipProps }">
+                <v-chip
+                        v-bind="chipProps"
+                        :color="getAccessLevelColor((item.raw as any).accessLevel || 'patient')"
+                        closable>
+                  {{ (item.raw as any).title }}
+                </v-chip>
+              </template>
+
+              <template #item="{ item, props: itemProps }">
+                <v-list-item v-bind="itemProps">
+                  <template #prepend>
+                    <v-chip
+                            size="x-small"
+                            :color="getAccessLevelColor((item.raw as any).accessLevel || 'patient')"
+                            class="mr-2"
+                            variant="tonal">
+                      {{ ((item.raw as any).accessLevel || 'patient').toUpperCase() }}
+                    </v-chip>
+                  </template>
+                  <v-list-item-title>{{ (item.raw as any).title }}</v-list-item-title>
+                  <v-list-item-subtitle class="text-caption">
+                    {{ getAccessLevelDescription((item.raw as any).accessLevel || 'patient') }}
+                  </v-list-item-subtitle>
+                </v-list-item>
+              </template>
+
               <template #prepend-item>
                 <v-text-field
                               v-model="formTemplateSearch"
@@ -248,8 +275,9 @@ import { ref, computed, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { blueprintApi, formtemplateApi } from '@/api'
 import { useNotifierStore } from '@/stores/notifierStore'
+import { getAccessLevelColor, getAccessLevelDescription } from '@/services/formVersionService'
 import type {
-  GetFormTemplates200ResponseResponseObjectInner
+  GetFormTemplatesShortlist200ResponseResponseObjectInner
 } from '@/api'
 
 const { t } = useI18n()
@@ -291,7 +319,7 @@ const archiveDialog = ref(false)
 const archiveDialogSecond = ref(false)
 const showArchived = ref(false)
 const templates = ref<TemplateItem[]>([])
-const formTemplates = ref<GetFormTemplates200ResponseResponseObjectInner[]>([])
+const formTemplates = ref<GetFormTemplatesShortlist200ResponseResponseObjectInner[]>([])
 const formTemplateSearch = ref('')
 const selectedFormTemplates = ref<string[]>([])
 const originalFormTemplates = ref<string[]>([])

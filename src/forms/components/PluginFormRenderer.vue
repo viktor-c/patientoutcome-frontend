@@ -22,9 +22,13 @@
 */
 
 <script setup lang="ts">
-import { computed, onMounted, ref, markRaw } from 'vue'
+import { computed, onMounted, ref, markRaw, watch } from 'vue'
 import { getFormPlugin } from '../registry'
 import type { FormSubmissionData, FormPlugin } from '../types'
+import FormVersionHistory from '@/components/forms/FormVersionHistory.vue'
+import FormVersionDiff from '@/components/forms/FormVersionDiff.vue'
+import { useUserStore } from '@/stores/userStore'
+import { formVersionService } from '@/services/formVersionService'
 
 interface Props {
   /** Form template ID (matches plugin metadata.id) */
@@ -38,22 +42,64 @@ interface Props {
 
   /** Current locale */
   locale?: string
+
+  /** Form ID for version controls (required for version controls) */
+  formId?: string
+
+  /** Whether to show version controls */
+  showVersionControls?: boolean
+
+  /** Current form version number */
+  currentVersion?: number
+
+  /** Viewing a specific historical version */
+  viewingVersion?: number | null
 }
 
 const props = withDefaults(defineProps<Props>(), {
   readonly: false,
   locale: 'en',
-  modelValue: null
+  modelValue: null,
+  showVersionControls: false,
+  currentVersion: 1,
+  viewingVersion: null
 })
 
 interface Emits {
   (e: 'update:modelValue', value: FormSubmissionData): void
+  (e: 'viewVersion', version: number): void
+  (e: 'compareVersions', v1: number, v2: number): void
+  (e: 'versionRestored'): void
 }
 
 const emit = defineEmits<Emits>()
 
+// Get user store for permission checks
+const userStore = useUserStore()
+
 // Store the initial beginFill timestamp when form is first loaded
 const initialBeginFill = ref<Date | null>(null)
+
+// Version controls state
+const showDiffDialog = ref(false)
+const diffVersion1 = ref(0)
+const diffVersion2 = ref(0)
+const versionLoading = ref(false)
+const activeViewingVersion = ref<number | null>(props.viewingVersion)
+const historicalSubmissionData = ref<FormSubmissionData | null>(null)
+
+// Computed flags
+const canViewVersions = computed(() => 
+  userStore.hasRole('admin') || userStore.hasRole('doctor')
+)
+
+const isViewingOldVersion = computed(() => 
+  activeViewingVersion.value !== null && activeViewingVersion.value < props.currentVersion
+)
+
+const effectiveModelValue = computed(() => {
+  return historicalSubmissionData.value || props.modelValue
+})
 
 // Load the plugin without making it reactive (components shouldn't be reactive)
 const pluginData = getFormPlugin(props.templateId)
@@ -71,25 +117,24 @@ const formDataToPass = computed(() => {
   if (!plugin.value) return {}
   
   // If modelValue is null (new form), initialize with empty data
-  if (!props.modelValue) {
-    // Set beginFill on first load if not already set
-    if (!initialBeginFill.value) {
-      initialBeginFill.value = new Date()
-    }
+  if (!effectiveModelValue.value) {
     return plugin.value.getInitialData()
   }
   
-  // Preserve existing beginFill from loaded form data
-  if (props.modelValue.beginFill && !initialBeginFill.value) {
-    initialBeginFill.value = new Date(props.modelValue.beginFill)
-  } else if (!initialBeginFill.value) {
-    // If no beginFill exists yet, set it now (form was just opened)
-    initialBeginFill.value = new Date()
-  }
-  
   // If modelValue exists, extract rawFormData
-  return props.modelValue.rawFormData || plugin.value.getInitialData()
+  return effectiveModelValue.value.rawFormData || plugin.value.getInitialData()
 })
+
+watch(effectiveModelValue, (newValue) => {
+  if (initialBeginFill.value) return
+
+  if (newValue?.beginFill) {
+    initialBeginFill.value = new Date(newValue.beginFill)
+    return
+  }
+
+  initialBeginFill.value = new Date()
+}, { immediate: true })
 
 // Error message if plugin not found
 const errorMessage = computed(() => {
@@ -107,6 +152,53 @@ function handleModelUpdate(value: FormSubmissionData) {
     beginFill: initialBeginFill.value || value.beginFill || new Date()
   })
 }
+
+// Handle version control events
+async function handleViewVersion(version: number) {
+  emit('viewVersion', version)
+
+  if (!props.formId) return
+
+  if (version === props.currentVersion) {
+    activeViewingVersion.value = null
+    historicalSubmissionData.value = null
+    return
+  }
+
+  try {
+    versionLoading.value = true
+    const response = await formVersionService.getVersion(props.formId, version)
+    if (response.success && response.responseObject) {
+      const historicalData = response.responseObject.rawData as FormSubmissionData
+      historicalSubmissionData.value = historicalData
+      activeViewingVersion.value = version
+    }
+  } catch (error) {
+    console.error('[PluginFormRenderer] Failed to load historical version:', error)
+  } finally {
+    versionLoading.value = false
+  }
+}
+
+function handleCompareVersions(v1: number, v2: number) {
+  diffVersion1.value = v1
+  diffVersion2.value = v2
+  showDiffDialog.value = true
+  emit('compareVersions', v1, v2)
+}
+
+function handleVersionRestored() {
+  activeViewingVersion.value = null
+  historicalSubmissionData.value = null
+  emit('versionRestored')
+}
+
+watch(() => props.viewingVersion, (newValue) => {
+  activeViewingVersion.value = newValue
+  if (newValue === null || newValue === props.currentVersion) {
+    historicalSubmissionData.value = null
+  }
+})
 
 // Log plugin load for debugging
 onMounted(() => {
@@ -126,12 +218,70 @@ onMounted(() => {
 
 <template>
   <div class="plugin-form-renderer">
+    <!-- Version Controls Header -->
+    <v-card
+      v-if="showVersionControls && canViewVersions && formId"
+      class="mb-4"
+      elevation="2"
+    >
+      <v-card-title class="d-flex align-center py-2 bg-grey-lighten-5">
+        <v-icon class="mr-2" size="small">mdi-file-document-multiple</v-icon>
+        <span class="text-subtitle-1">Form Version</span>
+        <v-spacer />
+        <v-chip
+          size="small"
+          :color="isViewingOldVersion ? 'warning' : 'success'"
+          class="mr-2"
+        >
+          v{{ activeViewingVersion ?? currentVersion }}
+        </v-chip>
+        <FormVersionHistory
+          v-if="formId"
+          :form-id="formId"
+          :current-version="currentVersion"
+          @view-version="handleViewVersion"
+          @compare-versions="handleCompareVersions"
+          @version-restored="handleVersionRestored"
+        />
+      </v-card-title>
+
+      <!-- Old Version Banner -->
+      <v-alert
+        v-if="isViewingOldVersion"
+        type="warning"
+        variant="tonal"
+        class="ma-0 rounded-0"
+        density="compact"
+      >
+        <div class="d-flex align-center">
+          <v-icon class="mr-2" size="small">mdi-history</v-icon>
+          <span class="text-body-2">
+            Viewing version {{ activeViewingVersion }} (current is {{ currentVersion }})
+          </span>
+          <v-spacer />
+          <v-btn
+            size="small"
+            variant="text"
+            @click="handleViewVersion(currentVersion)"
+          >
+            Return to Current
+          </v-btn>
+        </div>
+      </v-alert>
+    </v-card>
+
+    <v-alert v-if="versionLoading" type="info" variant="tonal" class="mb-4">
+      <v-progress-circular indeterminate size="18" class="mr-2" />
+      Loading selected form version...
+    </v-alert>
+
     <!-- Error state: plugin not found -->
     <v-alert
-             v-if="errorMessage"
-             type="error"
-             variant="tonal"
-             class="mb-4">
+      v-if="errorMessage"
+      type="error"
+      variant="tonal"
+      class="mb-4"
+    >
       <div class="text-h6">Form Not Available</div>
       <div>{{ errorMessage }}</div>
       <div class="text-caption mt-2">
@@ -141,18 +291,28 @@ onMounted(() => {
 
     <!-- Render the form plugin component -->
     <component
-               v-else-if="FormComponent"
-               :is="FormComponent"
-               :model-value="formDataToPass"
-               :readonly="readonly"
-               :locale="locale"
-               @update:model-value="handleModelUpdate" />
+      v-else-if="FormComponent"
+      :is="FormComponent"
+      :model-value="formDataToPass"
+      :readonly="readonly || isViewingOldVersion"
+      :locale="locale"
+      @update:model-value="handleModelUpdate"
+    />
 
     <!-- Fallback: loading state (shouldn't happen with eager loading) -->
     <div v-else class="text-center pa-4">
       <v-progress-circular indeterminate color="primary" />
       <div class="mt-2 text-caption">Loading form...</div>
     </div>
+
+    <!-- Version Diff Dialog -->
+    <FormVersionDiff
+      v-if="formId"
+      v-model="showDiffDialog"
+      :form-id="formId"
+      :version1="diffVersion1"
+      :version2="diffVersion2"
+    />
   </div>
 </template>
 
