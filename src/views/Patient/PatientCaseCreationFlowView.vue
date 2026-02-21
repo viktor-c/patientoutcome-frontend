@@ -116,8 +116,10 @@ const isManualConsultationDialogOpen = ref(false)
 const showManualConsultationDialogStep4 = ref(false)
 const manualConsultationFormRef = ref<InstanceType<typeof CreateEditConsultationDialog> | null>(null)
 
-// Department name display
+// Department management
 const departmentName = ref<string>('')
+const availableDepartments = ref<Array<{ id: string; name: string }>>([])
+const isDepartmentDropdownDisabled = computed(() => availableDepartments.value.length <= 1)
 
 // Handle manual consultation dialog state changes
 const handleManualConsultationDialogState = (isOpen: boolean) => {
@@ -792,18 +794,51 @@ const removeExternalIdField = (index: number) => {
 
 // Initialize data from route query if available
 onMounted(async () => {
-  // Always fetch the current user's department (ignores userStore.department value)
   try {
-    const response = await userDepartmentApi.getUserDepartment()
-    if (response && response.responseObject) {
-      departmentName.value = response.responseObject.name || ''
+    if (userStore.hasRole('admin')) {
+      // admins see all departments as array
+      const allDepartmentsResponse = await userDepartmentApi.getAllDepartments()
+      if (Array.isArray(allDepartmentsResponse.responseObject)) {
+        availableDepartments.value = allDepartmentsResponse.responseObject
+          .filter(d => d.departmentType === "department")
+          .map(d => ({
+            id: d.id || '',
+            name: d.name || '',
+            description: d.description || ''
+          }))
+
+        // preselect matching department or first one
+        if (userStore.department) {
+          const match = availableDepartments.value.find(d => d.id === userStore.department)
+          if (match) {
+            patientData.value.department = match.id
+            departmentName.value = `${match.name}`
+          } else if (availableDepartments.value.length > 0) {
+            patientData.value.department = availableDepartments.value[0].id
+            departmentName.value = `${availableDepartments.value[0].name}`
+          }
+        } else if (availableDepartments.value.length > 0) {
+          patientData.value.department = availableDepartments.value[0].id
+          departmentName.value = availableDepartments.value[0].name
+        }
+      }
+      console.log('Admin loaded departments:', availableDepartments.value.length, 'selected:', departmentName.value)
+    } else {
+      // regular user: fetch own department
+      const response = await userDepartmentApi.getUserDepartment()
+      if (response && response.responseObject) {
+        const dept = response.responseObject
+        availableDepartments.value = [{ id: dept.id || '', name: dept.name || '' }]
+        patientData.value.department = dept.id || ''
+        departmentName.value = dept.name || ''
+      }
       console.log('User department loaded:', departmentName.value)
     }
   } catch (error) {
-    logger.error('❌ Error fetching user department:', error)
-    // Fall back to showing whatever is in the store if available
+    logger.error('❌ Error fetching department info:', error)
     if (userStore.department) {
       departmentName.value = userStore.department
+      patientData.value.department = userStore.department
     }
   }
 
@@ -934,14 +969,17 @@ onMounted(async () => {
                                     clearable></v-select>
                         </v-col>
                         <v-col cols="6">
-                          <v-text-field
-                                        :model-value="departmentName || patientData.department"
-                                        :label="t('forms.department')"
-                                        readonly
-                                        :hint="t('forms.departmentAutoAssignedHint')"
-                                        persistent-hint
-                                        variant="outlined"
-                                        density="compact"></v-text-field>
+                          <v-select
+                                    v-model="patientData.department"
+                                    :label="t('forms.department')"
+                                    :items="availableDepartments"
+                                    item-value="id"
+                                    item-title="name"
+                                    :disabled="isDepartmentDropdownDisabled"
+                                    :hint="isDepartmentDropdownDisabled ? t('forms.departmentAutoAssignedHint') : t('forms.selectDepartmentHint')"
+                                    persistent-hint
+                                    variant="outlined"
+                                    density="compact"></v-select>
                         </v-col>
                       </v-row>
                     </v-form>
