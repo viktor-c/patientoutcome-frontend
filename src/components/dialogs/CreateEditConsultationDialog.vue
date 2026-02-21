@@ -400,7 +400,7 @@ defineExpose({
               </v-container>
             </v-list-item>
           </v-list>
-          <v-btn color="primary" @click="addNote">{{ t('consultation.addNote') }}</v-btn>
+          <v-btn color="primary" :disabled="editingNoteIndex !== null" @click="addNote">{{ t('consultation.addNote') }}</v-btn>
         </v-card>
         
         <!-- Form Templates Selection with Access Level -->
