@@ -213,8 +213,8 @@ const handleEnter = async () => {
   if (isManualConsultationDialogOpen.value || showManualConsultationDialogStep4.value) return
   // only respond if next button is shown and not disabled
   if (currentStep.value < 5 &&
-      !(currentStep.value === 1 && !canProceedFromStep1.value) &&
-      !(currentStep.value === 2 && !canProceedFromStep2.value)) {
+    !(currentStep.value === 1 && !canProceedFromStep1.value) &&
+    !(currentStep.value === 2 && !canProceedFromStep2.value)) {
     await nextStep()
   }
 }
@@ -245,7 +245,7 @@ const nextStep = async () => {
         const response = await consultationApi.getAllConsultations({ caseId: createdCase.value.id })
         if (response.responseObject && Array.isArray(response.responseObject)) {
           createdConsultations.value = response.responseObject as Consultation[]
-          logger.info('✅ Fetched consultations:', { 
+          logger.info('✅ Fetched consultations:', {
             count: createdConsultations.value.length,
             firstConsultation: createdConsultations.value[0]
           })
@@ -425,12 +425,12 @@ const handleCaseSubmit = (caseData: GetAllPatientCases200ResponseResponseObjectI
   createdCase.value = caseData
   const isUpdate = caseData.id === createdCase.value?.id
   console.log(isUpdate ? 'Case updated:' : 'Case created:', caseData.id)
-  
+
   // Only advance step if we're moving forward, not if we're saving before going back
   if (currentStep.value === 2) {
     currentStep.value = 3
   }
-  
+
   const message = isUpdate ? t('creationFlow.caseUpdated') : t('creationFlow.caseCreated')
   notifierStore.notify(message, 'success')
 }
@@ -478,7 +478,7 @@ const handleSurgerySubmit = async (surgery: Surgery) => {
   const isUpdate = createdSurgery.value?.id === surgery.id
   createdSurgery.value = surgery
   console.log(isUpdate ? 'Surgery updated:' : 'Surgery created:', surgery.id)
-  
+
   const message = isUpdate ? t('creationFlow.surgeryUpdated') : t('creationFlow.surgeryCreated')
   notifierStore.notify(message, 'success')
 
@@ -528,7 +528,7 @@ const handleConsultationBlueprintCancel = () => {
 // Handle consultation dialog events  
 const handleConsultationsSubmit = async (consultations: Consultation[]) => {
   logger.info('📝 Consultations submitted:', { count: consultations.length, consultations })
-  
+
   // Store consultations initially
   createdConsultations.value = consultations
   logger.info('📦 Initial assignment:', { count: createdConsultations.value.length })
@@ -538,17 +538,17 @@ const handleConsultationsSubmit = async (consultations: Consultation[]) => {
     try {
       logger.info('🔄 Fetching consultation details for case:', createdCase.value.id)
       const response = await consultationApi.getAllConsultations({ caseId: createdCase.value.id })
-      logger.info('📥 Fetched consultation details:', { 
+      logger.info('📥 Fetched consultation details:', {
         success: response.success,
         hasResponseObject: !!response.responseObject,
         isArray: Array.isArray(response.responseObject),
         count: Array.isArray(response.responseObject) ? response.responseObject.length : 0
       })
-      
+
       if (response.responseObject && Array.isArray(response.responseObject)) {
         // Update with full consultation data including populated codes
         createdConsultations.value = response.responseObject as Consultation[]
-        logger.info('✅ Updated createdConsultations:', { 
+        logger.info('✅ Updated createdConsultations:', {
           count: createdConsultations.value.length,
           firstId: createdConsultations.value[0]?.id,
           formAccessCodeExists: !!createdConsultations.value[0]?.formAccessCode,
@@ -562,13 +562,13 @@ const handleConsultationsSubmit = async (consultations: Consultation[]) => {
       // Continue anyway with the consultations we have
     }
   } else {
-    logger.info('ℹ️ Skipping fetch:', { 
+    logger.info('ℹ️ Skipping fetch:', {
       hasConsultations: consultations.length > 0,
-      hasCaseId: !!createdCase.value?.id 
+      hasCaseId: !!createdCase.value?.id
     })
   }
 
-  logger.info('📊 Final createdConsultations state:', { 
+  logger.info('📊 Final createdConsultations state:', {
     count: createdConsultations.value.length,
     firstConsultation: createdConsultations.value[0]
   })
@@ -583,10 +583,10 @@ const handleConsultationsSubmit = async (consultations: Consultation[]) => {
 // Handle manual consultation creation in step 4
 const handleManualConsultationSubmitStep4 = async (consultation: Consultation) => {
   logger.info('📝 Manual consultation created:', { consultationId: consultation.id })
-  
+
   // Add the manually created consultation to the list
   createdConsultations.value.push(consultation)
-  
+
   showManualConsultationDialogStep4.value = false
   console.log('Manual consultation added to list:', consultation.id)
   notifierStore.notify(t('alerts.consultation.created'), 'success')
@@ -653,46 +653,46 @@ const copyCaseUrl = () => {
 
 // Computed: First consultation sorted by date (ascending)
 const firstConsultation = computed(() => {
-  logger.info('🔍 Computing firstConsultation:', { 
+  logger.info('🔍 Computing firstConsultation:', {
     consultationsCount: createdConsultations.value.length,
-    consultations: createdConsultations.value 
+    consultations: createdConsultations.value
   })
-  
+
   if (createdConsultations.value.length === 0) return null
-  
+
   // Sort consultations by dateAndTime ascending and return the first one
   const sorted = [...createdConsultations.value].sort((a, b) => {
     const dateA = new Date(a.dateAndTime || 0).getTime()
     const dateB = new Date(b.dateAndTime || 0).getTime()
     return dateA - dateB
   })
-  
+
   logger.info('✅ First consultation:', sorted[0])
   return sorted[0]
 })
 
 // Computed: External code from first consultation (for QR code flow URL)
 const firstConsultationCode = computed(() => {
-  logger.info('🔍 Computing firstConsultationCode:', { 
+  logger.info('🔍 Computing firstConsultationCode:', {
     hasFirstConsultation: !!firstConsultation.value,
     firstConsultationId: firstConsultation.value?.id,
     firstConsultationIdField: firstConsultation.value?.id
   })
-  
+
   if (!firstConsultation.value) {
     logger.info('❌ No first consultation')
     return null
   }
-  
+
   // Check if first consultation has a formAccessCode
   const accessCode = firstConsultation.value.formAccessCode as unknown
   if (!accessCode) {
     logger.info('❌ No formAccessCode found on consultation')
     return null
   }
-  
+
   logger.info('📋 FormAccessCode RAW:', accessCode)
-  logger.info('📋 FormAccessCode details:', { 
+  logger.info('📋 FormAccessCode details:', {
     type: typeof accessCode,
     isObject: typeof accessCode === 'object',
     isNull: accessCode === null,
@@ -700,7 +700,7 @@ const firstConsultationCode = computed(() => {
     hasCodeProp: isRecord(accessCode) && typeof accessCode.code === 'string',
     codeProperty: isRecord(accessCode) ? accessCode.code : undefined
   })
-  
+
   // Handle both string and object types
   // formAccessCode can be:
   // 1. A string (the code itself)
@@ -709,13 +709,13 @@ const firstConsultationCode = computed(() => {
     logger.info('✅ Code is string:', accessCode)
     return accessCode
   }
-  
+
   if (isRecord(accessCode) && typeof accessCode.code === 'string') {
     const codeValue = accessCode.code
     logger.info('✅ Extracted code from object:', { codeValue, objectId: extractRecordId(accessCode) })
     return codeValue
   }
-  
+
   logger.warn('⚠️ formAccessCode format not recognized:', { accessCode, type: typeof accessCode })
   return null
 })
@@ -889,54 +889,62 @@ onMounted(async () => {
 
                     <v-form>
                       <!-- External Patient IDs -->
-                      <div v-for="(externalId, index) in patientData.externalPatientId || []" :key="index" class="mb-2">
-                        <v-row align="center">
-                          <v-col cols="10">
-                            <v-text-field
-                                          v-model="patientData.externalPatientId![index]"
-                                          :label="t('forms.patient.externalId') + (index > 0 ? ' ' + (index + 1) : '')"
-                                          :hint="index === 0 ? t('forms.externalIdHint') : ''"
-                                          :persistent-hint="index === 0"
-                                          density="compact"></v-text-field>
-                          </v-col>
-                          <v-col cols="2">
-                            <v-btn
-                                   v-if="index === (patientData.externalPatientId?.length ?? 0) - 1"
-                                   @click="addExternalIdField"
-                                   icon="mdi-plus"
-                                   size="small"
-                                   color="primary"
-                                   variant="text"
-                                   :title="t('forms.patient.addExternalId')"></v-btn>
-                            <v-btn
-                                   v-if="index > 0"
-                                   @click="removeExternalIdField(index)"
-                                   icon="mdi-minus"
-                                   size="small"
-                                   color="error"
-                                   variant="text"
-                                   :title="t('forms.patient.removeExternalId')"></v-btn>
-                          </v-col>
-                        </v-row>
-                      </div>
+                      <v-row class="flex-wrap" align="center" dense>
+                        <v-col
+                          v-for="(externalId, index) in patientData.externalPatientId || []"
+                          :key="index"
+                          cols="4"
+                          class="mb-2">
+                          <v-text-field
+                                        v-model="patientData.externalPatientId![index]"
+                                        :label="t('forms.patient.externalId') + (index > 0 ? ' ' + (index + 1) : '')"
+                                        :hint="index === 0 ? t('forms.externalIdHint') : ''"
+                                        :persistent-hint="index === 0"
+                                        density="compact">
+                            <template #append-inner>
+                              <v-btn
+                                     v-if="index === (patientData.externalPatientId?.length ?? 0) - 1"
+                                     @click="addExternalIdField"
+                                     icon="mdi-plus"
+                                     size="small"
+                                     color="primary"
+                                     variant="text"
+                                     :title="t('forms.patient.addExternalId')"></v-btn>
+                              <v-btn
+                                     v-if="index > 0"
+                                     @click="removeExternalIdField(index)"
+                                     icon="mdi-minus"
+                                     size="small"
+                                     color="error"
+                                     variant="text"
+                                     :title="t('forms.patient.removeExternalId')"></v-btn>
+                            </template>
+                          </v-text-field>
+                        </v-col>
+                      </v-row>
 
-                      <v-select
-                                v-model="patientData.sex"
-                                :label="t('forms.sex')"
-                                :items="sexOptions"
-                                item-value="value"
-                                item-title="label"
-                                density="compact"
-                                clearable></v-select>
-
-                      <v-text-field
-                                    :model-value="departmentName || patientData.department"
-                                    :label="t('forms.department')"
-                                    readonly
-                                    :hint="t('forms.departmentAutoAssignedHint')"
-                                    persistent-hint
-                                    variant="outlined"
-                                    density="compact"></v-text-field>
+                      <v-row>
+                        <v-col cols="6">
+                          <v-select
+                                    v-model="patientData.sex"
+                                    :label="t('forms.sex')"
+                                    :items="sexOptions"
+                                    item-value="value"
+                                    item-title="label"
+                                    density="compact"
+                                    clearable></v-select>
+                        </v-col>
+                        <v-col cols="6">
+                          <v-text-field
+                                        :model-value="departmentName || patientData.department"
+                                        :label="t('forms.department')"
+                                        readonly
+                                        :hint="t('forms.departmentAutoAssignedHint')"
+                                        persistent-hint
+                                        variant="outlined"
+                                        density="compact"></v-text-field>
+                        </v-col>
+                      </v-row>
                     </v-form>
                   </v-card-text>
                 </v-card>
