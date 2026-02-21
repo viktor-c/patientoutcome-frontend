@@ -145,41 +145,21 @@ watch(currentStep, (newStep, oldStep) => {
       }
     }
 
-    // Show step-specific notifications
+    // Log step transitions
     if (newStep === 1) {
-      // Step 1: Patient creation
-      notifierStore.notify(t('alerts.patient.optionalFieldsInfo'), 'info')
+      console.log('Step 1: Patient creation')
       if (showExternalIdWarning.value) {
-        notifierStore.notify(t('alerts.patient.noExternalIdWarning'), 'warning')
+        console.warn('No external ID provided')
       }
     } else if (newStep === 2) {
-      // Step 2: Case creation
-      if (createdPatient.value) {
-        notifierStore.notify(`${t('creationFlow.patientCreated')} - ID: ${createdPatient.value.id}`, 'success')
-      }
+      console.log('Step 2: Case creation', createdPatient.value?.id)
     } else if (newStep === 3) {
-      // Step 3: Surgery creation
-      if (createdCase.value) {
-        notifierStore.notify(`${t('creationFlow.caseCreated')} - ID: ${createdCase.value.id}`, 'success')
-      }
-      if (surgeryBlueprintId.value) {
-        notifierStore.notify(t('creationFlow.surgeryBlueprintPrefilled'), 'info')
-      }
-      notifierStore.notify(t('creationFlow.surgeryOptionalInfo'), 'info')
+      console.log('Step 3: Surgery creation', { caseId: createdCase.value?.id, blueprintId: surgeryBlueprintId.value })
     } else if (newStep === 4) {
-      // Step 4: Consultation creation
-      // Show surgery status notifications
-      if (createdSurgery.value) {
-        notifierStore.notify(`${t('creationFlow.surgeryCreated')} - ID: ${createdSurgery.value.id}`, 'success')
-      } else if (skipSurgery.value) {
-        notifierStore.notify(t('creationFlow.surgerySkippedInfo'), 'info')
-      }
+      console.log('Step 4: Consultation creation', { surgeryId: createdSurgery.value?.id, skipped: skipSurgery.value })
     } else if (newStep === 5) {
-      // Step 5: Completion
+      console.log('Step 5: Completion', { consultationsCount: createdConsultations.value.length })
       notifierStore.notify(t('creationFlow.flowCompleted'), 'success')
-      if (createdConsultations.value.length > 0) {
-        notifierStore.notify(t('creationFlow.consultationsCreated', { count: createdConsultations.value.length }), 'info')
-      }
     }
   }
 })// Use centralized API instance
@@ -305,9 +285,10 @@ const previousStep = async () => {
 const createPatient = async () => {
   if (!canProceedFromStep1.value) return
 
-  // Show warning if external ID is missing
+  // Log if external ID is missing
   if (!patientData.value.externalPatientId?.[0] || !patientData.value.externalPatientId[0]?.trim()) {
     showExternalIdWarning.value = true
+    console.warn('Creating patient without external ID')
   }
 
   isLoading.value = true
@@ -332,6 +313,7 @@ const createPatient = async () => {
       caseData.value.patient = response.responseObject.id || null
       currentStep.value = 2
       showExternalIdWarning.value = false
+      console.log('Patient created:', response.responseObject.id)
       notifierStore.notify(t('creationFlow.patientCreated'), 'success')
     }
   } catch (error: unknown) {
@@ -350,7 +332,7 @@ const createPatient = async () => {
       // Extract external ID from the first field
       duplicateExternalId.value = patientData.value.externalPatientId?.[0] || ''
       showDuplicatePatientDialog.value = true
-      notifierStore.notify(t('alerts.patient.duplicateExternalId'), 'info')
+      console.log('Duplicate patient external ID detected:', duplicateExternalId.value)
     } else {
       notifierStore.notify(t('alerts.patient.creationFailed'), 'error')
     }
@@ -382,6 +364,7 @@ const updatePatient = async () => {
     if (response.responseObject) {
       createdPatient.value = response.responseObject
       currentStep.value = 2
+      console.log('Patient updated:', response.responseObject.id)
       notifierStore.notify(t('creationFlow.patientUpdated'), 'success')
     }
   } catch (error: unknown) {
@@ -408,6 +391,7 @@ const loadPatientByExternalId = async (externalId: string) => {
       caseData.value.patient = response.responseObject.id || null
       currentStep.value = 2
       showDuplicatePatientDialog.value = false
+      console.log('Patient loaded:', response.responseObject.id)
       notifierStore.notify(t('creationFlow.patientLoaded'), 'success')
       return
     }
@@ -439,13 +423,15 @@ const handleCancelDuplicateDialog = () => {
 // Handle case creation from embedded form
 const handleCaseSubmit = (caseData: GetAllPatientCases200ResponseResponseObjectInner) => {
   createdCase.value = caseData
+  const isUpdate = caseData.id === createdCase.value?.id
+  console.log(isUpdate ? 'Case updated:' : 'Case created:', caseData.id)
+  
   // Only advance step if we're moving forward, not if we're saving before going back
   if (currentStep.value === 2) {
     currentStep.value = 3
   }
-  const message = caseData.id === createdCase.value?.id ?
-    t('creationFlow.caseUpdated') :
-    t('creationFlow.caseCreated')
+  
+  const message = isUpdate ? t('creationFlow.caseUpdated') : t('creationFlow.caseCreated')
   notifierStore.notify(message, 'success')
 }
 
@@ -491,9 +477,9 @@ const handleCaseCancel = () => {
 const handleSurgerySubmit = async (surgery: Surgery) => {
   const isUpdate = createdSurgery.value?.id === surgery.id
   createdSurgery.value = surgery
-  const message = isUpdate ?
-    t('creationFlow.surgeryUpdated') :
-    t('creationFlow.surgeryCreated')
+  console.log(isUpdate ? 'Surgery updated:' : 'Surgery created:', surgery.id)
+  
+  const message = isUpdate ? t('creationFlow.surgeryUpdated') : t('creationFlow.surgeryCreated')
   notifierStore.notify(message, 'success')
 
   // Advance to step 4 immediately after surgery creation/update
@@ -529,7 +515,7 @@ const finishFlow = () => {
 const handleSkipSurgery = () => {
   skipSurgery.value = true
   currentStep.value = 4
-  notifierStore.notify(t('creationFlow.surgerySkipped'), 'info')
+  console.log('Surgery skipped, proceeding to consultations')
 }
 
 // Handle consultation blueprint selection
@@ -587,7 +573,9 @@ const handleConsultationsSubmit = async (consultations: Consultation[]) => {
     firstConsultation: createdConsultations.value[0]
   })
 
-  notifierStore.notify(t('creationFlow.consultationsCreated', { count: consultations.length }), 'success')
+  if (consultations.length > 0) {
+    notifierStore.notify(t('creationFlow.consultationsCreated', { count: consultations.length }), 'success')
+  }
 
   // Don't auto-advance - let the consultation dialog handle the flow
 }
@@ -600,6 +588,7 @@ const handleManualConsultationSubmitStep4 = async (consultation: Consultation) =
   createdConsultations.value.push(consultation)
   
   showManualConsultationDialogStep4.value = false
+  console.log('Manual consultation added to list:', consultation.id)
   notifierStore.notify(t('alerts.consultation.created'), 'success')
 }
 
@@ -642,6 +631,7 @@ const copyPatientUrl = () => {
   const url = getPatientUrl()
   if (url) {
     navigator.clipboard.writeText(url).then(() => {
+      console.log('Patient URL copied to clipboard')
       notifierStore.notify(t('creationFlow.urlCopied'), 'success')
     }).catch(() => {
       notifierStore.notify(t('creationFlow.urlCopyFailed'), 'error')
@@ -653,6 +643,7 @@ const copyCaseUrl = () => {
   const url = getCaseUrl()
   if (url) {
     navigator.clipboard.writeText(url).then(() => {
+      console.log('Case URL copied to clipboard')
       notifierStore.notify(t('creationFlow.urlCopied'), 'success')
     }).catch(() => {
       notifierStore.notify(t('creationFlow.urlCopyFailed'), 'error')
@@ -748,6 +739,7 @@ const copyQRCodeUrl = () => {
   const url = getQRCodeUrl()
   if (url) {
     navigator.clipboard.writeText(url).then(() => {
+      console.log('QR code URL copied to clipboard')
       notifierStore.notify(t('creationFlow.urlCopied'), 'success')
     }).catch(() => {
       notifierStore.notify(t('creationFlow.urlCopyFailed'), 'error')
@@ -768,6 +760,7 @@ const copyFirstConsultationUrl = () => {
   const url = getFirstConsultationUrl()
   if (url) {
     navigator.clipboard.writeText(url).then(() => {
+      console.log('Consultation URL copied to clipboard')
       notifierStore.notify(t('creationFlow.urlCopied'), 'success')
     }).catch(() => {
       notifierStore.notify(t('creationFlow.urlCopyFailed'), 'error')
@@ -805,6 +798,7 @@ onMounted(async () => {
       const response = await userDepartmentApi.getDepartmentById({ id: userStore.department })
       if (response.responseObject) {
         departmentName.value = response.responseObject.name || ''
+        console.log('Department loaded:', departmentName.value)
       }
     } catch (error) {
       logger.error('❌ Error fetching department name:', error)
@@ -831,7 +825,7 @@ onMounted(async () => {
         createdPatient.value = response.responseObject
         caseData.value.patient = response.responseObject.id || null
         currentStep.value = 2
-        notifierStore.notify(t('creationFlow.patientLoaded'), 'info')
+        console.log('Patient loaded from route:', response.responseObject.id)
       }
     } catch (error: unknown) {
       let errorMessage = 'An unexpected error occurred'
