@@ -891,14 +891,13 @@ onMounted(async () => {
                       <!-- External Patient IDs -->
                       <v-row class="flex-wrap" align="center" dense>
                         <v-col
-                          v-for="(externalId, index) in patientData.externalPatientId || []"
-                          :key="index"
-                          cols="4"
-                          class="mb-2">
+                               v-for="(externalId, index) in patientData.externalPatientId || []"
+                               :key="index"
+                               cols="3">
                           <v-text-field
                                         v-model="patientData.externalPatientId![index]"
                                         :label="t('forms.patient.externalId') + (index > 0 ? ' ' + (index + 1) : '')"
-                                        :hint="index === 0 ? t('forms.externalIdHint') : ''"
+
                                         :persistent-hint="index === 0"
                                         density="compact">
                             <template #append-inner>
