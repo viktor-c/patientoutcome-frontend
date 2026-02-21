@@ -792,17 +792,17 @@ const removeExternalIdField = (index: number) => {
 
 // Initialize data from route query if available
 onMounted(async () => {
-  // Fetch department name if department ID is available
-  if (userStore.department) {
-    try {
-      const response = await userDepartmentApi.getDepartmentById({ id: userStore.department })
-      if (response.responseObject) {
-        departmentName.value = response.responseObject.name || ''
-        console.log('Department loaded:', departmentName.value)
-      }
-    } catch (error) {
-      logger.error('❌ Error fetching department name:', error)
-      // Fall back to showing the ID if fetch fails
+  // Always fetch the current user's department (ignores userStore.department value)
+  try {
+    const response = await userDepartmentApi.getUserDepartment()
+    if (response && response.responseObject) {
+      departmentName.value = response.responseObject.name || ''
+      console.log('User department loaded:', departmentName.value)
+    }
+  } catch (error) {
+    logger.error('❌ Error fetching user department:', error)
+    // Fall back to showing whatever is in the store if available
+    if (userStore.department) {
       departmentName.value = userStore.department
     }
   }
