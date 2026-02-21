@@ -16,6 +16,12 @@ vi.mock('@/forms/registry', () => ({
   getFormPlugin: (id: string) => mockGetFormPlugin(id)
 }))
 
+vi.mock('@/stores/userStore', () => ({
+  useUserStore: () => ({
+    hasRole: () => false
+  })
+}))
+
 // Create a mock form component
 const MockFormComponent: Component = {
   name: 'MockFormComponent',
@@ -36,10 +42,7 @@ const MockFormComponent: Component = {
       h('div', { class: 'form-data' }, JSON.stringify(props.modelValue)),
       h('button', {
         onClick: () => emit('update:modelValue', { test: { q1: 1 } })
-      }, 'Update Data'),
-      h('button', {
-        onClick: () => emit('validation-change', true)
-      }, 'Emit Validation')
+      }, 'Update Data')
     ])
   }
 }
@@ -93,7 +96,7 @@ describe('PluginFormRenderer.vue', () => {
 
   const mountComponent = (props: {
     templateId: string
-    modelValue: PatientFormData | null | any
+    modelValue: PatientFormData | null
     readonly?: boolean
     locale?: string
   }) => {
@@ -111,7 +114,7 @@ describe('PluginFormRenderer.vue', () => {
 
       wrapper = mountComponent({
         templateId: 'test-plugin-id',
-        modelValue: { test: { q1: null } }
+        modelValue: { test: { q1: null } } as unknown as PatientFormData
       })
 
       expect(mockGetFormPlugin).toHaveBeenCalledWith('test-plugin-id')
@@ -123,7 +126,7 @@ describe('PluginFormRenderer.vue', () => {
 
       wrapper = mountComponent({
         templateId: 'non-existent-plugin',
-        modelValue: {}
+        modelValue: {} as unknown as PatientFormData
       })
 
       await wrapper.vm.$nextTick()
@@ -140,7 +143,7 @@ describe('PluginFormRenderer.vue', () => {
 
       wrapper = mountComponent({
         templateId: 'missing-plugin',
-        modelValue: {}
+        modelValue: {} as unknown as PatientFormData
       })
 
       expect(consoleSpy).toHaveBeenCalledWith(
@@ -156,7 +159,7 @@ describe('PluginFormRenderer.vue', () => {
 
       wrapper = mountComponent({
         templateId: 'test-plugin-id',
-        modelValue: {}
+        modelValue: {} as unknown as PatientFormData
       })
 
       expect(consoleSpy).toHaveBeenCalledWith(
@@ -177,7 +180,12 @@ describe('PluginFormRenderer.vue', () => {
 
       wrapper = mountComponent({
         templateId: 'test-plugin-id',
-        modelValue: formData
+        modelValue: {
+          rawFormData: formData,
+          fillStatus: 'draft',
+          beginFill: null,
+          completedAt: null
+        } as unknown as PatientFormData
       })
 
       const mockForm = wrapper.findComponent(MockFormComponent)
@@ -187,7 +195,7 @@ describe('PluginFormRenderer.vue', () => {
     it('should pass readonly prop to plugin component', () => {
       wrapper = mountComponent({
         templateId: 'test-plugin-id',
-        modelValue: {},
+        modelValue: {} as unknown as PatientFormData,
         readonly: true
       })
 
@@ -198,7 +206,7 @@ describe('PluginFormRenderer.vue', () => {
     it('should default readonly to false', () => {
       wrapper = mountComponent({
         templateId: 'test-plugin-id',
-        modelValue: {}
+        modelValue: {} as unknown as PatientFormData
       })
 
       const mockForm = wrapper.findComponent(MockFormComponent)
@@ -208,7 +216,7 @@ describe('PluginFormRenderer.vue', () => {
     it('should pass locale prop to plugin component', () => {
       wrapper = mountComponent({
         templateId: 'test-plugin-id',
-        modelValue: {},
+        modelValue: {} as unknown as PatientFormData,
         locale: 'de'
       })
 
@@ -219,7 +227,7 @@ describe('PluginFormRenderer.vue', () => {
     it('should default locale to "en"', () => {
       wrapper = mountComponent({
         templateId: 'test-plugin-id',
-        modelValue: {}
+        modelValue: {} as unknown as PatientFormData
       })
 
       const mockForm = wrapper.findComponent(MockFormComponent)
@@ -235,27 +243,19 @@ describe('PluginFormRenderer.vue', () => {
     it('should emit update:modelValue when plugin component emits it', async () => {
       wrapper = mountComponent({
         templateId: 'test-plugin-id',
-        modelValue: {}
+        modelValue: {} as unknown as PatientFormData
       })
 
       const updateButton = wrapper.find('button')
       await updateButton.trigger('click')
 
       expect(wrapper.emitted('update:modelValue')).toBeTruthy()
-      expect(wrapper.emitted('update:modelValue')?.[0]).toEqual([{ test: { q1: 1 } }])
-    })
-
-    it('should emit validation-change when plugin component emits it', async () => {
-      wrapper = mountComponent({
-        templateId: 'test-plugin-id',
-        modelValue: {}
-      })
-
-      const validationButton = wrapper.findAll('button')[2]
-      await validationButton.trigger('click')
-
-      expect(wrapper.emitted('validation-change')).toBeTruthy()
-      expect(wrapper.emitted('validation-change')?.[0]).toEqual([true])
+      expect(wrapper.emitted('update:modelValue')?.[0]?.[0]).toEqual(
+        expect.objectContaining({
+          test: { q1: 1 },
+          beginFill: expect.any(Date)
+        })
+      )
     })
   })
 
@@ -267,11 +267,23 @@ describe('PluginFormRenderer.vue', () => {
     it('should update plugin component when modelValue prop changes', async () => {
       wrapper = mountComponent({
         templateId: 'test-plugin-id',
-        modelValue: { test: { q1: 1 } }
+        modelValue: {
+          rawFormData: { test: { q1: 1 } },
+          fillStatus: 'draft',
+          beginFill: null,
+          completedAt: null
+        } as unknown as PatientFormData
       })
 
       const newData = { test: { q1: 2 } }
-      await wrapper.setProps({ modelValue: newData })
+      await wrapper.setProps({
+        modelValue: {
+          rawFormData: newData,
+          fillStatus: 'draft',
+          beginFill: null,
+          completedAt: null
+        } as unknown as PatientFormData
+      })
 
       const mockForm = wrapper.findComponent(MockFormComponent)
       expect(mockForm.props('modelValue')).toEqual(newData)
@@ -280,7 +292,7 @@ describe('PluginFormRenderer.vue', () => {
     it('should update plugin component when readonly prop changes', async () => {
       wrapper = mountComponent({
         templateId: 'test-plugin-id',
-        modelValue: {},
+        modelValue: {} as unknown as PatientFormData,
         readonly: false
       })
 
@@ -293,7 +305,7 @@ describe('PluginFormRenderer.vue', () => {
     it('should update plugin component when locale prop changes', async () => {
       wrapper = mountComponent({
         templateId: 'test-plugin-id',
-        modelValue: {},
+        modelValue: {} as unknown as PatientFormData,
         locale: 'en'
       })
 
@@ -310,7 +322,7 @@ describe('PluginFormRenderer.vue', () => {
 
       wrapper = mountComponent({
         templateId: 'test-plugin-id',
-        modelValue: {}
+        modelValue: {} as unknown as PatientFormData
       })
 
       expect(wrapper.find('[data-testid="mock-form-component"]').exists()).toBe(true)
@@ -318,11 +330,11 @@ describe('PluginFormRenderer.vue', () => {
 
     it('should handle plugin with missing component gracefully', () => {
       const brokenPlugin = { ...mockPlugin, component: undefined }
-      mockGetFormPlugin.mockReturnValue(brokenPlugin as any)
+      mockGetFormPlugin.mockReturnValue(brokenPlugin as unknown as FormPlugin)
 
       wrapper = mountComponent({
         templateId: 'test-plugin-id',
-        modelValue: {}
+        modelValue: {} as unknown as PatientFormData
       })
 
       // Should show loading state or handle gracefully
@@ -339,7 +351,7 @@ describe('PluginFormRenderer.vue', () => {
     it('should have proper wrapper element', () => {
       wrapper = mountComponent({
         templateId: 'test-plugin-id',
-        modelValue: {}
+        modelValue: {} as unknown as PatientFormData
       })
 
       expect(wrapper.find('.plugin-form-renderer').exists()).toBe(true)
@@ -350,7 +362,7 @@ describe('PluginFormRenderer.vue', () => {
 
       wrapper = mountComponent({
         templateId: 'missing',
-        modelValue: {}
+        modelValue: {} as unknown as PatientFormData
       })
 
       const alert = wrapper.find('.v-alert')

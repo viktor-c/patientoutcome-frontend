@@ -273,7 +273,7 @@ defineExpose({
               <div class="d-flex flex-wrap gap-1">
                 <v-chip
                         v-for="(form, formIndex) in consultation.proms"
-                        :key="form.id || `form-${formIndex}`"
+                  :key="form.id == null ? `form-${formIndex}` : String(form.id)"
                         size="x-small"
                         :color="form.patientFormData?.fillStatus === 'complete' ? 'success' : 'warning'"
                         class="me-1">

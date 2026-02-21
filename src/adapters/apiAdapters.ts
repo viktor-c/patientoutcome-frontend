@@ -2,13 +2,15 @@
 import type { FindAllCodes200ResponseResponseObjectInnerConsultationIdPromsInner as FormFromApi } from '@/api'
 import type { GetAllPatientCases200ResponseResponseObjectInner as PatientCaseFromApi } from '@/api'
 import type { GetAllPatientCases200ResponseResponseObjectInnerSurgeriesInner as SurgeryFromApi } from '@/api'
-import type { Form, PatientCase, Surgery, FormData, ScoringData } from '@/types'
+import type { Form, PatientCase, Surgery } from '@/types'
 
 // Convert generated form model to internal Form
 export function mapApiFormToForm(api: FormFromApi): Form {
+  const normalizedId = api.id == null ? null : String(api.id)
+
   return {
-    id: api.id || null,
-    _id: api.id || '', // For backward compatibility 
+    id: normalizedId,
+    _id: normalizedId || '', // For backward compatibility 
     title: api.title || '',
     description: api.description || '',
     patientFormData: (api as any).patientFormData || null,

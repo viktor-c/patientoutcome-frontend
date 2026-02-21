@@ -24,7 +24,7 @@ import type { ScaleInfo } from '@/utils/scaleInfo'
  * @returns Filtered questions object
  */
 function extractEFASQuestions(
-  section: Record<string, any> | undefined,
+  section: Record<string, unknown> | undefined,
   questionKeys: string[]
 ): Record<string, number | null> {
   const result: Record<string, number | null> = {}
@@ -235,7 +235,6 @@ export function getScaleInfo(score: SubscaleScore, subscaleKey?: string): ScaleI
   
   // Determine which subscale based on name, subscaleKey, or maxScore
   let maxScore = score.maxScore ?? 40
-  const scaleLabel = 'EFAS'
   
   // Check subscaleKey first (most explicit)
   if (subscaleKey === 'standard' || scoreName.includes('standard')) {

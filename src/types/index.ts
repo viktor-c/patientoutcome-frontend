@@ -7,6 +7,10 @@
 // Import shared scoring types
 import type { FormQuestions, PatientFormData } from './scoring'
 
+// alias for API patient form data type (helps shield components from long names)
+// we use an inline import here to avoid exporting the long generated symbol itself
+export type ApiPatientFormData = import('@/api').FindAllCodes200ResponseResponseObjectInnerConsultationIdPromsInnerPatientFormData
+
 export interface Patient {
   _id?: string
   id?: string | null // For OpenAPI compatibility (can be null)

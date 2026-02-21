@@ -69,17 +69,11 @@ function clearForm() {
 // Handle form data changes - receives FormSubmissionData from plugin
 function handleDataChange(submissionData: FormSubmissionData) {
   formData.value = submissionData.rawFormData as unknown as Record<string, unknown>
-  scoring.value = submissionData as any
+  scoring.value = submissionData as unknown as ScoringData
   console.log('[PluginDemo] Form submission data updated:', submissionData)
   console.log('[PluginDemo] - Raw data:', submissionData.rawFormData)
   console.log('[PluginDemo] - Scoring:', submissionData.subscales)
   console.log('[PluginDemo] - Fill status:', submissionData.fillStatus)
-}
-
-// Handle scoring changes
-function handleScoreChange(newScoring: ScoringData) {
-  scoring.value = newScoring
-  console.log('[PluginDemo] Scoring updated:', newScoring)
 }
 
 // Handle validation changes

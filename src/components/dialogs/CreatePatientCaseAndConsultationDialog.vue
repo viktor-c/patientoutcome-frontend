@@ -99,8 +99,8 @@ const submitPatientForm = async () => {
       createPatientRequest: {
         externalPatientId: externalId.value,
         sex: sex.value,
-        department: department.value || undefined,
-      } as any,
+        departments: department.value ? [{ id: department.value }] : undefined,
+      },
     })
     if (response.responseObject && response.responseObject.id) {
       createdPatientId.value = response.responseObject.id

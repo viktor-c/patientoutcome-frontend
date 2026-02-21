@@ -278,9 +278,9 @@ onMounted(() => {
               <v-list v-else>
                 <v-list-item
                              v-for="(formItem, index) in consultation.responseObject.proms"
-                             :key="formItem.id || index"
+                             :key="formItem.id == null ? index : String(formItem.id)"
                              class="border-b list-item-clickable"
-                             @click="onListItemClick(formItem.id || '')"
+                             @click="onListItemClick(formItem.id == null ? '' : String(formItem.id))"
                              tabindex="0"
                              ripple
                              active-class="list-item-active">
@@ -309,7 +309,7 @@ onMounted(() => {
 
                   <template #append>
                     <v-btn
-                           @click="openForm(formItem.id || '')"
+                            @click="openForm(formItem.id == null ? '' : String(formItem.id))"
                            :color="formItem.patientFormData ? 'primary' : 'success'"
                            :prepend-icon="formItem.patientFormData ? 'mdi-eye' : 'mdi-play'"
                            variant="outlined"

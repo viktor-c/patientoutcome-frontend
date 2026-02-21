@@ -9,7 +9,7 @@ import { mapApiFormsToForms } from '@/adapters/apiAdapters'
 import { useNotifierStore } from '@/stores/notifierStore'
 import { logger } from '@/services/logger'
 
-import type { Form } from '@/types/index'
+import type { Form, PatientFormData } from '@/types/index'
 import type { FormSubmissionData } from '@/forms/types'
 
 import { useWindowScroll, useWindowSize } from '@vueuse/core'
@@ -102,12 +102,12 @@ const processFormData = (submissionData: FormSubmissionData, formIndex: number) 
   // Store the raw form data (extract rawData from FormSubmissionData)
   if (currentFormId) {
     logger.debug(`ShowConsultationForms: Updating forms[${formIndex}].patientFormData`)
-    forms.value[formIndex].patientFormData = submissionData as any
+    forms.value[formIndex].patientFormData = submissionData as unknown as PatientFormData
     // Also update in allForms to keep data in sync
     const allFormIndex = allForms.value.findIndex(f => f._id === currentFormId)
     if (allFormIndex !== -1) {
       logger.debug(`ShowConsultationForms: Also updating allForms[${allFormIndex}].patientFormData`)
-      allForms.value[allFormIndex].patientFormData = submissionData as any
+      allForms.value[allFormIndex].patientFormData = submissionData as unknown as PatientFormData
     }
   }
 }
@@ -152,11 +152,11 @@ const submitForm = async () => {
     logger.debug(`Saving form ${currentFormIndex.value}: ${currentForm._id}`)
 
     // form data should be saved even if the form is incomplete
-    const updatePayload = {
+    const updatePayload: Parameters<typeof formApi.updateForm>[0] = {
       formId: currentForm._id,
       updateFormRequest: {
         code: externalCode ? externalCode : "", // Include code if available for authorization
-        patientFormData: currentForm.patientFormData as any,
+        patientFormData: currentForm.patientFormData as never,
       }
     }
 

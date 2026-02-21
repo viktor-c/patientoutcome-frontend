@@ -1,4 +1,5 @@
 <script setup lang="ts">
+/* eslint-disable vue/no-deprecated-filter */
 import { computed, toRef } from 'vue'
 import { useForm } from '../../composables/useForm'
 import { calculateScore } from './scoring'

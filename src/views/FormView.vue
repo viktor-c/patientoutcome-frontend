@@ -1,13 +1,13 @@
 <script setup lang="ts">
 import PluginFormRenderer from '@/forms/components/PluginFormRenderer.vue'
-import { ref, onMounted, computed } from 'vue'
+import { ref, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { ResponseError, formApi } from '@/api'
+import { toApiPatientFormData } from '@/utils/formDataUtils'
 
 import type { Form } from '@/types/index'
 import type { FormSubmissionData } from '@/forms/types'
-import type { ScoringData } from '@/types/backend/scoring'
 import { mapApiFormToForm } from '@/adapters/apiAdapters'
 import { consultationApi } from '@/api'
 import { logger } from '@/services/logger'
@@ -25,6 +25,7 @@ const tab = ref('0') // Tab index for navigation
 const loading = ref(true)
 const error = ref<string | null>(null)
 const savingStates = ref<Record<number, boolean>>({})
+
 
 // Fetch consultation data and populate forms
 onMounted(async () => {
@@ -59,12 +60,6 @@ const canUsePlugin = (form: Form): boolean => {
   return !!form.formTemplateId
 }
 
-// Get current form
-const currentForm = computed(() => {
-  const index = Number.parseInt(tab.value, 10)
-  return forms.value[index] || null
-})
-
 // Handle form data changes with auto-save
 const handleFormDataChange = async (submissionData: FormSubmissionData, formIndex: number) => {
   const form = forms.value[formIndex]
@@ -72,7 +67,7 @@ const handleFormDataChange = async (submissionData: FormSubmissionData, formInde
 
   try {
     // Update local state immediately - store the full PatientFormData structure
-    form.patientFormData = submissionData as any
+    form.patientFormData = submissionData
 
     // Auto-save to backend with full PatientFormData structure
     savingStates.value[formIndex] = true
@@ -80,7 +75,7 @@ const handleFormDataChange = async (submissionData: FormSubmissionData, formInde
     await formApi.updateForm({
       formId: form._id,
       updateFormRequest: {
-        patientFormData: submissionData as any,
+        patientFormData: toApiPatientFormData(submissionData),
       },
     })
 
@@ -92,39 +87,9 @@ const handleFormDataChange = async (submissionData: FormSubmissionData, formInde
   }
 }
 
-// Handle scoring changes
-const handleScoreChange = async (scoring: ScoringData, formIndex: number) => {
-  const form = forms.value[formIndex]
-  if (!form || !form._id) return
-
-  try {
-    logger.debug('Scoring data received', { formIndex, scoring })
-    // Optionally save scoring if needed
-  } catch (err) {
-    logger.error('Failed to handle scoring', { error: err, formIndex })
-  }
-}
-
 // Handle validation changes
 const handleValidationChange = (isValid: boolean, formIndex: number) => {
   logger.debug('Form validation status', { formIndex, isValid })
-}
-
-// Navigate to previous form
-const handleGotoPreviousForm = (formIndex: number) => {
-  if (formIndex > 0) {
-    tab.value = String(formIndex - 1)
-  }
-}
-
-// Navigate to next form
-const handleGotoNextForm = (formIndex: number) => {
-  if (formIndex < forms.value.length - 1) {
-    tab.value = String(formIndex + 1)
-  } else {
-    // Go to finish tab
-    tab.value = String(forms.value.length)
-  }
 }
 
 // Handle final submission
@@ -134,17 +99,20 @@ const handleSubmitAll = async () => {
     await Promise.all(
       forms.value.map((form) =>
         form._id && form.patientFormData
-          ? formApi.updateForm({
-            formId: form._id,
-            updateFormRequest: {
-              patientFormData: {
-                ...form.patientFormData,
-                fillStatus: 'complete',
-                completedAt: new Date().toISOString(),
-              } as any,
-              formEndTime: new Date().toISOString(),
-            },
-          })
+          ? (() => {
+            const completedFormData: FormSubmissionData = {
+              ...form.patientFormData,
+              fillStatus: 'complete',
+              completedAt: new Date().toISOString(),
+            }
+            return formApi.updateForm({
+              formId: form._id,
+              updateFormRequest: {
+                patientFormData: toApiPatientFormData(completedFormData),
+                formEndTime: new Date().toISOString(),
+              },
+            })
+          })()
           : Promise.resolve()
       )
     )
@@ -193,7 +161,7 @@ const handleSubmitAll = async () => {
                   <!-- Plugin-based form renderer -->
                   <PluginFormRenderer
                                       :template-id="form.formTemplateId"
-                                      :model-value="(form.patientFormData as any)"
+                                      :model-value="form.patientFormData"
                                       :locale="locale"
                                       @update:model-value="(data) => handleFormDataChange(data, formIndex)"
                                       @validation-change="(valid: boolean) => handleValidationChange(valid, formIndex)" />

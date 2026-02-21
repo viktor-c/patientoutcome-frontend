@@ -120,8 +120,8 @@ export function validateFormData(data: FormData): boolean {
     if (typeof value !== 'number') return false
 
     // Must be one of the valid enum values for this question
-    const validValues = QUESTION_VALUES[key as keyof typeof QUESTION_VALUES]
-    if (!validValues.includes(value as any)) return false
+    const validValues = QUESTION_VALUES[key as keyof typeof QUESTION_VALUES] as readonly number[]
+    if (!validValues.includes(Number(value))) return false
   }
 
   return true
@@ -168,7 +168,8 @@ export function generateMockData(): FormData {
  * Get scale information for AOFAS scores
  * AOFAS: 0-100 scale, higher is better
  */
-export function getScaleInfo(score: SubscaleScore, _subscaleKey?: string): ScaleInfo {
+export function getScaleInfo(score: SubscaleScore, subscaleKey?: string): ScaleInfo {
+  void subscaleKey
   const rawScore = score.rawScore ?? 0
   
   // AOFAS uses raw score directly (0-100)

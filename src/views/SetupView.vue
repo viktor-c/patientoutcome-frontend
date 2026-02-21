@@ -143,7 +143,7 @@ async function createAdmin() {
         centerShortName: adminForm.value.centerShortName,
         centerDescription: adminForm.value.centerDescription,
         belongsToCenter: adminForm.value.belongsToCenter
-      } as any // Cast to any until API types are regenerated
+      }
     })
 
     if (response.success) {

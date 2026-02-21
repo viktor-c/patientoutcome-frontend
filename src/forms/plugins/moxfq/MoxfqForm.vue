@@ -4,7 +4,6 @@ import { useForm } from '../../composables/useForm'
 import { calculateScore } from './scoring'
 import { translations } from './translations'
 import type { FormComponentProps, FormComponentEvents, FormSubmissionData } from '../../types'
-import type { ScoringData } from '@/types/backend/scoring'
 
 // Component props following the plugin interface
 const props = withDefaults(defineProps<FormComponentProps>(), {

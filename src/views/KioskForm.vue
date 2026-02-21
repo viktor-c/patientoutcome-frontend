@@ -8,6 +8,7 @@ import { formApi, kioskApi } from '@/api'
 import { mapApiFormToForm } from '@/adapters/apiAdapters'
 import type { Form } from '@/types/index'
 import type { FormSubmissionData } from '@/forms/types'
+import { toApiPatientFormData, extractObjectId } from '@/utils/formDataUtils'
 
 const { t } = useI18n()
 const route = useRoute()
@@ -28,20 +29,18 @@ const currentForm = computed(() => form.value)
 // Computed formId from route params
 const formId = computed(() => route.params.formId as string)
 
+
+
 // Fetch consultation data to get the list of all forms
 const fetchConsultationForms = async () => {
   try {
     const response = await kioskApi.getConsultation()
-    const consultationData = response.responseObject as Record<string, unknown> | undefined
+    const consultationData = response.responseObject
 
-    if (consultationData && 'proms' in consultationData && Array.isArray(consultationData.proms)) {
+    if (consultationData && Array.isArray(consultationData.proms)) {
       allFormIds.value = consultationData.proms
-        .map((p) => {
-          if (!p || typeof p !== 'object') return ''
-          const r = p as Record<string, unknown>
-          return ('id' in r && r['id']) ? String(r['id']) : ('_id' in r && r['_id']) ? String(r['_id']) : ''
-        })
-        .filter(id => id !== '')
+        .map((prom) => extractObjectId(prom.id) || '')
+        .filter((id): id is string => id !== '')
 
       // Find current form index
       currentFormIndex.value = allFormIds.value.findIndex(id => id === formId.value)
@@ -95,55 +94,19 @@ const processFormData = async (submissionData: FormSubmissionData) => {
   console.debug('Form data changed:', submissionData)
   if (form.value && form.value._id) {
     // Update local state with full PatientFormData structure
-    form.value.patientFormData = submissionData as any
+    form.value.patientFormData = submissionData
     
     // Auto-save to backend with full PatientFormData structure
     try {
       await formApi.updateForm({
         formId: form.value._id,
         updateFormRequest: {
-          patientFormData: submissionData as any,
+          patientFormData: toApiPatientFormData(submissionData),
         },
       })
     } catch (err) {
       console.error('Failed to auto-save form data:', err)
     }
-  }
-}
-
-// Handle form submission
-const handleSubmitForm = () => {
-  console.log('Form submitted successfully')
-
-  // Navigate back to kiosk view
-  router.push({ name: 'kiosk' })
-}
-
-// Navigate to next form
-const handleGotoNextForm = () => {
-  console.log('KioskForm: Navigating to next form')
-  if (currentFormIndex.value >= 0 && currentFormIndex.value < allFormIds.value.length - 1) {
-    const nextFormId = allFormIds.value[currentFormIndex.value + 1]
-    console.log('KioskForm: Next form ID:', nextFormId)
-    router.push({ name: 'kioskform', params: { formId: nextFormId } })
-  } else {
-    // No more forms, go back to kiosk list
-    console.log('KioskForm: No next form, returning to kiosk list')
-    router.push({ name: 'kiosk' })
-  }
-}
-
-// Navigate to previous form
-const handleGotoPreviousForm = () => {
-  console.log('KioskForm: Navigating to previous form')
-  if (currentFormIndex.value > 0) {
-    const prevFormId = allFormIds.value[currentFormIndex.value - 1]
-    console.log('KioskForm: Previous form ID:', prevFormId)
-    router.push({ name: 'kioskform', params: { formId: prevFormId } })
-  } else {
-    // Already at first form, go back to kiosk list
-    console.log('KioskForm: At first form, returning to kiosk list')
-    router.push({ name: 'kiosk' })
   }
 }
 
@@ -197,7 +160,7 @@ const goBackToKiosk = () => {
           <PluginFormRenderer
                        :key="formId"
                        :template-id="currentForm?.formTemplateId || formId"
-                       :model-value="(currentForm?.patientFormData as any) || {}"
+                       :model-value="currentForm?.patientFormData || null"
                        @update:model-value="processFormData" />
         </v-card-text>
       </v-card>

@@ -4,7 +4,6 @@ import { useForm } from '../../composables/useForm'
 import { calculateScore } from './scoring'
 import { translations } from './translations'
 import type { FormComponentProps, FormComponentEvents, FormSubmissionData } from '../../types'
-import type { ScoringData } from '@/types/backend/scoring'
 
 // Component props following the plugin interface
 const props = withDefaults(defineProps<FormComponentProps>(), {
@@ -16,7 +15,7 @@ const props = withDefaults(defineProps<FormComponentProps>(), {
 const emit = defineEmits<FormComponentEvents>()
 
 // Use the shared form composable
-const { updateQuestion, getQuestion, t } = useForm({
+const { updateQuestion, t } = useForm({
   modelValue: toRef(props, 'modelValue'),
   calculateScore,
   translations,
@@ -44,15 +43,6 @@ const sportQuestions = computed(() => [
   { key: 's2', section: 'sportfragebogen' },
   { key: 's3', section: 'sportfragebogen' },
   { key: 's4', section: 'sportfragebogen' },
-])
-
-// Answer options (0-4 scale)
-const answerOptions = computed(() => [
-  { value: 0, label: '0' },
-  { value: 1, label: '1' },
-  { value: 2, label: '2' },
-  { value: 3, label: '3' },
-  { value: 4, label: '4' },
 ])
 
 // Check if a question is marked as N/A

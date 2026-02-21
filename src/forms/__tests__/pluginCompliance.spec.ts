@@ -1,7 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { getAllFormPlugins, getFormPlugin } from '@/forms/registry'
 import type { FormPlugin, FormData } from '@/forms/types'
-import type { ScoringData } from '@/types/backend/scoring'
 
 /**
  * Plugin Compliance Tests
@@ -196,7 +195,7 @@ describe('Form Plugin Compliance', () => {
         // Mutate data1
         if (Object.keys(data1).length > 0) {
           const firstKey = Object.keys(data1)[0]
-          ;(data1 as Record<string, any>)[firstKey] = { modified: true }
+          ;(data1 as Record<string, unknown>)[firstKey] = { modified: true }
         }
 
         // data2 should be unaffected

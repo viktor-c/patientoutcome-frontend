@@ -31,6 +31,24 @@ const route = useRoute()
 const notifierStore = useNotifierStore()
 const userStore = useUserStore()
 
+interface CaseBlueprintContent {
+  surgeries?: string | string[]
+}
+
+const isRecord = (value: unknown): value is Record<string, unknown> => {
+  return typeof value === 'object' && value !== null
+}
+
+const extractRecordId = (value: Record<string, unknown>): string | undefined => {
+  const directId = value.id
+  if (typeof directId === 'string' && directId.length > 0) return directId
+
+  const altId = value._id
+  if (typeof altId === 'string' && altId.length > 0) return altId
+
+  return undefined
+}
+
 // =============================================================================
 // URL PATTERNS FOR DIRECT ACCESS LINKS
 // =============================================================================
@@ -290,7 +308,7 @@ const createPatient = async () => {
       .map(id => (id || '').trim())
       .filter(id => id !== '')
 
-    const patientDataToSend: any = {
+    const patientDataToSend: CreatePatientRequest & { department?: string } = {
       ...patientData.value,
       externalPatientId: filteredExternalIds.length > 0 ? filteredExternalIds : undefined,
       department: patientData.value.department || undefined,
@@ -427,8 +445,7 @@ const handleCaseBlueprintApplied = (blueprint: Blueprint) => {
   logger.info('Case blueprint applied', { title: blueprint.title, content: blueprint.content })
 
   if (blueprint.content) {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const content = blueprint.content as any
+    const content = blueprint.content as CaseBlueprintContent
 
     // Surgery blueprint ID is stored in content.surgeries
     let surgeryId = null
@@ -485,12 +502,6 @@ const handleSurgeryCancel = () => {
 const handleConsultationBlueprints = (consultationBlueprintIds: string[]) => {
   logger.info('Received consultation blueprint IDs from surgery', { consultationBlueprintIds })
   surgeryBlueprintConsultations.value = consultationBlueprintIds
-}
-
-// Helper function to complete the flow
-const completeCreationFlow = () => {
-  // Move to step 5 (completion screen with URLs)
-  currentStep.value = 5
 }
 
 // Navigate to case view after completing the flow
@@ -674,7 +685,7 @@ const firstConsultationCode = computed(() => {
   }
   
   // Check if first consultation has a formAccessCode
-  const accessCode = firstConsultation.value.formAccessCode
+  const accessCode = firstConsultation.value.formAccessCode as unknown
   if (!accessCode) {
     logger.info('❌ No formAccessCode found on consultation')
     return null
@@ -685,9 +696,9 @@ const firstConsultationCode = computed(() => {
     type: typeof accessCode,
     isObject: typeof accessCode === 'object',
     isNull: accessCode === null,
-    keys: typeof accessCode === 'object' && accessCode !== null ? Object.keys(accessCode) : [],
-    hasCodeProp: typeof accessCode === 'object' && accessCode !== null && 'code' in accessCode,
-    codeProperty: typeof accessCode === 'object' && accessCode !== null ? (accessCode as any).code : undefined
+    keys: isRecord(accessCode) ? Object.keys(accessCode) : [],
+    hasCodeProp: isRecord(accessCode) && typeof accessCode.code === 'string',
+    codeProperty: isRecord(accessCode) ? accessCode.code : undefined
   })
   
   // Handle both string and object types
@@ -699,9 +710,9 @@ const firstConsultationCode = computed(() => {
     return accessCode
   }
   
-  if (typeof accessCode === 'object' && accessCode !== null && 'code' in accessCode) {
-    const codeValue = (accessCode as any).code
-    logger.info('✅ Extracted code from object:', { codeValue, objectId: (accessCode as any)._id || (accessCode as any).id })
+  if (isRecord(accessCode) && typeof accessCode.code === 'string') {
+    const codeValue = accessCode.code
+    logger.info('✅ Extracted code from object:', { codeValue, objectId: extractRecordId(accessCode) })
     return codeValue
   }
   
