@@ -216,8 +216,6 @@ const caseForEditing = computed(() => {
     patient: createdCase.value.patient?.id || createdPatient.value?.id || '',
     mainDiagnosis: createdCase.value.mainDiagnosis,
     mainDiagnosisICD10: createdCase.value.mainDiagnosisICD10,
-    studyDiagnosis: createdCase.value.studyDiagnosis,
-    studyDiagnosisICD10: createdCase.value.studyDiagnosisICD10,
     otherDiagnosis: createdCase.value.otherDiagnosis,
     otherDiagnosisICD10: createdCase.value.otherDiagnosisICD10,
     medicalHistory: createdCase.value.medicalHistory,

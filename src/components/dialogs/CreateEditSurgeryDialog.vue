@@ -26,9 +26,7 @@ const props = defineProps<{
   surgeryBlueprintIds?: string[]
   patientCaseData?: {
     mainDiagnosis?: string[]
-    studyDiagnosis?: string[]
     mainDiagnosisICD10?: string[]
-    studyDiagnosisICD10?: string[]
     otherDiagnosis?: string[]
     otherDiagnosisICD10?: string[]
   } | null

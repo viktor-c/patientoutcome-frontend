@@ -49,9 +49,7 @@ import { patientCaseApi, blueprintApi } from '@/api'
 
 const newCase = {
   mainDiagnosis: [],
-  studyDiagnosis: [],
   mainDiagnosisICD10: [],
-  studyDiagnosisICD10: [],
   otherDiagnosis: [],
   otherDiagnosisICD10: [],
   surgeries: [] as PatientCaseSurgery[],
@@ -198,22 +196,10 @@ const applyBlueprint = (blueprint: Blueprint) => {
       : [content.mainDiagnosis]
   }
 
-  if (content.studyDiagnosis) {
-    formCase.value.studyDiagnosis = Array.isArray(content.studyDiagnosis)
-      ? [...content.studyDiagnosis]
-      : [content.studyDiagnosis]
-  }
-
   if (content.mainDiagnosisICD10) {
     formCase.value.mainDiagnosisICD10 = Array.isArray(content.mainDiagnosisICD10)
       ? [...content.mainDiagnosisICD10]
       : [content.mainDiagnosisICD10]
-  }
-
-  if (content.studyDiagnosisICD10) {
-    formCase.value.studyDiagnosisICD10 = Array.isArray(content.studyDiagnosisICD10)
-      ? [...content.studyDiagnosisICD10]
-      : [content.studyDiagnosisICD10]
   }
 
   if (content.otherDiagnosis) {
@@ -445,34 +431,6 @@ loadDefaultBlueprints()
                       :label="t('forms.patientCase.mainDiagnosisICD10')"
                       v-model="formCase.mainDiagnosisICD10"
                       :items="formCase.mainDiagnosisICD10"
-                      multiple
-                      outlined
-                      dense
-                      chips
-                      clearable
-                      closable-chips></v-combobox>
-        </v-col>
-      </v-row>
-
-      <!-- Study Diagnosis Row -->
-      <v-row>
-        <v-col cols="12" md="6" lg="8">
-          <v-combobox
-                      :label="t('forms.patientCase.studyDiagnosis')"
-                      v-model="formCase.studyDiagnosis"
-                      :items="formCase.studyDiagnosis"
-                      multiple
-                      outlined
-                      dense
-                      chips
-                      clearable
-                      closable-chips></v-combobox>
-        </v-col>
-        <v-col cols="12" md="6" lg="4">
-          <v-combobox
-                      :label="t('forms.patientCase.studyDiagnosisICD10')"
-                      v-model="formCase.studyDiagnosisICD10"
-                      :items="formCase.studyDiagnosisICD10"
                       multiple
                       outlined
                       dense

@@ -195,26 +195,6 @@
 
               <v-col cols="12" md="6">
                 <v-combobox
-                  v-model="editedBlueprint.studyDiagnosis"
-                  :label="t('caseBlueprints.fields.studyDiagnosis')"
-                  multiple
-                  chips
-                  closable-chips
-                />
-              </v-col>
-
-              <v-col cols="12" md="6">
-                <v-combobox
-                  v-model="editedBlueprint.studyDiagnosisICD10"
-                  :label="t('caseBlueprints.fields.studyDiagnosisICD10')"
-                  multiple
-                  chips
-                  closable-chips
-                />
-              </v-col>
-
-              <v-col cols="12" md="6">
-                <v-combobox
                   v-model="editedBlueprint.otherDiagnosis"
                   :label="t('caseBlueprints.fields.otherDiagnosis')"
                   multiple
@@ -390,9 +370,7 @@ interface CaseBlueprintContent {
   externalId?: string
   patient?: string
   mainDiagnosis?: string[]
-  studyDiagnosis?: string[]
   mainDiagnosisICD10?: string[]
-  studyDiagnosisICD10?: string[]
   otherDiagnosis?: string[]
   otherDiagnosisICD10?: string[]
   surgeries?: string[]
@@ -454,8 +432,6 @@ const editedBlueprint = ref<{
   description: string
   mainDiagnosis: string[]
   mainDiagnosisICD10: string[]
-  studyDiagnosis: string[]
-  studyDiagnosisICD10: string[]
   otherDiagnosis: string[]
   otherDiagnosisICD10: string[]
   medicalHistory: string
@@ -465,8 +441,6 @@ const editedBlueprint = ref<{
   description: '',
   mainDiagnosis: [],
   mainDiagnosisICD10: [],
-  studyDiagnosis: [],
-  studyDiagnosisICD10: [],
   otherDiagnosis: [],
   otherDiagnosisICD10: [],
   medicalHistory: '',
@@ -597,8 +571,6 @@ const openCreateDialog = () => {
     description: '',
     mainDiagnosis: [],
     mainDiagnosisICD10: [],
-    studyDiagnosis: [],
-    studyDiagnosisICD10: [],
     otherDiagnosis: [],
     otherDiagnosisICD10: [],
     medicalHistory: '',
@@ -617,8 +589,6 @@ const openEditDialog = (item: BlueprintItem) => {
     description: item.description,
     mainDiagnosis: content.mainDiagnosis || [],
     mainDiagnosisICD10: content.mainDiagnosisICD10 || [],
-    studyDiagnosis: content.studyDiagnosis || [],
-    studyDiagnosisICD10: content.studyDiagnosisICD10 || [],
     otherDiagnosis: content.otherDiagnosis || [],
     otherDiagnosisICD10: content.otherDiagnosisICD10 || [],
     medicalHistory: content.medicalHistory || '',
@@ -637,8 +607,6 @@ const closeDialog = () => {
       description: '',
       mainDiagnosis: [],
       mainDiagnosisICD10: [],
-      studyDiagnosis: [],
-      studyDiagnosisICD10: [],
       otherDiagnosis: [],
       otherDiagnosisICD10: [],
       medicalHistory: '',
@@ -666,9 +634,7 @@ const saveBlueprint = async () => {
         externalId: '',
         patient: '',
         mainDiagnosis: editedBlueprint.value.mainDiagnosis,
-        studyDiagnosis: editedBlueprint.value.studyDiagnosis,
         mainDiagnosisICD10: editedBlueprint.value.mainDiagnosisICD10,
-        studyDiagnosisICD10: editedBlueprint.value.studyDiagnosisICD10,
         otherDiagnosis: editedBlueprint.value.otherDiagnosis,
         otherDiagnosisICD10: editedBlueprint.value.otherDiagnosisICD10,
         surgeries: selectedSurgeryBlueprint.value ? [selectedSurgeryBlueprint.value] : [],
