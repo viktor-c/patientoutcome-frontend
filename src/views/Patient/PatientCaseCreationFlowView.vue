@@ -228,6 +228,17 @@ const caseForEditing = computed(() => {
 })
 
 // API functions
+const handleEnter = async () => {
+  // ignore when dialogs open
+  if (isManualConsultationDialogOpen.value || showManualConsultationDialogStep4.value) return
+  // only respond if next button is shown and not disabled
+  if (currentStep.value < 5 &&
+      !(currentStep.value === 1 && !canProceedFromStep1.value) &&
+      !(currentStep.value === 2 && !canProceedFromStep2.value)) {
+    await nextStep()
+  }
+}
+
 const nextStep = async () => {
   if (currentStep.value === 1) {
     // If patient already created, update it before proceeding
@@ -835,7 +846,7 @@ onMounted(async () => {
 </script>
 
 <template>
-  <v-container class="w-100">
+  <v-container class="w-100" tabindex="0" @keydown.enter.prevent="handleEnter">
     <v-row justify="center">
       <v-col cols="12" sm="12" md="12" lg="10" xl="10">
         <v-card>
