@@ -14,6 +14,7 @@ import {
 } from '@/api'
 import { useNotifierStore } from '@/stores/notifierStore'
 import CreateEditConsultationDialog from '@/components/dialogs/CreateEditConsultationDialog.vue'
+import NotesEditor from '@/components/forms/NotesEditor.vue'
 
 const { t, locale } = useI18n()
 const route = useRoute()
@@ -64,9 +65,6 @@ const users = ref<UserNoPassword[]>([])
 // Form templates list for the autocomplete
 const formTemplates = ref<FormTemplateShortList[]>([])
 const selectedFormTemplates = ref<string[]>([])
-// Note editing state
-const editingNoteIndex = ref<number | null>(null)
-const editedNote = ref<string>('')
 
 // Fetch all users for the dropdown
 async function fetchUsers() {
@@ -161,49 +159,6 @@ const saveConsultation = async () => {
     console.error('Error saving consultation:', errorMessage)
     notifierStore.notify(t('alerts.consultation.saveFailed'), 'error')
   }
-}
-
-// Add a new note
-function addNote() {
-  const newNote: Note = {
-    dateCreated: null,
-    createdBy: users.value[0].id ? users.value[0].id : null, // Assign the first user's ID
-    dateModified: null,
-    note: '', // Initialize with an empty note
-  }
-
-  form.value.notes.push(newNote)
-  editingNoteIndex.value = form.value.notes.length - 1
-  editedNote.value = ''
-}
-
-// Edit an existing note
-function editNote(index: number) {
-  editingNoteIndex.value = index
-  editedNote.value = form.value.notes[index].note
-}
-
-// Save the edited note
-function saveNote(index: number) {
-  if (editingNoteIndex.value !== null) {
-    if (form.value.notes[index].dateCreated) form.value.notes[index].dateModified = new Date().toISOString()
-    else form.value.notes[index].dateCreated = form.value.notes[index].dateCreated || new Date().toISOString()
-
-    form.value.notes[index].note = editedNote.value
-    editingNoteIndex.value = null
-    editedNote.value = ''
-  }
-}
-
-// Cancel editing a note
-function cancelEdit() {
-  editingNoteIndex.value = null
-  editedNote.value = ''
-}
-
-// Delete a note
-function deleteNote(index: number) {
-  form.value.notes.splice(index, 1)
 }
 
 // Fetch all available codes
@@ -363,33 +318,10 @@ async function generateNewCode() {
           </v-row>
 
           <!-- Notes -->
-          <v-card class="my-2">
-            <h4>{{ t('consultation.notes') }}</h4>
-            <v-list>
-              <v-list-item v-for="(note, index) in form.notes" :key="index">
-                <template v-slot:prepend v-if="editingNoteIndex != index">
-                  <v-chip color="blue"><v-icon @click="editNote(index)">mdi-pencil</v-icon></v-chip>
-                  <v-chip color="red"><v-icon @click="deleteNote(index)">mdi-delete</v-icon></v-chip>
-                </template>
-                <v-container v-if="editingNoteIndex === index">
-                  <v-row><v-textarea v-model="editedNote" rows="2" outlined dense></v-textarea></v-row>
-                  <v-row>
-                    <v-col class="py-0" cols="8"><v-btn inline color="success"
-                             @click="saveNote(index)"><v-icon>mdi-check</v-icon></v-btn></v-col>
-                    <v-col class="py-0" cols="4"><v-btn inline color="error"
-                             @click="cancelEdit"><v-icon>mdi-close</v-icon></v-btn></v-col>
-                  </v-row>
-                </v-container>
-                <v-container v-else>
-                  <v-list-item-title>{{ note.note }}</v-list-item-title>
-                  <p>Created on {{ safeFormatDate(note.dateCreated) }}</p>
-                  <p v-if="note.dateModified">Modified on {{ safeFormatDate(note.dateModified) }}
-                  </p>
-                </v-container>
-              </v-list-item>
-            </v-list>
-            <v-btn color="primary" @click="addNote">{{ t('consultation.addNote') }}</v-btn>
-          </v-card>
+          <NotesEditor
+                       v-model:notes="form.notes"
+                       title="consultation.notes"
+                       add-button-text="consultation.addNote" />
 
           <!-- Form Templates -->
           <v-autocomplete
