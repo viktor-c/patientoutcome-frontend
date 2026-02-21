@@ -400,15 +400,11 @@ defineExpose({
               </v-container>
             </v-list-item>
           </v-list>
-          <v-btn color="primary" :disabled="editingNoteIndex !== null" @click="addNote">{{ t('consultation.addNote') }}</v-btn>
+          <v-btn color="primary" v-if="editingNoteIndex == null" @click="addNote">{{ t('consultation.addNote') }}</v-btn>
         </v-card>
         
         <!-- Form Templates Selection with Access Level -->
-        <v-card class="my-4">
-          <v-card-title class="text-subtitle-1 py-2">
-            {{ t('consultation.formTemplate') }}
-          </v-card-title>
-          <v-card-text>
+
             <v-autocomplete
               multiple
               chips
@@ -453,13 +449,6 @@ defineExpose({
               </template>
             </v-autocomplete>
             
-            <!-- Access Level Legend -->
-            <div class="text-caption text-medium-emphasis mt-2">
-              <v-icon size="x-small" class="mr-1">mdi-information</v-icon>
-              Form templates are filtered based on your role
-            </div>
-          </v-card-text>
-        </v-card>
         
         <v-autocomplete
                         v-model="form.visitedBy"
@@ -473,7 +462,7 @@ defineExpose({
 
         <!-- Form Access Code Section -->
         <v-row>
-          <v-col cols="8">
+          <v-col cols="12">
             <v-combobox
                         v-model="selectedCode"
                         :items="codes"
@@ -481,17 +470,17 @@ defineExpose({
                         item-title="code"
                         :label="t('consultation.form-access-code')"
                         outlined
-                        dense></v-combobox>
-          </v-col>
-          <v-col cols="4" v-if="!isEditMode" class="d-flex align-center">
-            <v-btn
-                   color="secondary"
-                   :loading="generatingCode"
-                   :disabled="generatingCode"
-                   @click="generateNewCode">
-              <v-icon left>mdi-plus</v-icon>
-              {{ t('buttons.generateNewCode') }}
-            </v-btn>
+                        dense>
+              <template #append-inner v-if="!isEditMode">
+                <v-icon
+                         :class="{ 'text-success': !generatingCode, 'text-disabled': generatingCode }"
+                         :style="{ cursor: generatingCode ? 'not-allowed' : 'pointer' }"
+                         @click="!generatingCode && generateNewCode()"
+                         :disabled="generatingCode">
+                  {{ generatingCode ? 'mdi-loading' : 'mdi-plus' }}
+                </v-icon>
+              </template>
+            </v-combobox>
           </v-col>
         </v-row>
 
