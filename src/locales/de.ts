@@ -888,6 +888,12 @@ export default {
     skipSurgery: 'Operation überspringen',
     surgerySkipped: 'Operationserstellung übersprungen',
     surgerySkippedInfo: 'Sie haben die Operationserstellung übersprungen. Sie können diesem Fall später dennoch Konsultationen hinzufügen.',
+    manualConsultationListTitle: 'Manuell erstellte Konsultationen',
+    consultationDateLabel: 'Konsultationsdatum',
+    consultationFormsLabel: 'Formulare',
+    consultationQrLinkLabel: 'QR-Code-Link',
+    consultationQrUnavailable: 'Noch kein QR-Code-Link verfügbar',
+    noFormsAssigned: 'Keine Formulare zugewiesen',
   },
   consultationOverview: {
     title: 'Konsultationsübersicht',
@@ -1433,6 +1439,7 @@ export default {
     download: 'Sicherung herunterladen',
     restore: 'Sicherung wiederherstellen',
     delete: 'Sicherung löschen',
+    restoreDefaultDeselectedHint: 'Sitzungs-, Benutzer- und backup-bezogene Tabellen sind standardmäßig abgewählt.',
   },
   settings: {
     title: 'Anwendungseinstellungen',

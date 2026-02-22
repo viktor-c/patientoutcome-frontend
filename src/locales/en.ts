@@ -887,6 +887,12 @@ export default {
     surgerySkipped: 'Surgery creation skipped',
     surgerySkippedInfo: 'You have skipped surgery creation. You can still add consultations to this case.',
     surgeryOptionalInfo: 'Surgery creation is optional. You can skip this step if no surgery was performed.',
+    manualConsultationListTitle: 'Manually Created Consultations',
+    consultationDateLabel: 'Consultation Date',
+    consultationFormsLabel: 'Forms',
+    consultationQrLinkLabel: 'QR Code Link',
+    consultationQrUnavailable: 'No QR code link available yet',
+    noFormsAssigned: 'No forms assigned',
   },
   consultationOverview: {
     title: 'Consultation Overview',
@@ -1432,6 +1438,7 @@ export default {
     download: 'Download Backup',
     restore: 'Restore Backup',
     delete: 'Delete Backup',
+    restoreDefaultDeselectedHint: 'Session, user, and backup-related tables are deselected by default.',
   },
   settings: {
     title: 'Application Settings',

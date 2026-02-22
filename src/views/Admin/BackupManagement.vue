@@ -49,6 +49,11 @@ const uploadFile = ref<File | null>(null);
 const uploadDialog = ref(false);
 const selectedDestination = ref<string>('local');
 
+const shouldDeselectByDefault = (collectionName: string): boolean => {
+  const normalizedName = collectionName.toLowerCase();
+  return normalizedName.includes('session') || normalizedName.includes('user') || normalizedName.includes('backup');
+};
+
 interface CollectionComparison {
   name: string;
   backupCount?: number;
@@ -171,7 +176,10 @@ const openRestoreDialog = async (backup: GetBackupHistory200ResponseResponseObje
     });
     if (response.success && response.responseObject) {
       currentMetadata.value = response.responseObject;
-      selectedCollections.value = currentMetadata.value.collections?.map((c) => c.name) || [];
+      selectedCollections.value =
+        currentMetadata.value.collections
+          ?.map((collection) => collection.name)
+          .filter((collectionName) => !shouldDeselectByDefault(collectionName)) || [];
     }
   } catch (error) {
     notifierStore.notify('Failed to load backup metadata', 'error');
@@ -513,6 +521,9 @@ onMounted(async () => {
           <v-row>
             <v-col cols="12">
               <h4 class="mb-2">Select Collections to Restore</h4>
+              <v-alert type="info" density="compact" variant="tonal" class="mb-2">
+                {{ t('backup.restoreDefaultDeselectedHint') }}
+              </v-alert>
               <v-card variant="outlined" class="scrollable-collection-list">
                 <v-list density="compact">
                   <v-list-item

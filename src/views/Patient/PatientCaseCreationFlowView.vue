@@ -2,6 +2,7 @@
 import { ref, computed, onMounted, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRouter, useRoute } from 'vue-router'
+import { useDateFormat } from '@/composables/useDateFormat'
 import { useNotifierStore } from '@/stores/notifierStore'
 import { useUserStore } from '@/stores/userStore'
 import type {
@@ -26,6 +27,7 @@ import QRCodeDisplay from '@/components/QRCodeDisplay.vue'
 import { logger } from '@/services/logger'
 
 const { t } = useI18n()
+const { formatLocalizedCustomDate, dateFormats } = useDateFormat()
 const router = useRouter()
 const route = useRoute()
 const notifierStore = useNotifierStore()
@@ -33,6 +35,11 @@ const userStore = useUserStore()
 
 interface CaseBlueprintContent {
   surgeries?: string | string[]
+}
+
+interface ConsultationPromWithTitle {
+  id?: string | null
+  title?: string | null
 }
 
 const isRecord = (value: unknown): value is Record<string, unknown> => {
@@ -115,6 +122,15 @@ const isManualConsultationDialogOpen = ref(false)
 // Manual consultation dialog in step 4
 const showManualConsultationDialogStep4 = ref(false)
 const manualConsultationFormRef = ref<InstanceType<typeof CreateEditConsultationDialog> | null>(null)
+const manuallyCreatedConsultationsStep4 = ref<Consultation[]>([])
+
+const sortedManuallyCreatedConsultationsStep4 = computed(() => {
+  return [...manuallyCreatedConsultationsStep4.value].sort((a, b) => {
+    const dateA = a.dateAndTime ? new Date(a.dateAndTime).getTime() : Number.MAX_SAFE_INTEGER
+    const dateB = b.dateAndTime ? new Date(b.dateAndTime).getTime() : Number.MAX_SAFE_INTEGER
+    return dateA - dateB
+  })
+})
 
 // Department management
 const departmentName = ref<string>('')
@@ -186,6 +202,70 @@ const canProceedFromStep2 = computed(() => {
   // For now, always allow proceeding - the form will handle validation
   return true
 })
+
+const safeFormatConsultationDate = (date: string | null | undefined): string => {
+  if (!date) return t('common.notAvailable')
+  return formatLocalizedCustomDate(date, dateFormats.isoDateTime)
+}
+
+const getFormAccessCodeValue = (accessCode: unknown): string | null => {
+  if (!accessCode) return null
+
+  if (typeof accessCode === 'string') {
+    return accessCode
+  }
+
+  if (isRecord(accessCode) && typeof accessCode.code === 'string' && accessCode.code.length > 0) {
+    return accessCode.code
+  }
+
+  return null
+}
+
+const getConsultationAccessCode = (consultation: Consultation | null | undefined): string | null => {
+  if (!consultation) return null
+  return getFormAccessCodeValue(consultation.formAccessCode as unknown)
+}
+
+const getConsultationQRCodeUrl = (consultation: Consultation): string => {
+  const consultationCode = getConsultationAccessCode(consultation)
+  if (!consultationCode) return ''
+  const baseUrl = window.location.origin
+  return `${baseUrl}/flow/${consultationCode}`
+}
+
+const getConsultationForms = (consultation: Consultation): ConsultationPromWithTitle[] => {
+  if (!Array.isArray(consultation.proms)) return []
+
+  return (consultation.proms as unknown[])
+    .filter((prom): prom is Record<string, unknown> => isRecord(prom))
+    .map((prom) => ({
+      id: typeof prom.id === 'string' ? prom.id : null,
+      title: typeof prom.title === 'string' ? prom.title : null,
+    }))
+}
+
+const copyUrlToClipboard = async (url: string) => {
+  try {
+    await navigator.clipboard.writeText(url)
+    notifierStore.notify(t('creationFlow.urlCopied'), 'success')
+  } catch (error) {
+    logger.error('❌ Error copying URL to clipboard:', error)
+    notifierStore.notify(t('creationFlow.urlCopyFailed'), 'error')
+  }
+}
+
+const copyConsultationQRCodeUrl = async (consultation: Consultation) => {
+  const url = getConsultationQRCodeUrl(consultation)
+  if (!url) return
+  await copyUrlToClipboard(url)
+}
+
+const openConsultationQRCodeUrl = (consultation: Consultation) => {
+  const url = getConsultationQRCodeUrl(consultation)
+  if (!url) return
+  window.open(url, '_blank')
+}
 
 // Convert createdCase to the format expected by PatientCaseCreateEditForm
 const caseForEditing = computed(() => {
@@ -589,6 +669,16 @@ const handleManualConsultationSubmitStep4 = async (consultation: Consultation) =
   // Add the manually created consultation to the list
   createdConsultations.value.push(consultation)
 
+  const existingManualConsultationIndex = manuallyCreatedConsultationsStep4.value.findIndex(
+    existing => existing.id && consultation.id && existing.id === consultation.id
+  )
+
+  if (existingManualConsultationIndex >= 0) {
+    manuallyCreatedConsultationsStep4.value[existingManualConsultationIndex] = consultation
+  } else {
+    manuallyCreatedConsultationsStep4.value.push(consultation)
+  }
+
   showManualConsultationDialogStep4.value = false
   console.log('Manual consultation added to list:', consultation.id)
   notifierStore.notify(t('alerts.consultation.created'), 'success')
@@ -686,7 +776,6 @@ const firstConsultationCode = computed(() => {
     return null
   }
 
-  // Check if first consultation has a formAccessCode
   const accessCode = firstConsultation.value.formAccessCode as unknown
   if (!accessCode) {
     logger.info('❌ No formAccessCode found on consultation')
@@ -703,18 +792,12 @@ const firstConsultationCode = computed(() => {
     codeProperty: isRecord(accessCode) ? accessCode.code : undefined
   })
 
-  // Handle both string and object types
-  // formAccessCode can be:
-  // 1. A string (the code itself)
-  // 2. An object with { _id, id, code, ... } - we want the 'code' property, NOT the id
-  if (typeof accessCode === 'string') {
-    logger.info('✅ Code is string:', accessCode)
-    return accessCode
-  }
-
-  if (isRecord(accessCode) && typeof accessCode.code === 'string') {
-    const codeValue = accessCode.code
-    logger.info('✅ Extracted code from object:', { codeValue, objectId: extractRecordId(accessCode) })
+  const codeValue = getFormAccessCodeValue(accessCode)
+  if (codeValue) {
+    logger.info('✅ Extracted code from consultation:', {
+      codeValue,
+      objectId: isRecord(accessCode) ? extractRecordId(accessCode) : undefined,
+    })
     return codeValue
   }
 
@@ -1034,6 +1117,76 @@ onMounted(async () => {
                       <v-icon left>mdi-plus</v-icon>
                       {{ t('consultation.createManual') }}
                     </v-btn>
+
+                    <v-card
+                            v-if="manuallyCreatedConsultationsStep4.length"
+                            variant="outlined"
+                            class="mt-4">
+                      <v-card-title>{{ t('creationFlow.manualConsultationListTitle') }}</v-card-title>
+                      <v-card-text>
+                        <v-list>
+                          <v-list-item
+                                       v-for="(consultation, consultationIndex) in sortedManuallyCreatedConsultationsStep4"
+                                       :key="consultation.id || `manual-consultation-${consultationIndex}`"
+                                       class="px-0">
+                            <v-list-item-title class="mb-2">
+                              {{ t('creationFlow.consultationDateLabel') }}:
+                              {{ safeFormatConsultationDate(consultation.dateAndTime) }}
+                            </v-list-item-title>
+
+                            <v-list-item-subtitle class="text-body-2 mb-2 d-block">
+                              <strong>{{ t('creationFlow.consultationFormsLabel') }}:</strong>
+                              <template v-if="getConsultationForms(consultation).length">
+                                <v-chip
+                                        v-for="(form, formIndex) in getConsultationForms(consultation)"
+                                        :key="form.id || `consultation-${consultationIndex}-form-${formIndex}`"
+                                        size="small"
+                                        color="primary"
+                                        variant="outlined"
+                                        class="mr-2 mb-2">
+                                  {{ form.title || t('forms.consultation.untitledForm') }}
+                                </v-chip>
+                              </template>
+                              <template v-else>
+                                {{ t('creationFlow.noFormsAssigned') }}
+                              </template>
+                            </v-list-item-subtitle>
+
+                            <v-list-item-subtitle class="text-body-2 d-block">
+                              <strong>{{ t('creationFlow.consultationQrLinkLabel') }}:</strong>
+                              <template v-if="getConsultationQRCodeUrl(consultation)">
+                                <v-text-field
+                                              :value="getConsultationQRCodeUrl(consultation)"
+                                              readonly
+                                              density="compact"
+                                              variant="outlined"
+                                              class="mt-2"
+                                              hide-details>
+                                  <template #append-inner>
+                                    <v-btn
+                                           icon="mdi-content-copy"
+                                           size="x-small"
+                                           variant="text"
+                                           :title="t('buttons.copy')"
+                                           class="mr-2"
+                                           @click.stop="copyConsultationQRCodeUrl(consultation)"></v-btn>
+                                    <v-btn
+                                           icon="mdi-open-in-new"
+                                           size="x-small"
+                                           variant="text"
+                                           :title="t('buttons.open')"
+                                           @click.stop="openConsultationQRCodeUrl(consultation)"></v-btn>
+                                  </template>
+                                </v-text-field>
+                              </template>
+                              <template v-else>
+                                {{ t('creationFlow.consultationQrUnavailable') }}
+                              </template>
+                            </v-list-item-subtitle>
+                          </v-list-item>
+                        </v-list>
+                      </v-card-text>
+                    </v-card>
                   </v-card-text>
                 </v-card>
 
