@@ -23,7 +23,7 @@ import CreateEditSurgeryDialog from '@/components/dialogs/CreateEditSurgeryDialo
 //step 4: create consultations (from surgery blueprint or manual selection)
 import ConsultationBlueprintSelectionDialog from '@/components/dialogs/ConsultationBlueprintSelectionDialog.vue'
 import CreateEditConsultationDialog from '@/components/dialogs/CreateEditConsultationDialog.vue'
-import QRCodeDisplay from '@/components/QRCodeDisplay.vue'
+import QRCodeLinkDisplay from '@/components/QRCodeLinkDisplay.vue'
 import { logger } from '@/services/logger'
 
 const { t } = useI18n()
@@ -255,16 +255,18 @@ const copyUrlToClipboard = async (url: string) => {
   }
 }
 
-const copyConsultationQRCodeUrl = async (consultation: Consultation) => {
-  const url = getConsultationQRCodeUrl(consultation)
-  if (!url) return
-  await copyUrlToClipboard(url)
+const copyPatientUrl = () => {
+  const url = getPatientUrl()
+  if (url) {
+    copyUrlToClipboard(url)
+  }
 }
 
-const openConsultationQRCodeUrl = (consultation: Consultation) => {
-  const url = getConsultationQRCodeUrl(consultation)
-  if (!url) return
-  window.open(url, '_blank')
+const copyCaseUrl = () => {
+  const url = getCaseUrl()
+  if (url) {
+    copyUrlToClipboard(url)
+  }
 }
 
 // Convert createdCase to the format expected by PatientCaseCreateEditForm
@@ -718,31 +720,6 @@ const openCaseUrl = () => {
   }
 }
 
-// Copy URLs to clipboard
-const copyPatientUrl = () => {
-  const url = getPatientUrl()
-  if (url) {
-    navigator.clipboard.writeText(url).then(() => {
-      console.log('Patient URL copied to clipboard')
-      notifierStore.notify(t('creationFlow.urlCopied'), 'success')
-    }).catch(() => {
-      notifierStore.notify(t('creationFlow.urlCopyFailed'), 'error')
-    })
-  }
-}
-
-const copyCaseUrl = () => {
-  const url = getCaseUrl()
-  if (url) {
-    navigator.clipboard.writeText(url).then(() => {
-      console.log('Case URL copied to clipboard')
-      notifierStore.notify(t('creationFlow.urlCopied'), 'success')
-    }).catch(() => {
-      notifierStore.notify(t('creationFlow.urlCopyFailed'), 'error')
-    })
-  }
-}
-
 // Computed: First consultation sorted by date (ascending)
 const firstConsultation = computed(() => {
   logger.info('🔍 Computing firstConsultation:', {
@@ -817,48 +794,6 @@ const getFirstConsultationUrl = () => {
   if (!firstConsultation.value?.id) return ''
   const baseUrl = window.location.origin
   return `${baseUrl}/consultation-overview/${firstConsultation.value.id}`
-}
-
-// Copy QR Code URL to clipboard
-const copyQRCodeUrl = () => {
-  const url = getQRCodeUrl()
-  if (url) {
-    navigator.clipboard.writeText(url).then(() => {
-      console.log('QR code URL copied to clipboard')
-      notifierStore.notify(t('creationFlow.urlCopied'), 'success')
-    }).catch(() => {
-      notifierStore.notify(t('creationFlow.urlCopyFailed'), 'error')
-    })
-  }
-}
-
-// Open QR Code URL in new tab
-const openQRCodeUrl = () => {
-  const url = getQRCodeUrl()
-  if (url) {
-    window.open(url, '_blank')
-  }
-}
-
-// Copy First Consultation URL to clipboard
-const copyFirstConsultationUrl = () => {
-  const url = getFirstConsultationUrl()
-  if (url) {
-    navigator.clipboard.writeText(url).then(() => {
-      console.log('Consultation URL copied to clipboard')
-      notifierStore.notify(t('creationFlow.urlCopied'), 'success')
-    }).catch(() => {
-      notifierStore.notify(t('creationFlow.urlCopyFailed'), 'error')
-    })
-  }
-}
-
-// Open First Consultation URL in new tab
-const openFirstConsultationUrl = () => {
-  const url = getFirstConsultationUrl()
-  if (url) {
-    window.open(url, '_blank')
-  }
 }
 
 // Add external ID to patient
@@ -1128,7 +1063,7 @@ onMounted(async () => {
                           <v-list-item
                                        v-for="(consultation, consultationIndex) in sortedManuallyCreatedConsultationsStep4"
                                        :key="consultation.id || `manual-consultation-${consultationIndex}`"
-                                       class="px-0">
+                                       class="px-0 mb-4">
                             <v-list-item-title class="mb-2">
                               {{ t('creationFlow.consultationDateLabel') }}:
                               {{ safeFormatConsultationDate(consultation.dateAndTime) }}
@@ -1153,32 +1088,10 @@ onMounted(async () => {
                             </v-list-item-subtitle>
 
                             <v-list-item-subtitle class="text-body-2 d-block">
-                              <strong>{{ t('creationFlow.consultationQrLinkLabel') }}:</strong>
-                              <template v-if="getConsultationQRCodeUrl(consultation)">
-                                <v-text-field
-                                              :value="getConsultationQRCodeUrl(consultation)"
-                                              readonly
-                                              density="compact"
-                                              variant="outlined"
-                                              class="mt-2"
-                                              hide-details>
-                                  <template #append-inner>
-                                    <v-btn
-                                           icon="mdi-content-copy"
-                                           size="x-small"
-                                           variant="text"
-                                           :title="t('buttons.copy')"
-                                           class="mr-2"
-                                           @click.stop="copyConsultationQRCodeUrl(consultation)"></v-btn>
-                                    <v-btn
-                                           icon="mdi-open-in-new"
-                                           size="x-small"
-                                           variant="text"
-                                           :title="t('buttons.open')"
-                                           @click.stop="openConsultationQRCodeUrl(consultation)"></v-btn>
-                                  </template>
-                                </v-text-field>
-                              </template>
+                              <QRCodeLinkDisplay
+                                v-if="getConsultationQRCodeUrl(consultation)"
+                                :url="getConsultationQRCodeUrl(consultation)"
+                                :hideUrl="false" />
                               <template v-else>
                                 {{ t('creationFlow.consultationQrUnavailable') }}
                               </template>
@@ -1212,116 +1125,74 @@ onMounted(async () => {
                 <v-card class="mt-4">
                   <v-card-title>{{ t('creationFlow.directAccessUrls') }}</v-card-title>
                   <v-card-text>
+                    <!-- Patient URL (text-only, no QR code needed) -->
                     <div v-if="createdPatient" class="mb-4">
                       <p class="mb-2 font-weight-bold">{{ t('creationFlow.patientUrl') }}</p>
                       <v-text-field
-                                    :value="getPatientUrl()"
-                                    readonly
-                                    variant="outlined"
-                                    density="compact"
-                                    @click="copyPatientUrl"
-                                    class="cursor-pointer">
+                        :value="getPatientUrl()"
+                        readonly
+                        variant="outlined"
+                        density="compact"
+                        @click="copyPatientUrl"
+                        class="cursor-pointer">
                         <template #append-inner>
                           <v-btn
-                                 icon="mdi-content-copy"
-                                 size="x-small"
-                                 variant="text"
-                                 @click.stop="copyPatientUrl"
-                                 :title="t('buttons.copy')"
-                                 class="mr-2"></v-btn>
+                            icon="mdi-content-copy"
+                            size="x-small"
+                            variant="text"
+                            @click.stop="copyPatientUrl"
+                            :title="t('buttons.copy')"
+                            class="mr-2"></v-btn>
                           <v-btn
-                                 icon="mdi-open-in-new"
-                                 size="x-small"
-                                 variant="text"
-                                 @click.stop="openPatientUrl"
-                                 :title="t('buttons.open')"></v-btn>
+                            icon="mdi-open-in-new"
+                            size="x-small"
+                            variant="text"
+                            @click.stop="openPatientUrl"
+                            :title="t('buttons.open')"></v-btn>
                         </template>
                       </v-text-field>
                     </div>
 
-                    <div v-if="createdCase">
+                    <!-- Case URL (text-only, no QR code needed) -->
+                    <div v-if="createdCase" class="mb-4">
                       <p class="mb-2 font-weight-bold">{{ t('creationFlow.caseUrl') }}</p>
                       <v-text-field
-                                    :value="getCaseUrl()"
-                                    readonly
-                                    variant="outlined"
-                                    density="compact"
-                                    @click="copyCaseUrl"
-                                    class="cursor-pointer">
+                        :value="getCaseUrl()"
+                        readonly
+                        variant="outlined"
+                        density="compact"
+                        @click="copyCaseUrl"
+                        class="cursor-pointer">
                         <template #append-inner>
                           <v-btn
-                                 icon="mdi-content-copy"
-                                 size="x-small"
-                                 variant="text"
-                                 @click.stop="copyCaseUrl"
-                                 :title="t('buttons.copy')"
-                                 class="mr-2"></v-btn>
+                            icon="mdi-content-copy"
+                            size="x-small"
+                            variant="text"
+                            @click.stop="copyCaseUrl"
+                            :title="t('buttons.copy')"
+                            class="mr-2"></v-btn>
                           <v-btn
-                                 icon="mdi-open-in-new"
-                                 size="x-small"
-                                 variant="text"
-                                 @click.stop="openCaseUrl"
-                                 :title="t('buttons.open')"></v-btn>
+                            icon="mdi-open-in-new"
+                            size="x-small"
+                            variant="text"
+                            @click.stop="openCaseUrl"
+                            :title="t('buttons.open')"></v-btn>
                         </template>
                       </v-text-field>
                     </div>
 
-                    <!-- QR Code Link (if external code exists) -->
-                    <div v-if="firstConsultationCode" class="mb-4">
-                      <p class="mb-2 font-weight-bold">{{ t('creationFlow.patientFlowQrUrl') }}</p>
-                      <v-text-field
-                                    :value="getQRCodeUrl()"
-                                    readonly
-                                    variant="outlined"
-                                    density="compact"
-                                    @click="copyQRCodeUrl"
-                                    class="cursor-pointer">
-                        <template #append-inner>
-                          <QRCodeDisplay :url="getQRCodeUrl()" :size="150" />
-                          <v-btn
-                                 icon="mdi-content-copy"
-                                 size="x-small"
-                                 variant="text"
-                                 @click.stop="copyQRCodeUrl"
-                                 :title="t('buttons.copy')"
-                                 class="mr-2"></v-btn>
-                          <v-btn
-                                 icon="mdi-open-in-new"
-                                 size="x-small"
-                                 variant="text"
-                                 @click.stop="openQRCodeUrl"
-                                 :title="t('buttons.open')"></v-btn>
-                        </template>
-                      </v-text-field>
-                    </div>
+                    <!-- QR Code Link (using new component) -->
+                    <QRCodeLinkDisplay
+                      v-if="firstConsultationCode"
+                      :url="getQRCodeUrl()"
+                      :label="t('creationFlow.patientFlowQrUrl')"
+                      class="mb-4" />
 
-                    <!-- First Consultation Link -->
-                    <div v-if="firstConsultation" class="mb-4">
-                      <p class="mb-2 font-weight-bold">{{ t('creationFlow.firstConsultationUrl') }}</p>
-                      <v-text-field
-                                    :value="getFirstConsultationUrl()"
-                                    readonly
-                                    variant="outlined"
-                                    density="compact"
-                                    @click="copyFirstConsultationUrl"
-                                    class="cursor-pointer">
-                        <template #append-inner>
-                          <v-btn
-                                 icon="mdi-content-copy"
-                                 size="x-small"
-                                 variant="text"
-                                 @click.stop="copyFirstConsultationUrl"
-                                 :title="t('buttons.copy')"
-                                 class="mr-2"></v-btn>
-                          <v-btn
-                                 icon="mdi-open-in-new"
-                                 size="x-small"
-                                 variant="text"
-                                 @click.stop="openFirstConsultationUrl"
-                                 :title="t('buttons.open')"></v-btn>
-                        </template>
-                      </v-text-field>
-                    </div>
+                    <!-- First Consultation Link (using new component) -->
+                    <QRCodeLinkDisplay
+                      v-if="firstConsultation"
+                      :url="getFirstConsultationUrl()"
+                      :label="t('creationFlow.firstConsultationUrl')" />
                   </v-card-text>
                 </v-card>
               </v-stepper-window-item>

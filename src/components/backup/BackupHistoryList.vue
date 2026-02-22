@@ -50,6 +50,7 @@ const backupHistoryHeaders = [
   { title: 'Size', key: 'sizeBytes', sortable: true },
   { title: 'Collections', key: 'collections', sortable: false },
   { title: 'Status', key: 'status', sortable: true },
+  { title: 'Restore Status', key: 'restoreStatus', sortable: true },
   { title: 'Actions', key: 'actions', sortable: false },
 ];
 
@@ -179,6 +180,13 @@ const getLocationDetails = (backup: GetBackupHistory200ResponseResponseObjectInn
 
   return parts.join('\n');
 };
+
+const getRestoreStatusDisplay = (backup: GetBackupHistory200ResponseResponseObjectInner): string => {
+  if (backup.wasRestored && backup.lastRestoredAt) {
+    return `Restored: ${formatDate(backup.lastRestoredAt)}`;
+  }
+  return 'Never restored';
+};
 </script>
 
 <template>
@@ -231,6 +239,20 @@ const getLocationDetails = (backup: GetBackupHistory200ResponseResponseObjectInn
           >
             {{ item.status }}
           </v-chip>
+        </template>
+        <template v-slot:[`item.restoreStatus`]="{ item }">
+          <v-tooltip :text="item.wasRestored && item.lastRestoredBy ? `Restored by: ${item.lastRestoredBy}` : 'This backup has not been restored yet'" location="top">
+            <template v-slot:activator="{ props }">
+              <v-chip
+                v-bind="props"
+                :color="item.wasRestored ? 'success' : 'default'"
+                :prepend-icon="item.wasRestored ? 'mdi-check-circle' : 'mdi-circle-outline'"
+                size="small"
+              >
+                {{ getRestoreStatusDisplay(item) }}
+              </v-chip>
+            </template>
+          </v-tooltip>
         </template>
         <template v-slot:[`item.actions`]="{ item }">
           <v-tooltip :text="t('backup.download')" location="top">
