@@ -10,23 +10,25 @@
 * 3. Extracts rawFormData and passes it to the form component
 * 4. Form component emits PatientFormData with structure:
 * {
-*   rawFormData: FormQuestions, // The actual form answers
-*   subscales?: { [key: string]: SubscaleScore | null }, // Calculated scoring per subscale
-*   totalScore?: SubscaleScore | null, // Total score
-*   fillStatus: "draft" | "incomplete" | "complete", // Form completion status
-*   completedAt: Date | null, // Timestamp when completed
-*   beginFill: Date | null // Timestamp when form filling began
+* rawFormData: FormQuestions, // The actual form answers
+* subscales?: { [key: string]: SubscaleScore | null }, // Calculated scoring per subscale
+* totalScore?: SubscaleScore | null, // Total score
+* fillStatus: "draft" | "incomplete" | "complete", // Form completion status
+* completedAt: Date | null, // Timestamp when completed
+* beginFill: Date | null // Timestamp when form filling began
 * }
 * 5. Emits this structure to parent components
 * 6. Parent components send this to backend API which stores it in patientFormData field
 */
 
 <script setup lang="ts">
-import { computed, onMounted, ref, markRaw, watch } from 'vue'
+import { computed, onMounted, ref, markRaw, watch, provide } from 'vue'
 import { getFormPlugin } from '../registry'
 import type { FormSubmissionData, FormPlugin } from '../types'
+import { useFormViewMode } from '../composables/useFormViewMode'
 import FormVersionHistory from '@/components/forms/FormVersionHistory.vue'
 import FormVersionDiff from '@/components/forms/FormVersionDiff.vue'
+import { useI18n } from 'vue-i18n'
 import { useUserStore } from '@/stores/userStore'
 import { formVersionService } from '@/services/formVersionService'
 
@@ -74,8 +76,23 @@ interface Emits {
 
 const emit = defineEmits<Emits>()
 
+// View mode management
+const { viewMode, toggleViewMode, isCarouselMode } = useFormViewMode()
+const { t } = useI18n()
+
+// Provide view mode to form components so they can render carousel internally
+provide('formViewMode', viewMode)
+
 // Get user store for permission checks
 const userStore = useUserStore()
+const hasSetInitialViewMode = ref(false)
+const isPatientView = computed(() => !userStore.isAuthenticated() || userStore.isKioskUser())
+
+watch(isPatientView, (patientView) => {
+  if (hasSetInitialViewMode.value) return
+  viewMode.value = patientView ? 'carousel' : 'standard'
+  hasSetInitialViewMode.value = true
+}, { immediate: true })
 
 // Store the initial beginFill timestamp when form is first loaded
 const initialBeginFill = ref<Date | null>(null)
@@ -89,11 +106,11 @@ const activeViewingVersion = ref<number | null>(props.viewingVersion)
 const historicalSubmissionData = ref<FormSubmissionData | null>(null)
 
 // Computed flags
-const canViewVersions = computed(() => 
+const canViewVersions = computed(() =>
   userStore.hasRole('admin') || userStore.hasRole('doctor')
 )
 
-const isViewingOldVersion = computed(() => 
+const isViewingOldVersion = computed(() =>
   activeViewingVersion.value !== null && activeViewingVersion.value < props.currentVersion
 )
 
@@ -115,12 +132,12 @@ const FormComponent = computed(() => plugin.value?.component)
 // If backend sends null, use plugin's getInitialData() to create empty structure
 const formDataToPass = computed(() => {
   if (!plugin.value) return {}
-  
+
   // If modelValue is null (new form), initialize with empty data
   if (!effectiveModelValue.value) {
     return plugin.value.getInitialData()
   }
-  
+
   // If modelValue exists, extract rawFormData
   return effectiveModelValue.value.rawFormData || plugin.value.getInitialData()
 })
@@ -207,7 +224,7 @@ onMounted(() => {
   } else {
     console.error(`[PluginFormRenderer] Plugin not found: ${props.templateId}`)
   }
-  
+
   // Initialize beginFill if this is a new form
   if (!props.modelValue?.beginFill && !initialBeginFill.value) {
     initialBeginFill.value = new Date()
@@ -218,41 +235,65 @@ onMounted(() => {
 
 <template>
   <div class="plugin-form-renderer">
+    <!-- View Mode Toggle (only for non-readonly, current version) -->
+    <v-card
+            v-if="!readonly && !isViewingOldVersion && pluginExists"
+            class="mb-4"
+            elevation="1">
+      <v-card-text class="pa-3 d-flex align-center justify-space-between">
+        <div class="d-flex align-center">
+          <v-icon class="mr-2" size="small">mdi-view-dashboard</v-icon>
+          <span class="text-subtitle-2">{{ t('forms.viewMode.label') }}</span>
+        </div>
+        <v-btn-toggle
+                      v-model="viewMode"
+                      mandatory
+                      density="compact"
+                      variant="outlined"
+                      divided>
+          <v-btn value="standard" size="small">
+            <v-icon class="mr-1" size="18">mdi-view-list</v-icon>
+            <span class="view-mode-label">{{ t('forms.viewMode.standard') }}</span>
+          </v-btn>
+          <v-btn value="carousel" size="small">
+            <v-icon class="mr-1" size="18">mdi-view-carousel</v-icon>
+            <span class="view-mode-label">{{ t('forms.viewMode.carousel') }}</span>
+          </v-btn>
+        </v-btn-toggle>
+      </v-card-text>
+    </v-card>
+
     <!-- Version Controls Header -->
     <v-card
-      v-if="showVersionControls && canViewVersions && formId"
-      class="mb-4"
-      elevation="2"
-    >
+            v-if="showVersionControls && canViewVersions && formId"
+            class="mb-4"
+            elevation="2">
       <v-card-title class="d-flex align-center py-2 bg-grey-lighten-5">
         <v-icon class="mr-2" size="small">mdi-file-document-multiple</v-icon>
         <span class="text-subtitle-1">Form Version</span>
         <v-spacer />
         <v-chip
-          size="small"
-          :color="isViewingOldVersion ? 'warning' : 'success'"
-          class="mr-2"
-        >
+                size="small"
+                :color="isViewingOldVersion ? 'warning' : 'success'"
+                class="mr-2">
           v{{ activeViewingVersion ?? currentVersion }}
         </v-chip>
         <FormVersionHistory
-          v-if="formId"
-          :form-id="formId"
-          :current-version="currentVersion"
-          @view-version="handleViewVersion"
-          @compare-versions="handleCompareVersions"
-          @version-restored="handleVersionRestored"
-        />
+                            v-if="formId"
+                            :form-id="formId"
+                            :current-version="currentVersion"
+                            @view-version="handleViewVersion"
+                            @compare-versions="handleCompareVersions"
+                            @version-restored="handleVersionRestored" />
       </v-card-title>
 
       <!-- Old Version Banner -->
       <v-alert
-        v-if="isViewingOldVersion"
-        type="warning"
-        variant="tonal"
-        class="ma-0 rounded-0"
-        density="compact"
-      >
+               v-if="isViewingOldVersion"
+               type="warning"
+               variant="tonal"
+               class="ma-0 rounded-0"
+               density="compact">
         <div class="d-flex align-center">
           <v-icon class="mr-2" size="small">mdi-history</v-icon>
           <span class="text-body-2">
@@ -260,10 +301,9 @@ onMounted(() => {
           </span>
           <v-spacer />
           <v-btn
-            size="small"
-            variant="text"
-            @click="handleViewVersion(currentVersion)"
-          >
+                 size="small"
+                 variant="text"
+                 @click="handleViewVersion(currentVersion)">
             Return to Current
           </v-btn>
         </div>
@@ -277,11 +317,10 @@ onMounted(() => {
 
     <!-- Error state: plugin not found -->
     <v-alert
-      v-if="errorMessage"
-      type="error"
-      variant="tonal"
-      class="mb-4"
-    >
+             v-if="errorMessage"
+             type="error"
+             variant="tonal"
+             class="mb-4">
       <div class="text-h6">Form Not Available</div>
       <div>{{ errorMessage }}</div>
       <div class="text-caption mt-2">
@@ -291,13 +330,12 @@ onMounted(() => {
 
     <!-- Render the form plugin component -->
     <component
-      v-else-if="FormComponent"
-      :is="FormComponent"
-      :model-value="formDataToPass"
-      :readonly="readonly || isViewingOldVersion"
-      :locale="locale"
-      @update:model-value="handleModelUpdate"
-    />
+               v-else-if="FormComponent"
+               :is="FormComponent"
+               :model-value="formDataToPass"
+               :readonly="readonly || isViewingOldVersion"
+               :locale="locale"
+               @update:model-value="handleModelUpdate" />
 
     <!-- Fallback: loading state (shouldn't happen with eager loading) -->
     <div v-else class="text-center pa-4">
@@ -307,17 +345,22 @@ onMounted(() => {
 
     <!-- Version Diff Dialog -->
     <FormVersionDiff
-      v-if="formId"
-      v-model="showDiffDialog"
-      :form-id="formId"
-      :version1="diffVersion1"
-      :version2="diffVersion2"
-    />
+                     v-if="formId"
+                     v-model="showDiffDialog"
+                     :form-id="formId"
+                     :version1="diffVersion1"
+                     :version2="diffVersion2" />
   </div>
 </template>
 
 <style scoped>
 .plugin-form-renderer {
   width: 100%;
+}
+
+@media (max-width: 600px) {
+  .view-mode-label {
+    display: none;
+  }
 }
 </style>

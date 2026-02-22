@@ -76,7 +76,7 @@ const login = async () => {
     if (response.responseObject && response.success && response.statusCode == 200) {
       // Convert API response to SessionData format
       const apiUser = response.responseObject
-      
+
       userStore.setSession({
         username: username.value,
         department: Array.isArray(apiUser.department) ? apiUser.department[0] || '' : apiUser.department || '',
@@ -100,6 +100,7 @@ const login = async () => {
       }
     } else {
       notifierStore.notify('Invalid username or password.', 'error')
+      password.value = ''
     }
   } catch (error: unknown) {
     let errorMessage = 'An unexpected error occurred'
@@ -108,6 +109,7 @@ const login = async () => {
     }
     console.error('Login error:', errorMessage)
     notifierStore.notify('An error occurred during login.', errorMessage === 'Invalid credentials' ? 'error' : 'info')
+    password.value = ''
   } finally {
     isLoading.value = false
   }
@@ -133,16 +135,17 @@ const login = async () => {
           <v-text-field v-model="username" :label="t('login.username')" outlined dense required
                         autocomplete="username" autofocus></v-text-field>
           <v-text-field
-            v-model="password"
-            :label="t('login.password')"
-            :type="showPassword ? 'text' : 'password'"
-            outlined
-            dense
-            required
-            autocomplete="current-password"
-            :append-inner-icon="showPassword ? 'mdi-eye-off' : 'mdi-eye'"
-            @click:append-inner="showPassword = !showPassword"
-          ></v-text-field>
+                        v-model="password"
+                        :label="t('login.password')"
+                        :type="showPassword ? 'text' : 'password'"
+                        outlined
+                        dense
+                        required
+                        autocomplete="current-password"
+                        append-inner-icon="mdi-eye"
+                        @mousedown:append-inner="showPassword = true"
+                        @mouseup:append-inner="showPassword = false"
+                        @mouseleave:append-inner="showPassword = false"></v-text-field>
           <div class="d-flex justify-center">
             <v-tooltip v-if="!canSubmit" location="top">
               <template #activator="{ props }">
@@ -212,5 +215,4 @@ const login = async () => {
     width: 100%;
   }
 }
-
 </style>

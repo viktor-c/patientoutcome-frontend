@@ -127,6 +127,13 @@ export default {
     formComplete: 'Form complete: {answered} of {total} questions answered',
     formIncomplete: 'Form incomplete: {answered} of {total} questions answered ({unanswered} missing)',
     canContinueIncomplete: 'You can still continue. The missing answers can be discussed during the doctor\'s interview.',
+    viewMode: {
+      label: 'View Mode',
+      standard: 'Standard',
+      carousel: 'Carousel',
+      carouselDescription: 'One question at a time (mobile-optimized)',
+      standardDescription: 'All questions in a list',
+    },
     fillOutForm: 'Fill Out Form',
     loading: 'Loading form...',
     error: 'Error loading form',

@@ -379,6 +379,13 @@ export default {
     formComplete: 'Formular vollständig: {answered} von {total} Fragen beantwortet',
     formIncomplete: 'Formular unvollständig: {answered} von {total} Fragen beantwortet ({unanswered} fehlen)',
     canContinueIncomplete: 'Sie können trotzdem fortfahren. Die fehlenden Antworten können während des Arztgesprächs besprochen werden.',
+    viewMode: {
+      label: 'Anzeigemodus',
+      standard: 'Standard',
+      carousel: 'Karussell',
+      carouselDescription: 'Eine Frage nach der anderen (Mobil-optimiert)',
+      standardDescription: 'Alle Fragen in einer Liste',
+    },
     completionTime: 'Bearbeitungszeit: {seconds} Sekunden',
     hints: {
       required: 'Dieses Feld ist erforderlich',
