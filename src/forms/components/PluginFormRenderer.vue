@@ -77,7 +77,7 @@ interface Emits {
 const emit = defineEmits<Emits>()
 
 // View mode management
-const { viewMode, toggleViewMode, isCarouselMode } = useFormViewMode()
+const { viewMode } = useFormViewMode()
 const { t } = useI18n()
 
 // Provide view mode to form components so they can render carousel internally

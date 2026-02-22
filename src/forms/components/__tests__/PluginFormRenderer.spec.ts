@@ -9,6 +9,7 @@ import type { PatientFormData } from '@/types'
 import type { ScoringData } from '@/types/backend/scoring'
 import { h } from 'vue'
 import type { Component } from 'vue'
+import { createI18n } from 'vue-i18n'
 
 // Mock the registry module
 const mockGetFormPlugin = vi.fn()
@@ -18,7 +19,9 @@ vi.mock('@/forms/registry', () => ({
 
 vi.mock('@/stores/userStore', () => ({
   useUserStore: () => ({
-    hasRole: () => false
+    hasRole: () => false,
+    isAuthenticated: () => false,
+    isKioskUser: () => false
   })
 }))
 
@@ -82,12 +85,18 @@ const createMockPlugin = (): FormPlugin => ({
 describe('PluginFormRenderer.vue', () => {
   let wrapper: VueWrapper
   let vuetify: ReturnType<typeof createVuetify>
+  let i18n: ReturnType<typeof createI18n>
   let mockPlugin: FormPlugin
 
   beforeEach(() => {
     vuetify = createVuetify({
       components,
       directives,
+    })
+    i18n = createI18n({
+      legacy: false,
+      locale: 'en',
+      messages: { en: {} },
     })
 
     mockPlugin = createMockPlugin()
@@ -103,7 +112,7 @@ describe('PluginFormRenderer.vue', () => {
     return mount(PluginFormRenderer, {
       props,
       global: {
-        plugins: [vuetify],
+        plugins: [vuetify, i18n],
       },
     })
   }
@@ -246,7 +255,7 @@ describe('PluginFormRenderer.vue', () => {
         modelValue: {} as unknown as PatientFormData
       })
 
-      const updateButton = wrapper.find('button')
+      const updateButton = wrapper.find('[data-testid="mock-form-component"] button')
       await updateButton.trigger('click')
 
       expect(wrapper.emitted('update:modelValue')).toBeTruthy()

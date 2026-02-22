@@ -8,7 +8,6 @@ import {
   type Surgery,
   type CreateSurgerySchema,
   type GetUsers200ResponseResponseObjectInner as User,
-  type FindAllCodes200ResponseResponseObjectInnerConsultationIdNotesInner as Note,
   type Blueprint,
   type AnaesthesiaType,
   ResponseError,
@@ -42,13 +41,6 @@ const notifierStore = useNotifierStore()
 const { formatLocalizedCustomDate } = useDateFormat()
 const { validateForm, clearAllErrors, clearFieldError, hasError, getError, resetFormState } = useFormValidation()
 
-
-// Helper function to safely format dates
-const safeFormatDate = (date: string | null | undefined, format: string = 'DD.MM.YYYY HH:mm'): string => {
-  if (!date) return 'N/A'
-  const tmpDate = formatLocalizedCustomDate(date, format)
-  return tmpDate
-}
 
 const isEditMode = ref(!!(props.surgery && props.surgery.id))
 

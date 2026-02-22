@@ -8,7 +8,6 @@ import {
   type Consultation,
   type CreateConsultation,
   type UserNoPassword,
-  type Note,
   type GetFormTemplatesShortlist200ResponseResponseObjectInner as FormTemplateShortList,
   ResponseError,
   type FindAllCodes200ResponseResponseObjectInner as Code,
@@ -31,14 +30,8 @@ const { t, locale } = useI18n()
 const notifierStore = useNotifierStore()
 const userStore = useUserStore()
 const consultationStore = useConsultationStore()
-const { formatLocalizedCustomDate, getLocalizedDayjs, dateFormats } = useDateFormat()
+const { getLocalizedDayjs } = useDateFormat()
 const { errors, validateForm, clearAllErrors, resetFormState } = useFormValidation()
-
-// Helper function to safely format dates
-const safeFormatDate = (date: string | null | undefined, format: string = dateFormats.isoDateTime): string => {
-  if (!date) return 'N/A'
-  return formatLocalizedCustomDate(date, format)
-}
 
 const isEditMode = ref(!!(props.consultation && props.consultation.id))
 

@@ -7,7 +7,6 @@ import { useDateFormat } from '@/composables/useDateFormat'
 import {
   type Consultation,
   type UserNoPassword,
-  type Note,
   type GetFormTemplatesShortlist200ResponseResponseObjectInner as FormTemplateShortList,
   ResponseError,
   type FindAllCodes200ResponseResponseObjectInner as Code,
@@ -21,13 +20,7 @@ const route = useRoute()
 const router = useRouter()
 const notifierStore = useNotifierStore()
 const consultationStore = useConsultationStore()
-const { formatLocalizedCustomDate, getLocalizedDayjs, dateFormats } = useDateFormat()
-
-// Helper function to safely format dates
-const safeFormatDate = (date: string | null | undefined, format: string = dateFormats.isoDateTime): string => {
-  if (!date) return 'N/A'
-  return formatLocalizedCustomDate(date, format)
-}
+const { getLocalizedDayjs } = useDateFormat()
 
 // Determine if this is an edit or add operation
 const isEditMode = ref(!!route.params.consultationId && route.params.consultationId !== 'new')

@@ -47,6 +47,7 @@ export interface Form {
   caseId?: string | null
   consultationId?: string | null
   formTemplateId?: string | null
+  formFillStatus?: string
   createdAt?: string | null
   updatedAt?: string | null
   formStartTime?: string | null

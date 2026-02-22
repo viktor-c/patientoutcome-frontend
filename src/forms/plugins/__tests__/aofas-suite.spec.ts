@@ -9,9 +9,9 @@ import { getFormPlugin, getAllFormPlugins } from '../../registry'
 describe('AOFAS Frontend Plugin Suite', () => {
   const aofasIds = [
     { id: '67b4e612d0feb4ad99ae2e84', name: 'AOFAS Forefoot', section: 'forefoot', questions: 8 },
-    { id: '67b4e612d0feb4ad99ae2e85', name: 'AOFAS Hindfoot', section: 'hindfoot', questions: 10 },
-    { id: '67b4e612d0feb4ad99ae2e86', name: 'AOFAS Midfoot', section: 'midfoot', questions: 10 },
-    { id: '67b4e612d0feb4ad99ae2e87', name: 'AOFAS Lesser Toes', section: 'lesserToes', questions: 8 }
+    { id: '67b4e612d0feb4ad99ae2e88', name: 'AOFAS Hindfoot', section: 'hindfoot', questions: 10 },
+    { id: '67b4e612d0feb4ad99ae2e89', name: 'AOFAS Midfoot', section: 'midfoot', questions: 10 },
+    { id: '67b4e612d0feb4ad99ae2e8a', name: 'AOFAS Lesser Toes', section: 'lesserToes', questions: 8 }
   ]
 
   describe('Plugin Registry', () => {

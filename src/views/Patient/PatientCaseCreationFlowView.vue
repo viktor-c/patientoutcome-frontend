@@ -245,30 +245,6 @@ const getConsultationForms = (consultation: Consultation): ConsultationPromWithT
     }))
 }
 
-const copyUrlToClipboard = async (url: string) => {
-  try {
-    await navigator.clipboard.writeText(url)
-    notifierStore.notify(t('creationFlow.urlCopied'), 'success')
-  } catch (error) {
-    logger.error('❌ Error copying URL to clipboard:', error)
-    notifierStore.notify(t('creationFlow.urlCopyFailed'), 'error')
-  }
-}
-
-const copyPatientUrl = () => {
-  const url = getPatientUrl()
-  if (url) {
-    copyUrlToClipboard(url)
-  }
-}
-
-const copyCaseUrl = () => {
-  const url = getCaseUrl()
-  if (url) {
-    copyUrlToClipboard(url)
-  }
-}
-
 // Convert createdCase to the format expected by PatientCaseCreateEditForm
 const caseForEditing = computed(() => {
   if (!createdCase.value) return null
@@ -703,21 +679,6 @@ const getCaseUrl = () => {
   if (!createdCase.value?.id) return ''
   const baseUrl = window.location.origin
   return `${baseUrl}${CASE_URL_PATTERN.replace('{id}', createdCase.value.id)}`
-}
-
-// Open URLs in new tab
-const openPatientUrl = () => {
-  const url = getPatientUrl()
-  if (url) {
-    window.open(url, '_blank')
-  }
-}
-
-const openCaseUrl = () => {
-  const url = getCaseUrl()
-  if (url) {
-    window.open(url, '_blank')
-  }
 }
 
 // Computed: First consultation sorted by date (ascending)

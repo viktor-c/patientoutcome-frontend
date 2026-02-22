@@ -40,47 +40,34 @@ const openUrl = () => {
 
 <template>
   <div v-if="hasUrl" class="qr-code-link-display">
-    <!-- Label section -->
-    <div v-if="label" class="mb-3">
-      <p class="mb-2 font-weight-bold">{{ label }}</p>
-    </div>
-
     <!-- QR Code and URL Section -->
-    <v-card variant="outlined" class="qr-content-card">
-      <v-card-text class="pa-4">
-        <v-row align="center">
+    <p>{{ label }}</p>
+    <v-text-field
+                  :value="url"
+                  readonly
+                  density="compact"
+                  variant="outlined"
+                  hide-details
+                  class="mb-3">
+      <template #append-inner>
+        <!-- QR Code -->
+        <QRCodeDisplay :url="url" :size="180" />
+        <v-btn
+               icon="mdi-content-copy"
+               size="x-small"
+               variant="text"
+               :title="t('buttons.copy')"
+               class="mr-2"
+               @click.stop="copyUrlToClipboard" />
+        <v-btn
+               icon="mdi-open-in-new"
+               size="x-small"
+               variant="text"
+               :title="t('buttons.open')"
+               @click.stop="openUrl" />
+      </template>
+    </v-text-field>
 
-          <!-- URL and Actions Column -->
-          <v-col cols="12" sm="8">
-            <v-text-field
-                          :value="url"
-                          readonly
-                          density="compact"
-                          variant="outlined"
-                          hide-details
-                          class="mb-3">
-              <template #append-inner>
-                <!-- QR Code -->
-                <QRCodeDisplay :url="url" :size="180" />
-                <v-btn
-                       icon="mdi-content-copy"
-                       size="x-small"
-                       variant="text"
-                       :title="t('buttons.copy')"
-                       class="mr-2"
-                       @click.stop="copyUrlToClipboard" />
-                <v-btn
-                       icon="mdi-open-in-new"
-                       size="x-small"
-                       variant="text"
-                       :title="t('buttons.open')"
-                       @click.stop="openUrl" />
-              </template>
-            </v-text-field>
-          </v-col>
-        </v-row>
-      </v-card-text>
-    </v-card>
   </div>
 </template>
 

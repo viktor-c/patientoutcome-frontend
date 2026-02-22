@@ -52,13 +52,16 @@ export function calculateScore(data: FormData): ScoringData {
   const completionPercentage = totalQuestions > 0 ? Math.round((answeredQuestions / totalQuestions) * 100) : 0
   const isComplete = answeredQuestions === totalQuestions
 
+  const maxPossible = Object.values(QUESTION_VALUES)
+    .map(values => Math.max(...values))
+    .reduce((sum, value) => sum + value, 0)
   const maxScore = 100
-  const normalizedScore = maxScore > 0 ? Math.round((rawScore / maxScore) * 100 * 100) / 100 : 0
+  const normalizedScore = maxPossible > 0 ? Math.round((rawScore / maxPossible) * maxScore * 100) / 100 : 0
 
   const hindfootScore: SubscaleScore = {
     name: 'AOFAS Hindfoot Score',
     description: 'American Orthopaedic Foot & Ankle Society Ankle-Hindfoot Score',
-    rawScore: rawScore,
+    rawScore: normalizedScore,
     normalizedScore: normalizedScore,
     maxScore,
     answeredQuestions,
@@ -70,7 +73,7 @@ export function calculateScore(data: FormData): ScoringData {
   const totalScore: SubscaleScore = {
     name: 'AOFAS Hindfoot Total',
     description: 'American Orthopaedic Foot & Ankle Society Ankle-Hindfoot Score',
-    rawScore: rawScore,
+    rawScore: normalizedScore,
     normalizedScore: normalizedScore,
     maxScore,
     answeredQuestions,

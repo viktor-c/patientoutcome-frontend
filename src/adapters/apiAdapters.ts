@@ -13,6 +13,7 @@ export function mapApiFormToForm(api: FormFromApi): Form {
     _id: normalizedId || '', // For backward compatibility 
     title: api.title || '',
     description: api.description || '',
+    formFillStatus: (api as any).formFillStatus || (api as any).patientFormData?.fillStatus || undefined,
     patientFormData: (api as any).patientFormData || null,
     caseId: api.caseId || null,
     consultationId: api.consultationId || null,

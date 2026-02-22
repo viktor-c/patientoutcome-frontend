@@ -17,7 +17,6 @@ export interface FormVersion {
   formId: string
   version: number
   rawData: PatientFormData | null
-  previousRawData: PatientFormData | null
   changedBy: string
   changedAt: string
   changeNotes: string
