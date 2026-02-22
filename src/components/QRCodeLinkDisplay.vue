@@ -57,29 +57,26 @@ const openUrl = () => {
           <!-- URL and Actions Column -->
           <v-col cols="12" sm="8">
             <v-text-field
-              :value="url"
-              readonly
-              density="compact"
-              variant="outlined"
-              hide-details
-              class="mb-3"
-            >
+                          :value="url"
+                          readonly
+                          density="compact"
+                          variant="outlined"
+                          hide-details
+                          class="mb-3">
               <template #append-inner>
                 <v-btn
-                  icon="mdi-content-copy"
-                  size="x-small"
-                  variant="text"
-                  :title="t('buttons.copy')"
-                  class="mr-2"
-                  @click.stop="copyUrlToClipboard"
-                />
+                       icon="mdi-content-copy"
+                       size="x-small"
+                       variant="text"
+                       :title="t('buttons.copy')"
+                       class="mr-2"
+                       @click.stop="copyUrlToClipboard" />
                 <v-btn
-                  icon="mdi-open-in-new"
-                  size="x-small"
-                  variant="text"
-                  :title="t('buttons.open')"
-                  @click.stop="openUrl"
-                />
+                       icon="mdi-open-in-new"
+                       size="x-small"
+                       variant="text"
+                       :title="t('buttons.open')"
+                       @click.stop="openUrl" />
               </template>
             </v-text-field>
           </v-col>

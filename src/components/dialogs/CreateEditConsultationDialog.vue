@@ -59,6 +59,7 @@ const formTemplates = ref<FormTemplateShortList[]>([])
 const selectedFormTemplates = ref<string[]>([])
 const codes = ref<Code[]>([])
 const selectedCode = ref<Code | null>(null)
+const codeComboboxRef = ref<any>(null)
 const generatingCode = ref(false)
 const formSubmitted = ref(false)
 
@@ -259,6 +260,9 @@ async function generateNewCode() {
       // Select the new code
       selectedCode.value = newCode
 
+      // Collapse the combobox after selection
+      codeComboboxRef.value?.blur()
+
       notifierStore.notify(t('alerts.code.generated'), 'success')
     } else {
       throw new Error('No code returned from API')
@@ -393,6 +397,7 @@ defineExpose({
         <v-row>
           <v-col cols="12">
             <v-combobox
+                        ref="codeComboboxRef"
                         v-model="selectedCode"
                         :items="codes"
                         item-value="id"
