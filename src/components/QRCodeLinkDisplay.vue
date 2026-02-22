@@ -49,10 +49,6 @@ const openUrl = () => {
     <v-card variant="outlined" class="qr-content-card">
       <v-card-text class="pa-4">
         <v-row align="center">
-          <!-- QR Code Column -->
-          <v-col cols="12" sm="4" class="d-flex justify-center">
-            <QRCodeDisplay :url="url" :size="180" />
-          </v-col>
 
           <!-- URL and Actions Column -->
           <v-col cols="12" sm="8">
@@ -64,6 +60,8 @@ const openUrl = () => {
                           hide-details
                           class="mb-3">
               <template #append-inner>
+                <!-- QR Code -->
+                <QRCodeDisplay :url="url" :size="180" />
                 <v-btn
                        icon="mdi-content-copy"
                        size="x-small"
