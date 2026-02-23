@@ -36,14 +36,16 @@ describe('CreateEditConsultationDialog.vue', () => {
     // allow onMounted hooks to complete
     await flushPromises()
 
+    const vm = wrapper.vm as any
+
     // select the template so the formTemplates array will not be empty either
-    wrapper.vm.selectedFormTemplates = ['tpl-123']
+    vm.selectedFormTemplates = ['tpl-123']
     // populate enough data to satisfy validation rules
-    wrapper.vm.form.reasonForConsultation = ['planned']
-    wrapper.vm.form.dateAndTime = new Date().toISOString()
+    vm.form.reasonForConsultation = ['planned']
+    vm.form.dateAndTime = new Date().toISOString()
 
     // trigger save via exposed method
-    await wrapper.vm.submit()
+    await vm.submit()
     await flushPromises()
 
     const emitted = wrapper.emitted('submit')
@@ -76,12 +78,13 @@ describe('CreateEditConsultationDialog.vue', () => {
 
     // now simulate selecting an existing consultation for editing
     const existing = { id: 'e1', proms: [{ formTemplateId: 'tpl-abc' }] }
-    await wrapper.setProps({ consultation: existing })
+    await wrapper.setProps({ consultation: existing as any })
     await flushPromises()
 
-    expect(wrapper.vm.isEditMode).toBe(true)
-    expect(wrapper.vm.selectedFormTemplates).toEqual(['tpl-abc'])
-    const prom = (wrapper.vm.form.proms as any[])[0]
+    const vm = wrapper.vm as any
+    expect(vm.isEditMode).toBe(true)
+    expect(vm.selectedFormTemplates).toEqual(['tpl-abc'])
+    const prom = (vm.form.proms as any[])[0]
     expect(prom.title).toBe('Edit Form')
   })
 })

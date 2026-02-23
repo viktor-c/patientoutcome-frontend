@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { extractConsultationForms, ConsultationPromWithTitle } from '../consultationForms'
+import { extractConsultationForms, type ConsultationPromWithTitle } from '../consultationForms'
 import type { Consultation } from '@/api'
 
 describe('consultationForms util', () => {

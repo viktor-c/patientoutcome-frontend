@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, toRaw } from 'vue'
+import { ref, onMounted, toRaw, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { useConsultationStore, useFormTemplateStore } from '@/stores/'
@@ -9,6 +9,7 @@ import {
   type UserNoPassword,
   ResponseError,
   type FindAllCodes200ResponseResponseObjectInner as Code,
+  type GetFormTemplatesShortlist200ResponseResponseObjectInner as FormTemplateShortList,
 } from '@/api'
 import { useNotifierStore } from '@/stores/notifierStore'
 import CreateEditConsultationDialog from '@/components/dialogs/CreateEditConsultationDialog.vue'
@@ -178,7 +179,7 @@ onMounted(async () => {
     if (consultationStore.consultation?.proms?.length) {
       // Map proms to corresponding objects from formTemplates; otherwise we cannot show the selected form templates
       selectedFormTemplates.value = consultationStore.consultation.proms.map((prom) => {
-        const result = formTemplates.value.find((template) => template.id === (prom as Record<string, unknown>).formTemplateId) //|| prom
+        const result = formTemplates.value.find((template: FormTemplateShortList) => template.id === (prom as Record<string, unknown>).formTemplateId) //|| prom
         return result?.id
       }).filter((id): id is string => Boolean(id)) // Filter out undefined values
     } else {

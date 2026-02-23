@@ -54,7 +54,7 @@ describe('formDataUtils', () => {
   describe('toApiPatientFormData', () => {
     it('should pass through the data unchanged', () => {
       const data = { section: { q1: 1, q2: 2 } }
-      const result = toApiPatientFormData(data)
+      const result = toApiPatientFormData(data as any)
       expect(result).toBe(data)
     })
   })

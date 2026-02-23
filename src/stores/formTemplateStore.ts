@@ -20,7 +20,7 @@ export const useFormTemplateStore = defineStore('formTemplate', () => {
   const templateLookup = computed<Record<string, string>>(() => {
     const map: Record<string, string> = {}
     for (const tpl of templates.value) {
-      if (tpl.id) map[tpl.id] = tpl.title || ''
+      if (tpl.id) map[tpl.id as unknown as string] = tpl.title || ''
     }
     return map
   })
