@@ -2,195 +2,183 @@
 import { ref, onMounted, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
-import { JsonForms, type JsonFormsChangeEvent } from '@jsonforms/vue'
-import { type JsonSchema, type UISchemaElement } from '@jsonforms/core'
-import { extendedVuetifyRenderers } from '@jsonforms/vue-vuetify'
-import { markRaw } from 'vue'
-import { type FormData, type ScoringData } from '@/types'
+import { useDateFormat } from '@/composables/useDateFormat'
+import PluginFormRenderer from '@/forms/components/PluginFormRenderer.vue'
+import { type Form, type ScoringData } from '@/types'
+import { type FormSubmissionData } from '@/forms/types'
 import { useNotifierStore } from '@/stores/notifierStore'
 import FormProgressCard from '@/components/FormProgressCard.vue'
 
-import { ResponseError, type FindAllCodes200ResponseResponseObjectInnerConsultationIdPromsInner } from '@/api'
+import { ResponseError } from '@/api'
 import { formApi } from '@/api'
-
-import { entry as EfasQuestionSliderControlRenderer } from '@/components/forms/EfasQuestionSliderControlRenderer.entry'
-import { entry as AofasControlRenderer } from '@/components/forms/AofasControlRenderer.entry'
-import { entry as MoxfqTableRenderer } from '@/components/forms/MoxfqTableRenderer.entry'
-import { entry as VASControlRenderer } from '@/components/forms/VASControlRenderer.entry'
-import { entry as VisaaControlRenderer } from '@/components/forms/VisaaControlRenderer.entry'
-
-// JsonForms setup
-const renderers = markRaw([
-  ...extendedVuetifyRenderers,
-  EfasQuestionSliderControlRenderer,
-  AofasControlRenderer,
-  MoxfqTableRenderer,
-  VASControlRenderer,
-  VisaaControlRenderer
-])
+import { logger } from '@/services/logger'
 
 const componentName = 'ReviewFormAnswers.vue'
 const { t } = useI18n()
 const route = useRoute()
 const router = useRouter()
 const notifierStore = useNotifierStore()
+const { formatLocalizedCustomDate } = useDateFormat()
 
 // Get formId from route params
 const formId = route.params.formId as string
 
-// State
-const form = ref<FindAllCodes200ResponseResponseObjectInnerConsultationIdPromsInner | null>(null)
-const formData = ref<FormData>({})
-const originalFormData = ref<FormData>({})
-const formScoring = ref<ScoringData | null>(null)
-const loading = ref(true)
-const saving = ref(false)
-const jsonFormsKey = ref(0) // Force re-render when needed
-
-// JsonForms i18n setup using backend translations
-const { locale } = useI18n()
-
-const translator = (key: string, defaultMessage?: string): string => {
-  console.debug("JSONForms translator called with:", { key, defaultMessage })
-  console.debug("Available form translations:", form.value?.translations)
-
-  // Try to get translation from backend translations first
-  const backendTranslations = form.value?.translations as Record<string, Record<string, unknown>> | undefined
-  if (backendTranslations) {
-    const currentLocale = locale.value
-    const localeTranslations = backendTranslations[currentLocale] || backendTranslations['en'] || {}
-
-    // Navigate through nested translation keys (e.g., "moxfq.questions.q1")
-    let value: unknown = localeTranslations
-
-    if (value && typeof value === 'object' && value !== null && key in value) {
-      value = (value as Record<string, unknown>)[key]
-      if (typeof value !== 'string') {
-        return defaultMessage || key
-      }
-      return String(value) || defaultMessage || key
-    }
-    else return defaultMessage || key
-
+const getIdFromUnknown = (value: unknown): string => {
+  if (typeof value === 'string') return value
+  if (value && typeof value === 'object') {
+    const idObj = value as Record<string, unknown>
+    return String(idObj._id || idObj.id || '')
   }
-
-  // Final fallback
-  console.debug(`Using fallback for ${key}:`, defaultMessage || key)
-  return defaultMessage || key
+  return String(value ?? '')
 }
 
-const jsonFormsI18n = computed(() => ({
-  locale: locale.value,
-  translate: translator
-}))
+const getFormRecord = () => (form.value || {}) as Record<string, unknown>
+
+// State
+const form = ref<Form | null>(null)
+const formData = ref<unknown>({})
+const originalFormData = ref<unknown>({})
+const formScoring = ref<ScoringData | null>(null)
+const formCompletionStatus = ref<'draft' | 'incomplete' | 'complete'>("draft")
+const loading = ref(true)
+const saving = ref(false)
 
 // Computed properties for display
 const patientId = computed(() => {
   if (!form.value?.caseId) return t('common.notAvailable')
 
   // Handle both string and object cases for caseId (which represents patientId)
-  if (typeof form.value.caseId === 'string') {
-    return form.value.caseId
-  } else if (typeof form.value.caseId === 'object' && form.value.caseId !== null) {
-    const idObj = form.value.caseId as Record<string, unknown>
-    return String(idObj._id || idObj.id || form.value.caseId)
-  } else {
-    return String(form.value.caseId)
+  const caseId = form.value.caseId
+  if (typeof caseId === 'string') {
+    return caseId
+  } else if (caseId && typeof caseId === 'object') {
+    const idObj = caseId as Record<string, unknown>
+    return String(idObj._id || idObj.id || '')
   }
+  return String(caseId)
 })
 const consultationId = computed(() => {
   if (!form.value?.consultationId) return t('common.notAvailable')
 
   // Handle both string and object cases for consultationId
-  if (typeof form.value.consultationId === 'string') {
-    return form.value.consultationId
-  } else if (typeof form.value.consultationId === 'object' && form.value.consultationId !== null) {
-    const idObj = form.value.consultationId as Record<string, unknown>
-    return String(idObj._id || idObj.id || form.value.consultationId)
-  } else {
-    return String(form.value.consultationId)
+  const consId = form.value.consultationId
+  if (typeof consId === 'string') {
+    return consId
+  } else if (consId && typeof consId === 'object') {
+    const idObj = consId as Record<string, unknown>
+    return String(idObj._id || idObj.id || '')
   }
+  return String(consId)
 })
 const consultationDate = computed(() => {
   // This will need to be adapted based on actual data structure
   return t('common.notAvailable')
 })
 const completedDate = computed(() => {
-  if (!form.value?.completedAt) return t('common.notAvailable')
-  return new Date(form.value.completedAt).toLocaleString()
+  if (!form.value?.patientFormData?.completedAt) return t('common.notAvailable')
+  return formatLocalizedCustomDate(form.value.patientFormData.completedAt, 'DD.MM.YYYY HH:mm:ss')
 })
 const lastUpdatedDate = computed(() => {
   if (!form.value?.updatedAt) return t('common.notAvailable')
-  return new Date(form.value.updatedAt).toLocaleString()
+  return formatLocalizedCustomDate(form.value.updatedAt, 'DD.MM.YYYY HH:mm:ss')
+})
+
+const formStartTime = computed(() => {
+  // Use patientFormData.beginFill if available, otherwise formStartTime
+  const startTime = form.value?.patientFormData?.beginFill || (getFormRecord().formStartTime as string | undefined)
+  if (!startTime) return t('common.notAvailable')
+  return formatLocalizedCustomDate(startTime, 'DD.MM.YYYY HH:mm:ss')
+})
+
+const formDuration = computed(() => {
+  // Try to use completionTimeSeconds first
+  const seconds = Number(getFormRecord().completionTimeSeconds || 0)
+  if (seconds && seconds > 0) {
+    const minutes = Math.floor(seconds / 60)
+    const secs = Math.floor(seconds % 60)
+    return `${minutes}:${String(secs).padStart(2, '0')} min`
+  }
+  
+  // Calculate from start and end times if completionTimeSeconds is not available
+  const startTime = form.value?.patientFormData?.beginFill || (getFormRecord().formStartTime as string | undefined)
+  const endTime = form.value?.patientFormData?.completedAt
+  
+  if (!startTime || !endTime) return t('common.notAvailable')
+  
+  const start = new Date(startTime).getTime()
+  const end = new Date(endTime).getTime()
+  const durationSeconds = Math.floor((end - start) / 1000)
+  
+  if (durationSeconds <= 0) return t('common.notAvailable')
+  
+  const minutes = Math.floor(durationSeconds / 60)
+  const secs = Math.floor(durationSeconds % 60)
+  return `${minutes}:${String(secs).padStart(2, '0')} min`
 })
 
 const hasChanges = computed(() => {
   return JSON.stringify(formData.value) !== JSON.stringify(originalFormData.value)
 })
 
+// Extract the template ID (handle both string and populated object)
+const templateId = computed(() => {
+  if (!form.value) return ''
+
+  const formTemplateId = getFormRecord().formTemplateId
+
+  // If it's already a string, return it
+  if (typeof formTemplateId === 'string') {
+    return formTemplateId
+  }
+
+  // If it's an object with _id or id, extract the string
+  if (formTemplateId && typeof formTemplateId === 'object') {
+    const templateObj = formTemplateId as Record<string, unknown>
+    return String(templateObj._id || templateObj.id || '')
+  }
+
+  // Fallback to form's own _id
+  return String(getFormRecord()._id || '')
+})
+
 // Load form data
 onMounted(async () => {
   try {
     const response = await formApi.getFormById({ formId })
-    form.value = response.responseObject || null
-    if (form.value) {
-      console.debug("Form schema is ", form.value.formSchema)
-      console.debug("Form ui-schema is ", form.value.formSchemaUI)
-      console.debug("Form translations are ", form.value.translations)
-      console.debug("Form caseId (patientId) is ", form.value.caseId)
-      console.debug("Form consultationId is ", form.value.consultationId)
-
-      // Ensure we have form data, even if empty
-      let initialFormData = form.value.formData as FormData || {}
+    const formReponseData = response.responseObject as Form
+    if (response.responseObject) {
+      logger.debug("Form response data is", formReponseData)
+      logger.debug("Form caseId (patientId) is ", formReponseData.caseId)
+      logger.debug("Form consultationId is ", formReponseData.consultationId)
+      logger.debug("Form data is ", formReponseData.patientFormData)
+      logger.debug("Form completion status is, ", formReponseData.patientFormData?.fillStatus)
 
       // FIX: Unwrap any incorrectly nested data structure
       // Check if formData has a 'body' wrapper (from old corrupted data)
-      if (initialFormData && typeof initialFormData === 'object' && 'body' in initialFormData) {
-        console.warn('⚠️  Detected nested body structure in loaded form data, unwrapping...')
-        const nestedData = initialFormData as Record<string, unknown>
-        const bodyContent = nestedData.body
-        if (bodyContent && typeof bodyContent === 'object' && 'formData' in bodyContent) {
-          // Use body.formData as the actual form data
-          const bodyRecord = bodyContent as Record<string, unknown>
-          initialFormData = bodyRecord.formData as FormData
-        } else if (bodyContent) {
-          // Use body directly
-          initialFormData = bodyContent as FormData
-        }
-        console.log('Unwrapped formData:', initialFormData)
-      }
-
-      formData.value = initialFormData
-      originalFormData.value = JSON.parse(JSON.stringify(initialFormData))
-
-      // Force re-render to ensure JsonForms picks up the initial data
-      jsonFormsKey.value += 1
+      originalFormData.value = formReponseData.patientFormData?.rawFormData || {}
+      formCompletionStatus.value = formReponseData.patientFormData?.fillStatus ? formReponseData.patientFormData.fillStatus : "draft"
+      form.value = formReponseData as unknown as Form
     }
   } catch (error: unknown) {
     let errorMessage = 'An unexpected error occurred'
     if (error instanceof ResponseError) {
       errorMessage = (await error.response.json()).message
     }
-    console.error(`${componentName}: Failed to load form:`, errorMessage)
+    logger.error(`${componentName}: Failed to load form:`, errorMessage)
     notifierStore.notify(t('reviewForm.loadError'), 'error')
   } finally {
     loading.value = false
   }
 })
 
-const onChange = (event: JsonFormsChangeEvent) => {
-  console.debug(`${componentName}: Form data changed:`, event.data)
-  if (event.data.rawData) {
-    console.debug(`${componentName}: Received ScoringData from renderer:`, formScoring.value)
-    formScoring.value = event.data as ScoringData
-    formData.value = formScoring.value.rawData as FormData
-  }
-  else {
-    console.debug(`${componentName}: rawData NOT present in event.data, using event.data as formData`)
-    // formData.value = event.data as formData
-    // formScoring.value.rawData = formData.value
-    //formScoring.value = null
-  }
+// Handle form data changes - receives FormSubmissionData from plugin
+const handleFormDataChange = (submissionData: FormSubmissionData) => {
+  logger.debug(`${componentName}: Form data changed:`, submissionData)
+  // Store full submission data
+  formData.value = submissionData
+  formScoring.value = submissionData as unknown as ScoringData
+  formCompletionStatus.value = submissionData.fillStatus
+
 }
 
 // Save changes
@@ -202,20 +190,16 @@ const saveChanges = async () => {
 
   saving.value = true
   try {
-    // Debug: Log the data being sent
-    const updatePayload = {
+    // Prepare update payload with PatientFormData structure
+    const updatePayload: Parameters<typeof formApi.updateForm>[0] = {
       formId,
       updateFormRequest: {
-        formData: formData.value,
-        scoring: formScoring.value || undefined
+        patientFormData: formData.value as never
       }
     }
-    console.log('=== ReviewFormAnswers FRONTEND: Data being sent to API ===')
-    console.log('Full payload:', JSON.stringify(updatePayload, null, 2))
-    console.log('formData.value:', JSON.stringify(formData.value, null, 2))
-    console.log('formScoring.value:', JSON.stringify(formScoring.value, null, 2))
-    console.log('updateFormRequest:', JSON.stringify(updatePayload.updateFormRequest, null, 2))
-    console.log('========================================')
+    logger.debug('=== ReviewFormAnswers FRONTEND: Data being sent to API ===')
+    logger.debug('Full payload:', JSON.stringify(updatePayload, null, 2))
+    logger.debug('========================================')
 
     await formApi.updateForm(updatePayload)
 
@@ -226,18 +210,10 @@ const saveChanges = async () => {
     // Navigate to consultation overview if we have a consultation ID
     if (form.value?.consultationId) {
       // Handle both string and object cases for consultationId
-      let consultationId: string
+      const consId = form.value.consultationId
+      const consultationId = getIdFromUnknown(consId)
 
-      if (typeof form.value.consultationId === 'string') {
-        consultationId = form.value.consultationId
-      } else if (typeof form.value.consultationId === 'object' && form.value.consultationId !== null) {
-        const idObj = form.value.consultationId as Record<string, unknown>
-        consultationId = String(idObj._id || idObj.id || form.value.consultationId)
-      } else {
-        consultationId = String(form.value.consultationId)
-      }
-
-      console.debug('Navigating to consultation overview with ID:', consultationId)
+      logger.debug('Navigating to consultation overview with ID:', consultationId)
       router.push({
         name: 'consultationoverview',
         params: { consultationId }
@@ -248,7 +224,7 @@ const saveChanges = async () => {
     if (error instanceof ResponseError) {
       errorMessage = (await error.response.json()).message
     }
-    console.error(`${componentName}: Failed to save form:`, errorMessage)
+    logger.error(`${componentName}: Failed to save form:`, errorMessage)
     notifierStore.notify(t('reviewForm.saveError'), 'error')
   } finally {
     saving.value = false
@@ -260,7 +236,6 @@ const cancelChanges = () => {
   if (hasChanges.value) {
     // Reset the form data and force re-render
     formData.value = JSON.parse(JSON.stringify(originalFormData.value))
-    jsonFormsKey.value += 1 // Force JsonForms to re-render
     notifierStore.notify(t('reviewForm.changesCancelled'), 'info')
   }
 }
@@ -344,11 +319,27 @@ const goBack = () => {
                   <v-list-item-subtitle>{{ consultationDate }}</v-list-item-subtitle>
                 </v-list-item>
 
-                <v-list-item v-if="form.completedAt">
+                <v-list-item v-if="form.patientFormData?.beginFill || (form as any)?.formStartTime">
+                  <template #prepend>
+                    <v-icon>mdi-play-circle</v-icon>
+                  </template>
+                  <v-list-item-title>{{ t('reviewForm.formStartTime') }}</v-list-item-title>
+                  <v-list-item-subtitle>{{ formStartTime }}</v-list-item-subtitle>
+                </v-list-item>
+
+                <v-list-item v-if="(form.patientFormData?.beginFill || (form as any)?.formStartTime) && (form.patientFormData?.completedAt || (form as any)?.completionTimeSeconds)">
+                  <template #prepend>
+                    <v-icon>mdi-timer</v-icon>
+                  </template>
+                  <v-list-item-title>{{ t('reviewForm.formDuration') }}</v-list-item-title>
+                  <v-list-item-subtitle>{{ formDuration }}</v-list-item-subtitle>
+                </v-list-item>
+
+                <v-list-item v-if="form.patientFormData?.completedAt">
                   <template #prepend>
                     <v-icon>mdi-check-circle</v-icon>
                   </template>
-                  <v-list-item-title>{{ t('reviewForm.completedAt') }}</v-list-item-title>
+                  <v-list-item-title>{{ t('reviewForm.completedDate') }}</v-list-item-title>
                   <v-list-item-subtitle>{{ completedDate }}</v-list-item-subtitle>
                 </v-list-item>
 
@@ -368,21 +359,20 @@ const goBack = () => {
       <!-- Form content -->
       <v-card>
         <v-card-text class="px-4 py-6">
-          <json-forms
-                      :data="formData"
-                      @change="onChange"
-                      :renderers="renderers"
-                      :schema="form.formSchema as JsonSchema"
-                      :uischema="form.formSchemaUI as UISchemaElement"
-                      :i18n="jsonFormsI18n"
-                      :key="jsonFormsKey" />
+          <PluginFormRenderer
+                              :template-id="templateId"
+                              :form-id="formId"
+                              :show-version-controls="true"
+                              :current-version="(form as any)?.currentVersion || 1"
+                              :model-value="form?.patientFormData ?? null"
+                              @update:model-value="handleFormDataChange" />
         </v-card-text>
 
         <!-- Display scoring if available -->
         <v-card-text v-if="formScoring" class="px-4 pt-0">
           <FormProgressCard
                             :scoring="formScoring"
-                            :title="t('forms.scoring.overallProgress')"
+                            :title="t('forms.subscales.overallProgress')"
                             :showSubmitButton="false" />
         </v-card-text>
 
@@ -411,8 +401,6 @@ const goBack = () => {
 </template>
 
 <style scoped>
-@import '@jsonforms/vue-vuetify/lib/jsonforms-vue-vuetify.css';
-
 .v-card {
   border-radius: 12px;
 }

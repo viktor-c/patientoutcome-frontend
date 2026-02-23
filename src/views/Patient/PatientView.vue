@@ -90,7 +90,7 @@ const createPatient = async () => {
       }
     }
 
-    const patientData: any = {
+    const patientData: Record<string, unknown> = {
       ...newPatient.value,
       externalPatientId: externalPatientIdArray.length > 0 ? externalPatientIdArray : undefined,
       department: departmentId,

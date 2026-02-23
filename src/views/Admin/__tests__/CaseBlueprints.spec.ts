@@ -34,8 +34,6 @@ describe('CaseBlueprints.vue', () => {
       content: {
         mainDiagnosis: ['Hallux Valgus'],
         mainDiagnosisICD10: ['M20.1'],
-        studyDiagnosis: ['Moderate deformity'],
-        studyDiagnosisICD10: ['M20.10'],
         otherDiagnosis: ['None'],
         otherDiagnosisICD10: [],
         surgeries: ['surgery1'],
@@ -286,8 +284,6 @@ describe('CaseBlueprints.vue', () => {
         description: 'New case description',
         mainDiagnosis: ['New Diagnosis'],
         mainDiagnosisICD10: ['M20.2'],
-        studyDiagnosis: ['Study Dx'],
-        studyDiagnosisICD10: ['M20.20'],
         otherDiagnosis: ['Other'],
         otherDiagnosisICD10: ['M20.21'],
         medicalHistory: 'Test history',
@@ -370,7 +366,6 @@ describe('CaseBlueprints.vue', () => {
       expect(wrapper.vm.editedBlueprint.title).toBe('Standard Hallux Valgus Case')
       expect(wrapper.vm.editedBlueprint.mainDiagnosis).toEqual(['Hallux Valgus'])
       expect(wrapper.vm.editedBlueprint.mainDiagnosisICD10).toEqual(['M20.1'])
-      expect(wrapper.vm.editedBlueprint.studyDiagnosis).toEqual(['Moderate deformity'])
       expect(wrapper.vm.editedBlueprint.medicalHistory).toBe('Previous conservative treatment failed')
       expect(wrapper.vm.selectedSurgeryBlueprint).toBe('surgery1')
       expect(wrapper.vm.selectedConsultationBlueprints).toEqual(['cons1', 'cons2'])
@@ -645,8 +640,6 @@ describe('CaseBlueprints.vue', () => {
         description: 'Description',
         mainDiagnosis: ['Diagnosis'],
         mainDiagnosisICD10: [],
-        studyDiagnosis: [],
-        studyDiagnosisICD10: [],
         otherDiagnosis: [],
         otherDiagnosisICD10: [],
         medicalHistory: '',
@@ -791,8 +784,6 @@ describe('CaseBlueprints.vue', () => {
         description: 'Description',
         mainDiagnosis: ['Dx1', 'Dx2'],
         mainDiagnosisICD10: ['ICD1'],
-        studyDiagnosis: ['Study1'],
-        studyDiagnosisICD10: ['SICD1'],
         otherDiagnosis: ['Other1'],
         otherDiagnosisICD10: ['OICD1'],
         medicalHistory: 'History',
@@ -812,8 +803,6 @@ describe('CaseBlueprints.vue', () => {
           content: expect.objectContaining({
             mainDiagnosis: ['Dx1', 'Dx2'],
             mainDiagnosisICD10: ['ICD1'],
-            studyDiagnosis: ['Study1'],
-            studyDiagnosisICD10: ['SICD1'],
             otherDiagnosis: ['Other1'],
             otherDiagnosisICD10: ['OICD1'],
             surgeries: ['surgery1'],
@@ -835,8 +824,6 @@ describe('CaseBlueprints.vue', () => {
         description: 'Description',
         mainDiagnosis: ['Dx1'],
         mainDiagnosisICD10: [],
-        studyDiagnosis: [],
-        studyDiagnosisICD10: [],
         otherDiagnosis: [],
         otherDiagnosisICD10: [],
         medicalHistory: '',

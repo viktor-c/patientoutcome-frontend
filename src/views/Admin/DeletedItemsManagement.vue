@@ -1,7 +1,13 @@
 <script setup lang="ts">
 import { ref, onMounted, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { ResponseError, type Patient, type PatientCase, type Form } from '@/api'
+import {
+  ResponseError,
+  type Patient,
+  type GetAllPatientCases200ResponseResponseObjectInner,
+  type FindAllCodes200ResponseResponseObjectInnerConsultationIdPromsInner,
+} from '@/api'
+import { extractObjectId } from '@/utils/formDataUtils'
 import { useNotifierStore } from '@/stores/notifierStore'
 import { patientApi, caseApi, formApi } from '@/api'
 
@@ -19,18 +25,62 @@ const patientsTotalPages = ref(0)
 const patientsTotal = ref(0)
 
 // Deleted cases state
-const deletedCases = ref<PatientCase[]>([])
+const deletedCases = ref<GetAllPatientCases200ResponseResponseObjectInner[]>([])
 const casesPage = ref(1)
 const casesLimit = ref(10)
 const casesTotalPages = ref(0)
 const casesTotal = ref(0)
 
 // Deleted forms state
-const deletedForms = ref<Form[]>([])
+const deletedForms = ref<FindAllCodes200ResponseResponseObjectInnerConsultationIdPromsInner[]>([])
 const formsPage = ref(1)
 const formsLimit = ref(10)
 const formsTotalPages = ref(0)
 const formsTotal = ref(0)
+
+const isObjectWithKeys = (value: unknown): value is Record<string, unknown> => {
+  return typeof value === 'object' && value !== null
+}
+
+
+const casePatientDisplay = (patient: unknown): string => {
+  if (typeof patient === 'string') return patient
+  if (!isObjectWithKeys(patient)) return '-'
+
+  const externalPatientId = patient.externalPatientId
+  if (Array.isArray(externalPatientId) && typeof externalPatientId[0] === 'string' && externalPatientId[0]) {
+    return externalPatientId[0]
+  }
+
+  return extractObjectId(patient) || '-'
+}
+
+const caseIdForActions = (item: GetAllPatientCases200ResponseResponseObjectInner): string => {
+  return extractObjectId(item) || item.id || ''
+}
+
+const casePatientIdForActions = (item: GetAllPatientCases200ResponseResponseObjectInner): string => {
+  return extractObjectId(item.patient) || ''
+}
+
+const formConsultationDisplay = (consultationId: unknown): string => {
+  if (typeof consultationId === 'string') return consultationId
+  return extractObjectId(consultationId) || '-'
+}
+
+const formDeletedByDisplay = (deletedBy: unknown): string => {
+  if (typeof deletedBy === 'string') return deletedBy
+  if (!isObjectWithKeys(deletedBy)) return '-'
+
+  const username = deletedBy.username
+  if (typeof username === 'string' && username.length > 0) return username
+
+  return extractObjectId(deletedBy) || '-'
+}
+
+const formIdForActions = (item: FindAllCodes200ResponseResponseObjectInnerConsultationIdPromsInner): string => {
+  return extractObjectId(item) || ''
+}
 
 // Fetch deleted patients
 const fetchDeletedPatients = async () => {
@@ -42,8 +92,8 @@ const fetchDeletedPatients = async () => {
 
     if (response.responseObject) {
       deletedPatients.value = response.responseObject.patients || []
-      patientsTotal.value = response.responseObject.total || 0
-      patientsTotalPages.value = response.responseObject.totalPages || 0
+      patientsTotal.value = response.responseObject.total || deletedPatients.value.length
+      patientsTotalPages.value = response.responseObject.totalPages || 1
     }
   } catch (error: unknown) {
     let errorMessage = 'An unexpected error occurred'
@@ -64,9 +114,9 @@ const fetchDeletedCases = async () => {
     })
 
     if (response.responseObject) {
-      deletedCases.value = (response.responseObject.cases || []) as any
-      casesTotal.value = response.responseObject.total || 0
-      casesTotalPages.value = response.responseObject.totalPages || 0
+      deletedCases.value = response.responseObject.cases || []
+      casesTotal.value = response.responseObject.total || deletedCases.value.length
+      casesTotalPages.value = response.responseObject.totalPages || 1
     }
   } catch (error: unknown) {
     let errorMessage = 'An unexpected error occurred'
@@ -87,9 +137,9 @@ const fetchDeletedForms = async () => {
     })
 
     if (response.responseObject) {
-      deletedForms.value = (response.responseObject.forms || []) as any
-      formsTotal.value = response.responseObject.total || 0
-      formsTotalPages.value = response.responseObject.totalPages || 0
+      deletedForms.value = response.responseObject.forms || []
+      formsTotal.value = response.responseObject.totalScore || deletedForms.value.length
+      formsTotalPages.value = response.responseObject.totalPages || 1
     }
   } catch (error: unknown) {
     let errorMessage = 'An unexpected error occurred'
@@ -320,7 +370,7 @@ watch(activeTab, (newTab) => {
               </template>
 
               <template #item.patient="{ item }">
-                {{ typeof item.patient === 'string' ? item.patient : ((item.patient as any)?.externalPatientId?.[0] || '-') }}
+                {{ casePatientDisplay(item.patient) }}
               </template>
 
               <template #item.deletedAt="{ item }">
@@ -334,14 +384,14 @@ watch(activeTab, (newTab) => {
                     color="success" 
                     variant="text" 
                     icon="mdi-restore"
-                    @click="restoreCase((item as any)._id || item.id)">
+                    @click="restoreCase(caseIdForActions(item))">
                   </v-btn>
                   <v-btn 
                     size="small" 
                     color="error" 
                     variant="text" 
                     icon="mdi-delete-forever"
-                    @click="permanentDeleteCase(typeof item.patient === 'string' ? item.patient : ((item.patient as any)?.id || (item.patient as any)?._id), (item as any)._id || item.id)">
+                    @click="permanentDeleteCase(casePatientIdForActions(item), caseIdForActions(item))">
                   </v-btn>
                 </div>
               </template>
@@ -388,11 +438,11 @@ watch(activeTab, (newTab) => {
               </template>
 
               <template #item.consultationId="{ item }">
-                {{ typeof item.consultationId === 'string' ? item.consultationId : ((item.consultationId as any)?.id || (item.consultationId as any)?._id || '-') }}
+                {{ formConsultationDisplay(item.consultationId) }}
               </template>
 
               <template #item.deletedBy="{ item }">
-                {{ typeof item.deletedBy === 'string' ? item.deletedBy : ((item.deletedBy as any)?.username || (item.deletedBy as any)?._id || '-') }}
+                {{ formDeletedByDisplay(item.deletedBy) }}
               </template>
 
               <template #item.deletionReason="{ item }">
@@ -417,14 +467,14 @@ watch(activeTab, (newTab) => {
                     color="success" 
                     variant="text" 
                     icon="mdi-restore"
-                    @click="restoreForm((item as any)._id || item.id)">
+                    @click="restoreForm(formIdForActions(item))">
                   </v-btn>
                   <v-btn 
                     size="small" 
                     color="error" 
                     variant="text" 
                     icon="mdi-delete-forever"
-                    @click="permanentDeleteForm((item as any)._id || item.id)">
+                    @click="permanentDeleteForm(formIdForActions(item))">
                   </v-btn>
                 </div>
               </template>

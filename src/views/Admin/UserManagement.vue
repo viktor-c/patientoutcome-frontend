@@ -96,7 +96,7 @@ const saveUser = async (updatedUser: GetUsers200ResponseResponseObjectInner) => 
       department: updatedUser.department,
       roles: updatedUser.roles,
       belongsToCenter: updatedUser.belongsToCenter,
-      ...((updatedUser as any).password && { password: (updatedUser as any).password }),
+      ...((updatedUser as unknown as { password?: string }).password && { password: (updatedUser as unknown as { password?: string }).password }),
     };
 
     console.debug('UserManagement.saveUser: updatePayload prepared for', updatedUser?.username, updatePayload);

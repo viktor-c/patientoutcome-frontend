@@ -8,7 +8,6 @@ import {
   type Surgery,
   type CreateSurgerySchema,
   type GetUsers200ResponseResponseObjectInner as User,
-  type FindAllCodes200ResponseResponseObjectInnerConsultationIdNotesInner as Note,
   type Blueprint,
   type AnaesthesiaType,
   ResponseError,
@@ -19,6 +18,7 @@ import { useNotifierStore } from '@/stores/notifierStore'
 import { surgeryApi, userApi, blueprintApi } from '@/api'
 import { useUserStore } from '@/stores/userStore'
 import { dayjs } from '@/utils/dayjs'
+import NotesEditor from '@/components/forms/NotesEditor.vue'
 
 const props = defineProps<{
   patientCaseId: string
@@ -26,9 +26,7 @@ const props = defineProps<{
   surgeryBlueprintIds?: string[]
   patientCaseData?: {
     mainDiagnosis?: string[]
-    studyDiagnosis?: string[]
     mainDiagnosisICD10?: string[]
-    studyDiagnosisICD10?: string[]
     otherDiagnosis?: string[]
     otherDiagnosisICD10?: string[]
   } | null
@@ -44,13 +42,6 @@ const { formatLocalizedCustomDate } = useDateFormat()
 const { validateForm, clearAllErrors, clearFieldError, hasError, getError, resetFormState } = useFormValidation()
 
 
-// Helper function to safely format dates
-const safeFormatDate = (date: string | null | undefined, format: string = 'DD.MM.YYYY HH:mm'): string => {
-  if (!date) return 'N/A'
-  const tmpDate = formatLocalizedCustomDate(date, format)
-  return tmpDate
-}
-
 const isEditMode = ref(!!(props.surgery && props.surgery.id))
 
 // Watch for changes to props.surgery to update edit mode
@@ -60,7 +51,7 @@ watch(() => props.surgery, (newSurgery) => {
     // Update form with surgery data
     form.value = { ...newSurgery }
     form.value.patientCase = props.patientCaseId
-    
+
     // Handle existing anaesthesia type data
     if (newSurgery.anaesthesiaType) {
       if (typeof newSurgery.anaesthesiaType === 'object' && newSurgery.anaesthesiaType.id) {
@@ -98,8 +89,6 @@ const form = ref<Surgery & { formTemplates?: string[] }>({
 
 const users = ref<User[]>([])
 const userStore = useUserStore()
-const editingNoteIndex = ref<number | null>(null)
-const editedNote = ref<string>('')
 const formSubmitted = ref(false)
 
 // Time of day for the surgery (HH:mm)
@@ -647,54 +636,6 @@ const saveSurgeryAndNextStep = async () => {
   // The parent will handle moving to the next step
 }
 
-function addNote() {
-  const newNote: Note = {
-    dateCreated: null,
-    //TODO createdBy should be set to the current user
-    createdBy: "", // users.value[0]?.id || null, // Uncomment when user management is implemented
-    dateModified: null,
-    note: '',
-  }
-  if (!form.value.additionalData) {
-    form.value.additionalData = []
-  }
-  form.value.additionalData.push(newNote as Note)
-  editingNoteIndex.value = form.value.additionalData.length - 1
-  editedNote.value = ''
-}
-
-function editNote(index: number) {
-  editingNoteIndex.value = index
-  editedNote.value = (form.value.additionalData?.[index] as Note)?.note || ''
-}
-
-function saveNote(index: number) {
-  if (editingNoteIndex.value !== null && form.value.additionalData) {
-    const note = form.value.additionalData[index] as Note
-    if (note.dateCreated) {
-      note.dateModified = new Date().toISOString()
-    } else {
-      note.dateCreated = new Date().toISOString()
-    }
-    note.note = editedNote.value
-    editingNoteIndex.value = null
-    editedNote.value = ''
-  }
-}
-
-function cancelEdit() {
-  editingNoteIndex.value = null
-  editedNote.value = ''
-}
-
-function deleteNote(index: number) {
-  if (form.value.additionalData) {
-    form.value.additionalData.splice(index, 1)
-  }
-}
-
-
-
 // Expose function for external access
 defineExpose({
   submit: saveSurgery,
@@ -713,25 +654,25 @@ defineExpose({
     </v-card-title>
     <v-card-text>
       <!-- Blueprint Selection Section -->
-          <v-autocomplete v-if="!isEditMode" class="mb-4"
-                          v-model="selectedBlueprint"
-                          v-model:search="blueprintSearchQuery"
-                          :items="blueprints"
-                          :loading="loadingBlueprints"
-                          :label="t('forms.blueprint.selectBlueprint')"
-                          :placeholder="t('forms.blueprint.searchBlueprintsPlaceholder')"
-                          :no-data-text="t('forms.blueprint.noBlueprints')"
-                          item-title="title"
-                          item-value="id"
-                          return-object
-                          clearable
-                          variant="underlined"
-                          @update:model-value="(blueprint) => blueprint && applyBlueprint(blueprint)">
-            <template v-slot:item="{ props, item }">
-              <v-list-item v-bind="props" :title="item.raw.title" :subtitle="item.raw.description">
-              </v-list-item>
-            </template>
-          </v-autocomplete>
+      <v-autocomplete v-if="!isEditMode" class="mb-4"
+                      v-model="selectedBlueprint"
+                      v-model:search="blueprintSearchQuery"
+                      :items="blueprints"
+                      :loading="loadingBlueprints"
+                      :label="t('forms.blueprint.selectBlueprint')"
+                      :placeholder="t('forms.blueprint.searchBlueprintsPlaceholder')"
+                      :no-data-text="t('forms.blueprint.noBlueprints')"
+                      item-title="title"
+                      item-value="id"
+                      return-object
+                      clearable
+                      variant="underlined"
+                      @update:model-value="(blueprint) => blueprint && applyBlueprint(blueprint)">
+        <template v-slot:item="{ props, item }">
+          <v-list-item v-bind="props" :title="item.raw.title" :subtitle="item.raw.description">
+          </v-list-item>
+        </template>
+      </v-autocomplete>
 
       <v-form @submit.prevent="saveSurgery">
         <!-- Basic Information -->
@@ -769,11 +710,11 @@ defineExpose({
                           :error-messages="hasError('surgeryDate') ? [getError('surgeryDate')] : []">
               <template #append-inner>
                 <v-btn
-                  icon="mdi-calendar"
-                  variant="text"
-                  size="small"
-                  @click.stop="openDateDialog"
-                  :title="t('surgery.selectDate')" />
+                       icon="mdi-calendar"
+                       variant="text"
+                       size="small"
+                       @click.stop="openDateDialog"
+                       :title="t('surgery.selectDate')" />
               </template>
             </v-text-field>
 
@@ -783,8 +724,8 @@ defineExpose({
               <v-card class="pa-2" style="max-width:95vw;">
                 <v-card-title>{{ t('surgery.surgeryDate') }}</v-card-title>
                 <v-card-text>
-                      <v-date-picker v-model="tempDate" show-adjacent-months first-day-of-week="0" show-week/>
-                    <!-- <v-col cols="12" md="5" class="d-flex flex-column justify-center">
+                  <v-date-picker v-model="tempDate" show-adjacent-months first-day-of-week="0" show-week />
+                  <!-- <v-col cols="12" md="5" class="d-flex flex-column justify-center">
                       <v-time-picker v-model="tempTime" format="24hr" /> -->
                 </v-card-text>
                 <v-card-actions>
@@ -933,39 +874,11 @@ defineExpose({
         </v-row>
 
         <!-- Additional Notes -->
-        <v-card class="my-4">
-          <v-card-title class="text-h6">{{ t('surgery.additionalNotes') }}</v-card-title>
-          <v-card-text>
-            <v-list v-if="form.additionalData && form.additionalData.length > 0">
-              <v-list-item v-for="(note, index) in form.additionalData" :key="index">
-                <template v-slot:prepend v-if="editingNoteIndex != index">
-                  <v-chip color="blue"><v-icon @click="editNote(index)">mdi-pencil</v-icon></v-chip>
-                  <v-chip color="red"><v-icon @click="deleteNote(index)">mdi-delete</v-icon></v-chip>
-                </template>
-                <v-container v-if="editingNoteIndex === index">
-                  <v-row><v-textarea v-model="editedNote" rows="2" outlined dense></v-textarea></v-row>
-                  <v-row>
-                    <v-col class="py-0" cols="8">
-                      <v-btn inline color="success" @click="saveNote(index)"><v-icon>mdi-check</v-icon></v-btn>
-                    </v-col>
-                    <v-col class="py-0" cols="4">
-                      <v-btn inline color="error" @click="cancelEdit"><v-icon>mdi-close</v-icon></v-btn>
-                    </v-col>
-                  </v-row>
-                </v-container>
-                <v-container v-else>
-                  <v-list-item-title>{{ (note as Note).note }}</v-list-item-title>
-                  <p>{{ t('surgery.createdOn') }}
-                    {{ safeFormatDate((note as Note).dateCreated) }}</p>
-                  <p v-if="(note as Note).dateModified">
-                    {{ t('surgery.modifiedOn') }}
-                    {{ safeFormatDate((note as Note).dateModified) }}</p>
-                </v-container>
-              </v-list-item>
-            </v-list>
-            <v-btn color="primary" @click="addNote">{{ t('surgery.addNote') }}</v-btn>
-          </v-card-text>
-        </v-card>
+        <NotesEditor
+                     v-if="form.additionalData"
+                     v-model:notes="form.additionalData"
+                     :title="t('surgery.additionalNotes')"
+                     :add-button-text="t('surgery.addNote')" />
 
         <div v-if="props.showButtons !== false" class="d-flex gap-2 mt-4">
           <v-btn

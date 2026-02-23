@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useConsultationStore } from '@/stores/'
 import { useDateFormat } from '@/composables/useDateFormat'
@@ -8,13 +8,15 @@ import {
   type Consultation,
   type CreateConsultation,
   type UserNoPassword,
-  type Note,
   type GetFormTemplatesShortlist200ResponseResponseObjectInner as FormTemplateShortList,
   ResponseError,
   type FindAllCodes200ResponseResponseObjectInner as Code,
 } from '@/api'
 import { useNotifierStore } from '@/stores/notifierStore'
 import { consultationApi, userApi, formtemplateApi, codeApi } from '@/api'
+import { getAccessLevelColor, getAccessLevelDescription } from '@/services/formVersionService'
+import { useUserStore } from '@/stores/userStore'
+import NotesEditor from '@/components/forms/NotesEditor.vue'
 
 const props = defineProps<{
   patientId: string | null | undefined
@@ -26,15 +28,10 @@ const emit = defineEmits(['submit', 'cancel'])
 
 const { t, locale } = useI18n()
 const notifierStore = useNotifierStore()
+const userStore = useUserStore()
 const consultationStore = useConsultationStore()
-const { formatLocalizedCustomDate, getLocalizedDayjs, dateFormats } = useDateFormat()
+const { getLocalizedDayjs } = useDateFormat()
 const { errors, validateForm, clearAllErrors, resetFormState } = useFormValidation()
-
-// Helper function to safely format dates
-const safeFormatDate = (date: string | null | undefined, format: string = dateFormats.isoDateTime): string => {
-  if (!date) return 'N/A'
-  return formatLocalizedCustomDate(date, format)
-}
 
 const isEditMode = ref(!!(props.consultation && props.consultation.id))
 
@@ -53,12 +50,32 @@ const form = ref<Consultation & { formTemplates?: string[] }>({
 const users = ref<UserNoPassword[]>([])
 const formTemplates = ref<FormTemplateShortList[]>([])
 const selectedFormTemplates = ref<string[]>([])
-const editingNoteIndex = ref<number | null>(null)
-const editedNote = ref<string>('')
 const codes = ref<Code[]>([])
 const selectedCode = ref<Code | null>(null)
 const generatingCode = ref(false)
 const formSubmitted = ref(false)
+
+// Filter form templates based on user role
+const availableFormTemplates = computed(() => {
+  const isAuthenticated = userStore.hasRole('admin') || userStore.hasRole('doctor') || userStore.hasRole('student')
+
+  type TemplateWithAccess = FormTemplateShortList & { accessLevel?: string }
+
+  return formTemplates.value.filter((template: TemplateWithAccess) => {
+    const accessLevel = template.accessLevel || 'patient'
+
+    // Everyone can see patient-accessible forms
+    if (accessLevel === 'patient') return true
+
+    // Authenticated users can see authenticated forms
+    if (accessLevel === 'authenticated' && isAuthenticated) return true
+
+    // Admins can see inactive forms
+    if (accessLevel === 'inactive' && userStore.hasRole('admin')) return true
+
+    return false
+  })
+})
 
 async function fetchUsers() {
   try {
@@ -215,44 +232,6 @@ const saveConsultation = async () => {
   }
 }
 
-function addNote() {
-  const newNote: Note = {
-    dateCreated: null,
-    //TODO createdBy should be set to the current user
-    createdBy: "", // users.value[0]?.id || null, // Uncomment when user management is implemented
-    // createdBy: users.value[0]?.id || null,
-    dateModified: null,
-    note: '',
-  }
-  form.value.notes.push(newNote as Note)
-  editingNoteIndex.value = form.value.notes.length - 1
-  editedNote.value = ''
-}
-
-function editNote(index: number) {
-  editingNoteIndex.value = index
-  editedNote.value = (form.value.notes[index] as Note).note
-}
-
-function saveNote(index: number) {
-  if (editingNoteIndex.value !== null) {
-    const note = form.value.notes[index] as Note
-    if (note.dateCreated) {
-      note.dateModified = new Date().toISOString()
-    } else {
-      note.dateCreated = new Date().toISOString()
-    }
-    note.note = editedNote.value
-    editingNoteIndex.value = null
-    editedNote.value = ''
-  }
-}
-
-function cancelEdit() {
-  editingNoteIndex.value = null
-  editedNote.value = ''
-}
-
 async function generateNewCode() {
   if (generatingCode.value) return
 
@@ -287,10 +266,6 @@ async function generateNewCode() {
   } finally {
     generatingCode.value = false
   }
-}
-
-function deleteNote(index: number) {
-  form.value.notes.splice(index, 1)
 }
 
 // Expose function for external access
@@ -347,49 +322,57 @@ defineExpose({
             </v-btn>
           </v-col>
         </v-row>
-        <v-card class="my-2">
-          <h4>{{ t('consultation.notes') }}</h4>
-          <v-list>
-            <v-list-item v-for="(note, index) in form.notes" :key="index">
-              <template v-slot:prepend v-if="editingNoteIndex != index">
-                <v-chip color="blue"><v-icon @click="editNote(index)">mdi-pencil</v-icon></v-chip>
-                <v-chip color="red"><v-icon @click="deleteNote(index)">mdi-delete</v-icon></v-chip>
-              </template>
-              <v-container v-if="editingNoteIndex === index">
-                <v-row><v-textarea v-model="editedNote" rows="2" outlined dense></v-textarea></v-row>
-                <v-row>
-                  <v-col class="py-0" cols="8">
-                    <v-btn inline color="success" @click="saveNote(index)"><v-icon>mdi-check</v-icon></v-btn>
-                  </v-col>
-                  <v-col class="py-0" cols="4">
-                    <v-btn inline color="error" @click="cancelEdit"><v-icon>mdi-close</v-icon></v-btn>
-                  </v-col>
-                </v-row>
-              </v-container>
-              <v-container v-else>
-                <v-list-item-title>{{ (note as Note).note }}</v-list-item-title>
-                <p>{{ t('consultation.createdOn') }}
-                  {{ safeFormatDate((note as Note).dateCreated) }}</p>
-                <p v-if="(note as Note).dateModified">
-                  {{ t('consultation.modifiedOn') }}
-                  {{ safeFormatDate((note as Note).dateModified) }}</p>
-              </v-container>
-            </v-list-item>
-          </v-list>
-          <v-btn color="primary" @click="addNote">{{ t('consultation.addNote') }}</v-btn>
-        </v-card>
+
+        <!-- Notes Editor Component -->
+        <NotesEditor
+                     v-model:notes="form.notes"
+                     title="consultation.notes"
+                     add-button-text="consultation.addNote" />
+
+        <!-- Form Templates Selection with Access Level -->
+
         <v-autocomplete
                         multiple
                         chips
                         clearable
                         closable-chips
                         v-model="selectedFormTemplates"
-                        :items="formTemplates"
+                        :items="availableFormTemplates"
                         item-value="id"
                         item-title="title"
                         :label="t('consultation.formTemplate')"
                         outlined
-                        dense></v-autocomplete>
+                        dense>
+          <!-- Custom chip display with access level -->
+          <template #chip="{ item, props: chipProps }">
+            <v-chip
+                    v-bind="chipProps"
+                    :color="getAccessLevelColor((item.raw as any).accessLevel || 'patient')"
+                    closable>
+              <span>{{ (item.raw as any).title }}</span>
+            </v-chip>
+          </template>
+
+          <!-- Custom item display with badge -->
+          <template #item="{ item, props: itemProps }">
+            <v-list-item v-bind="itemProps">
+              <template #prepend>
+                <v-chip
+                        size="x-small"
+                        :color="getAccessLevelColor((item.raw as any).accessLevel || 'patient')"
+                        class="mr-2">
+                  {{ ((item.raw as any).accessLevel || 'patient').toUpperCase() }}
+                </v-chip>
+              </template>
+              <v-list-item-title>{{ (item.raw as any).title }}</v-list-item-title>
+              <v-list-item-subtitle class="text-caption">
+                {{ getAccessLevelDescription((item.raw as any).accessLevel || 'patient') }}
+              </v-list-item-subtitle>
+            </v-list-item>
+          </template>
+        </v-autocomplete>
+
+
         <v-autocomplete
                         v-model="form.visitedBy"
                         :items="users"
@@ -402,7 +385,7 @@ defineExpose({
 
         <!-- Form Access Code Section -->
         <v-row>
-          <v-col cols="8">
+          <v-col cols="12">
             <v-combobox
                         v-model="selectedCode"
                         :items="codes"
@@ -410,17 +393,17 @@ defineExpose({
                         item-title="code"
                         :label="t('consultation.form-access-code')"
                         outlined
-                        dense></v-combobox>
-          </v-col>
-          <v-col cols="4" v-if="!isEditMode" class="d-flex align-center">
-            <v-btn
-                   color="secondary"
-                   :loading="generatingCode"
-                   :disabled="generatingCode"
-                   @click="generateNewCode">
-              <v-icon left>mdi-plus</v-icon>
-              {{ t('buttons.generateNewCode') }}
-            </v-btn>
+                        dense>
+              <template #append-inner v-if="!isEditMode">
+                <v-icon
+                        :class="{ 'text-success': !generatingCode, 'text-disabled': generatingCode }"
+                        :style="{ cursor: generatingCode ? 'not-allowed' : 'pointer' }"
+                        @click.stop="!generatingCode && generateNewCode()"
+                        :disabled="generatingCode">
+                  {{ generatingCode ? 'mdi-loading' : 'mdi-plus' }}
+                </v-icon>
+              </template>
+            </v-combobox>
           </v-col>
         </v-row>
 

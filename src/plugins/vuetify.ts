@@ -3,7 +3,6 @@ import { createVuetify } from 'vuetify';
 import 'vuetify/styles'; // Import Vuetify styles
 import { aliases as mdiAliases, mdi } from 'vuetify/iconsets/mdi'; // Optional: Material Design Icons
 
-import { mdiIconAliases } from '@jsonforms/vue-vuetify';
 import '@mdi/font/css/materialdesignicons.css'; // Ensure you are using css-loader
 
 import DayJsAdapter from '@date-io/dayjs'
@@ -20,7 +19,7 @@ export default createVuetify({
   // we use **vite-plugin-vuetify** to autoimport component; https://www.npmjs.com/package/vite-plugin-vuetify
   icons: {
     defaultSet: 'mdi',
-    aliases: { ...mdiAliases, ...mdiIconAliases },
+    aliases: mdiAliases,
     sets: {
       mdi,
     },

@@ -278,18 +278,18 @@ onMounted(() => {
               <v-list v-else>
                 <v-list-item
                              v-for="(formItem, index) in consultation.responseObject.proms"
-                             :key="formItem.id || index"
+                             :key="formItem.id == null ? index : String(formItem.id)"
                              class="border-b list-item-clickable"
-                             @click="onListItemClick(formItem.id || '')"
+                             @click="onListItemClick(formItem.id == null ? '' : String(formItem.id))"
                              tabindex="0"
                              ripple
                              active-class="list-item-active">
                   <template #prepend>
                     <v-avatar
-                              :color="formItem.formFillStatus === 'completed' ? 'success' : 'warning'"
+                              :color="formItem.patientFormData?.fillStatus === 'complete' ? 'success' : 'warning'"
                               size="40">
                       <v-icon
-                              :icon="formItem.formFillStatus === 'completed' ? 'mdi-check' : 'mdi-clock-outline'"
+                              :icon="formItem.patientFormData?.fillStatus === 'complete' ? 'mdi-check' : 'mdi-clock-outline'"
                               color="white">
                       </v-icon>
                     </v-avatar>
@@ -302,19 +302,19 @@ onMounted(() => {
                   <v-list-item-subtitle>
                     <span v-if="formItem.description">{{ formItem.description }}</span>
                     <span class="ml-4">
-                      {{ formItem.scoring ?
-                        `${t('kiosk.scoring.total')}` : t('kiosk.noScore') }}
+                      {{ formItem.patientFormData?.subscales ?
+                        `${t('kiosk.subscales.totalScore')}` : t('kiosk.noScore') }}
                     </span>
                   </v-list-item-subtitle>
 
                   <template #append>
                     <v-btn
-                           @click="openForm(formItem.id || '')"
-                           :color="formItem.formData ? 'primary' : 'success'"
-                           :prepend-icon="formItem.formData ? 'mdi-eye' : 'mdi-play'"
+                            @click="openForm(formItem.id == null ? '' : String(formItem.id))"
+                           :color="formItem.patientFormData ? 'primary' : 'success'"
+                           :prepend-icon="formItem.patientFormData ? 'mdi-eye' : 'mdi-play'"
                            variant="outlined"
                            class="form-action-btn">
-                      {{ formItem.formData ? t('kiosk.viewForm') : t('kiosk.startForm') }}
+                      {{ formItem.patientFormData ? t('kiosk.viewForm') : t('kiosk.startForm') }}
                     </v-btn>
                   </template>
                 </v-list-item>

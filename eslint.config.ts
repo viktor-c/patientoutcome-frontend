@@ -22,6 +22,7 @@ export default defineConfigWithVueTs(
       '**/dist-ssr/**',
       '**/coverage/**',
       'public/gffc-presentation/reveal/**',
+      '**/*.md',
     ],
   },
 

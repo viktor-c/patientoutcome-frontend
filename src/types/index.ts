@@ -5,7 +5,11 @@
 // Backend Zod schemas are the single source of truth
 
 // Import shared scoring types
-import type { ScoringData } from './scoring'
+import type { FormQuestions, PatientFormData } from './scoring'
+
+// alias for API patient form data type (helps shield components from long names)
+// we use an inline import here to avoid exporting the long generated symbol itself
+export type ApiPatientFormData = import('@/api').FindAllCodes200ResponseResponseObjectInnerConsultationIdPromsInnerPatientFormData
 
 export interface Patient {
   _id?: string
@@ -25,9 +29,7 @@ export interface PatientCase {
   updatedAt?: string | null
   patient: string | null
   mainDiagnosis?: string[]
-  studyDiagnosis?: string[]
   mainDiagnosisICD10?: string[]
-  studyDiagnosisICD10?: string[]
   otherDiagnosis?: string[]
   otherDiagnosisICD10?: string[]
   surgeries: string[]
@@ -41,23 +43,19 @@ export interface Form {
   id?: string | null // For OpenAPI compatibility (can be null)
   title?: string
   description?: string
-  markdownHeader?: string
-  markdownFooter?: string
-  formSchema?: Record<string, unknown>
-  formSchemaUI?: Record<string, unknown>
-  formData?: CustomFormData
-  translations?: Record<string, Record<string, unknown>>
+  patientFormData?: PatientFormData | null
   caseId?: string | null
   consultationId?: string | null
   formTemplateId?: string | null
-  scoring?: ScoringData
+  formFillStatus?: string
   createdAt?: string | null
-  formFillStatus?: 'draft' | 'incomplete' | 'completed'
   updatedAt?: string | null
-  completedAt?: string | null
   formStartTime?: string | null
   formEndTime?: string | null
   completionTimeSeconds?: number
+  deletedAt?: string | null
+  deletedBy?: string | null
+  deletionReason?: string | null
 }
 
 export interface Surgery {
@@ -117,14 +115,19 @@ export interface questions {
 // };
 
 // Standard FormData types (matching backend Zod schema)
-// Questionnaire represents a set of questions with numeric or null answers
-export type Questionnaire = Record<string, number | null>;
+// Questionnaire represents a set of questions with numeric, string, or null answers
+export type Questionnaire = Record<string, string | number | null>;
 
-// CustomFormData represents form data structured as sections containing questionnaires
-export type CustomFormData = Record<string, Questionnaire>;
-
-// FormData alias for backwards compatibility
-export type FormData = CustomFormData;
+/**
+ * Legacy FormData interface - deprecated, use PatientFormData instead
+ * @deprecated Use PatientFormData from './scoring' instead
+ */
+export interface FormData {
+  rawData: FormQuestions | null;
+  scoring: import('./scoring').ScoringData;
+  isComplete: boolean;
+  completedAt?: string | null;
+}
 
 // API Response types
 export interface ApiResponse<T = unknown> {

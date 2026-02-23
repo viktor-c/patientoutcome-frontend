@@ -2,30 +2,30 @@
 import type { FindAllCodes200ResponseResponseObjectInnerConsultationIdPromsInner as FormFromApi } from '@/api'
 import type { GetAllPatientCases200ResponseResponseObjectInner as PatientCaseFromApi } from '@/api'
 import type { GetAllPatientCases200ResponseResponseObjectInnerSurgeriesInner as SurgeryFromApi } from '@/api'
-import type { Form, PatientCase, Surgery, FormData, ScoringData } from '@/types'
+import type { Form, PatientCase, Surgery } from '@/types'
 
 // Convert generated form model to internal Form
 export function mapApiFormToForm(api: FormFromApi): Form {
+  const normalizedId = api.id == null ? null : String(api.id)
+
   return {
-    id: api.id || null,
-    _id: api.id || '', // For backward compatibility 
+    id: normalizedId,
+    _id: normalizedId || '', // For backward compatibility 
     title: api.title || '',
     description: api.description || '',
-    formSchema: (api.formSchema || {}) as Record<string, unknown>,
-    formSchemaUI: (api.formSchemaUI || {}) as Record<string, unknown>,
-    formData: (api.formData as FormData) || {},
-    translations: api.translations as Record<string, Record<string, unknown>> | undefined,
+    formFillStatus: (api as any).formFillStatus || (api as any).patientFormData?.fillStatus || undefined,
+    patientFormData: (api as any).patientFormData || null,
     caseId: api.caseId || null,
     consultationId: api.consultationId || null,
     formTemplateId: api.formTemplateId || null,
-    scoring: api.scoring as unknown as ScoringData || undefined,
     createdAt: api.createdAt,
-    formFillStatus: api.formFillStatus as 'draft' | 'incomplete' | 'completed' | undefined,
     updatedAt: api.updatedAt,
-    completedAt: api.completedAt,
     formStartTime: api.formStartTime,
     formEndTime: api.formEndTime,
     completionTimeSeconds: api.completionTimeSeconds,
+    deletedAt: (api as any).deletedAt || null,
+    deletedBy: (api as any).deletedBy || null,
+    deletionReason: (api as any).deletionReason || null,
   }
 }
 
@@ -41,9 +41,7 @@ export function mapApiPatientCase(api: PatientCaseFromApi): PatientCase {
     updatedAt: api.updatedAt,
     patient: (api as any).patient && typeof (api as any).patient === 'object' ? (api as any).patient._id || (api as any).patient.id : api.patient as any,
     mainDiagnosis: api.mainDiagnosis,
-    studyDiagnosis: api.studyDiagnosis,
     mainDiagnosisICD10: api.mainDiagnosisICD10,
-    studyDiagnosisICD10: api.studyDiagnosisICD10,
     otherDiagnosis: api.otherDiagnosis,
     otherDiagnosisICD10: api.otherDiagnosisICD10,
     medicalHistory: api.medicalHistory,

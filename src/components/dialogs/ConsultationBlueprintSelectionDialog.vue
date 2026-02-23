@@ -50,6 +50,7 @@ const { formatLocalizedCustomDate, dateFormats } = useDateFormat()
 // State management
 const availableBlueprints = ref<Blueprint[]>([])
 const selectedBlueprints = ref<Blueprint[]>([...props.modelValue])
+const initialSelectedBlueprints = ref<Blueprint[]>([]) // Store initial selection for "restore defaults"
 const loadingBlueprints = ref(false)
 const searchQuery = ref('')
 
@@ -162,6 +163,30 @@ const removeBlueprint = (blueprint: Blueprint) => {
   }
 }
 
+/**
+ * @description Selects all available blueprints.
+ */
+const selectAll = () => {
+  selectedBlueprints.value = [...availableBlueprints.value]
+  emit('update:modelValue', selectedBlueprints.value)
+}
+
+/**
+ * @description Deselects all blueprints.
+ */
+const selectNone = () => {
+  selectedBlueprints.value = []
+  emit('update:modelValue', selectedBlueprints.value)
+}
+
+/**
+ * @description Restores the initial default selection (from pre-selected blueprint IDs).
+ */
+const selectDefaults = () => {
+  selectedBlueprints.value = [...initialSelectedBlueprints.value]
+  emit('update:modelValue', selectedBlueprints.value)
+}
+
 // Actions for handling creation flow
 /**
  * @description Resets the form to allow creating more consultations from blueprints.
@@ -260,10 +285,10 @@ const createConsultationsFromBlueprints = async () => {
 
     notifierStore.notify(t('alerts.consultation.batchCreated', { count: newConsultations.length }), 'success')
     notifierStore.clearNotifications()
-    
+
     // Emit consultations-created event for parent component
     emit('consultations-created', newConsultations)
-    
+
     // Move to manual consultation creation state (4b) - always show step 4b after blueprint creation
     emit('consultation-flow-advance', '4b')
 
@@ -502,6 +527,7 @@ const handlePreSelectedBlueprints = async () => {
 
   if (preSelectedBlueprints.length > 0) {
     selectedBlueprints.value = preSelectedBlueprints
+    initialSelectedBlueprints.value = [...preSelectedBlueprints] // Store initial selection
     emit('update:modelValue', selectedBlueprints.value)
     logger.info('Pre-selected blueprints from surgery', { count: preSelectedBlueprints.length })
   }
@@ -531,9 +557,16 @@ defineExpose({
   /** @description Resets the form state to initial values. */
   resetFormState: () => {
     selectedBlueprints.value = []
+    initialSelectedBlueprints.value = []
     searchQuery.value = ''
     createdConsultations.value = []
-  }
+  },
+  /** @description Selects all available blueprints. */
+  selectAll,
+  /** @description Deselects all blueprints. */
+  selectNone,
+  /** @description Restores the initial default selection. */
+  selectDefaults
 })
 </script>
 
@@ -625,6 +658,34 @@ defineExpose({
                           outlined
                           dense
                           class="mb-4" />
+
+            <!-- Template selection helper buttons -->
+            <div class="d-flex gap-2 mb-4">
+              <v-btn
+                     @click="selectAll"
+                     color="primary"
+                     variant="outlined"
+                     size="small">
+                <v-icon left size="small">mdi-checkbox-multiple-marked</v-icon>
+                {{ t('buttons.selectAll') }}
+              </v-btn>
+              <v-btn
+                     @click="selectNone"
+                     color="grey"
+                     variant="outlined"
+                     size="small">
+                <v-icon left size="small">mdi-checkbox-multiple-blank-outline</v-icon>
+                {{ t('buttons.selectNone') }}
+              </v-btn>
+              <v-btn
+                     @click="selectDefaults"
+                     color="success"
+                     variant="outlined"
+                     size="small">
+                <v-icon left size="small">mdi-star</v-icon>
+                {{ t('buttons.selectDefaults') }}
+              </v-btn>
+            </div>
 
             <!-- Loading state -->
             <v-progress-linear

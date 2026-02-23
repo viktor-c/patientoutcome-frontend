@@ -2,6 +2,7 @@
 import { ref, computed, onMounted, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRouter, useRoute } from 'vue-router'
+import { useDateFormat } from '@/composables/useDateFormat'
 import { useNotifierStore } from '@/stores/notifierStore'
 import { useUserStore } from '@/stores/userStore'
 import type {
@@ -21,14 +22,39 @@ import PatientCaseCreateEditForm from '@/components/forms/PatientCaseCreateEditF
 import CreateEditSurgeryDialog from '@/components/dialogs/CreateEditSurgeryDialog.vue'
 //step 4: create consultations (from surgery blueprint or manual selection)
 import ConsultationBlueprintSelectionDialog from '@/components/dialogs/ConsultationBlueprintSelectionDialog.vue'
-import QRCodeDisplay from '@/components/QRCodeDisplay.vue'
+import CreateEditConsultationDialog from '@/components/dialogs/CreateEditConsultationDialog.vue'
+import QRCodeLinkDisplay from '@/components/QRCodeLinkDisplay.vue'
 import { logger } from '@/services/logger'
 
 const { t } = useI18n()
+const { formatLocalizedCustomDate, dateFormats } = useDateFormat()
 const router = useRouter()
 const route = useRoute()
 const notifierStore = useNotifierStore()
 const userStore = useUserStore()
+
+interface CaseBlueprintContent {
+  surgeries?: string | string[]
+}
+
+interface ConsultationPromWithTitle {
+  id?: string | null
+  title?: string | null
+}
+
+const isRecord = (value: unknown): value is Record<string, unknown> => {
+  return typeof value === 'object' && value !== null
+}
+
+const extractRecordId = (value: Record<string, unknown>): string | undefined => {
+  const directId = value.id
+  if (typeof directId === 'string' && directId.length > 0) return directId
+
+  const altId = value._id
+  if (typeof altId === 'string' && altId.length > 0) return altId
+
+  return undefined
+}
 
 // =============================================================================
 // URL PATTERNS FOR DIRECT ACCESS LINKS
@@ -39,9 +65,6 @@ const CASE_URL_PATTERN = '/case/{id}'
 
 // Current step in the flow (1: Patient, 2: Case, 3: Surgery, 4: Consultation, 5: Completion)
 const currentStep = ref(1)
-
-// Consultation flow substeps: 4a (blueprint selection) or 4b (manual creation/completion)
-const consultationFlowStep = ref<'4a' | '4b'>('4a')
 
 // Data for each step
 const patientData = ref<CreatePatientRequest & { department?: string }>({
@@ -93,18 +116,32 @@ const duplicateExternalId = ref<string>('')
 // Loading states
 const isLoading = ref(false)
 
-// Track if manual consultation dialog is open in step 4b
+// Track if manual consultation dialog is open in step 4
 const isManualConsultationDialogOpen = ref(false)
 
-// Department name display
-const departmentName = ref<string>('')
+// Manual consultation dialog in step 4
+const showManualConsultationDialogStep4 = ref(false)
+const manualConsultationFormRef = ref<InstanceType<typeof CreateEditConsultationDialog> | null>(null)
+const manuallyCreatedConsultationsStep4 = ref<Consultation[]>([])
 
-// Listen for consultation flow substep transitions
-const handleConsultationFlowAdvance = (substep: '4a' | '4b') => {
-  consultationFlowStep.value = substep
+const sortedManuallyCreatedConsultationsStep4 = computed(() => {
+  return [...manuallyCreatedConsultationsStep4.value].sort((a, b) => {
+    const dateA = a.dateAndTime ? new Date(a.dateAndTime).getTime() : Number.MAX_SAFE_INTEGER
+    const dateB = b.dateAndTime ? new Date(b.dateAndTime).getTime() : Number.MAX_SAFE_INTEGER
+    return dateA - dateB
+  })
+})
+
+// Department management
+const departmentName = ref<string>('')
+const availableDepartments = ref<Array<{ id: string; name: string }>>([])
+const isDepartmentDropdownDisabled = computed(() => availableDepartments.value.length <= 1)
+
+// Handle manual consultation dialog state changes
+const handleManualConsultationDialogState = (isOpen: boolean) => {
+  isManualConsultationDialogOpen.value = isOpen
 }
 
-// Watch currentStep to reset form errors when navigating between steps
 watch(currentStep, (newStep, oldStep) => {
   if (newStep !== oldStep) {
     // Reset form state when moving to a different step
@@ -126,43 +163,21 @@ watch(currentStep, (newStep, oldStep) => {
       }
     }
 
-    // Show step-specific notifications
+    // Log step transitions
     if (newStep === 1) {
-      // Step 1: Patient creation
-      notifierStore.notify(t('alerts.patient.optionalFieldsInfo'), 'info')
+      console.log('Step 1: Patient creation')
       if (showExternalIdWarning.value) {
-        notifierStore.notify(t('alerts.patient.noExternalIdWarning'), 'warning')
+        console.warn('No external ID provided')
       }
     } else if (newStep === 2) {
-      // Step 2: Case creation
-      if (createdPatient.value) {
-        notifierStore.notify(`${t('creationFlow.patientCreated')} - ID: ${createdPatient.value.id}`, 'success')
-      }
+      console.log('Step 2: Case creation', createdPatient.value?.id)
     } else if (newStep === 3) {
-      // Step 3: Surgery creation
-      if (createdCase.value) {
-        notifierStore.notify(`${t('creationFlow.caseCreated')} - ID: ${createdCase.value.id}`, 'success')
-      }
-      if (surgeryBlueprintId.value) {
-        notifierStore.notify(t('creationFlow.surgeryBlueprintPrefilled'), 'info')
-      }
-      notifierStore.notify(t('creationFlow.surgeryOptionalInfo'), 'info')
+      console.log('Step 3: Surgery creation', { caseId: createdCase.value?.id, blueprintId: surgeryBlueprintId.value })
     } else if (newStep === 4) {
-      // Step 4: Consultation creation
-      consultationFlowStep.value = '4a'
-
-      // Show surgery status notifications
-      if (createdSurgery.value) {
-        notifierStore.notify(`${t('creationFlow.surgeryCreated')} - ID: ${createdSurgery.value.id}`, 'success')
-      } else if (skipSurgery.value) {
-        notifierStore.notify(t('creationFlow.surgerySkippedInfo'), 'info')
-      }
+      console.log('Step 4: Consultation creation', { surgeryId: createdSurgery.value?.id, skipped: skipSurgery.value })
     } else if (newStep === 5) {
-      // Step 5: Completion
+      console.log('Step 5: Completion', { consultationsCount: createdConsultations.value.length })
       notifierStore.notify(t('creationFlow.flowCompleted'), 'success')
-      if (createdConsultations.value.length > 0) {
-        notifierStore.notify(t('creationFlow.consultationsCreated', { count: createdConsultations.value.length }), 'info')
-      }
     }
   }
 })// Use centralized API instance
@@ -188,6 +203,48 @@ const canProceedFromStep2 = computed(() => {
   return true
 })
 
+const safeFormatConsultationDate = (date: string | null | undefined): string => {
+  if (!date) return t('common.notAvailable')
+  return formatLocalizedCustomDate(date, dateFormats.isoDateTime)
+}
+
+const getFormAccessCodeValue = (accessCode: unknown): string | null => {
+  if (!accessCode) return null
+
+  if (typeof accessCode === 'string') {
+    return accessCode
+  }
+
+  if (isRecord(accessCode) && typeof accessCode.code === 'string' && accessCode.code.length > 0) {
+    return accessCode.code
+  }
+
+  return null
+}
+
+const getConsultationAccessCode = (consultation: Consultation | null | undefined): string | null => {
+  if (!consultation) return null
+  return getFormAccessCodeValue(consultation.formAccessCode as unknown)
+}
+
+const getConsultationQRCodeUrl = (consultation: Consultation): string => {
+  const consultationCode = getConsultationAccessCode(consultation)
+  if (!consultationCode) return ''
+  const baseUrl = window.location.origin
+  return `${baseUrl}/flow/${consultationCode}`
+}
+
+const getConsultationForms = (consultation: Consultation): ConsultationPromWithTitle[] => {
+  if (!Array.isArray(consultation.proms)) return []
+
+  return (consultation.proms as unknown[])
+    .filter((prom): prom is Record<string, unknown> => isRecord(prom))
+    .map((prom) => ({
+      id: typeof prom.id === 'string' ? prom.id : null,
+      title: typeof prom.title === 'string' ? prom.title : null,
+    }))
+}
+
 // Convert createdCase to the format expected by PatientCaseCreateEditForm
 const caseForEditing = computed(() => {
   if (!createdCase.value) return null
@@ -199,8 +256,6 @@ const caseForEditing = computed(() => {
     patient: createdCase.value.patient?.id || createdPatient.value?.id || '',
     mainDiagnosis: createdCase.value.mainDiagnosis,
     mainDiagnosisICD10: createdCase.value.mainDiagnosisICD10,
-    studyDiagnosis: createdCase.value.studyDiagnosis,
-    studyDiagnosisICD10: createdCase.value.studyDiagnosisICD10,
     otherDiagnosis: createdCase.value.otherDiagnosis,
     otherDiagnosisICD10: createdCase.value.otherDiagnosisICD10,
     medicalHistory: createdCase.value.medicalHistory,
@@ -213,6 +268,17 @@ const caseForEditing = computed(() => {
 })
 
 // API functions
+const handleEnter = async () => {
+  // ignore when dialogs open
+  if (isManualConsultationDialogOpen.value || showManualConsultationDialogStep4.value) return
+  // only respond if next button is shown and not disabled
+  if (currentStep.value < 5 &&
+    !(currentStep.value === 1 && !canProceedFromStep1.value) &&
+    !(currentStep.value === 2 && !canProceedFromStep2.value)) {
+    await nextStep()
+  }
+}
+
 const nextStep = async () => {
   if (currentStep.value === 1) {
     // If patient already created, update it before proceeding
@@ -232,34 +298,24 @@ const nextStep = async () => {
       await surgeryFormRef.value.submit()
     }
   } else if (currentStep.value === 4) {
-    // Step 4 has two substeps: 4a (blueprint selection) and 4b (manual creation)
-    if (consultationFlowStep.value === '4a') {
-      // Submit the consultation form to create consultations from selected blueprints
-      if (consultationFormRef.value) {
-        await consultationFormRef.value.submit()
-      }
-      // The consultation form will emit 'consultation-flow-advance' to move to 4b
-    } else {
-      // From 4b, we need to fetch all consultations and advance to step 5
-      // Fetch consultations for the case to populate the QR code and links
-      if (createdCase.value?.id) {
-        try {
-          logger.info('🔄 Fetching all consultations for case before completing flow:', createdCase.value.id)
-          const response = await consultationApi.getAllConsultations({ caseId: createdCase.value.id })
-          if (response.responseObject && Array.isArray(response.responseObject)) {
-            createdConsultations.value = response.responseObject as Consultation[]
-            logger.info('✅ Fetched consultations:', { 
-              count: createdConsultations.value.length,
-              firstConsultation: createdConsultations.value[0]
-            })
-          }
-        } catch (error) {
-          logger.error('❌ Error fetching consultations:', error)
+    // Fetch consultations for the case to populate the QR code and links
+    if (createdCase.value?.id) {
+      try {
+        logger.info('🔄 Fetching all consultations for case:', createdCase.value.id)
+        const response = await consultationApi.getAllConsultations({ caseId: createdCase.value.id })
+        if (response.responseObject && Array.isArray(response.responseObject)) {
+          createdConsultations.value = response.responseObject as Consultation[]
+          logger.info('✅ Fetched consultations:', {
+            count: createdConsultations.value.length,
+            firstConsultation: createdConsultations.value[0]
+          })
         }
+      } catch (error) {
+        logger.error('❌ Error fetching consultations:', error)
       }
-      // Advance to step 5 (completion)
-      currentStep.value = 5
     }
+    // Advance to step 5 (completion)
+    currentStep.value = 5
   }
 }
 
@@ -272,13 +328,6 @@ const previousStep = async () => {
       setTimeout(() => {
         currentStep.value = 1
       }, 100)
-      return
-    }
-
-    // Handle substep navigation within step 4
-    if (currentStep.value === 4 && consultationFlowStep.value === '4b') {
-      // Go back from 4b to 4a
-      consultationFlowStep.value = '4a'
       return
     }
 
@@ -296,9 +345,10 @@ const previousStep = async () => {
 const createPatient = async () => {
   if (!canProceedFromStep1.value) return
 
-  // Show warning if external ID is missing
+  // Log if external ID is missing
   if (!patientData.value.externalPatientId?.[0] || !patientData.value.externalPatientId[0]?.trim()) {
     showExternalIdWarning.value = true
+    console.warn('Creating patient without external ID')
   }
 
   isLoading.value = true
@@ -308,7 +358,7 @@ const createPatient = async () => {
       .map(id => (id || '').trim())
       .filter(id => id !== '')
 
-    const patientDataToSend: any = {
+    const patientDataToSend: CreatePatientRequest & { department?: string } = {
       ...patientData.value,
       externalPatientId: filteredExternalIds.length > 0 ? filteredExternalIds : undefined,
       department: patientData.value.department || undefined,
@@ -323,6 +373,7 @@ const createPatient = async () => {
       caseData.value.patient = response.responseObject.id || null
       currentStep.value = 2
       showExternalIdWarning.value = false
+      console.log('Patient created:', response.responseObject.id)
       notifierStore.notify(t('creationFlow.patientCreated'), 'success')
     }
   } catch (error: unknown) {
@@ -341,7 +392,7 @@ const createPatient = async () => {
       // Extract external ID from the first field
       duplicateExternalId.value = patientData.value.externalPatientId?.[0] || ''
       showDuplicatePatientDialog.value = true
-      notifierStore.notify(t('alerts.patient.duplicateExternalId'), 'info')
+      console.log('Duplicate patient external ID detected:', duplicateExternalId.value)
     } else {
       notifierStore.notify(t('alerts.patient.creationFailed'), 'error')
     }
@@ -373,6 +424,7 @@ const updatePatient = async () => {
     if (response.responseObject) {
       createdPatient.value = response.responseObject
       currentStep.value = 2
+      console.log('Patient updated:', response.responseObject.id)
       notifierStore.notify(t('creationFlow.patientUpdated'), 'success')
     }
   } catch (error: unknown) {
@@ -399,6 +451,7 @@ const loadPatientByExternalId = async (externalId: string) => {
       caseData.value.patient = response.responseObject.id || null
       currentStep.value = 2
       showDuplicatePatientDialog.value = false
+      console.log('Patient loaded:', response.responseObject.id)
       notifierStore.notify(t('creationFlow.patientLoaded'), 'success')
       return
     }
@@ -430,13 +483,15 @@ const handleCancelDuplicateDialog = () => {
 // Handle case creation from embedded form
 const handleCaseSubmit = (caseData: GetAllPatientCases200ResponseResponseObjectInner) => {
   createdCase.value = caseData
+  const isUpdate = caseData.id === createdCase.value?.id
+  console.log(isUpdate ? 'Case updated:' : 'Case created:', caseData.id)
+
   // Only advance step if we're moving forward, not if we're saving before going back
   if (currentStep.value === 2) {
     currentStep.value = 3
   }
-  const message = caseData.id === createdCase.value?.id ?
-    t('creationFlow.caseUpdated') :
-    t('creationFlow.caseCreated')
+
+  const message = isUpdate ? t('creationFlow.caseUpdated') : t('creationFlow.caseCreated')
   notifierStore.notify(message, 'success')
 }
 
@@ -445,8 +500,7 @@ const handleCaseBlueprintApplied = (blueprint: Blueprint) => {
   logger.info('Case blueprint applied', { title: blueprint.title, content: blueprint.content })
 
   if (blueprint.content) {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const content = blueprint.content as any
+    const content = blueprint.content as CaseBlueprintContent
 
     // Surgery blueprint ID is stored in content.surgeries
     let surgeryId = null
@@ -483,9 +537,9 @@ const handleCaseCancel = () => {
 const handleSurgerySubmit = async (surgery: Surgery) => {
   const isUpdate = createdSurgery.value?.id === surgery.id
   createdSurgery.value = surgery
-  const message = isUpdate ?
-    t('creationFlow.surgeryUpdated') :
-    t('creationFlow.surgeryCreated')
+  console.log(isUpdate ? 'Surgery updated:' : 'Surgery created:', surgery.id)
+
+  const message = isUpdate ? t('creationFlow.surgeryUpdated') : t('creationFlow.surgeryCreated')
   notifierStore.notify(message, 'success')
 
   // Advance to step 4 immediately after surgery creation/update
@@ -505,12 +559,6 @@ const handleConsultationBlueprints = (consultationBlueprintIds: string[]) => {
   surgeryBlueprintConsultations.value = consultationBlueprintIds
 }
 
-// Helper function to complete the flow
-const completeCreationFlow = () => {
-  // Move to step 5 (completion screen with URLs)
-  currentStep.value = 5
-}
-
 // Navigate to case view after completing the flow
 const finishFlow = () => {
   if (createdCase.value) {
@@ -527,7 +575,7 @@ const finishFlow = () => {
 const handleSkipSurgery = () => {
   skipSurgery.value = true
   currentStep.value = 4
-  notifierStore.notify(t('creationFlow.surgerySkipped'), 'info')
+  console.log('Surgery skipped, proceeding to consultations')
 }
 
 // Handle consultation blueprint selection
@@ -540,7 +588,7 @@ const handleConsultationBlueprintCancel = () => {
 // Handle consultation dialog events  
 const handleConsultationsSubmit = async (consultations: Consultation[]) => {
   logger.info('📝 Consultations submitted:', { count: consultations.length, consultations })
-  
+
   // Store consultations initially
   createdConsultations.value = consultations
   logger.info('📦 Initial assignment:', { count: createdConsultations.value.length })
@@ -550,17 +598,17 @@ const handleConsultationsSubmit = async (consultations: Consultation[]) => {
     try {
       logger.info('🔄 Fetching consultation details for case:', createdCase.value.id)
       const response = await consultationApi.getAllConsultations({ caseId: createdCase.value.id })
-      logger.info('📥 Fetched consultation details:', { 
+      logger.info('📥 Fetched consultation details:', {
         success: response.success,
         hasResponseObject: !!response.responseObject,
         isArray: Array.isArray(response.responseObject),
         count: Array.isArray(response.responseObject) ? response.responseObject.length : 0
       })
-      
+
       if (response.responseObject && Array.isArray(response.responseObject)) {
         // Update with full consultation data including populated codes
         createdConsultations.value = response.responseObject as Consultation[]
-        logger.info('✅ Updated createdConsultations:', { 
+        logger.info('✅ Updated createdConsultations:', {
           count: createdConsultations.value.length,
           firstId: createdConsultations.value[0]?.id,
           formAccessCodeExists: !!createdConsultations.value[0]?.formAccessCode,
@@ -574,25 +622,44 @@ const handleConsultationsSubmit = async (consultations: Consultation[]) => {
       // Continue anyway with the consultations we have
     }
   } else {
-    logger.info('ℹ️ Skipping fetch:', { 
+    logger.info('ℹ️ Skipping fetch:', {
       hasConsultations: consultations.length > 0,
-      hasCaseId: !!createdCase.value?.id 
+      hasCaseId: !!createdCase.value?.id
     })
   }
 
-  logger.info('📊 Final createdConsultations state:', { 
+  logger.info('📊 Final createdConsultations state:', {
     count: createdConsultations.value.length,
     firstConsultation: createdConsultations.value[0]
   })
 
-  notifierStore.notify(t('creationFlow.consultationsCreated', { count: consultations.length }), 'success')
+  if (consultations.length > 0) {
+    notifierStore.notify(t('creationFlow.consultationsCreated', { count: consultations.length }), 'success')
+  }
 
   // Don't auto-advance - let the consultation dialog handle the flow
 }
 
-// Handle manual consultation dialog state changes
-const handleManualConsultationDialogState = (isOpen: boolean) => {
-  isManualConsultationDialogOpen.value = isOpen
+// Handle manual consultation creation in step 4
+const handleManualConsultationSubmitStep4 = async (consultation: Consultation) => {
+  logger.info('📝 Manual consultation created:', { consultationId: consultation.id })
+
+  // Add the manually created consultation to the list
+  createdConsultations.value.push(consultation)
+
+  const existingManualConsultationIndex = manuallyCreatedConsultationsStep4.value.findIndex(
+    existing => existing.id && consultation.id && existing.id === consultation.id
+  )
+
+  if (existingManualConsultationIndex >= 0) {
+    manuallyCreatedConsultationsStep4.value[existingManualConsultationIndex] = consultation
+  } else {
+    manuallyCreatedConsultationsStep4.value.push(consultation)
+  }
+
+  showManualConsultationDialogStep4.value = false
+  console.log('Manual consultation added to list:', consultation.id)
+  notifierStore.notify(t('alerts.consultation.created'), 'success')
 }
 
 
@@ -614,109 +681,64 @@ const getCaseUrl = () => {
   return `${baseUrl}${CASE_URL_PATTERN.replace('{id}', createdCase.value.id)}`
 }
 
-// Open URLs in new tab
-const openPatientUrl = () => {
-  const url = getPatientUrl()
-  if (url) {
-    window.open(url, '_blank')
-  }
-}
-
-const openCaseUrl = () => {
-  const url = getCaseUrl()
-  if (url) {
-    window.open(url, '_blank')
-  }
-}
-
-// Copy URLs to clipboard
-const copyPatientUrl = () => {
-  const url = getPatientUrl()
-  if (url) {
-    navigator.clipboard.writeText(url).then(() => {
-      notifierStore.notify(t('creationFlow.urlCopied'), 'success')
-    }).catch(() => {
-      notifierStore.notify(t('creationFlow.urlCopyFailed'), 'error')
-    })
-  }
-}
-
-const copyCaseUrl = () => {
-  const url = getCaseUrl()
-  if (url) {
-    navigator.clipboard.writeText(url).then(() => {
-      notifierStore.notify(t('creationFlow.urlCopied'), 'success')
-    }).catch(() => {
-      notifierStore.notify(t('creationFlow.urlCopyFailed'), 'error')
-    })
-  }
-}
-
 // Computed: First consultation sorted by date (ascending)
 const firstConsultation = computed(() => {
-  logger.info('🔍 Computing firstConsultation:', { 
+  logger.info('🔍 Computing firstConsultation:', {
     consultationsCount: createdConsultations.value.length,
-    consultations: createdConsultations.value 
+    consultations: createdConsultations.value
   })
-  
+
   if (createdConsultations.value.length === 0) return null
-  
+
   // Sort consultations by dateAndTime ascending and return the first one
   const sorted = [...createdConsultations.value].sort((a, b) => {
     const dateA = new Date(a.dateAndTime || 0).getTime()
     const dateB = new Date(b.dateAndTime || 0).getTime()
     return dateA - dateB
   })
-  
+
   logger.info('✅ First consultation:', sorted[0])
   return sorted[0]
 })
 
 // Computed: External code from first consultation (for QR code flow URL)
 const firstConsultationCode = computed(() => {
-  logger.info('🔍 Computing firstConsultationCode:', { 
+  logger.info('🔍 Computing firstConsultationCode:', {
     hasFirstConsultation: !!firstConsultation.value,
     firstConsultationId: firstConsultation.value?.id,
     firstConsultationIdField: firstConsultation.value?.id
   })
-  
+
   if (!firstConsultation.value) {
     logger.info('❌ No first consultation')
     return null
   }
-  
-  // Check if first consultation has a formAccessCode
-  const accessCode = firstConsultation.value.formAccessCode
+
+  const accessCode = firstConsultation.value.formAccessCode as unknown
   if (!accessCode) {
     logger.info('❌ No formAccessCode found on consultation')
     return null
   }
-  
+
   logger.info('📋 FormAccessCode RAW:', accessCode)
-  logger.info('📋 FormAccessCode details:', { 
+  logger.info('📋 FormAccessCode details:', {
     type: typeof accessCode,
     isObject: typeof accessCode === 'object',
     isNull: accessCode === null,
-    keys: typeof accessCode === 'object' && accessCode !== null ? Object.keys(accessCode) : [],
-    hasCodeProp: typeof accessCode === 'object' && accessCode !== null && 'code' in accessCode,
-    codeProperty: typeof accessCode === 'object' && accessCode !== null ? (accessCode as any).code : undefined
+    keys: isRecord(accessCode) ? Object.keys(accessCode) : [],
+    hasCodeProp: isRecord(accessCode) && typeof accessCode.code === 'string',
+    codeProperty: isRecord(accessCode) ? accessCode.code : undefined
   })
-  
-  // Handle both string and object types
-  // formAccessCode can be:
-  // 1. A string (the code itself)
-  // 2. An object with { _id, id, code, ... } - we want the 'code' property, NOT the id
-  if (typeof accessCode === 'string') {
-    logger.info('✅ Code is string:', accessCode)
-    return accessCode
-  }
-  
-  if (typeof accessCode === 'object' && accessCode !== null && 'code' in accessCode) {
-    const codeValue = (accessCode as any).code
-    logger.info('✅ Extracted code from object:', { codeValue, objectId: (accessCode as any)._id || (accessCode as any).id })
+
+  const codeValue = getFormAccessCodeValue(accessCode)
+  if (codeValue) {
+    logger.info('✅ Extracted code from consultation:', {
+      codeValue,
+      objectId: isRecord(accessCode) ? extractRecordId(accessCode) : undefined,
+    })
     return codeValue
   }
-  
+
   logger.warn('⚠️ formAccessCode format not recognized:', { accessCode, type: typeof accessCode })
   return null
 })
@@ -735,46 +757,6 @@ const getFirstConsultationUrl = () => {
   return `${baseUrl}/consultation-overview/${firstConsultation.value.id}`
 }
 
-// Copy QR Code URL to clipboard
-const copyQRCodeUrl = () => {
-  const url = getQRCodeUrl()
-  if (url) {
-    navigator.clipboard.writeText(url).then(() => {
-      notifierStore.notify(t('creationFlow.urlCopied'), 'success')
-    }).catch(() => {
-      notifierStore.notify(t('creationFlow.urlCopyFailed'), 'error')
-    })
-  }
-}
-
-// Open QR Code URL in new tab
-const openQRCodeUrl = () => {
-  const url = getQRCodeUrl()
-  if (url) {
-    window.open(url, '_blank')
-  }
-}
-
-// Copy First Consultation URL to clipboard
-const copyFirstConsultationUrl = () => {
-  const url = getFirstConsultationUrl()
-  if (url) {
-    navigator.clipboard.writeText(url).then(() => {
-      notifierStore.notify(t('creationFlow.urlCopied'), 'success')
-    }).catch(() => {
-      notifierStore.notify(t('creationFlow.urlCopyFailed'), 'error')
-    })
-  }
-}
-
-// Open First Consultation URL in new tab
-const openFirstConsultationUrl = () => {
-  const url = getFirstConsultationUrl()
-  if (url) {
-    window.open(url, '_blank')
-  }
-}
-
 // Add external ID to patient
 const addExternalIdField = () => {
   if (!patientData.value.externalPatientId) {
@@ -791,17 +773,51 @@ const removeExternalIdField = (index: number) => {
 
 // Initialize data from route query if available
 onMounted(async () => {
-  // Fetch department name if department ID is available
-  if (userStore.department) {
-    try {
-      const response = await userDepartmentApi.getDepartmentById({ id: userStore.department })
-      if (response.responseObject) {
-        departmentName.value = response.responseObject.name || ''
+  try {
+    if (userStore.hasRole('admin')) {
+      // admins see all departments as array
+      const allDepartmentsResponse = await userDepartmentApi.getAllDepartments()
+      if (Array.isArray(allDepartmentsResponse.responseObject)) {
+        availableDepartments.value = allDepartmentsResponse.responseObject
+          .filter(d => d.departmentType === "department")
+          .map(d => ({
+            id: d.id || '',
+            name: d.name || '',
+            description: d.description || ''
+          }))
+
+        // preselect matching department or first one
+        if (userStore.department) {
+          const match = availableDepartments.value.find(d => d.id === userStore.department)
+          if (match) {
+            patientData.value.department = match.id
+            departmentName.value = `${match.name}`
+          } else if (availableDepartments.value.length > 0) {
+            patientData.value.department = availableDepartments.value[0].id
+            departmentName.value = `${availableDepartments.value[0].name}`
+          }
+        } else if (availableDepartments.value.length > 0) {
+          patientData.value.department = availableDepartments.value[0].id
+          departmentName.value = availableDepartments.value[0].name
+        }
       }
-    } catch (error) {
-      logger.error('❌ Error fetching department name:', error)
-      // Fall back to showing the ID if fetch fails
+      console.log('Admin loaded departments:', availableDepartments.value.length, 'selected:', departmentName.value)
+    } else {
+      // regular user: fetch own department
+      const response = await userDepartmentApi.getUserDepartment()
+      if (response && response.responseObject) {
+        const dept = response.responseObject
+        availableDepartments.value = [{ id: dept.id || '', name: dept.name || '' }]
+        patientData.value.department = dept.id || ''
+        departmentName.value = dept.name || ''
+      }
+      console.log('User department loaded:', departmentName.value)
+    }
+  } catch (error) {
+    logger.error('❌ Error fetching department info:', error)
+    if (userStore.department) {
       departmentName.value = userStore.department
+      patientData.value.department = userStore.department
     }
   }
 
@@ -823,7 +839,7 @@ onMounted(async () => {
         createdPatient.value = response.responseObject
         caseData.value.patient = response.responseObject.id || null
         currentStep.value = 2
-        notifierStore.notify(t('creationFlow.patientLoaded'), 'info')
+        console.log('Patient loaded from route:', response.responseObject.id)
       }
     } catch (error: unknown) {
       let errorMessage = 'An unexpected error occurred'
@@ -838,7 +854,7 @@ onMounted(async () => {
 </script>
 
 <template>
-  <v-container class="w-100">
+  <v-container class="w-100" tabindex="0" @keydown.enter.prevent="handleEnter">
     <v-row justify="center">
       <v-col cols="12" sm="12" md="12" lg="10" xl="10">
         <v-card>
@@ -870,7 +886,7 @@ onMounted(async () => {
               <v-stepper-item
                               :complete="currentStep > 4"
                               :value="4"
-                              :title="`${t('creationFlow.step4Title')} (${consultationFlowStep})`"></v-stepper-item>
+                              :title="t('creationFlow.step4Title')"></v-stepper-item>
               <v-divider></v-divider>
               <v-stepper-item
                               :complete="currentStep > 5"
@@ -887,54 +903,64 @@ onMounted(async () => {
 
                     <v-form>
                       <!-- External Patient IDs -->
-                      <div v-for="(externalId, index) in patientData.externalPatientId || []" :key="index" class="mb-2">
-                        <v-row align="center">
-                          <v-col cols="10">
-                            <v-text-field
-                                          v-model="patientData.externalPatientId![index]"
-                                          :label="t('forms.patient.externalId') + (index > 0 ? ' ' + (index + 1) : '')"
-                                          :hint="index === 0 ? t('forms.externalIdHint') : ''"
-                                          :persistent-hint="index === 0"
-                                          density="compact"></v-text-field>
-                          </v-col>
-                          <v-col cols="2">
-                            <v-btn
-                                   v-if="index === (patientData.externalPatientId?.length ?? 0) - 1"
-                                   @click="addExternalIdField"
-                                   icon="mdi-plus"
-                                   size="small"
-                                   color="primary"
-                                   variant="text"
-                                   :title="t('forms.patient.addExternalId')"></v-btn>
-                            <v-btn
-                                   v-if="index > 0"
-                                   @click="removeExternalIdField(index)"
-                                   icon="mdi-minus"
-                                   size="small"
-                                   color="error"
-                                   variant="text"
-                                   :title="t('forms.patient.removeExternalId')"></v-btn>
-                          </v-col>
-                        </v-row>
-                      </div>
+                      <v-row class="flex-wrap" align="center" dense>
+                        <v-col
+                               v-for="(externalId, index) in patientData.externalPatientId || []"
+                               :key="index"
+                               cols="3">
+                          <v-text-field
+                                        v-model="patientData.externalPatientId![index]"
+                                        :label="t('forms.patient.externalId') + (index > 0 ? ' ' + (index + 1) : '')"
 
-                      <v-select
-                                v-model="patientData.sex"
-                                :label="t('forms.sex')"
-                                :items="sexOptions"
-                                item-value="value"
-                                item-title="label"
-                                density="compact"
-                                clearable></v-select>
+                                        :persistent-hint="index === 0"
+                                        density="compact">
+                            <template #append-inner>
+                              <v-btn
+                                     v-if="index === (patientData.externalPatientId?.length ?? 0) - 1"
+                                     @click="addExternalIdField"
+                                     icon="mdi-plus"
+                                     size="small"
+                                     color="primary"
+                                     variant="text"
+                                     :title="t('forms.patient.addExternalId')"></v-btn>
+                              <v-btn
+                                     v-if="index > 0"
+                                     @click="removeExternalIdField(index)"
+                                     icon="mdi-minus"
+                                     size="small"
+                                     color="error"
+                                     variant="text"
+                                     :title="t('forms.patient.removeExternalId')"></v-btn>
+                            </template>
+                          </v-text-field>
+                        </v-col>
+                      </v-row>
 
-                      <v-text-field
-                                    :model-value="departmentName || patientData.department"
+                      <v-row>
+                        <v-col cols="6">
+                          <v-select
+                                    v-model="patientData.sex"
+                                    :label="t('forms.sex')"
+                                    :items="sexOptions"
+                                    item-value="value"
+                                    item-title="label"
+                                    density="compact"
+                                    clearable></v-select>
+                        </v-col>
+                        <v-col cols="6">
+                          <v-select
+                                    v-model="patientData.department"
                                     :label="t('forms.department')"
-                                    readonly
-                                    :hint="t('forms.departmentAutoAssignedHint')"
+                                    :items="availableDepartments"
+                                    item-value="id"
+                                    item-title="name"
+                                    :disabled="isDepartmentDropdownDisabled"
+                                    :hint="isDepartmentDropdownDisabled ? t('forms.departmentAutoAssignedHint') : t('forms.selectDepartmentHint')"
                                     persistent-hint
                                     variant="outlined"
-                                    density="compact"></v-text-field>
+                                    density="compact"></v-select>
+                        </v-col>
+                      </v-row>
                     </v-form>
                   </v-card-text>
                 </v-card>
@@ -976,6 +1002,67 @@ onMounted(async () => {
 
               <!-- Step 4: Create Consultation -->
               <v-stepper-window-item :value="4">
+                <v-card class="mb-4">
+                  <v-card-text>
+                    <!-- Button to create manual consultation -->
+                    <v-btn
+                           @click="showManualConsultationDialogStep4 = true"
+                           color="info"
+                           variant="outlined"
+                           class="mb-4">
+                      <v-icon left>mdi-plus</v-icon>
+                      {{ t('consultation.createManual') }}
+                    </v-btn>
+
+                    <v-card
+                            v-if="manuallyCreatedConsultationsStep4.length"
+                            variant="outlined"
+                            class="mt-4">
+                      <v-card-title>{{ t('creationFlow.manualConsultationListTitle') }}</v-card-title>
+                      <v-card-text>
+                        <v-list>
+                          <v-list-item
+                                       v-for="(consultation, consultationIndex) in sortedManuallyCreatedConsultationsStep4"
+                                       :key="consultation.id || `manual-consultation-${consultationIndex}`"
+                                       class="px-0 mb-4">
+                            <v-list-item-title class="mb-2">
+                              {{ t('creationFlow.consultationDateLabel') }}:
+                              {{ safeFormatConsultationDate(consultation.dateAndTime) }}
+                            </v-list-item-title>
+
+                            <v-list-item-subtitle class="text-body-2 mb-2 d-block">
+                              <strong>{{ t('creationFlow.consultationFormsLabel') }}:</strong>
+                              <template v-if="getConsultationForms(consultation).length">
+                                <v-chip
+                                        v-for="(form, formIndex) in getConsultationForms(consultation)"
+                                        :key="form.id || `consultation-${consultationIndex}-form-${formIndex}`"
+                                        size="small"
+                                        color="primary"
+                                        variant="outlined"
+                                        class="mr-2 mb-2">
+                                  {{ form.title || t('forms.consultation.untitledForm') }}
+                                </v-chip>
+                              </template>
+                              <template v-else>
+                                {{ t('creationFlow.noFormsAssigned') }}
+                              </template>
+                            </v-list-item-subtitle>
+
+                            <v-list-item-subtitle class="text-body-2 d-block">
+                              <QRCodeLinkDisplay
+                                                 v-if="getConsultationQRCodeUrl(consultation)"
+                                                 :url="getConsultationQRCodeUrl(consultation)"
+                                                 :hideUrl="false" />
+                              <template v-else>
+                                {{ t('creationFlow.consultationQrUnavailable') }}
+                              </template>
+                            </v-list-item-subtitle>
+                          </v-list-item>
+                        </v-list>
+                      </v-card-text>
+                    </v-card>
+                  </v-card-text>
+                </v-card>
 
                 <!-- Embedded Consultation Blueprint Selection -->
                 <ConsultationBlueprintSelectionDialog
@@ -986,10 +1073,8 @@ onMounted(async () => {
                                                       :patient-id="createdCase.patient.id || ''"
                                                       :case-id="createdCase.id"
                                                       :pre-selected-blueprint-ids="surgeryBlueprintConsultations"
-                                                      :consultation-flow-step="consultationFlowStep"
                                                       :showButtons="false"
                                                       @consultations-created="handleConsultationsSubmit"
-                                                      @consultation-flow-advance="handleConsultationFlowAdvance"
                                                       @manual-consultation-dialog-state="handleManualConsultationDialogState"
                                                       @cancel="handleConsultationBlueprintCancel" />
               </v-stepper-window-item>
@@ -1001,116 +1086,31 @@ onMounted(async () => {
                 <v-card class="mt-4">
                   <v-card-title>{{ t('creationFlow.directAccessUrls') }}</v-card-title>
                   <v-card-text>
-                    <div v-if="createdPatient" class="mb-4">
-                      <p class="mb-2 font-weight-bold">{{ t('creationFlow.patientUrl') }}</p>
-                      <v-text-field
-                                    :value="getPatientUrl()"
-                                    readonly
-                                    variant="outlined"
-                                    density="compact"
-                                    @click="copyPatientUrl"
-                                    class="cursor-pointer">
-                        <template #append-inner>
-                          <v-btn
-                                 icon="mdi-content-copy"
-                                 size="x-small"
-                                 variant="text"
-                                 @click.stop="copyPatientUrl"
-                                 :title="t('buttons.copy')"
-                                 class="mr-2"></v-btn>
-                          <v-btn
-                                 icon="mdi-open-in-new"
-                                 size="x-small"
-                                 variant="text"
-                                 @click.stop="openPatientUrl"
-                                 :title="t('buttons.open')"></v-btn>
-                        </template>
-                      </v-text-field>
-                    </div>
+                    <!-- Patient URL (text-only, no QR code needed) -->
+                    <QRCodeLinkDisplay
+                                       v-if="createdPatient"
+                                       :url="getPatientUrl()"
+                                       :label="t('creationFlow.patientUrl')"
+                                       class="mb-4" />
 
-                    <div v-if="createdCase">
-                      <p class="mb-2 font-weight-bold">{{ t('creationFlow.caseUrl') }}</p>
-                      <v-text-field
-                                    :value="getCaseUrl()"
-                                    readonly
-                                    variant="outlined"
-                                    density="compact"
-                                    @click="copyCaseUrl"
-                                    class="cursor-pointer">
-                        <template #append-inner>
-                          <v-btn
-                                 icon="mdi-content-copy"
-                                 size="x-small"
-                                 variant="text"
-                                 @click.stop="copyCaseUrl"
-                                 :title="t('buttons.copy')"
-                                 class="mr-2"></v-btn>
-                          <v-btn
-                                 icon="mdi-open-in-new"
-                                 size="x-small"
-                                 variant="text"
-                                 @click.stop="openCaseUrl"
-                                 :title="t('buttons.open')"></v-btn>
-                        </template>
-                      </v-text-field>
-                    </div>
+                    <QRCodeLinkDisplay
+                                       v-if="createdPatient"
+                                       :url="getCaseUrl()"
+                                       :label="t('creationFlow.caseUrl')"
+                                       class="mb-4" />
 
-                    <!-- QR Code Link (if external code exists) -->
-                    <div v-if="firstConsultationCode" class="mb-4">
-                      <p class="mb-2 font-weight-bold">{{ t('creationFlow.patientFlowQrUrl') }}</p>
-                      <v-text-field
-                                    :value="getQRCodeUrl()"
-                                    readonly
-                                    variant="outlined"
-                                    density="compact"
-                                    @click="copyQRCodeUrl"
-                                    class="cursor-pointer">
-                        <template #append-inner>
-                          <QRCodeDisplay :url="getQRCodeUrl()" :size="150" />
-                          <v-btn
-                                 icon="mdi-content-copy"
-                                 size="x-small"
-                                 variant="text"
-                                 @click.stop="copyQRCodeUrl"
-                                 :title="t('buttons.copy')"
-                                 class="mr-2"></v-btn>
-                          <v-btn
-                                 icon="mdi-open-in-new"
-                                 size="x-small"
-                                 variant="text"
-                                 @click.stop="openQRCodeUrl"
-                                 :title="t('buttons.open')"></v-btn>
-                        </template>
-                      </v-text-field>
-                    </div>
+                    <!-- QR Code Link (using new component) -->
+                    <QRCodeLinkDisplay
+                                       v-if="firstConsultationCode"
+                                       :url="getQRCodeUrl()"
+                                       :label="t('creationFlow.patientFlowQrUrl')"
+                                       class="mb-4" />
 
-                    <!-- First Consultation Link -->
-                    <div v-if="firstConsultation" class="mb-4">
-                      <p class="mb-2 font-weight-bold">{{ t('creationFlow.firstConsultationUrl') }}</p>
-                      <v-text-field
-                                    :value="getFirstConsultationUrl()"
-                                    readonly
-                                    variant="outlined"
-                                    density="compact"
-                                    @click="copyFirstConsultationUrl"
-                                    class="cursor-pointer">
-                        <template #append-inner>
-                          <v-btn
-                                 icon="mdi-content-copy"
-                                 size="x-small"
-                                 variant="text"
-                                 @click.stop="copyFirstConsultationUrl"
-                                 :title="t('buttons.copy')"
-                                 class="mr-2"></v-btn>
-                          <v-btn
-                                 icon="mdi-open-in-new"
-                                 size="x-small"
-                                 variant="text"
-                                 @click.stop="openFirstConsultationUrl"
-                                 :title="t('buttons.open')"></v-btn>
-                        </template>
-                      </v-text-field>
-                    </div>
+                    <!-- First Consultation Link (using new component) -->
+                    <QRCodeLinkDisplay
+                                       v-if="firstConsultation"
+                                       :url="getFirstConsultationUrl()"
+                                       :label="t('creationFlow.firstConsultationUrl')" />
                   </v-card-text>
                 </v-card>
               </v-stepper-window-item>
@@ -1148,19 +1148,35 @@ onMounted(async () => {
             </v-card>
           </v-dialog>
 
+          <!-- Manual Consultation Dialog (Step 4) -->
+          <v-dialog v-model="showManualConsultationDialogStep4" max-width="600">
+            <v-card>
+              <v-card-title>{{ t('consultation.createManual') }}</v-card-title>
+              <v-card-text>
+                <CreateEditConsultationDialog
+                                              v-if="createdCase && createdCase.id && createdCase.patient"
+                                              ref="manualConsultationFormRef"
+                                              :patient-id="createdCase.patient.id || null"
+                                              :case-id="createdCase.id"
+                                              @submit="handleManualConsultationSubmitStep4"
+                                              @cancel="showManualConsultationDialogStep4 = false" />
+              </v-card-text>
+            </v-card>
+          </v-dialog>
+
           <!-- Action buttons -->
           <v-card-actions class="justify-space-between pa-4">
             <v-btn
                    @click="cancel"
                    color="grey"
                    variant="outlined"
-                   :disabled="isManualConsultationDialogOpen">
+                   :disabled="isManualConsultationDialogOpen || showManualConsultationDialogStep4">
               {{ t('buttons.cancel') }}
             </v-btn>
 
             <div class="d-flex gap-2">
               <v-btn
-                     v-if="currentStep >= 2 && currentStep <= 5 && !isManualConsultationDialogOpen"
+                     v-if="currentStep >= 2 && currentStep <= 5 && !isManualConsultationDialogOpen && !showManualConsultationDialogStep4"
                      @click="previousStep"
                      color="primary"
                      variant="outlined">
@@ -1176,7 +1192,7 @@ onMounted(async () => {
               </v-btn>
 
               <v-btn
-                     v-if="currentStep < 5 && !isManualConsultationDialogOpen"
+                     v-if="currentStep < 5 && !isManualConsultationDialogOpen && !showManualConsultationDialogStep4"
                      @click="nextStep"
                      color="primary"
                      variant="elevated"

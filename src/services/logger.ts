@@ -7,7 +7,6 @@
  * - Optional remote logging to backend
  * - Browser storage for log history
  */
-
 export enum LogLevel {
   DEBUG = 0,
   INFO = 1,
@@ -19,7 +18,7 @@ export interface LogEntry {
   timestamp: string;
   level: string;
   message: string;
-  data?: any;
+  data?: unknown;
   url?: string;
   userAgent?: string;
 }
@@ -98,35 +97,35 @@ class Logger {
   /**
    * Log a debug message
    */
-  public debug(message: string, data?: any): void {
+  public debug(message: string, data?: unknown): void {
     this.log(LogLevel.DEBUG, message, data);
   }
 
   /**
    * Log an info message
    */
-  public info(message: string, data?: any): void {
+  public info(message: string, data?: unknown): void {
     this.log(LogLevel.INFO, message, data);
   }
 
   /**
    * Log a warning message
    */
-  public warn(message: string, data?: any): void {
+  public warn(message: string, data?: unknown): void {
     this.log(LogLevel.WARN, message, data);
   }
 
   /**
    * Log an error message
    */
-  public error(message: string, data?: any): void {
+  public error(message: string, data?: unknown): void {
     this.log(LogLevel.ERROR, message, data);
   }
 
   /**
    * Internal logging method
    */
-  private log(level: LogLevel, message: string, data?: any): void {
+  private log(level: LogLevel, message: string, data?: unknown): void {
     // Check if this log level should be output
     if (level < this.currentLevel) {
       return;
@@ -157,7 +156,6 @@ class Logger {
    * Output log to browser console
    */
   private logToConsole(level: LogLevel, entry: LogEntry): void {
-    const style = this.getConsoleStyle(level);
     const prefix = `[${entry.timestamp}] [${entry.level}]`;
 
     switch (level) {
@@ -177,24 +175,6 @@ class Logger {
         if (import.meta.env.DEV) console.error(prefix, entry.message, entry.data || '');
         else console.error(JSON.stringify(entry));
         break;
-    }
-  }
-
-  /**
-   * Get console styling for log level
-   */
-  private getConsoleStyle(level: LogLevel): string {
-    switch (level) {
-      case LogLevel.DEBUG:
-        return 'color: #888;';
-      case LogLevel.INFO:
-        return 'color: #0066cc;';
-      case LogLevel.WARN:
-        return 'color: #ff9900;';
-      case LogLevel.ERROR:
-        return 'color: #cc0000; font-weight: bold;';
-      default:
-        return '';
     }
   }
 
@@ -274,8 +254,6 @@ class Logger {
     }
 
     try {
-      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:40001';
-      
       // You can create a dedicated logging endpoint in your backend
       // For now, we'll use the feedback endpoint or create a new one
       // Uncomment when you create the logging endpoint:
@@ -300,5 +278,5 @@ export const logger = new Logger();
 
 // Make available globally for debugging
 if (import.meta.env.DEV) {
-  (window as any).logger = logger;
+  (window as Window & { logger?: Logger }).logger = logger;
 }

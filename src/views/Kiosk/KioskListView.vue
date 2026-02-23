@@ -175,7 +175,7 @@ const getStatusColor = (consultation: Consultation | null): string => {
   // Check if any forms are completed
   if (consultation.proms?.length > 0) {
     const hasCompleted = consultation.proms.some(
-      (p) => (p as Record<string, unknown>).formFillStatus === 'completed'
+      (p) => (p as Record<string, unknown>).fillStatus === 'complete'
     )
     if (hasCompleted) return 'success'
   }
@@ -186,7 +186,7 @@ const getStatusText = (consultation: Consultation | null): string => {
   if (!consultation) return t('kioskList.statusInactive')
   if (consultation.proms?.length > 0) {
     const hasCompleted = consultation.proms.some(
-      (p) => (p as Record<string, unknown>).formFillStatus === 'completed'
+      (p) => (p as Record<string, unknown>).fillStatus === 'complete'
     )
     if (hasCompleted) return t('kioskList.statusCompleted')
   }

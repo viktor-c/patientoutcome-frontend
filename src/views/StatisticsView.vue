@@ -161,16 +161,15 @@ import annotationPlugin, { type AnnotationOptions } from "chartjs-plugin-annotat
 import { useNotifierStore } from "@/stores/notifierStore";
 import { statisticsApi } from '@/api'
 import type {
-  GetCaseStatistics200ResponseResponseObject,
-  GetScoreData200ResponseResponseObject,
-  GetScoreData200ResponseResponseObjectRealTimeInner,
-  GetCaseStatistics200ResponseResponseObjectConsultationsInner,
-  GetCaseStatistics200ResponseResponseObjectConsultationsInnerPromsInner,
-  GetCaseStatistics200ResponseResponseObjectConsultationsInnerPromsInnerScoring,
+  GetCaseStatistics200ResponseResponseObject as CaseStats,
+  GetScoreData200ResponseResponseObject as ScoreData,
+  GetScoreData200ResponseResponseObjectRealTimeInner as RealTimePoint,
+  GetCaseStatistics200ResponseResponseObjectConsultationsInner as CaseConsultation,
+  GetCaseStatistics200ResponseResponseObjectConsultationsInnerPromsInner as ConsultationProm,
 } from '@/api'
 
 // Extended type for statistics response that includes surgeries
-type StatisticsWithSurgeries = GetCaseStatistics200ResponseResponseObject & {
+type StatisticsWithSurgeries = CaseStats & {
   surgeries?: Array<{ surgeryDate: string; therapy?: string | null }>;
   surgeryDate?: string;
   caseCreatedAt?: string;
@@ -205,7 +204,7 @@ const timelineMode = ref<"realTime" | "fixedInterval">("realTime");
 const loading = ref(false);
 const error = ref<string | null>(null);
 const statistics = ref<StatisticsWithSurgeries | null>(null);
-const scoreData = ref<GetScoreData200ResponseResponseObject | null>(null);
+const scoreData = ref<ScoreData | null>(null);
 
 // Store actual acquisition dates for tooltip display
 const acquisitionDates = ref<Date[]>([]);
@@ -265,31 +264,30 @@ const goToCaseDetails = () => {
 };
 
 // Local helper type that extends the generated prom type with the new formTemplateId
-type PromWithTemplate = GetCaseStatistics200ResponseResponseObjectConsultationsInnerPromsInner & {
+type PromWithTemplate = ConsultationProm & {
   formTemplateId?: string | null;
 };
-type PromScoring = GetCaseStatistics200ResponseResponseObjectConsultationsInnerPromsInnerScoring;
 
 // Convert consultations returned by getCaseStatistics into the score-data shape
-const computeScoreDataFromConsultations = (consultations: GetCaseStatistics200ResponseResponseObjectConsultationsInner[] | undefined) => {
+const computeScoreDataFromConsultations = (consultations: CaseConsultation[] | undefined) => {
   if (!consultations || consultations.length === 0) return null;
 
-  const realTime: GetScoreData200ResponseResponseObjectRealTimeInner[] = [];
-  const fixedInterval: GetScoreData200ResponseResponseObjectRealTimeInner[] = [];
+  const realTime: RealTimePoint[] = [];
+  const fixedInterval: RealTimePoint[] = [];
   const dates: Date[] = [];
   
   // Create a mixed list of consultations and surgeries, sorted by date
   const mixedItems: Array<{ 
     type: 'consultation' | 'surgery'; 
-    data: GetCaseStatistics200ResponseResponseObjectConsultationsInner | { date: string; therapy?: string | null }; 
+    data: CaseConsultation | { date: string; therapy?: string | null }; 
     date: Date 
   }> = [];
   
   // Add consultations
   consultations.forEach((consultation) => {
     const firstPromWithScore = consultation.proms && consultation.proms.length > 0
-      ? (consultation.proms as GetCaseStatistics200ResponseResponseObjectConsultationsInnerPromsInner[]).find(
-        p => p.scoring && (p.scoring as PromScoring).total != null,
+      ? (consultation.proms as ConsultationProm[]).find(
+        p => p.scoring && p.scoring.totalScore != null,
       )
       : null;
     const dateStr = (firstPromWithScore?.createdAt ?? new Date()).toString();
@@ -334,7 +332,7 @@ const computeScoreDataFromConsultations = (consultations: GetCaseStatistics200Re
       });
     } else {
       // It's a consultation
-      const consultation = item.data as GetCaseStatistics200ResponseResponseObjectConsultationsInner;
+      const consultation = item.data as CaseConsultation;
       const dateStr = item.date.toString();
       dates.push(item.date);
       
@@ -345,14 +343,14 @@ const computeScoreDataFromConsultations = (consultations: GetCaseStatistics200Re
 
       // Iterate prom entries and assign scores into categories using formTemplateId mapping
       if (consultation.proms && Array.isArray(consultation.proms)) {
-        for (const promRaw of consultation.proms as GetCaseStatistics200ResponseResponseObjectConsultationsInnerPromsInner[]) {
+        for (const promRaw of consultation.proms as ConsultationProm[]) {
           const prom = promRaw as PromWithTemplate;
           // Skip proms that have no scoring or no total score
-          const hasTotal = !!prom.scoring && (prom.scoring as PromScoring).total != null;
+          const hasTotal = !!prom.scoring && prom.scoring.totalScore != null;
           if (!hasTotal) continue;
 
           const tplId = prom.formTemplateId ? String(prom.formTemplateId) : null;
-          const score = prom.scoring?.total?.normalizedScore ?? null;
+          const score = prom.scoring?.totalScore?.normalizedScore ?? null;
 
           if (tplId && TEMPLATE_ID_TO_CATEGORY[tplId]) {
             const cat = TEMPLATE_ID_TO_CATEGORY[tplId];
@@ -373,16 +371,16 @@ const computeScoreDataFromConsultations = (consultations: GetCaseStatistics200Re
 
       // Check if any prom is VAS (pain scale)
       if (consultation.proms && Array.isArray(consultation.proms)) {
-        for (const promRaw of consultation.proms as GetCaseStatistics200ResponseResponseObjectConsultationsInnerPromsInner[]) {
+        for (const promRaw of consultation.proms as ConsultationProm[]) {
           const prom = promRaw as PromWithTemplate;
-          const hasTotal = !!prom.scoring && (prom.scoring as PromScoring).total != null;
+          const hasTotal = !!prom.scoring && prom.scoring.totalScore != null;
           if (!hasTotal) continue;
 
           // Check if this is a VAS form (pain scale) by looking at title or structure
-          if (prom.scoring?.total?.normalizedScore !== undefined) {
-            const score = prom.scoring.total.normalizedScore;
+          if (prom.scoring?.totalScore?.normalizedScore !== undefined) {
+            const score = prom.scoring.totalScore.normalizedScore ?? null;
             // VAS has a specific structure, check if rawData contains painScale
-            const rawData = (prom.scoring?.rawData as Record<string, unknown>) ?? {};
+            const rawData = (prom.scoring?.rawFormData as Record<string, unknown>) ?? {};
             if ((rawData as Record<string, unknown>)?.painScale !== undefined) {
               vasScore = score;
             }
@@ -413,7 +411,7 @@ const computeScoreDataFromConsultations = (consultations: GetCaseStatistics200Re
   // Store the acquisition dates for tooltip display
   acquisitionDates.value = dates;
 
-  return { realTime, fixedInterval } as GetScoreData200ResponseResponseObject;
+  return { realTime, fixedInterval } as ScoreData;
 };
 
 // Fetch statistics data using generated API client
@@ -610,7 +608,7 @@ const generateSurgeryAnnotations = computed(() => {
     });
   } else {
     // For fixedInterval mode, find surgery points in the data array
-    data.forEach((point: GetScoreData200ResponseResponseObjectRealTimeInner & { isSurgery?: boolean; surgeryTherapy?: string }, idx: number) => {
+    data.forEach((point: RealTimePoint & { isSurgery?: boolean; surgeryTherapy?: string }, idx: number) => {
       if (point.isSurgery) {
         const annotationKey = `surgery_${idx}`;
         annotations[annotationKey] = {
@@ -799,7 +797,7 @@ onMounted(async () => {
   if (statistics.value) {
     scoreData.value = computeScoreDataFromConsultations(
       // cast to typed consultations array
-      (statistics.value.consultations as GetCaseStatistics200ResponseResponseObjectConsultationsInner[]) ?? [],
+      (statistics.value.consultations as CaseConsultation[]) ?? [],
     );
   }
 });

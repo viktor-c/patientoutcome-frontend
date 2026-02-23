@@ -4,6 +4,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { useDateFormat } from '@/composables/useDateFormat'
 import { useNotifierStore } from '@/stores/notifierStore'
+import { logger } from '@/services/logger'
 
 import {
   type GetPatientCaseById200Response,
@@ -50,6 +51,9 @@ const deleteConfirmData = ref<{
   title: string
 } | null>(null)
 const isDeleting = ref(false)
+const movingConsultationId = ref<string | null>(null)
+const showMoveConsultationConfirmDialog = ref(false)
+const consultationToMove = ref<Consultation | null>(null)
 
 // Helper function to safely format dates
 const safeFormatDate = (date: string | null | undefined, format: string = dateFormats.isoDateTime): string => {
@@ -258,6 +262,87 @@ const handleSurgeryCreated = async (surgery: Surgery) => {
   )
 }
 
+const getConsultationFormFillStatus = (form: Consultation['proms'][number]): string | null => {
+  const formRecord = form as Record<string, unknown>
+  const patientFormData = formRecord.patientFormData
+  if (!patientFormData || typeof patientFormData !== 'object') {
+    return null
+  }
+
+  const fillStatus = (patientFormData as Record<string, unknown>).fillStatus
+  return typeof fillStatus === 'string' ? fillStatus : null
+}
+
+const isConsultationCompleted = (consultation: Consultation): boolean => {
+  const forms = consultation.proms || []
+  if (!forms.length) {
+    return false
+  }
+
+  return forms.every((form) => {
+    const fillStatus = getConsultationFormFillStatus(form)
+    return fillStatus === 'complete' || fillStatus === 'completed'
+  })
+}
+
+const canMoveConsultationToNow = (consultation: Consultation): boolean => {
+  const consultationDate = new Date(consultation.dateAndTime || '')
+  const now = new Date()
+
+  if (consultationDate > now) {
+    return true
+  }
+
+  return !isConsultationCompleted(consultation)
+}
+
+const initiateMoveConsultationToNow = (consultation: Consultation) => {
+  consultationToMove.value = consultation
+  showMoveConsultationConfirmDialog.value = true
+}
+
+const confirmMoveConsultationToNow = async () => {
+  if (!consultationToMove.value) {
+    return
+  }
+
+  await moveConsultationToNow(consultationToMove.value)
+  showMoveConsultationConfirmDialog.value = false
+  consultationToMove.value = null
+}
+
+const cancelMoveConsultationToNow = () => {
+  showMoveConsultationConfirmDialog.value = false
+  consultationToMove.value = null
+}
+
+const moveConsultationToNow = async (consultation: Consultation) => {
+  if (!consultation.id || !patient.value?.id || !canMoveConsultationToNow(consultation)) {
+    return
+  }
+
+  movingConsultationId.value = consultation.id
+
+  try {
+    await consultationApi.updateConsultation({
+      patientId: patient.value.id,
+      caseId,
+      consultationId: consultation.id,
+      updateConsultation: {
+        dateAndTime: new Date().toISOString(),
+      },
+    })
+
+    notifierStore.notify(t('patientCaseLanding.consultationMovedToNow'), 'success')
+    await loadCaseData()
+  } catch (err: unknown) {
+    logger.error('Failed to move consultation to now', err)
+    notifierStore.notify(t('patientCaseLanding.consultationMoveFailed'), 'error')
+  } finally {
+    movingConsultationId.value = null
+  }
+}
+
 // Get consultation status color
 const getConsultationStatusColor = (consultation: Consultation): string => {
   const now = new Date()
@@ -265,9 +350,9 @@ const getConsultationStatusColor = (consultation: Consultation): string => {
 
   if (consultationDate > now) {
     return 'info' // Future consultation
-  } else {
-    return 'success' // Past consultation
   }
+
+  return isConsultationCompleted(consultation) ? 'success' : 'warning'
 }
 
 // Get consultation status text
@@ -277,9 +362,11 @@ const getConsultationStatusText = (consultation: Consultation): string => {
 
   if (consultationDate > now) {
     return t('patientCaseLanding.scheduled')
-  } else {
-    return t('patientCaseLanding.completed')
   }
+
+  return isConsultationCompleted(consultation)
+    ? t('patientCaseLanding.completed')
+    : t('patientCaseLanding.scheduled')
 }
 
 // Delete handlers
@@ -410,7 +497,7 @@ onMounted(() => {
                   </template>
                   <v-list-item-title>{{ t('patientCaseLanding.createdAt') }}</v-list-item-title>
                   <v-list-item-subtitle>{{ safeFormatDate(patientCase.createdAt, dateFormats.isoDate)
-                  }}</v-list-item-subtitle>
+                    }}</v-list-item-subtitle>
                 </v-list-item>
 
                 <v-list-item v-if="patientCase?.mainDiagnosis">
@@ -594,6 +681,16 @@ onMounted(() => {
 
               <template #append>
                 <v-btn
+                       v-if="canMoveConsultationToNow(consultation)"
+                       icon="mdi-clock-edit-outline"
+                       variant="text"
+                       size="small"
+                       color="warning"
+                       :loading="movingConsultationId === consultation.id"
+                       @click.stop="initiateMoveConsultationToNow(consultation)"
+                       :title="t('patientCaseLanding.moveConsultationToNow')">
+                </v-btn>
+                <v-btn
                        icon="mdi-pencil"
                        variant="text"
                        size="small"
@@ -665,6 +762,16 @@ onMounted(() => {
               </v-list-item-subtitle>
 
               <template #append>
+                <v-btn
+                       v-if="canMoveConsultationToNow(consultation)"
+                       icon="mdi-clock-edit-outline"
+                       variant="text"
+                       size="small"
+                       color="warning"
+                       :loading="movingConsultationId === consultation.id"
+                       @click.stop="initiateMoveConsultationToNow(consultation)"
+                       :title="t('patientCaseLanding.moveConsultationToNow')">
+                </v-btn>
                 <v-btn
                        icon="mdi-pencil"
                        variant="text"
@@ -799,6 +906,43 @@ onMounted(() => {
                  @click="confirmDelete"
                  :loading="isDeleting">
             {{ t('buttons.delete') }}
+          </v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
+
+    <v-dialog
+              v-model="showMoveConsultationConfirmDialog"
+              max-width="500px">
+      <v-card v-if="consultationToMove">
+        <v-card-title class="d-flex align-center gap-2">
+          <v-icon color="warning">mdi-clock-edit-outline</v-icon>
+          {{ t('patientCaseLanding.confirmMoveConsultationTitle') }}
+        </v-card-title>
+
+        <v-card-text class="py-6">
+          <p class="mb-2">
+            {{ t('patientCaseLanding.confirmMoveConsultationMessage') }}
+          </p>
+          <p class="text-grey text-sm font-weight-bold mt-4">
+            {{ safeFormatDate(consultationToMove.dateAndTime, dateFormats.isoDateTime) }}
+          </p>
+        </v-card-text>
+
+        <v-card-actions>
+          <v-spacer></v-spacer>
+          <v-btn
+                 variant="text"
+                 @click="cancelMoveConsultationToNow"
+                 :disabled="movingConsultationId === consultationToMove.id">
+            {{ t('buttons.cancel') }}
+          </v-btn>
+          <v-btn
+                 color="warning"
+                 variant="tonal"
+                 @click="confirmMoveConsultationToNow"
+                 :loading="movingConsultationId === consultationToMove.id">
+            {{ t('patientCaseLanding.moveConsultationToNow') }}
           </v-btn>
         </v-card-actions>
       </v-card>

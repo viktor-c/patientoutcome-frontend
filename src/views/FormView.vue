@@ -1,127 +1,232 @@
 <script setup lang="ts">
-import PatientForm from '@/components/PatientForm.vue'
+import PluginFormRenderer from '@/forms/components/PluginFormRenderer.vue'
 import { ref, onMounted } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
-import { ResponseError } from '@/api' // Import the API client
-import type { UISchemaElement } from '@jsonforms/core'
+import { ResponseError, formApi } from '@/api'
+import { toApiPatientFormData } from '@/utils/formDataUtils'
 
-import { type FormData, type Form } from '@/types/index'
+import type { Form } from '@/types/index'
+import type { FormSubmissionData } from '@/forms/types'
 import { mapApiFormToForm } from '@/adapters/apiAdapters'
+import { consultationApi } from '@/api'
+import { logger } from '@/services/logger'
 
-const { t } = useI18n()
+const { t, locale } = useI18n()
+const route = useRoute()
+const router = useRouter()
 
 // Route parameters
-const route = useRoute()
 const consultationId = route.params.consultationId as string
 
 // State for forms
 const forms = ref<Form[]>([])
 const tab = ref('0') // Tab index for navigation
+const loading = ref(true)
+const error = ref<string | null>(null)
+const savingStates = ref<Record<number, boolean>>({})
 
-// Use centralized API instance
-import { consultationApi } from '@/api'
-import { logger } from '@/services/logger'
 
 // Fetch consultation data and populate forms
 onMounted(async () => {
   try {
+    loading.value = true
     const response = await consultationApi.getConsultationById({ consultationId })
     const consultationData = response.responseObject
+
     if (!consultationData) {
-      logger.error('No consultation data found', { consultationId: route.params.consultationId })
+      error.value = 'No consultation data found'
+      logger.error('No consultation data found', { consultationId })
       return
     }
-    // Assuming consultationData contains an array of forms
+
+    // Map API forms to internal Form type
     forms.value = (consultationData.proms || []).map(mapApiFormToForm)
-    console.log('FormView: Consultation data fetched successfully:', consultationData)
-    console.log('FormView: Mapped forms with formData:', forms.value.map(f => ({ id: f._id, formData: f.formData })))
-  } catch (error: unknown) {
+    logger.info('FormView: Forms loaded', { count: forms.value.length })
+  } catch (err: unknown) {
     let errorMessage = 'An unexpected error occurred'
-    if (error instanceof ResponseError) {
-      errorMessage = (await error.response.json()).message
+    if (err instanceof ResponseError) {
+      errorMessage = (await err.response.json()).message
     }
-    console.error('Failed to fetch consultation data:', errorMessage)
+    error.value = errorMessage
+    logger.error('Failed to fetch consultation data:', errorMessage)
+  } finally {
+    loading.value = false
   }
 })
 
-// Handle form data changes
-const processFormData = (formData: FormData, formIndex: number) => {
-  console.debug(`Form data changed for form ${formIndex}:`, formData);
-  // Update the form data in the forms array
-  (forms.value[formIndex] as Record<string, unknown>).data = formData;
+// Check if a form can use plugin system
+const canUsePlugin = (form: Form): boolean => {
+  return !!form.formTemplateId
 }
 
-// Navigation handlers for PatientForm
-const handleGotoPreviousForm = (formIndex: number) => {
-  if (formIndex > 0) {
-    tab.value = String(formIndex - 1)
+// Handle form data changes with auto-save
+const handleFormDataChange = async (submissionData: FormSubmissionData, formIndex: number) => {
+  const form = forms.value[formIndex]
+  if (!form || !form._id) return
+
+  try {
+    // Update local state immediately - store the full PatientFormData structure
+    form.patientFormData = submissionData
+
+    // Auto-save to backend with full PatientFormData structure
+    savingStates.value[formIndex] = true
+
+    await formApi.updateForm({
+      formId: form._id,
+      updateFormRequest: {
+        patientFormData: toApiPatientFormData(submissionData),
+      },
+    })
+
+    logger.debug('Form data auto-saved', { formId: form._id, formIndex })
+  } catch (err) {
+    logger.error('Failed to save form data', { error: err, formIndex })
+  } finally {
+    savingStates.value[formIndex] = false
   }
 }
 
-const handleGotoNextForm = (formIndex: number) => {
-  if (formIndex < forms.value.length - 1) {
-    tab.value = String(formIndex + 1)
-  } else {
-    // Optionally, go to the finish tab
-    tab.value = String(forms.value.length)
+// Handle validation changes
+const handleValidationChange = (isValid: boolean, formIndex: number) => {
+  logger.debug('Form validation status', { formIndex, isValid })
+}
+
+// Handle final submission
+const handleSubmitAll = async () => {
+  try {
+    // Mark all forms as completed
+    await Promise.all(
+      forms.value.map((form) =>
+        form._id && form.patientFormData
+          ? (() => {
+            const completedFormData: FormSubmissionData = {
+              ...form.patientFormData,
+              fillStatus: 'complete',
+              completedAt: new Date().toISOString(),
+            }
+            return formApi.updateForm({
+              formId: form._id,
+              updateFormRequest: {
+                patientFormData: toApiPatientFormData(completedFormData),
+                formEndTime: new Date().toISOString(),
+              },
+            })
+          })()
+          : Promise.resolve()
+      )
+    )
+
+    logger.info('All forms submitted successfully')
+
+    // Navigate back to consultation overview
+    router.push(`/consultations/${consultationId}`)
+  } catch (err) {
+    logger.error('Failed to submit forms', { error: err })
+    error.value = 'Failed to submit forms. Please try again.'
   }
 }
 </script>
 
 <template>
-  <v-container class="w-75">
-    <v-card>
-      <v-tabs v-model="tab" bg-color="primary">
-        <v-tab v-for="(form, index) in forms" :key="index" :value="String(index)">
-          {{ (form as Form).title || t('forms.consultation.untitledForm') }}
-        </v-tab>
-        <v-tab :value="String(forms.length)">{{ t('forms.consultation.finish') }}</v-tab>
-      </v-tabs>
+  <v-container class="py-6">
+    <v-row>
+      <v-col cols="12">
+        <h1 class="mb-4 text-h4">{{ t('form.title', 'Forms') }}</h1>
 
-      <v-card-text>
-        <v-tabs-window v-model="tab">
-          <v-tabs-window-item v-for="(form, index) in forms" :key="index" :value="String(index)">
-            <PatientForm
-                         :markdown-header="(form as Form).markdownHeader || ''"
-                         :markdown-footer="(form as Form).markdownFooter || ''"
-                         :form-schema="(form as Form).formSchema || {}"
-                         :form-schema-u-i="((form as Form).formSchemaUI as unknown as UISchemaElement) || {}"
-                         :form-data="(form as Form).formData || {}"
-                         :translations="(form as Form).translations"
-                         :form-id="(form as Form)._id || ''"
-                         :form-array-idx="Number(index)"
-                         @formDataChange="(data) => processFormData(data, Number(index))"
-                         @gotoPreviousForm="() => handleGotoPreviousForm(Number(index))"
-                         @gotoNextForm="() => handleGotoNextForm(Number(index))" />
-            <!-- <v-btn color="success" @click="tab = String(Number(index) + 1)">
-              {{ t('buttons.next') }}
-            </v-btn> -->
-          </v-tabs-window-item>
+        <!-- Loading indicator -->
+        <v-progress-linear v-if="loading" indeterminate color="primary" />
 
-          <v-tabs-window-item :value="String(forms.length)">
-            <h2>{{ t('forms.consultation.completed') }}</h2>
-            <v-btn color="primary" @click="console.log('Submit all forms:', forms)">
-              {{ t('buttons.submit') }}
-            </v-btn>
-          </v-tabs-window-item>
-        </v-tabs-window>
-      </v-card-text>
-    </v-card>
+        <!-- Error display -->
+        <v-alert v-if="error" type="error" closable @click="error = null" class="mb-4">
+          {{ error }}
+        </v-alert>
+
+        <!-- Forms tabs -->
+        <v-tabs v-if="!loading && forms.length > 0" v-model="tab" class="mb-4">
+          <v-tab v-for="(form, index) in forms" :key="form._id || index" :value="String(index)">
+            <span class="text-caption">{{ form.title || `Form ${index + 1}` }}</span>
+          </v-tab>
+          <v-tab :value="String(forms.length)">
+            <span class="text-caption">{{ t('form.summary', 'Summary') }}</span>
+          </v-tab>
+        </v-tabs>
+
+        <!-- Form content tab -->
+        <v-window v-model="tab" v-if="forms.length > 0">
+          <v-window-item v-for="(form, formIndex) in forms" :key="form._id || formIndex" :value="String(formIndex)">
+            <div class="form-container">
+              <v-card class="pa-6">
+                <template v-if="canUsePlugin(form) && form.formTemplateId && form.patientFormData">
+                  <!-- Plugin-based form renderer -->
+                  <PluginFormRenderer
+                                      :template-id="form.formTemplateId"
+                                      :model-value="form.patientFormData"
+                                      :locale="locale"
+                                      @update:model-value="(data) => handleFormDataChange(data, formIndex)"
+                                      @validation-change="(valid: boolean) => handleValidationChange(valid, formIndex)" />
+                </template>
+
+                <!-- Fallback for legacy forms -->
+                <div v-else class="alert-fallback">
+                  <v-alert type="warning">
+                    {{ t('form.legacyNotSupported', 'This form is not yet supported in the new form system') }}
+                  </v-alert>
+                </div>
+              </v-card>
+            </div>
+          </v-window-item>
+
+          <!-- Summary tab -->
+          <v-window-item :value="String(forms.length)">
+            <v-card class="pa-6">
+              <h2 class="text-h5 mb-4">{{ t('form.reviewAnswers', 'Review Your Answers') }}</h2>
+
+              <!-- Show all form submissions -->
+              <v-expansion-panels class="mb-4">
+                <v-expansion-panel v-for="(form, idx) in forms" :key="form._id || idx">
+                  <template #title>
+                    <span>{{ form.title || `Form ${idx + 1}` }}</span>
+                  </template>
+                  <template #text>
+                    <pre class="text-body2">{{ JSON.stringify(form.patientFormData, null, 2) }}</pre>
+                  </template>
+                </v-expansion-panel>
+              </v-expansion-panels>
+
+              <!-- Submit button -->
+              <div class="d-flex gap-2">
+                <v-btn variant="outlined" @click="tab = String(forms.length - 1)">
+                  {{ t('common.back', 'Back') }}
+                </v-btn>
+                <v-btn color="success" @click="handleSubmitAll">
+                  {{ t('form.submit', 'Submit All Forms') }}
+                </v-btn>
+              </div>
+            </v-card>
+          </v-window-item>
+        </v-window>
+      </v-col>
+    </v-row>
   </v-container>
 </template>
 <style scoped>
+.form-view {
+  min-height: 100vh;
+  background-color: #fafafa;
+}
+
+.form-container {
+  min-height: 400px;
+}
+
+.alert-fallback {
+  padding: 2rem;
+}
+
 @media (max-width: 600px) {
-
-  /* Minimize container padding */
-  .v-container {
-    padding: 0px !important;
-  }
-
-  /* Make any fixed-width container full width on small screens (e.g., .w-75 -> 100%) */
-  .w-75 {
-    width: 100% !important;
-    max-width: 100% !important;
+  .form-view {
+    padding: 0;
   }
 }
 </style>

@@ -15,7 +15,10 @@ import {
 import { consultationApi, userApi, kioskApi, codeApi, formApi } from '@/api'
 import CreateEditConsultationDialog from '@/components/dialogs/CreateEditConsultationDialog.vue'
 import QRCodeDisplay from '@/components/QRCodeDisplay.vue'
+import ScoreScale from '@/components/ScoreScale.vue'
 import { useUserStore } from '@/stores/userStore'
+import { generateScaleInfo } from '@/utils/scaleInfo'
+import { getAccessLevelColor } from '@/services/formVersionService'
 
 const componentName = 'ConsultationOverview.vue'
 const { t } = useI18n()
@@ -510,9 +513,9 @@ const createAndAssignNewCode = async () => {
       throw new Error('Failed to create new code')
     }
     const newCode = newCodes[0].code
-    
+
     await codeApi.activateCode({ code: newCode, consultationId: consultation.value.id })
-    
+
     notifierStore.notify(t('consultationOverview.codeCreatedAndAssigned'), 'success')
     // Reset selected code first to prevent watch from re-triggering
     selectedCode.value = null
@@ -593,6 +596,10 @@ const initiateArchiveForm = (formId: string | null | undefined, formTitle: strin
   archiveFormDialog.value = true
 }
 
+const normalizeFormId = (id: unknown): string => {
+  return id == null ? '' : String(id)
+}
+
 const archiveForm = async () => {
   if (!archiveFormId.value || !archiveFormReason.value.trim()) {
     notifierStore.notify(t('consultationOverview.archiveFormReasonRequired'), 'warning')
@@ -609,7 +616,7 @@ const archiveForm = async () => {
     })
     notifierStore.notify(t('consultationOverview.formArchived'), 'success')
     archiveFormDialog.value = false
-    
+
     // Refresh consultation to show updated form list
     const resp = await consultationApi.getConsultationById({ consultationId })
     consultation.value = resp.responseObject || null
@@ -638,8 +645,8 @@ const cancelArchiveForm = () => {
 
 // Get form scores
 const getFormScore = (form: FindAllCodes200ResponseResponseObjectInnerConsultationIdPromsInner): string => {
-  if (form.scoring?.total?.rawScore !== undefined && form.scoring?.total?.rawScore !== null) {
-    return form.scoring.total.rawScore.toString()
+  if (form.patientFormData?.totalScore?.rawScore !== undefined && form.patientFormData?.totalScore?.rawScore !== null) {
+    return form.patientFormData.totalScore.rawScore.toString()
   }
   return t('common.notAvailable')
 }
@@ -653,6 +660,48 @@ const getFormStatusColor = (status: string | undefined): string => {
     case 'draft': return 'info'
     default: return 'grey'
   }
+}
+
+const getFormAccessLevel = (form: FindAllCodes200ResponseResponseObjectInnerConsultationIdPromsInner): string => {
+  const formRecord = form as unknown as Record<string, unknown>
+  return (formRecord.accessLevel || 'patient').toString()
+}
+
+// Format duration in seconds to hh:mm:ss format
+const formatDuration = (seconds: number | undefined): string => {
+  if (!seconds || seconds <= 0) return t('common.notAvailable')
+
+  const minutes = Math.floor(seconds / 60)
+  const secs = Math.floor(seconds % 60)
+
+  return `${minutes}:${String(secs).padStart(2, '0')} min`
+}
+
+// Calculate duration from form start and end times
+const calculateFormDuration = (form: FindAllCodes200ResponseResponseObjectInnerConsultationIdPromsInner): string => {
+  const formRecord = form as unknown as Record<string, unknown>
+
+  // Try to use completionTimeSeconds first
+  const seconds = Number(formRecord.completionTimeSeconds || 0)
+  if (seconds && seconds > 0) {
+    return formatDuration(seconds)
+  }
+
+  // Calculate from start and end times if completionTimeSeconds is not available
+  const startTime = form.patientFormData?.beginFill || (formRecord.formStartTime as string | undefined)
+  const endTime = form.patientFormData?.completedAt
+
+  if (!startTime || !endTime) return t('common.notAvailable')
+
+  const start = new Date(startTime).getTime()
+  const end = new Date(endTime).getTime()
+  const durationSeconds = Math.floor((end - start) / 1000)
+
+  if (durationSeconds <= 0) return t('common.notAvailable')
+
+  const minutes = Math.floor(durationSeconds / 60)
+  const secs = Math.floor(durationSeconds % 60)
+  return `${minutes}:${String(secs).padStart(2, '0')} min`
 }
 
 // Compute the patient flow URL for QR code
@@ -804,39 +853,60 @@ const patientFlowUrl = computed(() => {
           <v-row>
             <v-col
                    v-for="(form, index) in consultation.proms.filter(form => !form.deletedAt)"
-                   :key="form.id || `form-${index}`"
+                   :key="form.id == null ? `form-${index}` : String(form.id)"
                    cols="12"
                    md="6"
                    lg="4">
               <v-card variant="outlined" class="h-100">
                 <v-card-title class="text-subtitle-1">
                   {{ form.title || t('forms.consultation.untitledForm') }}
-                </v-card-title>
-                <v-card-text>
                   <v-chip
-                          :color="getFormStatusColor(form.formFillStatus)"
+                          :color="getFormStatusColor(form.patientFormData?.fillStatus)"
                           size="small"
                           class="mb-2">
-                    {{ form.formFillStatus }}
+                    {{ form.patientFormData?.fillStatus }}
                   </v-chip>
+                  <v-chip
+                          :color="getAccessLevelColor(getFormAccessLevel(form))"
+                          size="small"
+                          class="mb-2 ml-2"
+                          variant="tonal">
+                    {{ getFormAccessLevel(form) }}
+                  </v-chip>
+                </v-card-title>
+                <v-card-text>
+
                   <p class="text-body-2 mb-2">
                     <strong>{{ t('consultationOverview.score') }}:</strong> {{ getFormScore(form) }}
                   </p>
-                  <p class="text-body-2 mb-2" v-if="form.completedAt">
+                  <!-- Visual scale representation -->
+                  <div v-if="form.patientFormData?.totalScore && form.formTemplateId" class="mb-3">
+                    <ScoreScale :scale-info="generateScaleInfo(form.patientFormData.totalScore, form.formTemplateId)" />
+                  </div>
+                  <p class="text-body-2 mb-2" v-if="form.patientFormData?.beginFill || (form as any)?.formStartTime">
+                    <strong>{{ t('consultationOverview.formStartTime') }}:</strong>
+                    {{ safeFormatDate(form.patientFormData?.beginFill ||
+                      (form as any)?.formStartTime, 'DD.MM.YYYY HH:mm:ss') }}
+                  </p>
+                  <p class="text-body-2 mb-2"
+                     v-if="(form.patientFormData?.beginFill || (form as any)?.formStartTime) && (form.patientFormData?.completedAt || (form as any)?.completionTimeSeconds)">
+                    <strong>{{ t('consultationOverview.formDuration') }}:</strong>
+                    {{ calculateFormDuration(form) }}
+                  </p>
+                  <p class="text-body-2 mb-2" v-if="form.patientFormData?.completedAt">
                     <strong>{{ t('consultationOverview.completedAt') }}:</strong>
-                    {{ safeFormatDate(form.completedAt, 'DD.MM.YYYY HH:mm') }}
+                    {{ safeFormatDate(form.patientFormData?.completedAt, 'DD.MM.YYYY HH:mm:ss') }}
                   </p>
                   <p class="text-body-2 mb-2" v-if="form.updatedAt">
                     <strong>{{ t('consultationOverview.lastUpdated') }}:</strong>
-                    {{ safeFormatDate(form.updatedAt, 'DD.MM.YYYY HH:mm') }}
+                    {{ safeFormatDate(form.updatedAt, 'DD.MM.YYYY HH:mm:ss') }}
                   </p>
                 </v-card-text>
                 <v-card-actions>
                   <v-btn
                          color="primary"
                          variant="text"
-                         @click="openForm(form.id)"
-                         :disabled="!form.id">
+                        @click="openForm(normalizeFormId(form.id))">
                     {{ t('consultationOverview.reviewForm') }}
                   </v-btn>
                   <v-spacer></v-spacer>
@@ -847,8 +917,8 @@ const patientFlowUrl = computed(() => {
                              color="warning"
                              variant="text"
                              icon="mdi-archive"
-                             @click="initiateArchiveForm(form.id, form.title || t('forms.consultation.untitledForm'))"
-                             :disabled="!form.id">
+                             @click="initiateArchiveForm(normalizeFormId(form.id), form.title || t('forms.consultation.untitledForm'))"
+                             :disabled="!normalizeFormId(form.id)">
                       </v-btn>
                     </template>
                     <span>{{ t('consultationOverview.archiveFormTooltip') }}</span>
@@ -1180,33 +1250,43 @@ const patientFlowUrl = computed(() => {
                   <v-row>
                     <v-col
                            v-for="(form, formIndex) in prevConsultation.proms"
-                           :key="form.id || `prev-form-${formIndex}`"
+                            :key="form.id == null ? `prev-form-${formIndex}` : String(form.id)"
                            cols="12"
                            md="6">
                       <v-card variant="outlined" size="small">
                         <v-card-text class="py-2">
                           <div class="d-flex align-center justify-space-between">
-                            <div>
+                            <div class="flex-grow-1 me-3">
                               <p class="text-body-2 font-weight-medium mb-1">
                                 {{ form.title || t('forms.consultation.untitledForm') }}
                               </p>
-                              <div class="d-flex align-center gap-2">
+                              <div class="d-flex align-center gap-2 mb-2">
                                 <v-chip
-                                        :color="getFormStatusColor(form.formFillStatus)"
+                                        :color="getFormStatusColor(form.patientFormData?.fillStatus)"
                                         size="x-small">
-                                  {{ form.formFillStatus }}
+                                  {{ form.patientFormData?.fillStatus }}
+                                </v-chip>
+                                <v-chip
+                                        :color="getAccessLevelColor(getFormAccessLevel(form))"
+                                        size="x-small"
+                                        variant="tonal">
+                                  {{ getFormAccessLevel(form) }}
                                 </v-chip>
                                 <span class="text-caption">
                                   {{ t('consultationOverview.score') }}: {{ getFormScore(form) }}
                                 </span>
+                              </div>
+                              <!-- Visual scale representation -->
+                              <div v-if="form.patientFormData?.totalScore && form.formTemplateId" class="mt-2">
+                                <ScoreScale :scale-info="generateScaleInfo(form.patientFormData.totalScore, form.formTemplateId)"
+                                            :height="6" />
                               </div>
                             </div>
                             <v-btn
                                    color="primary"
                                    variant="text"
                                    size="small"
-                                   @click="openForm(form.id)"
-                                   :disabled="!form.id">
+                              @click="openForm(normalizeFormId(form.id))">
                               {{ t('consultationOverview.review') }}
                             </v-btn>
                           </div>
@@ -1306,16 +1386,16 @@ const patientFlowUrl = computed(() => {
         </v-card-text>
         <v-card-actions>
           <v-spacer></v-spacer>
-          <v-btn 
-                 color="grey" 
-                 variant="text" 
+          <v-btn
+                 color="grey"
+                 variant="text"
                  @click="cancelArchiveForm"
                  :disabled="archivingForm">
             {{ t('common.cancel') }}
           </v-btn>
-          <v-btn 
-                 color="warning" 
-                 variant="flat" 
+          <v-btn
+                 color="warning"
+                 variant="flat"
                  @click="archiveForm"
                  :loading="archivingForm"
                  :disabled="!archiveFormReason.trim()">

@@ -26,10 +26,6 @@ const mockSetFontSize = vi.fn()
 const mockSetFont = vi.fn()
 const mockSetTextColor = vi.fn()
 const mockSplitTextToSize = vi.fn()
-const mockGetInternalPageSize = vi.fn(() => ({
-  getWidth: () => 210,
-  getHeight: () => 297,
-}))
 
 vi.mock('jspdf', () => ({
   jsPDF: vi.fn().mockImplementation(() => ({
@@ -107,7 +103,7 @@ describe('QRCodeDisplay.vue', () => {
     mockToDataURL.mockResolvedValue('data:image/png;base64,mockQRCode')
     mockSplitTextToSize.mockReturnValue(['http://example.com/flow/ABC123'])
     mockSave.mockClear()
-    mockSave.mockImplementation(() => {}) // Reset to default implementation
+    mockSave.mockImplementation(() => { }) // Reset to default implementation
 
     // Create fresh instances for each test
     pinia = createPinia()
@@ -307,8 +303,13 @@ describe('QRCodeDisplay.vue', () => {
         'PNG',
         expect.any(Number),
         expect.any(Number),
-        35,
-        35
+<<<<<<< HEAD
+        expect.any(Number),
+        expect.any(Number)
+=======
+        expect.any(Number),
+        expect.any(Number)
+>>>>>>> formpluginsystem
       )
       expect(mockSave).toHaveBeenCalledWith(expect.stringMatching(/patient-qr-code-\d+\.pdf/))
     })
@@ -444,7 +445,7 @@ describe('QRCodeDisplay.vue', () => {
 
   describe('Props Validation', () => {
     it('requires url prop', () => {
-      const consoleWarn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+      const consoleWarn = vi.spyOn(console, 'warn').mockImplementation(() => { })
 
       mount(QRCodeDisplay, {
         global: {

@@ -27,7 +27,6 @@ export const useNotifierStore = defineStore('notifier', () => {
   const pendingNotifications = ref<Array<{ message: string; type: 'success' | 'error' | 'info' | 'warning'; duration: number }>>([])
   let batchTimer: NodeJS.Timeout | null = null
   const BATCH_DELAY = 300 // Wait 300ms before showing notifications
-  const DUPLICATE_WINDOW = 2000 // Consider duplicates within 2 seconds
 
   const processBatch = () => {
     if (pendingNotifications.value.length === 0) {

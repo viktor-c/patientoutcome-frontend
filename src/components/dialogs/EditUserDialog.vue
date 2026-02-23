@@ -1,21 +1,21 @@
 <script setup lang="ts">
 import { ref, watch, computed } from 'vue';
-import type { GetUsers200ResponseResponseObjectInner } from '@/api/models/GetUsers200ResponseResponseObjectInner';
+import type { GetUsers200ResponseResponseObjectInner as UserResponseType} from '@/api/models/GetUsers200ResponseResponseObjectInner';
 import type { UserDepartment } from '@/api/models/UserDepartment';
 
 const props = defineProps<{
   show: boolean;
-  user: GetUsers200ResponseResponseObjectInner | null;
+  user: UserResponseType | null;
   departments?: UserDepartment[];
 }>();
 
 const emit = defineEmits<{
   'update:show': [value: boolean];
-  'save': [user: GetUsers200ResponseResponseObjectInner];
+  'save': [user: UserResponseType];
 }>();
 
-const editedUser = ref<GetUsers200ResponseResponseObjectInner | null>(null);
-const cloneUser = (user: GetUsers200ResponseResponseObjectInner) => {
+const editedUser = ref<UserResponseType | null>(null);
+const cloneUser = (user: UserResponseType) => {
   try {
     // Use structuredClone if available for deep clone
     if (typeof structuredClone === 'function') return structuredClone(user);
@@ -44,16 +44,6 @@ const centerOptions = computed(() => {
       title: dept.name,
       value: dept.id
     }));
-});
-
-const centerNameMap = computed(() => {
-  const map: Record<string, string> = {};
-  (props.departments || [])
-    .filter(dept => dept.departmentType === 'center')
-    .forEach(dept => {
-      if (dept.id) map[dept.id] = dept.name;
-    });
-  return map;
 });
 
 const passwordMismatch = computed(() => {
@@ -96,7 +86,7 @@ const save = () => {
       return;
     }
     // If password is provided, include it in the update
-    const userToSave: any = { ...editedUser.value };
+    const userToSave: UserResponseType & { password?: string } = { ...editedUser.value };
     if (newPassword.value) {
       userToSave.password = newPassword.value;
     }
