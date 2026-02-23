@@ -4,7 +4,7 @@ import { useI18n } from 'vue-i18n'
 import { useRouter, useRoute } from 'vue-router'
 import { useDateFormat } from '@/composables/useDateFormat'
 import { useNotifierStore } from '@/stores/notifierStore'
-import { useUserStore } from '@/stores/userStore'
+import { useUserStore, useFormTemplateStore } from '@/stores'
 import type {
   Patient,
   Consultation,
@@ -32,6 +32,7 @@ const router = useRouter()
 const route = useRoute()
 const notifierStore = useNotifierStore()
 const userStore = useUserStore()
+const formTemplateStore = useFormTemplateStore()
 
 interface CaseBlueprintContent {
   surgeries?: string | string[]
@@ -642,7 +643,12 @@ const handleConsultationsSubmit = async (consultations: Consultation[]) => {
 
 // Handle manual consultation creation in step 4
 const handleManualConsultationSubmitStep4 = async (consultation: Consultation) => {
-  logger.info('📝 Manual consultation created:', { consultationId: consultation.id })
+  // log full object for debugging; this is where unknown forms were observed
+  logger.info('📝 Manual consultation created:', {
+    consultationId: consultation.id,
+    proms: (consultation as any).proms,
+    formTemplates: (consultation as any).formTemplates,
+  })
 
   // Add the manually created consultation to the list
   createdConsultations.value.push(consultation)
@@ -774,6 +780,9 @@ const removeExternalIdField = (index: number) => {
 // Initialize data from route query if available
 onMounted(async () => {
   try {
+    // pre-warm the form-template cache so manual consultations show proper names
+    await formTemplateStore.fetchIfNeeded()
+
     if (userStore.hasRole('admin')) {
       // admins see all departments as array
       const allDepartmentsResponse = await userDepartmentApi.getAllDepartments()
@@ -1048,15 +1057,6 @@ onMounted(async () => {
                               </template>
                             </v-list-item-subtitle>
 
-                            <v-list-item-subtitle class="text-body-2 d-block">
-                              <QRCodeLinkDisplay
-                                                 v-if="getConsultationQRCodeUrl(consultation)"
-                                                 :url="getConsultationQRCodeUrl(consultation)"
-                                                 :hideUrl="false" />
-                              <template v-else>
-                                {{ t('creationFlow.consultationQrUnavailable') }}
-                              </template>
-                            </v-list-item-subtitle>
                           </v-list-item>
                         </v-list>
                       </v-card-text>

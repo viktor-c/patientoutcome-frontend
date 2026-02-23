@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, computed } from 'vue'
+import { ref, onMounted, computed, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useConsultationStore } from '@/stores/'
 import { useDateFormat } from '@/composables/useDateFormat'
@@ -13,7 +13,8 @@ import {
   type FindAllCodes200ResponseResponseObjectInner as Code,
 } from '@/api'
 import { useNotifierStore } from '@/stores/notifierStore'
-import { consultationApi, userApi, formtemplateApi, codeApi } from '@/api'
+import { useFormTemplateStore } from '@/stores'
+import { consultationApi, userApi, codeApi } from '@/api'
 import { getAccessLevelColor, getAccessLevelDescription } from '@/services/formVersionService'
 import { useUserStore } from '@/stores/userStore'
 import NotesEditor from '@/components/forms/NotesEditor.vue'
@@ -30,6 +31,7 @@ const { t, locale } = useI18n()
 const notifierStore = useNotifierStore()
 const userStore = useUserStore()
 const consultationStore = useConsultationStore()
+const formTemplateStore = useFormTemplateStore()
 const { getLocalizedDayjs } = useDateFormat()
 const { errors, validateForm, clearAllErrors, resetFormState } = useFormValidation()
 
@@ -47,8 +49,69 @@ const form = ref<Consultation & { formTemplates?: string[] }>({
   formAccessCode: null,
 })
 
+// helper used when a consultation object needs to be applied to form state
+function populateFormFromConsultation(cons: Consultation) {
+  form.value = { ...cons }
+  form.value.patientCaseId = props.caseId
+  form.value.dateAndTime = getLocalizedDayjs(cons.dateAndTime || new Date()).toISOString()
+
+  // fill titles using template cache
+  if (cons.proms && Array.isArray(cons.proms)) {
+    cons.proms.forEach((p: any) => {
+      if (p && !p.title && p.formTemplateId) {
+        const tpl = formTemplates.value.find(t => t.id === p.formTemplateId)
+        if (tpl) p.title = tpl.title
+      }
+    })
+  }
+
+  if (cons.proms?.length) {
+    selectedFormTemplates.value = cons.proms.map((prom: any) => {
+      return typeof prom === 'string' ? prom : prom.id || prom.formTemplateId
+    }).filter(Boolean) as string[]
+  } else {
+    form.value.proms = []
+    selectedFormTemplates.value = []
+  }
+
+  form.value.visitedBy = cons.visitedBy || []
+  form.value.notes = cons.notes || []
+
+  if (cons.formAccessCode) {
+    selectedCode.value = codes.value.find((code: Code) => code.code === cons.formAccessCode) || null
+    form.value.formAccessCode = String(cons.formAccessCode)
+  }
+}
+
+// watch prop changes so editing dialog updates when opened repeatedly
+watch(
+  () => props.consultation,
+  (newCons) => {
+    if (newCons && newCons.id) {
+      populateFormFromConsultation(newCons)
+      isEditMode.value = true
+    } else {
+      isEditMode.value = false
+      // reset form
+      form.value = {
+        patientCaseId: props.caseId,
+        dateAndTime: new Date().toISOString(),
+        reasonForConsultation: [],
+        notes: [],
+        proms: [],
+        images: [],
+        visitedBy: [],
+        formAccessCode: null,
+      }
+      selectedFormTemplates.value = []
+      selectedCode.value = null
+    }
+  }
+)
+
+
 const users = ref<UserNoPassword[]>([])
-const formTemplates = ref<FormTemplateShortList[]>([])
+const formTemplates = computed(() => formTemplateStore.templates)
 const selectedFormTemplates = ref<string[]>([])
 const codes = ref<Code[]>([])
 const selectedCode = ref<Code | null>(null)
@@ -91,20 +154,6 @@ async function fetchUsers() {
   }
 }
 
-async function fetchFormTemplates() {
-  try {
-    const response = await formtemplateApi.getFormTemplatesShortlist()
-    formTemplates.value = response.responseObject || []
-    console.log('Form templates fetched successfully:', formTemplates.value)
-  } catch (error: unknown) {
-    let errorMessage = 'An unexpected error occurred'
-    if (error instanceof ResponseError) {
-      errorMessage = (await error.response.json()).message
-    }
-    console.error('Error fetching form templates:', errorMessage)
-  }
-}
-
 async function fetchAvailableCodes() {
   try {
     // For editing, we need all codes to potentially find the existing one
@@ -125,26 +174,11 @@ async function fetchAvailableCodes() {
 
 onMounted(async () => {
   await fetchUsers()
-  await fetchFormTemplates()
+  await formTemplateStore.fetchIfNeeded()
   await fetchAvailableCodes()
 
   if (isEditMode.value && props.consultation) {
-    form.value = { ...props.consultation }
-    form.value.patientCaseId = props.caseId
-    form.value.dateAndTime = getLocalizedDayjs(props.consultation.dateAndTime || new Date()).toISOString()
-
-    // Handle form templates for proms
-    if (props.consultation.proms?.length) {
-      selectedFormTemplates.value = props.consultation.proms.map((prom: { id?: string; formTemplateId?: string }) => {
-        // Handle both string IDs and objects with ID property
-        return typeof prom === 'string' ? prom : prom.id || prom.formTemplateId
-      }).filter(Boolean) as string[]
-    }
-
-    // Handle access code
-    if (props.consultation.formAccessCode) {
-      selectedCode.value = codes.value.find((code: Code) => code.code === props.consultation?.formAccessCode) || null
-    }
+    populateFormFromConsultation(props.consultation)
   }
 })
 
@@ -218,6 +252,24 @@ const saveConsultation = async () => {
       })
       console.log('Consultation added successfully:', response)
       notifierStore.notify(t('alerts.consultation.created'), 'success')
+    }
+
+    // augment returned consultation object with titles for any forms we just
+    // created so that parent components can render them immediately without
+    // needing to refetch or look up template names
+    if (response && response.responseObject && Array.isArray(response.responseObject.proms)) {
+      response.responseObject.proms = (response.responseObject.proms as any[]).map(prom => {
+        if (prom && typeof prom === 'object') {
+          const rec = prom as Record<string, any>
+          if ((!rec.title || rec.title === '') && rec.formTemplateId) {
+            const tpl = formTemplates.value.find(t => t.id === rec.formTemplateId)
+            if (tpl) {
+              rec.title = tpl.title
+            }
+          }
+        }
+        return prom
+      })
     }
 
     consultationStore.clearConsultation()
@@ -398,7 +450,8 @@ defineExpose({
                 <v-icon
                         :class="{ 'text-success': !generatingCode, 'text-disabled': generatingCode }"
                         :style="{ cursor: generatingCode ? 'not-allowed' : 'pointer' }"
-                        @click.stop="!generatingCode && generateNewCode()"
+                        @mousedown.stop.prevent
+                        @click.stop.prevent="!generatingCode && generateNewCode()"
                         :disabled="generatingCode">
                   {{ generatingCode ? 'mdi-loading' : 'mdi-plus' }}
                 </v-icon>

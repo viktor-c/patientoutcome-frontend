@@ -303,13 +303,8 @@ describe('QRCodeDisplay.vue', () => {
         'PNG',
         expect.any(Number),
         expect.any(Number),
-<<<<<<< HEAD
         expect.any(Number),
         expect.any(Number)
-=======
-        expect.any(Number),
-        expect.any(Number)
->>>>>>> formpluginsystem
       )
       expect(mockSave).toHaveBeenCalledWith(expect.stringMatching(/patient-qr-code-\d+\.pdf/))
     })

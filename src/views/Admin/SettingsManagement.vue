@@ -1,8 +1,9 @@
 <script setup lang="ts">
 import { ref, onMounted, computed } from 'vue';
 import { useNotifierStore } from '@/stores/';
+import { useUserStore } from '@/stores/userStore';
 import { useI18n } from 'vue-i18n';
-import { settingsApi } from '@/api';
+import { settingsApi, userDepartmentApi, updateDepartmentCodeLife } from '@/api';
 import type { 
   GetSettings200ResponseResponseObject,
   GetSettings200ResponseResponseObjectSettingsValueFieldsValue 
@@ -11,12 +12,23 @@ import type {
 type SettingField = GetSettings200ResponseResponseObjectSettingsValueFieldsValue;
 
 const notifierStore = useNotifierStore();
+const userStore = useUserStore();
 const { t, locale } = useI18n();
 const loading = ref(false);
 const saving = ref(false);
 const settings = ref<GetSettings200ResponseResponseObject | null>(null);
 const editedValues = ref<Record<string, Record<string, string | number | boolean>>>({});
 const expandedPanels = ref<string[]>([]);
+
+// Department code life state (doctor+ only)
+const isDoctorOrAbove = computed(() => userStore.hasRole('doctor') || userStore.hasRole('admin'));
+const deptName = ref<string>('');
+const deptId = ref<string>('');
+const codeLifeValue = ref<string>('');
+const codeLifeOriginal = ref<string>('');
+const savingCodeLife = ref(false);
+const codeLifeError = ref<string | null>(null);
+const CODE_LIFE_PATTERN = /^\d+[hdw]$/;
 
 // Helper to convert API value type to primitive
 const getFieldValue = (field: SettingField): string | number | boolean => {
@@ -189,7 +201,46 @@ const getFieldRules = (field: SettingField) => {
 
 onMounted(() => {
   loadSettings();
+  if (isDoctorOrAbove.value) {
+    loadDepartmentCodeLife();
+  }
 });
+
+// Load user's department and its current code life setting
+const loadDepartmentCodeLife = async () => {
+  try {
+    const response = await userDepartmentApi.getUserDepartment();
+    const dept = response.responseObject as unknown as Record<string, unknown> | null;
+    if (dept) {
+      deptId.value = String(dept['_id'] || dept['id'] || '');
+      deptName.value = String(dept['name'] || '');
+      codeLifeValue.value = String(dept['externalAccessCodeLife'] || '4h');
+      codeLifeOriginal.value = codeLifeValue.value;
+    }
+  } catch {
+    // Department info not critical — fail silently
+  }
+};
+
+// Save department code life setting
+const saveDepartmentCodeLife = async () => {
+  codeLifeError.value = null;
+  if (!CODE_LIFE_PATTERN.test(codeLifeValue.value)) {
+    codeLifeError.value = t('departmentCodeSettings.codeLifeInvalidFormat');
+    return;
+  }
+  if (!deptId.value) return;
+  savingCodeLife.value = true;
+  try {
+    await updateDepartmentCodeLife(deptId.value, codeLifeValue.value);
+    codeLifeOriginal.value = codeLifeValue.value;
+    notifierStore.notify(t('departmentCodeSettings.saveSuccess'), 'success');
+  } catch {
+    notifierStore.notify(t('departmentCodeSettings.saveError'), 'error');
+  } finally {
+    savingCodeLife.value = false;
+  }
+};
 </script>
 
 <template>
@@ -301,6 +352,50 @@ onMounted(() => {
           {{ t('settings.noData') }}
         </v-alert>
       </v-card-text>
+    </v-card>
+
+    <!-- Department Code Life Settings (visible to doctor+ users) -->
+    <v-card v-if="isDoctorOrAbove && deptId" class="mt-4">
+      <v-card-title class="d-flex align-center">
+        <v-icon class="mr-2">mdi-clock-edit-outline</v-icon>
+        {{ t('departmentCodeSettings.title') }}
+      </v-card-title>
+      <v-divider></v-divider>
+      <v-card-text>
+        <p class="text-body-2 text-medium-emphasis mb-4">
+          {{ t('departmentCodeSettings.subtitle') }}
+          <span v-if="deptName" class="font-weight-medium"> ({{ deptName }})</span>
+        </p>
+        <v-text-field
+          v-model="codeLifeValue"
+          :label="t('departmentCodeSettings.codeLifeLabel')"
+          :hint="t('departmentCodeSettings.codeLifeHint')"
+          :error-messages="codeLifeError ? [codeLifeError] : []"
+          persistent-hint
+          variant="outlined"
+          density="comfortable"
+          style="max-width: 320px"
+          @input="codeLifeError = null"
+        ></v-text-field>
+      </v-card-text>
+      <v-card-actions>
+        <v-btn
+          color="primary"
+          :loading="savingCodeLife"
+          :disabled="codeLifeValue === codeLifeOriginal || savingCodeLife"
+          @click="saveDepartmentCodeLife"
+        >
+          <v-icon start>mdi-content-save</v-icon>
+          {{ t('settings.save') }}
+        </v-btn>
+        <v-btn
+          variant="text"
+          :disabled="codeLifeValue === codeLifeOriginal || savingCodeLife"
+          @click="codeLifeValue = codeLifeOriginal; codeLifeError = null"
+        >
+          {{ t('settings.reset') }}
+        </v-btn>
+      </v-card-actions>
     </v-card>
   </v-container>
 </template>

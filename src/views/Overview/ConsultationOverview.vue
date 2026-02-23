@@ -16,7 +16,7 @@ import { consultationApi, userApi, kioskApi, codeApi, formApi } from '@/api'
 import CreateEditConsultationDialog from '@/components/dialogs/CreateEditConsultationDialog.vue'
 import QRCodeDisplay from '@/components/QRCodeDisplay.vue'
 import ScoreScale from '@/components/ScoreScale.vue'
-import { useUserStore } from '@/stores/userStore'
+import { useUserStore, useFormTemplateStore } from '@/stores'
 import { generateScaleInfo } from '@/utils/scaleInfo'
 import { getAccessLevelColor } from '@/services/formVersionService'
 
@@ -27,6 +27,7 @@ const router = useRouter()
 const notifierStore = useNotifierStore()
 const { formatLocalizedCustomDate } = useDateFormat()
 const userStore = useUserStore()
+const formTemplateStore = useFormTemplateStore()
 
 // Get consultationId from route params
 const consultationId = route.params.consultationId as string
@@ -105,6 +106,18 @@ onMounted(async () => {
     // Fetch consultation details
     const consultationResponse = await consultationApi.getConsultationById({ consultationId })
     consultation.value = consultationResponse.responseObject || null
+
+    // ensure any proms with only template IDs get a human title for both
+    // overview display and for the edit dialog later
+    if (consultation.value && consultation.value.proms && Array.isArray(consultation.value.proms)) {
+      await formTemplateStore.fetchIfNeeded()
+      const lookup = formTemplateStore.templateLookup
+      consultation.value.proms.forEach((p: any) => {
+        if (p && !p.title && p.formTemplateId && lookup[p.formTemplateId]) {
+          p.title = lookup[p.formTemplateId]
+        }
+      })
+    }
 
     // Fetch kiosk users for assignment dropdown
     await fetchKioskUsers()
@@ -434,7 +447,7 @@ const fetchAvailableCodes = async () => {
 }
 
 // Get the currently assigned code (if any)
-type PopulatedCode = { code?: string; _id?: string; id?: string } | string
+type PopulatedCode = { code?: string; _id?: string; id?: string; expiresOn?: string } | string
 const assignedCode = computed(() => {
   if (!consultation.value?.formAccessCode) return null
 
@@ -710,6 +723,13 @@ const patientFlowUrl = computed(() => {
   if (!code) return ''
   const baseUrl = window.location.origin
   return `${baseUrl}/flow/${code}`
+})
+
+// Compute expiry date of the currently assigned code
+const assignedCodeExpiresOn = computed<string | undefined>(() => {
+  const code = consultation.value?.formAccessCode as PopulatedCode | undefined
+  if (!code || typeof code === 'string') return undefined
+  return code.expiresOn
 })
 </script>
 
@@ -1148,7 +1168,7 @@ const patientFlowUrl = computed(() => {
                 </v-list-item-subtitle>
                 <template #append>
                   <div class="d-flex gap-2 align-center">
-                    <QRCodeDisplay v-if="patientFlowUrl" :url="patientFlowUrl" />
+                    <QRCodeDisplay v-if="patientFlowUrl" :url="patientFlowUrl" :expires-on="assignedCodeExpiresOn" />
                     <v-btn
                            color="error"
                            variant="tonal"

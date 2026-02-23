@@ -219,7 +219,7 @@ const isCarouselMode = computed(() => viewMode.value === 'carousel')
                             :model-value="isNA(currentQuestion.section, currentQuestion.key)"
                             @update:model-value="toggleNA(currentQuestion.section, currentQuestion.key)"
                             :disabled="readonly"
-                            label="N/A (Not Available)"
+                            :label="t('efas.notApplicable')"
                             density="comfortable"
                             color="primary"
                             hide-details />
@@ -342,7 +342,7 @@ const isCarouselMode = computed(() => viewMode.value === 'carousel')
                               :model-value="isNA(question.section, question.key)"
                               @update:model-value="toggleNA(question.section, question.key)"
                               :disabled="readonly"
-                              label="N/A"
+                              :label="t('efas.notApplicable')"
                               density="compact"
                               hide-details />
                 </div>
@@ -444,7 +444,7 @@ const isCarouselMode = computed(() => viewMode.value === 'carousel')
                               :model-value="isNA(question.section, question.key)"
                               @update:model-value="toggleNA(question.section, question.key)"
                               :disabled="readonly"
-                              label="N/A"
+                              :label="t('efas.notApplicable')"
                               density="compact"
                               hide-details />
                 </div>

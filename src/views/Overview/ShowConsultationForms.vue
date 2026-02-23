@@ -5,9 +5,9 @@ import { useI18n } from 'vue-i18n'
 import LanguageSelector from '@/components/LanguageSelector.vue'
 import PluginFormRenderer from '@/forms/components/PluginFormRenderer.vue'
 import { ResponseError } from '@/api'
-import { mapApiFormsToForms } from '@/adapters/apiAdapters'
 import { useNotifierStore } from '@/stores/notifierStore'
 import { logger } from '@/services/logger'
+import { useConsultationFlow } from '@/composables/useConsultationFlow'
 
 import type { Form, PatientFormData } from '@/types/index'
 import type { FormSubmissionData } from '@/forms/types'
@@ -21,6 +21,7 @@ const el = useTemplateRef('formContainer')
 const { height: containerHeight } = useElementSize(el)
 
 const { t, locale } = useI18n()
+const { allForms, completedForms, pendingForms, processConsultation } = useConsultationFlow()
 
 // Define props for the component
 const { consultationId, externalCode } = defineProps<{ consultationId?: string; externalCode?: string }>()
@@ -29,7 +30,9 @@ const router = useRouter()
 
 import { consultationApi, codeApi, formApi } from '@/api'
 
-// State for forms
+// Local mutable forms list for the sequential fill flow.
+// Starts as the pending (not-yet-completed) forms, but can be switched
+// to allForms when the user enters review mode.
 const forms = ref<Form[]>([])
 const currentFormIndex = ref(0) // Track the current form index
 //const currentForm = ref<Form | null>(null); // Current form being displayed
@@ -39,10 +42,10 @@ const errorMessage = ref<string | null>(null)
 const showSuccessMessage = ref(false)
 const countdownProgress = ref(100) // Countdown progress for redirection
 const showReviewOption = ref(false) // Show review option after all forms are filled
-const completedForms = ref<Form[]>([]) // Forms that were already completed before
-const allForms = ref<Form[]>([]) // All forms including completed ones for review
+// completedForms and allForms are now reactive from the composable
 const isReviewMode = ref(false) // True when reviewing completed forms
 const isFinalized = ref(false) // True after code is deactivated
+const codeExpiresOn = ref<string | null>(null) // Expiry date from formAccessCode
 
 const notifierStore = useNotifierStore()
 
@@ -58,14 +61,17 @@ onMounted(async () => {
       throw new Error('Consultation not found for the provided code.')
     }
 
-    // Fetch forms for the consultation
-    // Map API-generated forms to our internal Form shape using adapter
-    const mappedForms = mapApiFormsToForms(consultationResponse.responseObject.proms || [])
-    allForms.value = mappedForms
+    // Extract code expiry if present
+    const accessCode = consultationResponse.responseObject.formAccessCode as unknown
+    if (accessCode && typeof accessCode === 'object') {
+      const expiresOnRaw = (accessCode as Record<string, unknown>)['expiresOn']
+      if (typeof expiresOnRaw === 'string') codeExpiresOn.value = expiresOnRaw
+    }
 
-    // Separate completed forms from pending forms
-    completedForms.value = mappedForms.filter(f => f.patientFormData?.fillStatus === 'complete')
-    forms.value = mappedForms.filter(f => f.patientFormData?.fillStatus !== 'complete')
+    // Use the shared consultation flow logic
+    await processConsultation(consultationResponse.responseObject)
+    // Initialize the local forms list from the pending (incomplete) forms
+    forms.value = [...pendingForms.value]
 
     logger.debug(`Found ${completedForms.value.length} completed forms and ${forms.value.length} pending forms`)
 
@@ -118,10 +124,10 @@ const incompleteForms = computed(() => {
   for (const form of forms.value) {
     const formId = form._id
     if (!formId) continue
-    
+
     // Form is incomplete if not in 'complete' status or if patientFormData doesn't exist
     const isComplete = form.patientFormData?.fillStatus === 'complete'
-    
+
     if (!isComplete) {
       incomplete.push(formId)
     }
@@ -216,8 +222,8 @@ const startCountdown = () => {
 // Start reviewing previously completed forms
 const startReview = () => {
   isReviewMode.value = true
-  // Combine completed forms with newly filled forms for review
-  forms.value = allForms.value
+  // Switch to all forms (including already-completed ones) for review
+  forms.value = [...allForms.value]
   currentFormIndex.value = 0
   showReviewOption.value = false
   y.value = 0
@@ -287,6 +293,17 @@ const isSmallScreen = computed(() => window.innerWidth < 1300)
     <v-progress-circular indeterminate color="primary" size="64"></v-progress-circular>
   </v-container>
   <v-container v-else :class="isSmallScreen ? 'w-100' : 'w-75'">
+    <!-- Code expiry notice (only relevant for external access via code) -->
+    <v-alert
+             v-if="externalCode && codeExpiresOn"
+             :type="new Date(codeExpiresOn) < new Date() ? 'error' : 'warning'"
+             variant="tonal"
+             class="mb-3"
+             density="compact">
+      <v-icon start>mdi-clock-alert-outline</v-icon>
+      <span v-if="new Date(codeExpiresOn) < new Date()">{{ t('qrCode.accessExpired') }}</span>
+      <span v-else>{{ t('qrCode.expiresAt', { date: new Date(codeExpiresOn).toLocaleString() }) }}</span>
+    </v-alert>
     <v-container class="progress-bar-container">
       <v-progress-linear color="green" :model-value="formFillProgress" :height="8"></v-progress-linear>
     </v-container>

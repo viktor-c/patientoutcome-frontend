@@ -4,6 +4,14 @@ import type { GetAllPatientCases200ResponseResponseObjectInner as PatientCaseFro
 import type { GetAllPatientCases200ResponseResponseObjectInnerSurgeriesInner as SurgeryFromApi } from '@/api'
 import type { Form, PatientCase, Surgery } from '@/types'
 
+// Helper to extract ID from potentially populated object or string
+const extractId = (val: any): string | null => {
+  if (val == null) return null
+  if (typeof val === 'string') return val
+  if (typeof val === 'object') return val.id || val._id || null
+  return String(val)
+}
+
 // Convert generated form model to internal Form
 export function mapApiFormToForm(api: FormFromApi): Form {
   const normalizedId = api.id == null ? null : String(api.id)
@@ -15,9 +23,9 @@ export function mapApiFormToForm(api: FormFromApi): Form {
     description: api.description || '',
     formFillStatus: (api as any).formFillStatus || (api as any).patientFormData?.fillStatus || undefined,
     patientFormData: (api as any).patientFormData || null,
-    caseId: api.caseId || null,
-    consultationId: api.consultationId || null,
-    formTemplateId: api.formTemplateId || null,
+    caseId: extractId(api.caseId),
+    consultationId: extractId(api.consultationId),
+    formTemplateId: extractId(api.formTemplateId),
     createdAt: api.createdAt,
     updatedAt: api.updatedAt,
     formStartTime: api.formStartTime,
@@ -39,7 +47,7 @@ export function mapApiPatientCase(api: PatientCaseFromApi): PatientCase {
     externalId: api.externalId,
     createdAt: api.createdAt,
     updatedAt: api.updatedAt,
-    patient: (api as any).patient && typeof (api as any).patient === 'object' ? (api as any).patient._id || (api as any).patient.id : api.patient as any,
+    patient: extractId((api as any).patient),
     mainDiagnosis: api.mainDiagnosis,
     mainDiagnosisICD10: api.mainDiagnosisICD10,
     otherDiagnosis: api.otherDiagnosis,
@@ -47,8 +55,8 @@ export function mapApiPatientCase(api: PatientCaseFromApi): PatientCase {
     medicalHistory: api.medicalHistory,
     // Normalize surgeries and supervisors to arrays of IDs (string[]). The API may return
     // either an array of objects or an array of string IDs depending on endpoint.
-    surgeries: (api.surgeries || []).map((s: any) => (typeof s === 'string' ? s : s.id || s._id)).filter(Boolean),
-    supervisors: (api.supervisors || []).map((s: any) => (typeof s === 'string' ? s : s.id || s._id)).filter(Boolean),
+    surgeries: (api.surgeries || []).map((s: any) => extractId(s)).filter((s): s is string => !!s),
+    supervisors: (api.supervisors || []).map((s: any) => extractId(s)).filter((s): s is string => !!s),
   }
 }
 
@@ -73,8 +81,8 @@ export function mapApiSurgeries(apiSurgeries: SurgeryFromApi[] = []): Surgery[] 
     } : undefined,
     roentgenDosis: s.roentgenDosis,
     roentgenTime: s.roentgenTime,
-    surgeons: (s as any).surgeons || [], // Handle optional surgeons field
-    patientCase: s.patientCase,
+    surgeons: ((s as any).surgeons || []).map((surgeon: any) => extractId(surgeon)).filter((id: any): id is string => !!id),
+    patientCase: extractId(s.patientCase),
     createdAt: s.createdAt,
     updatedAt: s.updatedAt,
   }))

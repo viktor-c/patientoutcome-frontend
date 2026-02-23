@@ -52,6 +52,10 @@
               <v-icon start size="small">mdi-information</v-icon>
               {{ t('qrCode.scanInfo') }}
             </v-chip>
+            <v-chip v-if="props.expiresOn" size="small" color="warning" variant="tonal" class="ml-2">
+              <v-icon start size="small">mdi-clock-alert-outline</v-icon>
+              {{ t('qrCode.expiresAt', { date: new Date(props.expiresOn).toLocaleString() }) }}
+            </v-chip>
           </div>
         </div>
         <div v-else>
@@ -95,6 +99,7 @@ interface Props {
   size?: number
   title?: string
   subtitle?: string
+  expiresOn?: string
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -196,6 +201,21 @@ const downloadPDF = async () => {
     const urlLines = doc.splitTextToSize(props.url, maxWidth)
     doc.text(urlLines, pageWidth / 2, urlY, { align: 'center' })
     
+    // Expiry date (if set)
+    let nextLineY = urlY + (urlLines.length * 4) + 4
+    if (props.expiresOn) {
+      doc.setFontSize(8)
+      doc.setTextColor(180, 100, 0)
+      doc.text(
+        t('qrCode.expiresAt', { date: new Date(props.expiresOn).toLocaleString() }),
+        pageWidth / 2,
+        nextLineY,
+        { align: 'center' }
+      )
+      doc.setTextColor(0, 0, 0)
+      nextLineY += 5
+    }
+    
     // Footer with date
     doc.setFontSize(7)
     doc.setTextColor(100, 100, 100)
@@ -209,7 +229,7 @@ const downloadPDF = async () => {
       t('qrCode.pdfScanInstruction'),
       t('qrCode.pdfAccessInstruction')
     ]
-    let instructionY = urlY + (urlLines.length * 4) + 6
+    let instructionY = nextLineY + 2
     instructionLines.forEach((line) => {
       if (instructionY < pageHeight - 10) {
         doc.text(line, pageWidth / 2, instructionY, { align: 'center' })

@@ -296,6 +296,8 @@ export default {
     pdfAccessInstruction: 'You will be directed to your personalized forms',
     pdfDownloaded: 'PDF downloaded successfully',
     pdfError: 'Failed to generate PDF',
+    expiresAt: 'Expires: {date}',
+    accessExpired: 'This access link has expired.',
   },
   alerts: {
     patient: {
@@ -1439,6 +1441,15 @@ export default {
     restore: 'Restore Backup',
     delete: 'Delete Backup',
     restoreDefaultDeselectedHint: 'Session, user, and backup-related tables are deselected by default.',
+  },
+  departmentCodeSettings: {
+    title: 'Department Code Settings',
+    subtitle: 'Configure how long patient access codes remain valid',
+    codeLifeLabel: 'Code validity duration',
+    codeLifeHint: 'e.g. 4h (4 hours), 2d (2 days), 3w (3 weeks)',
+    codeLifeInvalidFormat: 'Use format: number + h/d/w (e.g. 4h, 2d, 3w)',
+    saveSuccess: 'Code life setting saved successfully',
+    saveError: 'Failed to save code life setting',
   },
   settings: {
     title: 'Application Settings',

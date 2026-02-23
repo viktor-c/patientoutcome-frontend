@@ -61,3 +61,23 @@ export async function updateUserByUsername(username: string, payload: object) {
   }
   return await res.json();
 }
+
+/**
+ * Update the externalAccessCodeLife setting for a department.
+ * Only callable by users with doctor+ role who belong to the department.
+ */
+export async function updateDepartmentCodeLife(departmentId: string, externalAccessCodeLife: string) {
+  const base = apiConfig.basePath ?? '';
+  const url = `${base.replace(/\/$/, '')}/userDepartment/${encodeURIComponent(departmentId)}/code-life`;
+  const res = await fetch(url, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    credentials: 'include',
+    body: JSON.stringify({ externalAccessCodeLife }),
+  });
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`Failed to update department code life: ${res.status} ${res.statusText}: ${text}`);
+  }
+  return await res.json();
+}

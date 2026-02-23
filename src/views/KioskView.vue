@@ -8,94 +8,40 @@ import { useDateFormat } from '@/composables/useDateFormat'
 import { kioskApi } from '@/api'
 import type { CreateConsultation201Response } from '@/api'
 import { useNotifierStore } from '@/stores/notifierStore'
+import { localizeConsultationReason } from '@/utils/consultationUtils'
+import { useConsultationFlow } from '@/composables/useConsultationFlow'
 
 const { t, te } = useI18n()
 const router = useRouter()
 const notifier = useNotifierStore()
 const { formatLocalizedDate } = useDateFormat()
+const { allForms, isFormComplete, processConsultation, getFirstIncompleteFormId } = useConsultationFlow()
 
 // Localise a single reason entry (string or object). Falls back to raw value.
-const localizeReason = (r: unknown) => {
-  if (r === null || typeof r === 'undefined') return ''
-
-  // simple string codes
-  if (typeof r === 'string') {
-    const key = `consultation.reasons.${r}`
-    return te(key) ? t(key) : r
-  }
-
-  // objects: try common fields
-  if (typeof r === 'object') {
-    const obj = r as Record<string, unknown>
-    if (obj.id && typeof obj.id === 'string') {
-      const key = `consultation.reasons.${obj.id}`
-      return te(key) ? t(key) : String(obj.id)
-    }
-    if (obj.code && typeof obj.code === 'string') {
-      const key = `consultation.reasons.${obj.code}`
-      return te(key) ? t(key) : String(obj.code)
-    }
-    if (obj.label && typeof obj.label === 'string') {
-      const key = `consultation.reasons.${obj.label}`
-      return te(key) ? t(key) : String(obj.label)
-    }
-    // fallback: stringify
-    try {
-      return JSON.stringify(obj)
-    } catch (e) {
-      console.error('Error stringifying object:', e)
-      return String(obj)
-    }
-  }
-
-  return String(r)
-}
+const localizeReason = (r: unknown) => localizeConsultationReason(r, { t, te })
 
 // Start surveys: navigate to the first incomplete form for this consultation
 const startSurveys = () => {
-  const consultationObj = consultation.value?.responseObject as Record<string, unknown> | undefined
+  const fid = getFirstIncompleteFormId()
 
-  // Extract consultation id (try common fields)
+  if (fid) {
+    // Navigate directly to kiosk form view for the first incomplete form
+    router.push({ name: 'kioskform', params: { formId: fid } })
+    return
+  }
+
+  // If no incomplete form found, inform user and fall back to aggregated FormView
+  const consultationObj = consultation.value?.responseObject as Record<string, unknown> | undefined
   let cid = ''
   if (consultationObj) {
     if ('id' in consultationObj && consultationObj['id']) cid = String(consultationObj['id'])
     else if ('_id' in consultationObj && consultationObj['_id']) cid = String(consultationObj['_id'])
-    else if ('consultationId' in consultationObj && consultationObj['consultationId']) cid = String(consultationObj['consultationId'])
   }
 
-  if (!cid) {
-    notifier.error(t('kiosk.error'))
-    return
-  }
-
-  // Try to find first incomplete form in proms
-  const proms = consultationObj && 'proms' in consultationObj && Array.isArray(consultationObj['proms'])
-    ? (consultationObj['proms'] as unknown[])
-    : undefined
-
-  if (proms && proms.length > 0) {
-    const firstIncomplete = proms.find((p) => {
-      if (!p || typeof p !== 'object') return false
-      const r = p as Record<string, unknown>
-      // Consider a form incomplete when formFillStatus !== 'completed'
-      return !('formFillStatus' in r && String(r['formFillStatus']) === 'completed')
-    }) as Record<string, unknown> | undefined
-
-    if (firstIncomplete) {
-      const fid = ('id' in firstIncomplete && firstIncomplete['id']) ? String(firstIncomplete['id']) :
-        ('_id' in firstIncomplete && firstIncomplete['_id']) ? String(firstIncomplete['_id']) : ''
-
-      if (fid) {
-        // Navigate directly to kiosk form view for the first incomplete form
-        router.push({ name: 'kioskform', params: { formId: fid } })
-        return
-      }
-    }
-  }
-
-  // If no incomplete form found, inform user and fall back to aggregated FormView
   notifier.info(t('forms.consultation.completed'))
-  router.push({ name: 'formview', params: { consultationId: String(cid) } })
+  if (cid) {
+    router.push({ name: 'formview', params: { consultationId: String(cid) } })
+  }
 }
 
 // Reactive state
@@ -111,6 +57,9 @@ const loadConsultation = async () => {
   try {
     const response = await kioskApi.getConsultation()
     consultation.value = response
+    if (response.responseObject) {
+      await processConsultation(response.responseObject)
+    }
   } catch (err) {
     console.error('Failed to load consultation:', err)
     error.value = true
@@ -222,7 +171,8 @@ onMounted(() => {
                     {{ t('kiosk.patientCode') }}:
                   </div>
                   <div class="text-h6 text-primary">
-                    {{ consultation.responseObject.formAccessCode || 'N/A' }}
+                    {{ (consultation.responseObject.formAccessCode as any)?.code ??
+                      consultation.responseObject.formAccessCode ?? t('common.notAvailable') }}
                   </div>
                 </v-col>
                 <v-col cols="12" sm="6">
@@ -268,7 +218,7 @@ onMounted(() => {
             </v-card-title>
             <v-card-text class="pa-0">
               <!-- No forms message -->
-              <div v-if="!consultation.responseObject.proms || consultation.responseObject.proms.length === 0"
+              <div v-if="allForms.length === 0"
                    class="text-center pa-8">
                 <v-icon icon="mdi-file-document-outline" size="64" color="grey" class="mb-4" />
                 <div class="text-h6 text-grey">{{ t('kiosk.noForms') }}</div>
@@ -277,7 +227,7 @@ onMounted(() => {
               <!-- Forms list -->
               <v-list v-else>
                 <v-list-item
-                             v-for="(formItem, index) in consultation.responseObject.proms"
+                             v-for="(formItem, index) in allForms"
                              :key="formItem.id == null ? index : String(formItem.id)"
                              class="border-b list-item-clickable"
                              @click="onListItemClick(formItem.id == null ? '' : String(formItem.id))"
@@ -286,10 +236,10 @@ onMounted(() => {
                              active-class="list-item-active">
                   <template #prepend>
                     <v-avatar
-                              :color="formItem.patientFormData?.fillStatus === 'complete' ? 'success' : 'warning'"
+                              :color="isFormComplete(formItem) ? 'success' : 'warning'"
                               size="40">
                       <v-icon
-                              :icon="formItem.patientFormData?.fillStatus === 'complete' ? 'mdi-check' : 'mdi-clock-outline'"
+                              :icon="isFormComplete(formItem) ? 'mdi-check' : 'mdi-clock-outline'"
                               color="white">
                       </v-icon>
                     </v-avatar>
@@ -302,14 +252,14 @@ onMounted(() => {
                   <v-list-item-subtitle>
                     <span v-if="formItem.description">{{ formItem.description }}</span>
                     <span class="ml-4">
-                      {{ formItem.patientFormData?.subscales ?
+                      {{ (formItem.patientFormData as any)?.subscales ?
                         `${t('kiosk.subscales.totalScore')}` : t('kiosk.noScore') }}
                     </span>
                   </v-list-item-subtitle>
 
                   <template #append>
                     <v-btn
-                            @click="openForm(formItem.id == null ? '' : String(formItem.id))"
+                           @click="openForm(formItem.id == null ? '' : String(formItem.id))"
                            :color="formItem.patientFormData ? 'primary' : 'success'"
                            :prepend-icon="formItem.patientFormData ? 'mdi-eye' : 'mdi-play'"
                            variant="outlined"
@@ -322,7 +272,7 @@ onMounted(() => {
             </v-card-text>
             <!-- Mobile: repeat start button at bottom of card and hide top one via CSS -->
             <v-card-actions class="forms-card-actions"
-                            v-if="consultation.responseObject.proms && consultation.responseObject.proms.length > 0">
+                            v-if="allForms.length > 0">
               <v-btn
                      @click="startSurveys"
                      color="primary"

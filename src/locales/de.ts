@@ -544,6 +544,8 @@ export default {
     pdfAccessInstruction: 'Sie werden zu Ihren personalisierten Formularen weitergeleitet',
     pdfDownloaded: 'PDF erfolgreich heruntergeladen',
     pdfError: 'Fehler beim Erstellen der PDF',
+    expiresAt: 'Läuft ab: {date}',
+    accessExpired: 'Dieser Zugangslink ist abgelaufen.',
   },
   alerts: {
     patient: {
@@ -1440,6 +1442,15 @@ export default {
     restore: 'Sicherung wiederherstellen',
     delete: 'Sicherung löschen',
     restoreDefaultDeselectedHint: 'Sitzungs-, Benutzer- und backup-bezogene Tabellen sind standardmäßig abgewählt.',
+  },
+  departmentCodeSettings: {
+    title: 'Abteilungs-Code-Einstellungen',
+    subtitle: 'Konfigurieren Sie, wie lange Patientenzugangscodes gültig sind',
+    codeLifeLabel: 'Gültigkeitsdauer des Codes',
+    codeLifeHint: 'z.B. 4h (4 Stunden), 2d (2 Tage), 3w (3 Wochen)',
+    codeLifeInvalidFormat: 'Format: Zahl + h/d/w (z.B. 4h, 2d, 3w)',
+    saveSuccess: 'Code-Gültigkeitsdauer erfolgreich gespeichert',
+    saveError: 'Fehler beim Speichern der Code-Gültigkeitsdauer',
   },
   settings: {
     title: 'Anwendungseinstellungen',

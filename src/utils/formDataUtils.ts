@@ -14,13 +14,14 @@ export function toApiPatientFormData(
 }
 
 /**
- * Attempts to extract an object ID from a value that may contain either
- * `id` or `_id` fields. Returns `null` if none found or value is not object.
- *
- * Note: original callers expected either string or empty; adapt as needed.
+ * Attempts to extract an object ID from a value that may be a string, or
+ * an object containing either `id` or `_id` fields. 
  */
 export function extractObjectId(value: unknown): string | null {
-  if (!value || typeof value !== 'object') return null
+  if (!value) return null
+  if (typeof value === 'string') return value
+  if (typeof value !== 'object') return null
+
   const candidate = value as { id?: unknown; _id?: unknown }
 
   if (typeof candidate.id === 'string' && candidate.id) return candidate.id

@@ -2,12 +2,11 @@
 import { ref, onMounted, toRaw } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
-import { useConsultationStore } from '@/stores/'
+import { useConsultationStore, useFormTemplateStore } from '@/stores/'
 import { useDateFormat } from '@/composables/useDateFormat'
 import {
   type Consultation,
   type UserNoPassword,
-  type GetFormTemplatesShortlist200ResponseResponseObjectInner as FormTemplateShortList,
   ResponseError,
   type FindAllCodes200ResponseResponseObjectInner as Code,
 } from '@/api'
@@ -20,6 +19,7 @@ const route = useRoute()
 const router = useRouter()
 const notifierStore = useNotifierStore()
 const consultationStore = useConsultationStore()
+const formTemplateStore = useFormTemplateStore()
 const { getLocalizedDayjs } = useDateFormat()
 
 // Determine if this is an edit or add operation
@@ -30,7 +30,7 @@ const patientId = route.params.patientId as string
 const caseId = route.params.caseId as string
 
 // Use centralized API instances
-import { consultationApi, userApi, formtemplateApi, codeApi } from '@/api'
+import { consultationApi, userApi, codeApi } from '@/api'
 
 // Consultation data
 const consultation = ref(
@@ -55,8 +55,8 @@ const form = ref<Consultation>({
 // Users list for the dropdown
 const users = ref<UserNoPassword[]>([])
 
-// Form templates list for the autocomplete
-const formTemplates = ref<FormTemplateShortList[]>([])
+// Form templates list for the autocomplete (sourced from cached store)
+const formTemplates = computed(() => formTemplateStore.templates)
 const selectedFormTemplates = ref<string[]>([])
 
 // Fetch all users for the dropdown
@@ -76,26 +76,6 @@ async function fetchUsers() {
       errorMessage = (await error.response.json()).message
     }
     console.error('Error fetching users:', errorMessage)
-  }
-}
-
-// Fetch all form templates for the autocomplete
-async function fetchFormTemplates() {
-  try {
-    const response = await formtemplateApi.getFormTemplatesShortlist()
-    if (!response.responseObject || response.responseObject.length === 0) {
-      console.debug('no form templates found')
-      formTemplates.value = []
-      return
-    }
-    formTemplates.value = response.responseObject
-    console.log('Form templates fetched successfully:', formTemplates.value)
-  } catch (error: unknown) {
-    let errorMessage = 'An unexpected error occurred'
-    if (error instanceof ResponseError) {
-      errorMessage = (await error.response.json()).message
-    }
-    console.error('Error fetching form templates:', errorMessage)
   }
 }
 
@@ -185,7 +165,7 @@ async function fetchAvailableCodes() {
 // Fetch users, form templates, and codes on component mount
 onMounted(async () => {
   await fetchUsers()
-  await fetchFormTemplates()
+  await formTemplateStore.fetchIfNeeded()
   await fetchAvailableCodes()
 
   if (isEditMode.value) {
