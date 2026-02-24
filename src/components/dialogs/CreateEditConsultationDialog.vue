@@ -214,7 +214,7 @@ const saveConsultation = async () => {
     const consultationData: CreateConsultation = {
       patientCaseId: form.value.patientCaseId,
       dateAndTime: form.value.dateAndTime,
-      reasonForConsultation: form.value.reasonForConsultation ? [form.value.reasonForConsultation] as any : [],
+      reasonForConsultation: form.value.reasonForConsultation || [],
       notes: form.value.notes.map(note => ({
         ...note,
         createdBy: note.createdBy || undefined
@@ -351,6 +351,7 @@ defineExpose({
                   persistent-hint
                   :error="!!errors.reasonForConsultation"
                   :error-messages="errors.reasonForConsultation ? [errors.reasonForConsultation] : []"
+                  multiple
                   outlined
                   dense></v-select>
         <v-row class="my-2">
