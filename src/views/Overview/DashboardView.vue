@@ -99,7 +99,7 @@ const getPatientCaseExternalIds = (item: unknown): string => {
 const getAccessInfo = (item: unknown): { code?: string; kioskNumber?: number } => {
   const obj = item as Record<string, unknown>
   const result: { code?: string; kioskNumber?: number } = {}
-  
+
   // Get access code
   const formAccessCode = obj['formAccessCode'] as Record<string, unknown> | string | undefined
   if (formAccessCode) {
@@ -109,13 +109,13 @@ const getAccessInfo = (item: unknown): { code?: string; kioskNumber?: number } =
       result.code = (formAccessCode as Record<string, unknown>).code as string
     }
   }
-  
+
   // Get kiosk number from kioskId (User object with postopWeek)
   const kioskId = obj['kioskId'] as Record<string, unknown> | undefined
   if (kioskId && 'postopWeek' in kioskId) {
     result.kioskNumber = kioskId.postopWeek as number
   }
-  
+
   return result
 }
 
@@ -326,7 +326,8 @@ onMounted(async () => {
       </template>
 
       <template v-slot:[`item.accessInfo`]="{ item }">
-        <div v-if="getAccessInfo(item).code || getAccessInfo(item).kioskNumber" class="d-flex flex-column gap-1 align-center">
+        <div v-if="getAccessInfo(item).code || getAccessInfo(item).kioskNumber"
+             class="d-flex flex-column gap-1 align-center">
           <div v-if="getAccessInfo(item).code" class="text-caption font-weight-bold">
             Code: {{ getAccessInfo(item).code }}
           </div>
