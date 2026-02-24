@@ -141,11 +141,17 @@ const login = async () => {
                         outlined
                         dense
                         required
-                        autocomplete="current-password"
-                        append-inner-icon="mdi-eye"
-                        @mousedown:append-inner="showPassword = true"
-                        @mouseup:append-inner="showPassword = false"
-                        @mouseleave:append-inner="showPassword = false"></v-text-field>
+                        autocomplete="current-password">
+            <template #append-inner>
+              <v-icon
+                      style="cursor: pointer"
+                      @mousedown.prevent="showPassword = true"
+                      @mouseup="showPassword = false"
+                      @mouseleave="showPassword = false">
+                {{ showPassword ? 'mdi-eye' : 'mdi-eye-off' }}
+              </v-icon>
+            </template>
+          </v-text-field>
           <div class="d-flex justify-center">
             <v-tooltip v-if="!canSubmit" location="top">
               <template #activator="{ props }">
