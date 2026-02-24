@@ -119,6 +119,17 @@ const getAccessInfo = (item: unknown): { code?: string; kioskNumber?: number } =
   return result
 }
 
+// Calculate completion ratio style for progress buttons
+const getCompletionStyle = (proms: any[]) => {
+  if (!proms || proms.length === 0) return {}
+  const completed = proms.filter(p => (p as any).patientFormData?.fillStatus === 'complete').length
+  const ratio = (completed / proms.length) * 100
+  return {
+    background: `linear-gradient(90deg, rgba(76, 175, 80, 0.5) 0%, rgba(76, 175, 80, 0.5) ${ratio}%, transparent ${ratio}%, transparent 100%)`,
+    transition: 'background 0.3s ease'
+  }
+}
+
 const openPatientOverviewFromCase = async (caseId: string | null | undefined) => {
   if (!caseId) return
 
@@ -250,6 +261,7 @@ onMounted(async () => {
                variant="text"
                border
                slim
+               :style="getCompletionStyle(internalItem.raw.proms)"
                @click.stop="toggleExpand(internalItem)"></v-btn>
       </template>
 
