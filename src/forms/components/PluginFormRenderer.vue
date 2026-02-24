@@ -72,6 +72,7 @@ interface Emits {
   (e: 'viewVersion', version: number): void
   (e: 'compareVersions', v1: number, v2: number): void
   (e: 'versionRestored'): void
+  (e: 'submit'): void
 }
 
 const emit = defineEmits<Emits>()
@@ -335,7 +336,8 @@ onMounted(() => {
                :model-value="formDataToPass"
                :readonly="readonly || isViewingOldVersion"
                :locale="locale"
-               @update:model-value="handleModelUpdate" />
+               @update:model-value="handleModelUpdate"
+               @submit="emit('submit')" />
 
     <!-- Fallback: loading state (shouldn't happen with eager loading) -->
     <div v-else class="text-center pa-4">

@@ -73,6 +73,9 @@ export interface FormComponentEvents {
 
   /** Emitted when form validation state changes */
   'validation-change': [isValid: boolean]
+
+  /** Emitted when the user finishes filling the form (e.g. clicks Done in carousel) */
+  'submit': []
 }
 
 /**

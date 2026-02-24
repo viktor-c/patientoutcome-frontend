@@ -304,9 +304,9 @@ const isSmallScreen = computed(() => window.innerWidth < 1300)
       <span v-if="new Date(codeExpiresOn) < new Date()">{{ t('qrCode.accessExpired') }}</span>
       <span v-else>{{ t('qrCode.expiresAt', { date: new Date(codeExpiresOn).toLocaleString() }) }}</span>
     </v-alert>
-    <v-container class="progress-bar-container">
+    <!-- <v-container class="progress-bar-container">
       <v-progress-linear color="green" :model-value="formFillProgress" :height="8"></v-progress-linear>
-    </v-container>
+    </v-container> -->
     <v-container>
       <transition name="slide-down">
         <v-card v-if="errorMessage">
@@ -392,7 +392,8 @@ const isSmallScreen = computed(() => window.innerWidth < 1300)
                               :template-id="currentForm.formTemplateId || currentForm._id || ''"
                               :model-value="(currentForm.patientFormData as any) || {}"
                               :locale="locale"
-                              @update:model-value="(data) => processFormData(data, currentFormIndex)" />
+                              @update:model-value="(data) => processFormData(data, currentFormIndex)"
+                              @submit="submitForm" />
 
           <!-- Navigation buttons -->
           <v-card-actions class="px-6 py-4 d-flex justify-space-between">

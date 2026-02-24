@@ -1,6 +1,7 @@
 <script setup lang="ts">
 /* eslint-disable vue/no-deprecated-filter */
 import { computed, toRef, inject, ref, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useForm } from '../../composables/useForm'
 import { calculateScore } from './scoring'
 import { translations } from './translations'
@@ -35,6 +36,7 @@ const props = withDefaults(defineProps<FormComponentProps>(), {
 
 // Component events
 const emit = defineEmits<FormComponentEvents>()
+const { t: tGlobal } = useI18n()
 
 // Use the shared form composable
 const { updateQuestion, getQuestion, t } = useForm({
@@ -260,10 +262,16 @@ const isCarouselMode = computed(() => viewMode.value === 'carousel')
         <v-card-text class="pa-3">
           <div class="d-flex align-center justify-space-between mb-2">
             <span class="text-subtitle-2 font-weight-bold">
-              Question {{ currentQuestionIndex + 1 }} of {{ totalQuestions }}
+              {{ tGlobal('forms.carousel.questionProgress', {
+                current: currentQuestionIndex + 1,
+                total: totalQuestions,
+              }) }}
             </span>
             <span class="text-caption text-medium-emphasis">
-              {{ answeredQuestions }} / {{ totalQuestions }} answered
+              {{ tGlobal('forms.carousel.answeredProgress', {
+                answered: answeredQuestions,
+                total: totalQuestions,
+              }) }}
             </span>
           </div>
           <v-progress-linear
@@ -370,7 +378,7 @@ const isCarouselMode = computed(() => viewMode.value === 'carousel')
                      color="primary"
                      prepend-icon="mdi-chevron-left"
                      @click="goToPrevious">
-                Previous
+                {{ tGlobal('buttons.previous') }}
               </v-btn>
 
               <v-btn
@@ -379,7 +387,7 @@ const isCarouselMode = computed(() => viewMode.value === 'carousel')
                      color="primary"
                      append-icon="mdi-chevron-right"
                      @click="goToNext">
-                Next
+                {{ tGlobal('buttons.next') }}
               </v-btn>
 
               <v-btn
@@ -387,8 +395,8 @@ const isCarouselMode = computed(() => viewMode.value === 'carousel')
                      variant="elevated"
                      color="success"
                      append-icon="mdi-check"
-                     @click="() => { }">
-                Done
+                     @click="emit('submit')">
+                {{ tGlobal('buttons.done') }}
               </v-btn>
             </v-card-actions>
           </v-card>
@@ -396,7 +404,8 @@ const isCarouselMode = computed(() => viewMode.value === 'carousel')
       </v-window>
 
       <v-card class="d-none d-md-block mt-4" elevation="1">
-        <v-card-title class="text-subtitle-1 py-2 bg-grey-lighten-4">All Questions</v-card-title>
+        <v-card-title class="text-subtitle-1 py-2 bg-grey-lighten-4">{{ tGlobal('forms.carousel.allQuestions')
+          }}</v-card-title>
         <v-list density="compact">
           <v-list-item
                        v-for="(question, index) in carouselQuestions"

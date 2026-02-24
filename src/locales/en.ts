@@ -134,6 +134,11 @@ export default {
       carouselDescription: 'One question at a time (mobile-optimized)',
       standardDescription: 'All questions in a list',
     },
+    carousel: {
+      questionProgress: 'Question {current} of {total}',
+      answeredProgress: '{answered} / {total} answered',
+      allQuestions: 'All Questions',
+    },
     fillOutForm: 'Fill Out Form',
     loading: 'Loading form...',
     error: 'Error loading form',
@@ -144,6 +149,27 @@ export default {
       dateFormat: 'DD.MM.YYYY',
     },
     scoring: {
+      overallProgress: 'Overall Progress',
+      questions: 'Questions',
+      subscaleScores: 'Subscale Scores (0-100 scale)',
+      totalScore: 'Total Score',
+      rawScore: 'Raw Score',
+      completeAllQuestions: 'Complete all questions to see detailed scoring analysis.',
+      of: 'of',
+      questionsAnswered: 'questions answered',
+      interpretation: {
+        mild: 'Mild',
+        moderate: 'Moderate',
+        severe: 'Severe',
+        verySevere: 'Very Severe'
+      },
+      subscales: {
+        walkingStanding: 'Walking & Standing',
+        pain: 'Pain',
+        socialInteraction: 'Social Interaction'
+      }
+    },
+    subscales: {
       overallProgress: 'Overall Progress',
       questions: 'Questions',
       subscaleScores: 'Subscale Scores (0-100 scale)',
@@ -256,6 +282,7 @@ export default {
     startCreationFlow: 'Start Patient and Case Creation Flow',
     next: 'Next',
     previous: 'Previous',
+    done: 'Done',
     back: 'Back',
     review: 'Review',
     finish: 'Finish',

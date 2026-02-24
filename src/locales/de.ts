@@ -386,12 +386,38 @@ export default {
       carouselDescription: 'Eine Frage nach der anderen (Mobil-optimiert)',
       standardDescription: 'Alle Fragen in einer Liste',
     },
+    carousel: {
+      questionProgress: 'Frage {current} von {total}',
+      answeredProgress: '{answered} / {total} beantwortet',
+      allQuestions: 'Alle Fragen',
+    },
     completionTime: 'Bearbeitungszeit: {seconds} Sekunden',
     hints: {
       required: 'Dieses Feld ist erforderlich',
       dateFormat: 'TT.MM.JJJJ',
     },
     scoring: {
+      overallProgress: 'Gesamtfortschritt',
+      questions: 'Fragen',
+      subscaleScores: 'Subskala-Werte (0-100 Skala)',
+      totalScore: 'Gesamtscore',
+      rawScore: 'Rohwert',
+      completeAllQuestions: 'Beantworten Sie alle Fragen, um eine detaillierte Score-Analyse zu sehen.',
+      of: 'von',
+      questionsAnswered: 'Fragen beantwortet',
+      interpretation: {
+        mild: 'Leicht',
+        moderate: 'Mäßig',
+        severe: 'Schwer',
+        verySevere: 'Sehr schwer'
+      },
+      subscales: {
+        walkingStanding: 'Gehen & Stehen',
+        pain: 'Schmerz',
+        socialInteraction: 'Soziale Interaktion'
+      }
+    },
+    subscales: {
       overallProgress: 'Gesamtfortschritt',
       questions: 'Fragen',
       subscaleScores: 'Subskala-Werte (0-100 Skala)',
@@ -504,6 +530,7 @@ export default {
     startCreationFlow: 'Patienten- und Fall-Erstellungsablauf starten',
     next: 'Weiter',
     previous: 'Zurück',
+    done: 'Fertig',
     back: 'Zurück',
     review: 'Überprüfen',
     finish: 'Fertigstellen',
