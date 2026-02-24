@@ -41,7 +41,7 @@ const isEditMode = ref(!!(props.consultation && props.consultation.id))
 const form = ref<Consultation & { formTemplates?: string[] }>({
   patientCaseId: props.caseId,
   dateAndTime: new Date().toISOString(),
-  reasonForConsultation: [],
+  reasonForConsultation: null as any,
   notes: [],
   proms: [],
   images: [],
@@ -54,6 +54,11 @@ function populateFormFromConsultation(cons: Consultation) {
   form.value = { ...cons }
   form.value.patientCaseId = props.caseId
   form.value.dateAndTime = getLocalizedDayjs(cons.dateAndTime || new Date()).toISOString()
+
+  // Handle reasonForConsultation (backend: array, frontend: single)
+  if (Array.isArray(cons.reasonForConsultation)) {
+    form.value.reasonForConsultation = cons.reasonForConsultation[0] || (null as any)
+  }
 
   // fill titles using template cache
   if (cons.proms && Array.isArray(cons.proms)) {
@@ -96,7 +101,7 @@ watch(
       form.value = {
         patientCaseId: props.caseId,
         dateAndTime: new Date().toISOString(),
-        reasonForConsultation: [],
+        reasonForConsultation: null as any,
         notes: [],
         proms: [],
         images: [],
@@ -209,7 +214,7 @@ const saveConsultation = async () => {
     const consultationData: CreateConsultation = {
       patientCaseId: form.value.patientCaseId,
       dateAndTime: form.value.dateAndTime,
-      reasonForConsultation: form.value.reasonForConsultation,
+      reasonForConsultation: form.value.reasonForConsultation ? [form.value.reasonForConsultation] as any : [],
       notes: form.value.notes.map(note => ({
         ...note,
         createdBy: note.createdBy || undefined
@@ -346,7 +351,6 @@ defineExpose({
                   persistent-hint
                   :error="!!errors.reasonForConsultation"
                   :error-messages="errors.reasonForConsultation ? [errors.reasonForConsultation] : []"
-                  multiple
                   outlined
                   dense></v-select>
         <v-row class="my-2">
