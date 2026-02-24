@@ -43,6 +43,8 @@ export interface Form {
   id?: string | null // For OpenAPI compatibility (can be null)
   title?: string
   description?: string
+  /** Access level from the form template: 'patient' (filled by the patient), 'authenticated' (filled by a clinician), or 'inactive' */
+  accessLevel?: 'patient' | 'authenticated' | 'inactive' | string
   patientFormData?: PatientFormData | null
   caseId?: string | null
   consultationId?: string | null

@@ -21,6 +21,7 @@ export function mapApiFormToForm(api: FormFromApi): Form {
     _id: normalizedId || '', // For backward compatibility 
     title: api.title || '',
     description: api.description || '',
+    accessLevel: (api as any).accessLevel || undefined,
     formFillStatus: (api as any).formFillStatus || (api as any).patientFormData?.fillStatus || undefined,
     patientFormData: (api as any).patientFormData || null,
     caseId: extractId(api.caseId),

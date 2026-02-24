@@ -74,6 +74,16 @@ const patientDisplayName = computed(() => {
   return externalId || patient.value.id || t('common.unknown')
 })
 
+// Extract the first department ID from the patient case so that form-template selection
+// in CreateEditConsultationDialog is scoped to that department.
+const caseDepartmentId = computed<string | undefined>(() => {
+  const depts = (patientCase.value?.patient as any)?.departments
+  if (!depts || !depts.length) return undefined
+  const first = depts[0]
+  if (typeof first === 'string') return first
+  return (first as any)?.id || (first as any)?._id || undefined
+})
+
 const pastConsultations = computed(() => {
   // Get start of today (midnight) - consultations from today should NOT be considered past
   const startOfToday = new Date()
@@ -841,6 +851,7 @@ onMounted(() => {
       <CreateEditConsultationDialog
                                     :patient-id="patient?.id"
                                     :case-id="caseId"
+                                    :department-id="caseDepartmentId"
                                     :consultation="editingConsultation"
                                     @submit="handleConsultationCreated"
                                     @cancel="cancelDialog" />

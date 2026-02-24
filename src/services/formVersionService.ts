@@ -191,9 +191,9 @@ export function getAccessLevelColor(level: string): string {
  */
 export function getAccessLevelDescription(level: string): string {
   const descriptions: Record<string, string> = {
-    patient: 'Patients (via access code)',
-    authenticated: 'Healthcare professionals only',
-    inactive: 'Form is disabled'
+    patient: 'for patient',
+    authenticated: 'for authenticated user',
+    inactive: 'disabled'
   }
   return descriptions[level] || 'Unknown'
 }

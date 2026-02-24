@@ -9,12 +9,13 @@ import {
   type CreateConsultation,
   type UserNoPassword,
   type GetFormTemplatesShortlist200ResponseResponseObjectInner as FormTemplateShortList,
+  type GetFormTemplates200ResponseResponseObjectInner as FormTemplateFull,
   ResponseError,
   type FindAllCodes200ResponseResponseObjectInner as Code,
 } from '@/api'
 import { useNotifierStore } from '@/stores/notifierStore'
 import { useFormTemplateStore } from '@/stores'
-import { consultationApi, userApi, codeApi } from '@/api'
+import { consultationApi, userApi, codeApi, formtemplateApi } from '@/api'
 import { getAccessLevelColor, getAccessLevelDescription } from '@/services/formVersionService'
 import { useUserStore } from '@/stores/userStore'
 import NotesEditor from '@/components/forms/NotesEditor.vue'
@@ -23,6 +24,8 @@ const props = defineProps<{
   patientId: string | null | undefined
   caseId: string
   consultation?: Consultation | null
+  /** Department ID of the patient case – used to load only the relevant form templates */
+  departmentId?: string
 }>()
 
 const emit = defineEmits(['submit', 'cancel'])
@@ -41,7 +44,7 @@ const isEditMode = ref(!!(props.consultation && props.consultation.id))
 const form = ref<Consultation & { formTemplates?: string[] }>({
   patientCaseId: props.caseId,
   dateAndTime: new Date().toISOString(),
-  reasonForConsultation: null as any,
+  reasonForConsultation: [],
   notes: [],
   proms: [],
   images: [],
@@ -55,9 +58,11 @@ function populateFormFromConsultation(cons: Consultation) {
   form.value.patientCaseId = props.caseId
   form.value.dateAndTime = getLocalizedDayjs(cons.dateAndTime || new Date()).toISOString()
 
-  // Handle reasonForConsultation (backend: array, frontend: single)
+  // Keep reasonForConsultation as array (backend type)
   if (Array.isArray(cons.reasonForConsultation)) {
-    form.value.reasonForConsultation = cons.reasonForConsultation[0] || (null as any)
+    form.value.reasonForConsultation = cons.reasonForConsultation
+  } else {
+    form.value.reasonForConsultation = []
   }
 
   // fill titles using template cache
@@ -101,7 +106,7 @@ watch(
       form.value = {
         patientCaseId: props.caseId,
         dateAndTime: new Date().toISOString(),
-        reasonForConsultation: null as any,
+        reasonForConsultation: [],
         notes: [],
         proms: [],
         images: [],
@@ -116,32 +121,32 @@ watch(
 
 
 const users = ref<UserNoPassword[]>([])
-const formTemplates = computed(() => formTemplateStore.templates)
+// When a departmentId is provided, we fetch the full form template list filtered by that
+// department (which includes the accessLevel field). Otherwise we fall back to the store shortlist.
+const localFormTemplates = ref<FormTemplateFull[]>([])
+const formTemplates = computed<Array<FormTemplateShortList | FormTemplateFull>>(() =>
+  localFormTemplates.value.length ? localFormTemplates.value : formTemplateStore.templates
+)
 const selectedFormTemplates = ref<string[]>([])
 const codes = ref<Code[]>([])
 const selectedCode = ref<Code | null>(null)
 const generatingCode = ref(false)
 const formSubmitted = ref(false)
 
-// Filter form templates based on user role
+// Filter form templates for display in the consultation builder.
+// Clinicians can assign both patient-facing and authenticated (clinician) forms to a consultation,
+// so we show both. Only 'inactive' forms are hidden (unless the user is an admin).
 const availableFormTemplates = computed(() => {
-  const isAuthenticated = userStore.hasRole('admin') || userStore.hasRole('doctor') || userStore.hasRole('student')
-
-  type TemplateWithAccess = FormTemplateShortList & { accessLevel?: string }
+  type TemplateWithAccess = (FormTemplateShortList | FormTemplateFull) & { accessLevel?: string }
 
   return formTemplates.value.filter((template: TemplateWithAccess) => {
-    const accessLevel = template.accessLevel || 'patient'
+    const accessLevel = template.accessLevel
 
-    // Everyone can see patient-accessible forms
-    if (accessLevel === 'patient') return true
+    // Hide inactive forms unless the user is an admin
+    if (accessLevel === 'inactive') return userStore.hasRole('admin')
 
-    // Authenticated users can see authenticated forms
-    if (accessLevel === 'authenticated' && isAuthenticated) return true
-
-    // Admins can see inactive forms
-    if (accessLevel === 'inactive' && userStore.hasRole('admin')) return true
-
-    return false
+    // Show all other forms (patient, authenticated, or no accessLevel set)
+    return true
   })
 })
 
@@ -156,6 +161,26 @@ async function fetchUsers() {
       errorMessage = (await error.response.json()).message
     }
     console.error('Error fetching users:', errorMessage)
+  }
+}
+
+async function fetchFormTemplates() {
+  if (props.departmentId) {
+    try {
+      const response = await formtemplateApi.getFormTemplates({ departmentId: props.departmentId })
+      localFormTemplates.value = response.responseObject || []
+    } catch (error: unknown) {
+      let errorMessage = 'An unexpected error occurred'
+      if (error instanceof ResponseError) {
+        errorMessage = (await error.response.json()).message
+      }
+      console.error('Error fetching form templates for department:', errorMessage)
+      // Fall back to the cached shortlist
+      await formTemplateStore.fetchIfNeeded()
+    }
+  } else {
+    // No department filter – use the cached shortlist
+    await formTemplateStore.fetchIfNeeded()
   }
 }
 
@@ -179,7 +204,7 @@ async function fetchAvailableCodes() {
 
 onMounted(async () => {
   await fetchUsers()
-  await formTemplateStore.fetchIfNeeded()
+  await fetchFormTemplates()
   await fetchAvailableCodes()
 
   if (isEditMode.value && props.consultation) {
@@ -410,21 +435,17 @@ defineExpose({
             </v-chip>
           </template>
 
-          <!-- Custom item display with badge -->
+          <!-- Custom item display with badge and inline chip; remove default title duplication -->
           <template #item="{ item, props: itemProps }">
             <v-list-item v-bind="itemProps">
-              <template #prepend>
-                <v-chip
-                        size="x-small"
-                        :color="getAccessLevelColor((item.raw as any).accessLevel || 'patient')"
-                        class="mr-2">
-                  {{ ((item.raw as any).accessLevel || 'patient').toUpperCase() }}
-                </v-chip>
-              </template>
-              <v-list-item-title>{{ (item.raw as any).title }}</v-list-item-title>
-              <v-list-item-subtitle class="text-caption">
+              <v-chip
+                      size="x-small"
+                      :color="getAccessLevelColor((item.raw as any).accessLevel || 'patient')"
+                      class="ml-2">
+                <!-- {{ ((item.raw as any).accessLevel || 'patient').toUpperCase() }} -->
                 {{ getAccessLevelDescription((item.raw as any).accessLevel || 'patient') }}
-              </v-list-item-subtitle>
+              </v-chip>
+
             </v-list-item>
           </template>
         </v-autocomplete>

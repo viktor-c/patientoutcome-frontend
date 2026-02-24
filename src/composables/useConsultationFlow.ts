@@ -41,14 +41,23 @@ export function useConsultationFlow() {
       const mappedForms = mapApiFormsToForms(consultation.proms as any)
 
       // Final merge of titles if mapApiFormToForm missed them
-      allForms.value = mappedForms.map((f, idx) => {
+      const mergedForms = mappedForms.map((f, idx) => {
         if (!f.title && formsWithTitles[idx]?.title) {
           f.title = formsWithTitles[idx].title
         }
         return f
       })
 
-      logger.debug(`Processed consultation: ${allForms.value.length} forms total, ${completedForms.value.length} completed`)
+      // This composable is used in patient-facing views (KioskView, ShowConsultationForms).
+      // Only forms with accessLevel 'patient' (or no accessLevel, defaulting to patient) should
+      // be presented to the patient. Clinician-only forms (accessLevel 'authenticated') are
+      // excluded from the patient flow.
+      allForms.value = mergedForms.filter(f => {
+        const level = f.accessLevel
+        return !level || level === 'patient'
+      })
+
+      logger.debug(`Processed consultation: ${allForms.value.length} patient-accessible forms (${mergedForms.length} total), ${completedForms.value.length} completed`)
     } catch (error) {
       logger.error('Error processing consultation forms:', error)
       allForms.value = []

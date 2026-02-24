@@ -5,6 +5,7 @@ import { useRouter, useRoute } from 'vue-router'
 import { useDateFormat } from '@/composables/useDateFormat'
 import { useNotifierStore } from '@/stores/notifierStore'
 import { useUserStore, useFormTemplateStore } from '@/stores'
+import { getAccessLevelColor } from '@/services/formVersionService'
 import type {
   Patient,
   Consultation,
@@ -41,6 +42,7 @@ interface CaseBlueprintContent {
 interface ConsultationPromWithTitle {
   id?: string | null
   title?: string | null
+  accessLevel?: string | null // used for coloring chips
 }
 
 const isRecord = (value: unknown): value is Record<string, unknown> => {
@@ -238,12 +240,25 @@ const getConsultationQRCodeUrl = (consultation: Consultation): string => {
 const getConsultationForms = (consultation: Consultation): ConsultationPromWithTitle[] => {
   if (!Array.isArray(consultation.proms)) return []
 
+  // the consultation only has form templates, but no proms yet
   return (consultation.proms as unknown[])
     .filter((prom): prom is Record<string, unknown> => isRecord(prom))
-    .map((prom) => ({
-      id: typeof prom.id === 'string' ? prom.id : null,
-      title: typeof prom.title === 'string' ? prom.title : null,
-    }))
+    .map((prom) => {
+      const id = typeof prom.id === 'string' ? prom.id : null
+      let accessLevel: string | null = null
+
+      // if we know the template ID, try to look up its accessLevel from the cache
+      if (id) {
+        const tpl = formTemplateStore.templates.find(t => t.id === id)
+        accessLevel = (tpl && (tpl as any).accessLevel) || null
+      }
+
+      return {
+        id,
+        title: typeof prom.title === 'string' ? prom.title : null,
+        accessLevel,
+      }
+    })
 }
 
 // Convert createdCase to the format expected by PatientCaseCreateEditForm
@@ -1039,6 +1054,7 @@ onMounted(async () => {
                               {{ safeFormatConsultationDate(consultation.dateAndTime) }}
                             </v-list-item-title>
 
+                            <!-- the consultation only has form templates, but no proms yet -->
                             <v-list-item-subtitle class="text-body-2 mb-2 d-block">
                               <strong>{{ t('creationFlow.consultationFormsLabel') }}:</strong>
                               <template v-if="getConsultationForms(consultation).length">
@@ -1046,7 +1062,7 @@ onMounted(async () => {
                                         v-for="(form, formIndex) in getConsultationForms(consultation)"
                                         :key="form.id || `consultation-${consultationIndex}-form-${formIndex}`"
                                         size="small"
-                                        color="primary"
+                                        :color="getAccessLevelColor(form.accessLevel || 'patient')"
                                         variant="outlined"
                                         class="mr-2 mb-2">
                                   {{ form.title || t('forms.consultation.untitledForm') }}
