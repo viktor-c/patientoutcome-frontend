@@ -17,6 +17,7 @@ import { useNotifierStore } from '@/stores/notifierStore'
 import { useFormTemplateStore } from '@/stores'
 import { consultationApi, userApi, codeApi, formtemplateApi } from '@/api'
 import { getAccessLevelColor, getAccessLevelDescription } from '@/services/formVersionService'
+import { logger } from '@/services/logger'
 import { useUserStore } from '@/stores/userStore'
 import NotesEditor from '@/components/forms/NotesEditor.vue'
 
@@ -154,13 +155,13 @@ async function fetchUsers() {
   try {
     const response = await userApi.getUsers()
     users.value = response.responseObject || []
-    console.log('Users fetched successfully:', users.value)
+    logger.info('Users fetched successfully', { count: users.value.length })
   } catch (error: unknown) {
     let errorMessage = 'An unexpected error occurred'
     if (error instanceof ResponseError) {
       errorMessage = (await error.response.json()).message
     }
-    console.error('Error fetching users:', errorMessage)
+    logger.error('Error fetching users', { errorMessage })
   }
 }
 
@@ -174,7 +175,10 @@ async function fetchFormTemplates() {
       if (error instanceof ResponseError) {
         errorMessage = (await error.response.json()).message
       }
-      console.error('Error fetching form templates for department:', errorMessage)
+      logger.error('Error fetching form templates for department', {
+        departmentId: props.departmentId,
+        errorMessage,
+      })
       // Fall back to the cached shortlist
       await formTemplateStore.fetchIfNeeded()
     }
@@ -192,13 +196,13 @@ async function fetchAvailableCodes() {
       ? await codeApi.findAllCodes()
       : await codeApi.getAllAvailableCodes()
     codes.value = response.responseObject || []
-    console.log('Codes fetched successfully:', codes.value)
+    logger.info('Codes fetched successfully', { count: codes.value.length, editMode: isEditMode.value })
   } catch (error: unknown) {
     let errorMessage = 'An unexpected error occurred'
     if (error instanceof ResponseError) {
       errorMessage = (await error.response.json()).message
     }
-    console.error('Error fetching codes:', errorMessage)
+    logger.error('Error fetching codes', { errorMessage })
   }
 }
 
@@ -273,14 +277,20 @@ const saveConsultation = async () => {
         consultationId: form.value.id,
         updateConsultation: consultationData,
       })
-      console.log('Consultation updated successfully:', response)
+      logger.info('Consultation updated successfully', {
+        consultationId: form.value.id,
+        caseId: props.caseId,
+      })
       notifierStore.notify(t('alerts.consultation.updated'), 'success')
     } else {
       response = await consultationApi.createConsultation({
         caseId: props.caseId,
         createConsultation: consultationData,
       })
-      console.log('Consultation added successfully:', response)
+      logger.info('Consultation added successfully', {
+        caseId: props.caseId,
+        consultationId: response.responseObject?.id,
+      })
       notifierStore.notify(t('alerts.consultation.created'), 'success')
     }
 
@@ -309,7 +319,7 @@ const saveConsultation = async () => {
     if (error instanceof ResponseError) {
       errorMessage = (await error.response.json()).message
     }
-    console.error('Error saving consultation:', errorMessage)
+    logger.error('Error saving consultation', { errorMessage, caseId: props.caseId })
     notifierStore.notify(t('alerts.consultation.saveFailed'), 'error')
   }
 }
@@ -319,14 +329,14 @@ async function generateNewCode() {
 
   try {
     generatingCode.value = true
-    console.log('Generating new code...')
+    logger.info('Generating new code')
 
     // Generate a single new code
     const response = await codeApi.addCodes({ numberOfCodes: 1 })
 
     if (response.responseObject && response.responseObject.length > 0) {
       const newCode = response.responseObject[0]
-      console.log('New code generated successfully:', newCode)
+      logger.info('New code generated successfully', { codeId: newCode.id, code: newCode.code })
 
       // Add the new code to the codes list
       codes.value.unshift(newCode) // Add at the beginning for easy selection
@@ -343,7 +353,7 @@ async function generateNewCode() {
     if (error instanceof ResponseError) {
       errorMessage = (await error.response.json()).message
     }
-    console.error('Error generating new code:', errorMessage)
+    logger.error('Error generating new code', { errorMessage })
     notifierStore.notify(t('alerts.code.generateFailed'), 'error')
   } finally {
     generatingCode.value = false
