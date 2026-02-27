@@ -26,8 +26,13 @@ describe('formDataUtils', () => {
       expect(extractObjectId(undefined)).toBeNull()
     })
 
-    it('should return null for non-object primitives', () => {
-      expect(extractObjectId('string')).toBeNull()
+    it('should return string as-is for string input', () => {
+      expect(extractObjectId('string')).toBe('string')
+      expect(extractObjectId('object-id-123')).toBe('object-id-123')
+    })
+
+    it('should return null for null and non-string primitives', () => {
+      expect(extractObjectId(null)).toBeNull()
       expect(extractObjectId(42)).toBeNull()
       expect(extractObjectId(true)).toBeNull()
     })
