@@ -206,6 +206,11 @@ const currentQuestion = computed(() => carouselQuestions.value[currentQuestionIn
 const totalQuestions = computed(() => carouselQuestions.value.length)
 const isLastQuestion = computed(() => currentQuestionIndex.value === totalQuestions.value - 1)
 const isFirstQuestion = computed(() => currentQuestionIndex.value === 0)
+const isCurrentQuestionAnswered = computed(() => {
+  const question = currentQuestion.value
+  if (!question) return false
+  return getCurrentValue(question.key) !== undefined
+})
 
 const answeredQuestions = computed(() => {
   return carouselQuestions.value.filter(q => getCurrentValue(q.key) !== undefined).length
@@ -387,7 +392,7 @@ const isCarouselMode = computed(() => viewMode.value === 'carousel')
                      color="primary"
                      append-icon="mdi-chevron-right"
                      @click="goToNext">
-                {{ tGlobal('buttons.next') }}
+                {{ tGlobal(isCurrentQuestionAnswered ? 'buttons.next' : 'buttons.skip') }}
               </v-btn>
 
               <v-btn
@@ -396,7 +401,7 @@ const isCarouselMode = computed(() => viewMode.value === 'carousel')
                      color="success"
                      append-icon="mdi-check"
                      @click="emit('submit')">
-                {{ tGlobal('buttons.done') }}
+                {{ tGlobal(isCurrentQuestionAnswered ? 'buttons.complete' : 'buttons.skipQuestionAndSubmitForm') }}
               </v-btn>
             </v-card-actions>
           </v-card>
