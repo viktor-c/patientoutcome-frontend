@@ -5,7 +5,7 @@ import { useRouter, useRoute } from 'vue-router'
 import { useDateFormat } from '@/composables/useDateFormat'
 import { useNotifierStore } from '@/stores/notifierStore'
 import { useUserStore, useFormTemplateStore } from '@/stores'
-import { getAccessLevelColor } from '@/services/formVersionService'
+import { getAccessLevelColor, getAccessLevelDescription } from '@/services/formVersionService'
 import type {
   Patient,
   Consultation,
@@ -41,6 +41,7 @@ interface CaseBlueprintContent {
 
 interface ConsultationPromWithTitle {
   id?: string | null
+  formTemplateId?: string | null
   title?: string | null
   accessLevel?: string | null // used for coloring chips
 }
@@ -245,16 +246,19 @@ const getConsultationForms = (consultation: Consultation): ConsultationPromWithT
     .filter((prom): prom is Record<string, unknown> => isRecord(prom))
     .map((prom) => {
       const id = typeof prom.id === 'string' ? prom.id : null
+      const formTemplateId = typeof prom.formTemplateId === 'string' ? prom.formTemplateId : null
+      const templateLookupId = formTemplateId || id
       let accessLevel: string | null = null
 
       // if we know the template ID, try to look up its accessLevel from the cache
-      if (id) {
-        const tpl = formTemplateStore.templates.find(t => t.id === id)
+      if (templateLookupId) {
+        const tpl = formTemplateStore.templates.find(t => t.id === templateLookupId)
         accessLevel = (tpl && (tpl as any).accessLevel) || null
       }
 
       return {
         id,
+        formTemplateId,
         title: typeof prom.title === 'string' ? prom.title : null,
         accessLevel,
       }
@@ -1066,6 +1070,8 @@ onMounted(async () => {
                                         variant="outlined"
                                         class="mr-2 mb-2">
                                   {{ form.title || t('forms.consultation.untitledForm') }}
+                                  •
+                                  {{ getAccessLevelDescription(form.accessLevel || 'patient') }}
                                 </v-chip>
                               </template>
                               <template v-else>
