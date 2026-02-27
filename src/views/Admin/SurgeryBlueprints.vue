@@ -139,14 +139,16 @@
                         :rules="[rules.required]"
                         required />
 
-            <v-combobox
+            <IcdOpsSearchField
+                        type="icd"
                         v-model="editedBlueprint.diagnosisICD10"
                         :label="t('surgeryBlueprints.fields.diagnosisICD10')"
                         multiple
                         chips
                         closable-chips />
 
-            <v-combobox
+            <IcdOpsSearchField
+                        type="ops"
                         v-model="editedBlueprint.opsCodes"
                         :label="t('surgeryBlueprints.fields.opsCodes')"
                         multiple
@@ -255,6 +257,7 @@ import { ref, computed, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { blueprintApi } from '@/api'
 import { useNotifierStore } from '@/stores/notifierStore'
+import IcdOpsSearchField from '@/components/icdops/IcdOpsSearchField.vue'
 
 const { t } = useI18n()
 const notifierStore = useNotifierStore()

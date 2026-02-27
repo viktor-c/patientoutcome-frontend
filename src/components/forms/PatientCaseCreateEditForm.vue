@@ -2,6 +2,8 @@
 import { ref, watch, computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useFormValidation } from '@/composables/useFormValidation'
+import IcdOpsSearchField from '@/components/icdops/IcdOpsSearchField.vue'
+import type { IcdOpsEntry } from '@/services/icdopsService'
 import {
   type CreateCaseSchema,
   type PatientCase,
@@ -69,6 +71,36 @@ const selectedBlueprint = ref<Blueprint | null>(null)
 const blueprintSearchQuery = ref('')
 const loadingBlueprints = ref(false)
 const formSubmitted = ref(false)
+
+// ICD-10 entries with full data (for auto-fill feature)
+// We use returnObject on IcdOpsSearchField to get both code and label
+const mainDiagnosisICD10Entries = ref<(IcdOpsEntry | string)[]>(
+  formCase.value.mainDiagnosisICD10?.map(code => (typeof code === 'string' ? code : code)) || []
+)
+const otherDiagnosisICD10Entries = ref<(IcdOpsEntry | string)[]>(
+  formCase.value.otherDiagnosisICD10?.map(code => (typeof code === 'string' ? code : code)) || []
+)
+
+// Helper to extract codes from entries (handles both strings and IcdOpsEntry objects)
+const extractCodes = (entries: (IcdOpsEntry | string)[]): string[] => {
+  return entries.map(entry => typeof entry === 'string' ? entry : entry.code)
+}
+
+// Helper to extract labels from ICD10 entries for auto-fill
+const extractLabels = (entries: (IcdOpsEntry | string)[]): string[] => {
+  return entries
+    .filter((entry): entry is IcdOpsEntry => typeof entry === 'object' && 'label' in entry)
+    .map(entry => entry.label)
+}
+
+// Watch ICD10 entries and sync codes to formCase
+watch(mainDiagnosisICD10Entries, (entries) => {
+  formCase.value.mainDiagnosisICD10 = extractCodes(entries)
+}, { deep: true })
+
+watch(otherDiagnosisICD10Entries, (entries) => {
+  formCase.value.otherDiagnosisICD10 = extractCodes(entries)
+}, { deep: true })
 
 // Helper to determine if we should show error for a field
 const shouldShowError = (fieldName: string): boolean => {
@@ -248,6 +280,17 @@ const submit = async () => {
     // Clear previous errors
     clearAllErrors()
 
+    // Auto-fill mainDiagnosis from ICD10 labels if mainDiagnosis is empty but ICD10 codes exist
+    if (
+      (!formCase.value.mainDiagnosis || formCase.value.mainDiagnosis.length === 0) &&
+      mainDiagnosisICD10Entries.value.length > 0
+    ) {
+      const labelsFromIcd10 = extractLabels(mainDiagnosisICD10Entries.value)
+      if (labelsFromIcd10.length > 0) {
+        formCase.value.mainDiagnosis = labelsFromIcd10
+      }
+    }
+
     // Validate required fields
     const validationRules = {
       mainDiagnosis: [
@@ -318,6 +361,17 @@ const submitAndNextStep = async () => {
 
       // Clear previous errors
       clearAllErrors()
+
+      // Auto-fill mainDiagnosis from ICD10 labels if mainDiagnosis is empty but ICD10 codes exist
+      if (
+        (!formCase.value.mainDiagnosis || formCase.value.mainDiagnosis.length === 0) &&
+        mainDiagnosisICD10Entries.value.length > 0
+      ) {
+        const labelsFromIcd10 = extractLabels(mainDiagnosisICD10Entries.value)
+        if (labelsFromIcd10.length > 0) {
+          formCase.value.mainDiagnosis = labelsFromIcd10
+        }
+      }
 
       // Validate required fields
       const validationRules = {
@@ -427,16 +481,15 @@ loadDefaultBlueprints()
                       @blur="touchField('mainDiagnosis')"></v-combobox>
         </v-col>
         <v-col cols="12" md="6" lg="4">
-          <v-combobox
+          <IcdOpsSearchField
+                      type="icd"
                       :label="t('forms.patientCase.mainDiagnosisICD10')"
-                      v-model="formCase.mainDiagnosisICD10"
-                      :items="formCase.mainDiagnosisICD10"
+                      v-model="mainDiagnosisICD10Entries"
+                      return-object
                       multiple
-                      outlined
-                      dense
                       chips
                       clearable
-                      closable-chips></v-combobox>
+                      closable-chips />
         </v-col>
       </v-row>
 
@@ -455,16 +508,15 @@ loadDefaultBlueprints()
                       closable-chips></v-combobox>
         </v-col>
         <v-col cols="12" md="6" lg="4">
-          <v-combobox
+          <IcdOpsSearchField
+                      type="icd"
                       :label="t('forms.patientCase.otherDiagnosisICD10')"
-                      v-model="formCase.otherDiagnosisICD10"
-                      :items="formCase.otherDiagnosisICD10"
+                      v-model="otherDiagnosisICD10Entries"
+                      return-object
                       multiple
-                      outlined
-                      dense
                       chips
                       clearable
-                      closable-chips></v-combobox>
+                      closable-chips />
         </v-col>
       </v-row>
 

@@ -19,6 +19,7 @@ import { surgeryApi, userApi, blueprintApi } from '@/api'
 import { useUserStore } from '@/stores/userStore'
 import { dayjs } from '@/utils/dayjs'
 import NotesEditor from '@/components/forms/NotesEditor.vue'
+import IcdOpsSearchField from '@/components/icdops/IcdOpsSearchField.vue'
 
 const props = defineProps<{
   patientCaseId: string
@@ -774,30 +775,26 @@ defineExpose({
                         :error-messages="hasError('diagnosis') ? [getError('diagnosis')] : []"></v-combobox>
           </v-col>
           <v-col cols="12" md="6" lg="4">
-            <v-combobox
+            <IcdOpsSearchField
+                        type="icd"
                         :label="t('surgery.diagnosisICD10')"
                         v-model="form.diagnosisICD10"
-                        :items="form.diagnosisICD10"
                         multiple
-                        outlined
-                        dense
                         chips
                         clearable
-                        closable-chips></v-combobox>
+                        closable-chips />
           </v-col>
         </v-row>
 
         <!-- OPS Codes -->
-        <v-combobox
+        <IcdOpsSearchField
+                    type="ops"
                     :label="t('surgery.oPSCodes')"
                     v-model="form.oPSCodes"
-                    :items="form.oPSCodes"
                     multiple
-                    outlined
-                    dense
                     chips
                     clearable
-                    closable-chips></v-combobox>
+                    closable-chips />
 
         <!-- Surgery Details -->
         <v-row>

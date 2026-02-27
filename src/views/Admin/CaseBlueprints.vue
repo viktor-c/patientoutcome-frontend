@@ -184,7 +184,8 @@
               </v-col>
 
               <v-col cols="12" md="6">
-                <v-combobox
+                <IcdOpsSearchField
+                  type="icd"
                   v-model="editedBlueprint.mainDiagnosisICD10"
                   :label="t('caseBlueprints.fields.mainDiagnosisICD10')"
                   multiple
@@ -204,7 +205,8 @@
               </v-col>
 
               <v-col cols="12" md="6">
-                <v-combobox
+                <IcdOpsSearchField
+                  type="icd"
                   v-model="editedBlueprint.otherDiagnosisICD10"
                   :label="t('caseBlueprints.fields.otherDiagnosisICD10')"
                   multiple
@@ -362,6 +364,7 @@ import { ref, computed, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { blueprintApi } from '@/api'
 import { useNotifierStore } from '@/stores/notifierStore'
+import IcdOpsSearchField from '@/components/icdops/IcdOpsSearchField.vue'
 
 const { t } = useI18n()
 const notifierStore = useNotifierStore()
