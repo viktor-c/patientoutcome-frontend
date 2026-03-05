@@ -399,9 +399,9 @@ defineExpose({
                            week-num-name="Wo"
                            format="dd.MM.yyyy HH:mm"
                            week-numbers="iso"
+                           :text-input="true"
                            :cancelText="t('buttons.cancelTimeDateText')"
-                           :selectText="t('buttons.selectTimeDateText')"
-                           teleport="body" />
+                           :selectText="t('buttons.selectTimeDateText')" />
             <v-text-field
                           v-if="errors.dateAndTime"
                           :error="true"
