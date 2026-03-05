@@ -14,7 +14,7 @@ import { formApi } from '@/api'
 import { logger } from '@/services/logger'
 
 const componentName = 'ReviewFormAnswers.vue'
-const { t } = useI18n()
+const { t, locale } = useI18n()
 const route = useRoute()
 const router = useRouter()
 const notifierStore = useNotifierStore()
@@ -120,6 +120,9 @@ const hasChanges = computed(() => {
   return JSON.stringify(formData.value) !== JSON.stringify(originalFormData.value)
 })
 
+const rendererLocale = computed(() => String(locale.value || 'en'))
+const pluginRendererKey = computed(() => `${templateId.value}-${rendererLocale.value}`)
+
 // Extract the template ID (handle both string and populated object)
 const templateId = computed(() => {
   if (!form.value) return ''
@@ -207,18 +210,7 @@ const saveChanges = async () => {
     originalFormData.value = JSON.parse(JSON.stringify(formData.value))
     notifierStore.notify(t('reviewForm.saveSuccess'), 'success')
 
-    // Navigate to consultation overview if we have a consultation ID
-    if (form.value?.consultationId) {
-      // Handle both string and object cases for consultationId
-      const consId = form.value.consultationId
-      const consultationId = getIdFromUnknown(consId)
-
-      logger.debug('Navigating to consultation overview with ID:', consultationId)
-      router.push({
-        name: 'consultationoverview',
-        params: { consultationId }
-      })
-    }
+    navigateToConsultationOverview()
   } catch (error: unknown) {
     let errorMessage = 'An unexpected error occurred'
     if (error instanceof ResponseError) {
@@ -231,6 +223,21 @@ const saveChanges = async () => {
   }
 }
 
+const navigateToConsultationOverview = () => {
+  if (form.value?.consultationId) {
+    const consultationId = getIdFromUnknown(form.value.consultationId)
+
+    logger.debug('Navigating to consultation overview with ID:', consultationId)
+    router.push({
+      name: 'consultationoverview',
+      params: { consultationId }
+    })
+    return
+  }
+
+  router.back()
+}
+
 // Cancel changes
 const cancelChanges = () => {
   if (hasChanges.value) {
@@ -238,6 +245,8 @@ const cancelChanges = () => {
     formData.value = JSON.parse(JSON.stringify(originalFormData.value))
     notifierStore.notify(t('reviewForm.changesCancelled'), 'info')
   }
+
+  navigateToConsultationOverview()
 }
 
 // Go back
@@ -360,10 +369,12 @@ const goBack = () => {
       <v-card>
         <v-card-text class="px-4 py-6">
           <PluginFormRenderer
+                              :key="pluginRendererKey"
                               :template-id="templateId"
                               :form-id="formId"
                               :show-version-controls="true"
                               :current-version="(form as any)?.currentVersion || 1"
+                              :locale="rendererLocale"
                               :model-value="form?.patientFormData ?? null"
                               @update:model-value="handleFormDataChange" />
         </v-card-text>
