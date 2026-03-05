@@ -142,7 +142,7 @@ export const formVersionService = {
     formId: string,
     versionNumber: number,
     changeNotes?: string
-  ): Promise<ServiceResponse<unknown>> {
+  ): Promise<ServiceResponse<FormVersion>> {
     try {
       const response = await formApi.restoreVersion({
         formId,
@@ -151,7 +151,7 @@ export const formVersionService = {
           changeNotes
         }
       })
-      return response as unknown as ServiceResponse<unknown>
+      return response as unknown as ServiceResponse<FormVersion>
     } catch (error: unknown) {
       console.error('Error restoring version:', error)
       throw error

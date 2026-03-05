@@ -78,7 +78,7 @@ export interface IcdOpsSearchFieldProps {
   /** 'icd' for ICD-10 diagnosis codes, 'ops' for OPS procedure codes */
   type: 'icd' | 'ops'
   /** v-model value – the selected code string(s) (or full entry/entries if returnObject) */
-  modelValue?: string | string[] | IcdOpsEntry | IcdOpsEntry[] | null
+  modelValue?: string | string[] | IcdOpsEntry | IcdOpsEntry[] | (string | IcdOpsEntry)[] | null
   /** Input label */
   label?: string
   /** Placeholder text */

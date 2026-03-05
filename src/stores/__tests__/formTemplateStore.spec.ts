@@ -3,6 +3,13 @@ import { setActivePinia, createPinia } from 'pinia'
 import { useFormTemplateStore } from '@/stores/formTemplateStore'
 import type { GetFormTemplatesShortlist200ResponseResponseObjectInner as FormTemplateShortList } from '@/api'
 
+const createTemplate = (id: string, title: string): FormTemplateShortList => ({
+  id: id as unknown as FormTemplateShortList['id'],
+  title,
+  description: '',
+  accessLevel: 'patient',
+})
+
 // Mock the API
 const mockGetFormTemplatesShortlist = vi.fn()
 
@@ -19,9 +26,9 @@ describe('formTemplateStore', () => {
   })
 
   const mockTemplates: FormTemplateShortList[] = [
-    { id: 'template-1', title: 'AOFAS Score' },
-    { id: 'template-2', title: 'MOXFQ Score' },
-    { id: 'template-3', title: 'VAS Pain Scale' },
+    createTemplate('template-1', 'AOFAS Score'),
+    createTemplate('template-2', 'MOXFQ Score'),
+    createTemplate('template-3', 'VAS Pain Scale'),
   ]
 
   describe('initial state', () => {
@@ -151,8 +158,8 @@ describe('formTemplateStore', () => {
     })
 
     it('should update templates with fresh data', async () => {
-      const initialTemplates = [{ id: 'template-1', title: 'Old Title' }]
-      const updatedTemplates = [{ id: 'template-1', title: 'New Title' }]
+      const initialTemplates = [createTemplate('template-1', 'Old Title')]
+      const updatedTemplates = [createTemplate('template-1', 'New Title')]
 
       mockGetFormTemplatesShortlist
         .mockResolvedValueOnce({ responseObject: initialTemplates })
@@ -185,7 +192,7 @@ describe('formTemplateStore', () => {
 
     it('should update when templates change', async () => {
       mockGetFormTemplatesShortlist.mockResolvedValue({
-        responseObject: [{ id: 'template-1', title: 'Initial' }],
+        responseObject: [createTemplate('template-1', 'Initial')],
       })
 
       const store = useFormTemplateStore()
@@ -193,16 +200,21 @@ describe('formTemplateStore', () => {
       expect(store.templateLookup['template-1']).toBe('Initial')
 
       // Update templates directly
-      store.templates = [{ id: 'template-1', title: 'Updated' }]
+      store.templates = [createTemplate('template-1', 'Updated')]
       expect(store.templateLookup['template-1']).toBe('Updated')
     })
 
     it('should handle templates without titles', async () => {
       mockGetFormTemplatesShortlist.mockResolvedValue({
         responseObject: [
-          { id: 'template-1', title: 'Has Title' },
-          { id: 'template-2', title: '' },
-          { id: 'template-3' },
+          createTemplate('template-1', 'Has Title'),
+          createTemplate('template-2', ''),
+          {
+            id: 'template-3' as unknown as FormTemplateShortList['id'],
+            title: '',
+            description: '',
+            accessLevel: 'patient',
+          },
         ],
       })
 

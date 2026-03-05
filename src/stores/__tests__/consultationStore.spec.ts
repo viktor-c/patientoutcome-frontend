@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { setActivePinia, createPinia } from 'pinia'
 import { useConsultationStore } from '@/stores/consultationStore'
-import type { Consultation } from '@/api'
+import { ConsultationReasonForConsultationEnum, type Consultation } from '@/api'
 
 describe('consultationStore', () => {
   beforeEach(() => {
@@ -10,14 +10,13 @@ describe('consultationStore', () => {
 
   const mockConsultation: Consultation = {
     id: 'consultation-123',
-    patient: 'patient-123',
-    patientCase: 'case-123',
-    surgery: 'surgery-123',
-    link: 'http://example.com/consultation',
+    patientCaseId: 'case-123',
+    dateAndTime: '2026-01-15T10:00:00Z',
+    reasonForConsultation: [ConsultationReasonForConsultationEnum.Followup],
+    notes: [],
     proms: [],
-    uuid: 'uuid-123',
-    createdAt: '2026-01-15T10:00:00Z',
-    blueprintId: 'blueprint-123',
+    images: [],
+    visitedBy: [],
   }
 
   describe('initial state', () => {
