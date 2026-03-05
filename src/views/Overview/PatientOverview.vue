@@ -31,6 +31,10 @@ const patient = ref<Patient | null>(null)
 const cases = ref<PatientCaseWithDetails[]>([])
 const loading = ref(true)
 const expandedCases = ref<string[]>([])
+// Incremented after every refreshCases() so PatientCaseCard keys always change,
+// forcing ConsultationCard to remount and refetch even if the case data itself
+// doesn't include an updated consultations array.
+const caseListVersion = ref(0)
 
 // Dialog states
 const showCreateConsultationDialog = ref(false)
@@ -154,6 +158,7 @@ const refreshCases = async () => {
     const casesResponse = await patientCaseApi.getAllPatientCases({ patientId })
     cases.value = casesResponse.responseObject || []
     autoExpandSingleCase()
+    caseListVersion.value++
   } catch (error: unknown) {
     let errorMessage = 'An unexpected error occurred'
     if (error instanceof ResponseError) {
@@ -374,7 +379,7 @@ const cancelDeleteCase = () => {
                           class="mb-6">
         <PatientCaseCard
                          v-for="(patientCase, index) in cases"
-                         :key="patientCase.id || `case-${index}`"
+                         :key="`${patientCase.id || `case-${index}`}-v${caseListVersion}`"
                          :patient-case="patientCase"
                          :patient-id="patientId"
                          @open-case="openCase"
