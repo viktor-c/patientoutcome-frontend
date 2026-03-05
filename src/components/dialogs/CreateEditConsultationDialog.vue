@@ -390,7 +390,7 @@ defineExpose({
                   outlined
                   dense></v-select>
         <v-row class="my-2">
-          <v-col cols="8" style="position: relative; overflow: visible !important;">
+          <v-col cols="8">
             <VueDatePicker
                            v-model="form.dateAndTime"
                            :class="{ 'error-border': errors.dateAndTime }"
@@ -399,9 +399,9 @@ defineExpose({
                            format="dd.MM.yyyy HH:mm"
                            week-numbers="iso"
                            :text-input="true"
+                           :teleport-center="true"
                            :cancelText="t('buttons.cancelTimeDateText')"
-                           :selectText="t('buttons.selectTimeDateText')"
-                           teleport="body" />
+                           :selectText="t('buttons.selectTimeDateText')" />
             <v-text-field
                           v-if="errors.dateAndTime"
                           :error="true"
