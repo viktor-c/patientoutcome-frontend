@@ -234,7 +234,7 @@ const handleDeleteCase = () => {
           <v-card variant="outlined">
             <v-card-title class="text-h6">
               <div class="d-flex align-center w-100">
-                <v-icon class="me-2">mdi-hospital</v-icon>
+                <v-icon class="me-2">mdi-content-cut</v-icon>
                 {{ t('patientOverview.surgeries') }}
                 <v-spacer></v-spacer>
                 <v-btn
