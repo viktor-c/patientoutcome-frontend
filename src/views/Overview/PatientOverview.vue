@@ -8,13 +8,15 @@ import { useNotifierStore } from '@/stores/notifierStore'
 import {
   ResponseError,
   type Patient,
+  type Surgery,
   type GetAllPatientCases200ResponseResponseObjectInner as PatientCaseWithDetails,
 } from '@/api'
-import { patientApi, patientCaseApi } from '@/api'
+import { patientApi, patientCaseApi, surgeryApi } from '@/api'
 
 // Import components
 import PatientCaseCard from '@/components/cards/PatientCaseCard.vue'
 import CreateEditConsultationDialog from '@/components/dialogs/CreateEditConsultationDialog.vue'
+import CreateEditSurgeryDialog from '@/components/dialogs/CreateEditSurgeryDialog.vue'
 
 const componentName = 'PatientOverview.vue'
 const { t } = useI18n()
@@ -39,6 +41,12 @@ const caseListVersion = ref(0)
 // Dialog states
 const showCreateConsultationDialog = ref(false)
 const selectedCaseIdForConsultation = ref<string | null>(null)
+const showCreateSurgeryDialog = ref(false)
+const selectedCaseIdForSurgery = ref<string | null>(null)
+
+// Delete surgery dialog state
+const showDeleteSurgeryConfirmDialog = ref(false)
+const selectedSurgeryForDelete = ref<string | null>(null)
 
 // Delete patient dialog states
 const showDeletePatientConfirmDialog = ref(false)
@@ -139,6 +147,55 @@ const handleConsultationCreated = async () => {
 const cancelConsultationDialog = () => {
   showCreateConsultationDialog.value = false
   selectedCaseIdForConsultation.value = null
+}
+
+const handleCreateSurgery = (caseId: string | null | undefined) => {
+  if (caseId) {
+    selectedCaseIdForSurgery.value = caseId
+    showCreateSurgeryDialog.value = true
+  }
+}
+
+const handleSurgeryCreated = async (_surgery: Surgery) => {
+  showCreateSurgeryDialog.value = false
+  selectedCaseIdForSurgery.value = null
+  await refreshCases()
+  notifierStore.notify(t('alerts.surgery.created'), 'success')
+}
+
+const cancelSurgeryDialog = () => {
+  showCreateSurgeryDialog.value = false
+  selectedCaseIdForSurgery.value = null
+}
+
+const openDeleteSurgeryDialog = (surgeryId: string | null | undefined) => {
+  if (!surgeryId) return
+  selectedSurgeryForDelete.value = surgeryId
+  showDeleteSurgeryConfirmDialog.value = true
+}
+
+const executeDeleteSurgery = async () => {
+  if (!selectedSurgeryForDelete.value) return
+
+  try {
+    await surgeryApi.deleteSurgeryById({ surgeryId: selectedSurgeryForDelete.value })
+    notifierStore.notify(t('alerts.surgery.deleted'), 'success')
+    showDeleteSurgeryConfirmDialog.value = false
+    selectedSurgeryForDelete.value = null
+    await refreshCases()
+  } catch (error: unknown) {
+    let errorMessage = 'An unexpected error occurred'
+    if (error instanceof ResponseError) {
+      errorMessage = (await error.response.json()).message
+    }
+    console.error(`${componentName}: Failed to delete surgery:`, errorMessage)
+    notifierStore.notify(t('alerts.surgery.deletionFailed'), 'error')
+  }
+}
+
+const cancelDeleteSurgery = () => {
+  showDeleteSurgeryConfirmDialog.value = false
+  selectedSurgeryForDelete.value = null
 }
 
 // Case creation dialog functions
@@ -386,6 +443,8 @@ const cancelDeleteCase = () => {
                          @open-consultation="openConsultation"
                          @update-consultations="refreshCases"
                          @create-consultation="handleCreateConsultation"
+                         @create-surgery="handleCreateSurgery"
+                         @delete-surgery="openDeleteSurgeryDialog"
                          @delete-case="openDeleteCaseDialog" />
       </v-expansion-panels>
 
@@ -411,6 +470,17 @@ const cancelDeleteCase = () => {
                                     @submit="handleConsultationCreated"
                                     @cancel="cancelConsultationDialog" />
     </v-dialog>
+
+        <!-- Create Surgery Dialog -->
+        <v-dialog
+            v-model="showCreateSurgeryDialog"
+            max-width="1200px">
+          <CreateEditSurgeryDialog
+                 v-if="selectedCaseIdForSurgery"
+                 :patient-case-id="selectedCaseIdForSurgery"
+                 @submit="handleSurgeryCreated"
+                 @cancel="cancelSurgeryDialog" />
+        </v-dialog>
 
     <!-- Delete Patient Confirmation Dialog -->
     <v-dialog
@@ -500,6 +570,36 @@ const cancelDeleteCase = () => {
                  color="error"
                  variant="elevated"
                  @click="executeDeleteCase">
+            {{ t('buttons.confirmDelete') }}
+          </v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
+
+    <!-- Delete Surgery Confirmation Dialog -->
+    <v-dialog
+              v-model="showDeleteSurgeryConfirmDialog"
+              max-width="400px">
+      <v-card>
+        <v-card-title class="text-h5 text-error">
+          {{ t('alerts.general.confirmDeletion') }}
+        </v-card-title>
+
+        <v-card-text class="py-4">
+          <p>{{ t('alerts.surgery.confirmDelete') }}</p>
+        </v-card-text>
+
+        <v-card-actions class="justify-end">
+          <v-btn
+                 color="default"
+                 variant="text"
+                 @click="cancelDeleteSurgery">
+            {{ t('buttons.cancel') }}
+          </v-btn>
+          <v-btn
+                 color="error"
+                 variant="elevated"
+                 @click="executeDeleteSurgery">
             {{ t('buttons.confirmDelete') }}
           </v-btn>
         </v-card-actions>

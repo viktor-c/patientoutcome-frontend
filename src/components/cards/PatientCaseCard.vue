@@ -22,12 +22,37 @@ const emit = defineEmits<{
   'open-consultation': [consultationId: string | null | undefined]
   'update-consultations': []
   'create-consultation': [caseId: string | null | undefined]
+  'create-surgery': [caseId: string | null | undefined]
+  'delete-surgery': [surgeryId: string | null | undefined]
   'delete-case': [caseId: string | null | undefined]
 }>()
 
 // Handler for creating consultation
 const handleCreateConsultation = () => {
   emit('create-consultation', props.patientCase.id)
+}
+
+const handleCreateSurgery = () => {
+  emit('create-surgery', props.patientCase.id)
+}
+
+const handleDeleteSurgery = (surgeryId: string | null | undefined) => {
+  emit('delete-surgery', surgeryId)
+}
+
+const getSurgeryId = (surgery: unknown): string | null => {
+  if (!surgery || typeof surgery !== 'object') return null
+  const surgeryRecord = surgery as Record<string, unknown>
+  const rawId = surgeryRecord.id
+
+  if (typeof rawId === 'string') return rawId
+  if (rawId && typeof rawId === 'object') {
+    const idObj = rawId as Record<string, unknown>
+    if (typeof idObj._id === 'string') return idObj._id
+    if (typeof idObj.id === 'string') return idObj.id
+  }
+
+  return null
 }
 
 // Helper function to safely format dates
@@ -206,13 +231,23 @@ const handleDeleteCase = () => {
         </v-col>
         <v-col cols="12" lg="6">
           <!-- Surgeries -->
-          <v-card variant="outlined" v-if="patientCase.surgeries?.length">
+          <v-card variant="outlined">
             <v-card-title class="text-h6">
-              <v-icon class="me-2">mdi-hospital</v-icon>
-              {{ t('patientOverview.surgeries') }}
+              <div class="d-flex align-center w-100">
+                <v-icon class="me-2">mdi-hospital</v-icon>
+                {{ t('patientOverview.surgeries') }}
+                <v-spacer></v-spacer>
+                <v-btn
+                       icon="mdi-plus"
+                       variant="text"
+                       size="small"
+                       @click.stop="handleCreateSurgery"
+                       :title="t('buttons.surgery')"
+                       class="ms-2"></v-btn>
+              </div>
             </v-card-title>
             <v-card-text>
-              <v-list>
+              <v-list v-if="patientCase.surgeries?.length">
                 <v-list-item
                              v-for="(surgery, surgeryIndex) in patientCase.surgeries"
                              :key="surgery.id || `surgery-${surgeryIndex}`">
@@ -230,8 +265,20 @@ const handleDeleteCase = () => {
                         surgery.anaesthesiaType }}
                     </div>
                   </v-list-item-subtitle>
+                  <template #append>
+                    <v-btn
+                           icon="mdi-trash-can-outline"
+                           variant="text"
+                           color="error"
+                           size="small"
+                           @click.stop="handleDeleteSurgery(getSurgeryId(surgery))"
+                           :title="t('buttons.delete')"></v-btn>
+                  </template>
                 </v-list-item>
               </v-list>
+              <div v-else class="text-medium-emphasis">
+                {{ t('patientOverview.noSurgeries') }}
+              </div>
             </v-card-text>
           </v-card>
         </v-col>
