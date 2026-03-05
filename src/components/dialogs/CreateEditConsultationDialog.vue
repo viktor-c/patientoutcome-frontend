@@ -394,7 +394,6 @@ defineExpose({
             <VueDatePicker
                            v-model="form.dateAndTime"
                            :class="{ 'error-border': errors.dateAndTime }"
-                           multi-calendars
                            :locale="locale"
                            week-num-name="Wo"
                            format="dd.MM.yyyy HH:mm"
