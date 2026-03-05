@@ -372,11 +372,11 @@ defineExpose({
 </script>
 
 <template>
-  <v-card>
+  <v-card style="max-height: 80vh; overflow-y: auto;">
     <v-card-title>
       {{ isEditMode ? t('consultation.edit') : t('consultation.add') }}
     </v-card-title>
-    <v-card-text style="max-height: 80vh; overflow-y: auto;">
+    <v-card-text>
       <v-form @submit.prevent="saveConsultation">
         <v-select
                   v-model="form.reasonForConsultation"
@@ -390,7 +390,7 @@ defineExpose({
                   outlined
                   dense></v-select>
         <v-row class="my-2">
-          <v-col cols="8">
+          <v-col cols="8" style="position: relative; overflow: visible !important;">
             <VueDatePicker
                            v-model="form.dateAndTime"
                            :class="{ 'error-border': errors.dateAndTime }"
@@ -400,7 +400,8 @@ defineExpose({
                            week-numbers="iso"
                            :text-input="true"
                            :cancelText="t('buttons.cancelTimeDateText')"
-                           :selectText="t('buttons.selectTimeDateText')" />
+                           :selectText="t('buttons.selectTimeDateText')"
+                           teleport="body" />
             <v-text-field
                           v-if="errors.dateAndTime"
                           :error="true"
