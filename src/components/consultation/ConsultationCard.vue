@@ -228,35 +228,37 @@ defineExpose({
 
 
 
-            <div class="text-body-2 mb-2">
-              <strong>{{ t('patientOverview.dateTime') }}:</strong>
-              {{ safeFormatDate(consultation.dateAndTime) }}
-            </div>
-
-            <div class="text-body-2 mb-2" v-if="consultation.reasonForConsultation?.length">
-              <strong>{{ t('patientOverview.reason') }}:</strong>
-              <div class="mt-1">
-                <v-chip
-                        v-for="reason in consultation.reasonForConsultation"
-                        :key="reason"
-                        size="x-small"
-                        class="me-1">
-                  {{ reason }}
-                </v-chip>
+            <div class="d-flex flex-wrap align-center text-body-2 mb-2" style="gap:1rem;">
+              <div>
+                <strong>{{ t('patientOverview.dateTime') }}:</strong>
+                {{ safeFormatDate(consultation.dateAndTime) }}
               </div>
-            </div>
 
-            <div class="text-body-2 mb-2" v-if="consultation.visitedBy?.length">
-              <strong>{{ t('patientOverview.visitedBy') }}:</strong>
-              <div class="mt-1">
-                <v-chip
-                        v-for="(visitor, visitorIndex) in consultation.visitedBy"
-                        :key="visitorIndex"
-                        size="x-small"
-                        color="info"
-                        class="me-1">
-                  {{ typeof visitor === 'string' ? visitor : `Visitor ${visitorIndex + 1}` }}
-                </v-chip>
+              <div v-if="consultation.visitedBy?.length">
+                <strong>{{ t('patientOverview.visitedBy') }}:</strong>
+                <span class="ms-1">
+                  <v-chip
+                          v-for="(visitor, visitorIndex) in consultation.visitedBy"
+                          :key="visitorIndex"
+                          size="x-small"
+                          color="info"
+                          class="me-1">
+                    {{ typeof visitor === 'string' ? visitor : `Visitor ${visitorIndex + 1}` }}
+                  </v-chip>
+                </span>
+              </div>
+
+              <div v-if="consultation.reasonForConsultation?.length">
+                <strong>{{ t('patientOverview.reason') }}:</strong>
+                <span class="ms-1">
+                  <v-chip
+                          v-for="reason in consultation.reasonForConsultation"
+                          :key="reason"
+                          size="x-small"
+                          class="me-1">
+                    {{ reason }}
+                  </v-chip>
+                </span>
               </div>
             </div>
 
