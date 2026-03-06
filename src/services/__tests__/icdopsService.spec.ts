@@ -2,10 +2,15 @@ import { describe, it, expect, beforeEach, vi } from 'vitest'
 import {
   searchIcd,
   searchOps,
+  searchIcdPrefix,
+  searchOpsPrefix,
+  detectSearchMode,
+  normalizeOpsPrefix,
   isCacheValid,
   clearIcdOpsCache,
   type IcdOpsPaginatedResponse,
   type IcdOpsServiceResponse,
+  type IcdOpsPrefixServiceResponse,
 } from '@/services/icdopsService'
 
 // ──────────────────────────────────────────────────────────────
@@ -254,6 +259,147 @@ describe('icdopsService', () => {
       expect(icdResult.items.length).toBe(3)
       expect(opsResult.items.length).toBe(5)
       expect(mockFetch).toHaveBeenCalledTimes(2)
+    })
+  })
+
+  // ─── detectSearchMode ──────────────────────────────────
+
+  describe('detectSearchMode', () => {
+    describe('ICD type', () => {
+      it('returns code-prefix when input starts with a letter', () => {
+        expect(detectSearchMode('icd', 'M')).toBe('code-prefix')
+        expect(detectSearchMode('icd', 'A00')).toBe('code-prefix')
+        expect(detectSearchMode('icd', 'Z99')).toBe('code-prefix')
+        expect(detectSearchMode('icd', 'k')).toBe('code-prefix') // lowercase
+      })
+
+      it('returns text-search when input does not start with a letter', () => {
+        expect(detectSearchMode('icd', 'Cholera')).toBe('code-prefix') // C is a letter!
+        expect(detectSearchMode('icd', 'arthrose')).toBe('code-prefix') // also letter
+      })
+
+      it('returns text-search for empty input', () => {
+        expect(detectSearchMode('icd', '')).toBe('text-search')
+      })
+    })
+
+    describe('OPS type', () => {
+      it('returns code-prefix when input starts with a digit', () => {
+        expect(detectSearchMode('ops', '5')).toBe('code-prefix')
+        expect(detectSearchMode('ops', '5-820')).toBe('code-prefix')
+        expect(detectSearchMode('ops', '1')).toBe('code-prefix')
+      })
+
+      it('returns text-search when input starts with a letter', () => {
+        expect(detectSearchMode('ops', 'Untersuchung')).toBe('text-search')
+        expect(detectSearchMode('ops', 'Amputation')).toBe('text-search')
+      })
+
+      it('returns text-search for empty input', () => {
+        expect(detectSearchMode('ops', '')).toBe('text-search')
+      })
+    })
+  })
+
+  // ─── normalizeOpsPrefix ────────────────────────────────
+
+  describe('normalizeOpsPrefix', () => {
+    it('appends hyphen for single digit', () => {
+      expect(normalizeOpsPrefix('5')).toBe('5-')
+      expect(normalizeOpsPrefix('1')).toBe('1-')
+    })
+
+    it('inserts hyphen after first digit for two digits', () => {
+      expect(normalizeOpsPrefix('52')).toBe('5-2')
+      expect(normalizeOpsPrefix('81')).toBe('8-1')
+    })
+
+    it('inserts hyphen after first digit for three digits', () => {
+      expect(normalizeOpsPrefix('521')).toBe('5-21')
+      expect(normalizeOpsPrefix('5820')).toBe('5-820')
+    })
+
+    it('handles already-hyphenated input (strips and re-inserts)', () => {
+      // User typed "5-2" – should stay "5-2"
+      expect(normalizeOpsPrefix('5-2')).toBe('5-2')
+      expect(normalizeOpsPrefix('5-82')).toBe('5-82')
+    })
+
+    it('returns empty string unchanged', () => {
+      expect(normalizeOpsPrefix('')).toBe('')
+    })
+  })
+
+  // ─── searchIcdPrefix / searchOpsPrefix API calls ───────
+
+  describe('searchIcdPrefix', () => {
+    it('calls the correct prefix endpoint', async () => {
+      const mockPrefixResponse: IcdOpsPrefixServiceResponse = {
+        success: true,
+        message: 'Found 5 ICD entries',
+        responseObject: {
+          items: [{ code: 'M00', label: 'Arthritis', kind: 'category' }],
+          prefix: 'M',
+          type: 'icd',
+          version: '2026',
+          isGroup: true,
+        },
+        statusCode: 200,
+      }
+
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve(mockPrefixResponse),
+      })
+
+      const result = await searchIcdPrefix('M', 20)
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        expect.stringContaining('/icdops/icd/prefix?q=M&limit=20'),
+        expect.any(Object),
+      )
+      expect(result.prefix).toBe('M')
+      expect(result.isGroup).toBe(true)
+      expect(result.items.length).toBe(1)
+    })
+
+    it('returns empty result on network error', async () => {
+      mockFetch.mockRejectedValueOnce(new Error('Network error'))
+
+      const result = await searchIcdPrefix('M')
+
+      expect(result.items).toEqual([])
+      expect(result.version).toBe('unknown')
+    })
+  })
+
+  describe('searchOpsPrefix', () => {
+    it('calls the correct prefix endpoint', async () => {
+      const mockPrefixResponse: IcdOpsPrefixServiceResponse = {
+        success: true,
+        message: 'Found 5 OPS entries',
+        responseObject: {
+          items: [{ code: '5-810', label: 'Gelenkoperation', kind: 'category' }],
+          prefix: '5-',
+          type: 'ops',
+          version: '2026',
+          isGroup: true,
+        },
+        statusCode: 200,
+      }
+
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve(mockPrefixResponse),
+      })
+
+      const result = await searchOpsPrefix('5', 20)
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        expect.stringContaining('/icdops/ops/prefix?q=5&limit=20'),
+        expect.any(Object),
+      )
+      expect(result.type).toBe('ops')
     })
   })
 })

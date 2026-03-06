@@ -228,6 +228,62 @@ export interface SearchOptions {
   kind?: 'chapter' | 'block' | 'category' | 'all'
 }
 
+// ──────────────────────────────────────────────────────────────
+// Search-mode detection
+// ──────────────────────────────────────────────────────────────
+
+/**
+ * Determine whether the user's input is a code-prefix navigation query
+ * or a free-text description search.
+ *
+ * ICD-10 codes always start with a letter (A-Z) → code-prefix mode.
+ * OPS codes always start with a digit            → code-prefix mode.
+ * Any other pattern                              → text-search mode.
+ */
+export function detectSearchMode(type: 'icd' | 'ops', input: string): 'code-prefix' | 'text-search' {
+  if (!input || input.length === 0) return 'text-search'
+  if (type === 'icd') {
+    return /^[A-Za-z]/.test(input) ? 'code-prefix' : 'text-search'
+  }
+  // OPS: digit at position 0 → code-prefix; anything else → text-search
+  return /^\d/.test(input) ? 'code-prefix' : 'text-search'
+}
+
+/**
+ * Normalize a user-typed OPS prefix to the stored code format.
+ * OPS codes are stored as "D-NNN.NN" (digit, hyphen, digits).
+ *   "5"   → "5-"
+ *   "52"  → "5-2"
+ *   "521" → "5-21"
+ */
+export function normalizeOpsPrefix(input: string): string {
+  const digits = input.replace(/-/g, '')
+  if (!digits) return input
+  if (digits.length === 1) return `${digits}-`
+  return `${digits[0]}-${digits.slice(1)}`
+}
+
+// ──────────────────────────────────────────────────────────────
+// Prefix response type
+// ──────────────────────────────────────────────────────────────
+
+export interface IcdOpsPrefixResponse {
+  items: IcdOpsEntry[]
+  prefix: string
+  type: 'icd' | 'ops'
+  version: string
+  isGroup: boolean
+}
+
+export interface IcdOpsPrefixServiceResponse {
+  success: boolean
+  message: string
+  responseObject: IcdOpsPrefixResponse
+  statusCode: number
+}
+
+
+
 /**
  * Search ICD-10-GM codes. Uses localStorage cache when available
  * and falls back to the backend API.
@@ -265,6 +321,23 @@ export async function getOpsStatus(): Promise<IcdOpsStatusResponse['responseObje
   const res = await fetchFromApi(`${base}/icdops/ops/status`)
   const data: IcdOpsStatusResponse = await res.json()
   return data.responseObject
+}
+
+/**
+ * Fetch ICD-10 hierarchical navigation results for a code prefix.
+ * Short prefixes (1-2 chars) return one entry per next-level group.
+ * Longer prefixes return all matching entries sorted broadest-first.
+ */
+export async function searchIcdPrefix(prefix: string, limit = 20): Promise<IcdOpsPrefixResponse> {
+  return fetchPrefixFromApi('icd', prefix, limit)
+}
+
+/**
+ * Fetch OPS hierarchical navigation results for a code prefix.
+ * The hyphen is inserted automatically server-side: "52" → "5-2".
+ */
+export async function searchOpsPrefix(prefix: string, limit = 20): Promise<IcdOpsPrefixResponse> {
+  return fetchPrefixFromApi('ops', prefix, limit)
 }
 
 // ──────────────────────────────────────────────────────────────
@@ -369,5 +442,37 @@ async function prefetchPage(
   if (res.ok) {
     const data: IcdOpsServiceResponse = await res.json()
     setCacheEntry(cacheKey, data.responseObject)
+  }
+}
+/**
+ * Fetch prefix/navigation results from the backend.
+ * Prefix results are NOT cached in localStorage (they are fast, small, and
+ * highly dependent on the exact input; caching adds minimal value here).
+ */
+async function fetchPrefixFromApi(
+  type: 'icd' | 'ops',
+  prefix: string,
+  limit: number,
+): Promise<IcdOpsPrefixResponse> {
+  try {
+    const base = getBaseUrl()
+    const params = new URLSearchParams({ q: prefix, limit: String(limit) })
+    const res = await fetchFromApi(`${base}/icdops/${type}/prefix?${params}`)
+
+    if (!res.ok) {
+      throw new Error(`API returned ${res.status}: ${res.statusText}`)
+    }
+
+    const data: IcdOpsPrefixServiceResponse = await res.json()
+    return data.responseObject
+  } catch (error) {
+    console.error(`[icdopsService] Prefix search failed for ${type}:`, error)
+    return {
+      items: [],
+      prefix,
+      type,
+      version: 'unknown',
+      isGroup: false,
+    }
   }
 }

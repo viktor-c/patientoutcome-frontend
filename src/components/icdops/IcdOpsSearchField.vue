@@ -1,72 +1,266 @@
 <template>
-  <v-autocomplete
-    v-model="selectedValue"
-    v-model:search="searchInput"
-    :items="displayItems"
-    :item-title="itemTitle"
-    :item-value="itemValue"
-    :loading="loading"
-    :label="label"
-    :placeholder="placeholder"
-    :hint="hintText"
-    :error-messages="error ? [error] : []"
-    :clearable="clearable"
-    :return-object="returnObject"
-    :disabled="disabled"
-    :readonly="readonly"
-    :density="density"
-    :variant="variant"
-    :no-data-text="noDataText"
-    :hide-no-data="hideNoData"
-    :persistent-hint="persistentHint"
-    :multiple="multiple"
-    :chips="chips"
-    :closable-chips="closableChips"
-    auto-select-first
-    @update:search="onSearchUpdate"
-    @scroll="onScroll"
+  <!-- ── Trigger ─────────────────────────────────────────────── -->
+  <div class="icd-ops-search-field">
+    <v-input
+      :label="label"
+      :hint="hintText"
+      :persistent-hint="persistentHint"
+      :error-messages="fieldError ? [fieldError] : []"
+      :disabled="disabled"
+      :density="density"
+      :variant="variant"
+      hide-details="auto"
+      style="cursor: pointer"
+      @click="!disabled && !readonly ? openDialog() : undefined"
+    >
+      <template #default>
+        <div
+          class="icd-ops-trigger d-flex align-center flex-wrap ga-1 pa-1 w-100"
+          style="min-height: 40px; cursor: pointer"
+        >
+          <!-- Multiple selections: chips -->
+          <template v-if="multiple && Array.isArray(selectedValue) && selectedValue.length">
+            <v-chip
+              v-for="(val, idx) in displayChips"
+              :key="idx"
+              size="small"
+              color="primary"
+              :closable="closableChips && !disabled && !readonly"
+              @click.stop
+              @click:close="removeItem(idx)"
+            >
+              <strong>{{ typeof val === 'object' ? val.code : val }}</strong>
+              <span v-if="typeof val === 'object'" class="ml-1 text-truncate" style="max-width: 160px">
+                – {{ val.label }}
+              </span>
+            </v-chip>
+          </template>
+
+          <!-- Single selection -->
+          <template v-else-if="!multiple && selectedValue !== null && selectedValue !== undefined">
+            <span class="text-body-2">
+              <strong>{{
+                typeof selectedValue === 'object' && selectedValue !== null
+                  ? (selectedValue as IcdOpsEntry).code
+                  : selectedValue
+              }}</strong>
+              <span v-if="typeof selectedValue === 'object' && selectedValue !== null" class="ml-1 text-grey-darken-1">
+                – {{ (selectedValue as IcdOpsEntry).label }}
+              </span>
+            </span>
+          </template>
+
+          <!-- Placeholder -->
+          <span v-else class="text-grey text-body-2">
+            {{ placeholder || `${type === 'icd' ? 'ICD-10' : 'OPS'}-Code auswählen…` }}
+          </span>
+
+          <v-spacer />
+
+          <!-- Clear button -->
+          <v-btn
+            v-if="clearable && hasValue && !disabled && !readonly"
+            icon
+            variant="text"
+            size="x-small"
+            class="ml-1"
+            :aria-label="`${label || type.toUpperCase()} zurücksetzen`"
+            @click.stop="clearSelection"
+          >
+            <v-icon size="small">mdi-close-circle-outline</v-icon>
+          </v-btn>
+
+          <!-- Open dialog icon -->
+          <v-icon v-if="!disabled && !readonly" size="small" class="text-grey">mdi-magnify</v-icon>
+        </div>
+      </template>
+    </v-input>
+  </div>
+
+  <!-- ── Dialog ──────────────────────────────────────────────── -->
+  <v-dialog
+    v-model="dialogOpen"
+    max-width="680"
+    scrollable
+    :persistent="false"
   >
-    <!-- Custom item slot showing code + label -->
-    <template #item="{ item, props: itemProps }">
-      <v-list-item v-bind="itemProps">
-        <template #prepend>
-          <v-chip size="small" color="primary" variant="outlined" class="mr-2 font-weight-bold">
-            {{ item.raw.code }}
+    <v-card>
+      <!-- Header -->
+      <v-card-title class="d-flex align-center py-3 px-4 bg-primary text-white">
+        <v-icon class="mr-2">{{ type === 'icd' ? 'mdi-hospital-box-outline' : 'mdi-needle' }}</v-icon>
+        <span>{{ type === 'icd' ? 'ICD-10-GM Diagnose' : 'OPS Prozedur' }}</span>
+        <v-chip
+          v-if="multiple"
+          size="x-small"
+          color="white"
+          text-color="primary"
+          variant="tonal"
+          class="ml-2"
+        >
+          Mehrfachauswahl
+        </v-chip>
+        <v-spacer />
+        <v-btn icon variant="text" color="white" @click="dialogOpen = false">
+          <v-icon>mdi-close</v-icon>
+        </v-btn>
+      </v-card-title>
+
+      <!-- Search bar -->
+      <v-card-text class="pa-3 pb-1" style="position: sticky; top: 0; z-index: 1; background: white">
+        <v-text-field
+          ref="searchRef"
+          v-model="searchInput"
+          :placeholder="searchPlaceholder"
+          prepend-inner-icon="mdi-magnify"
+          clearable
+          autofocus
+          density="compact"
+          variant="outlined"
+          hide-details
+          @click:clear="clearSearch"
+        />
+
+        <!-- Mode indicator -->
+        <div class="d-flex align-center mt-1 mb-1 ga-2">
+          <v-chip
+            size="x-small"
+            :color="searchMode === 'code-prefix' ? 'primary' : 'secondary'"
+            variant="tonal"
+          >
+            <v-icon start size="10">
+              {{ searchMode === 'code-prefix' ? 'mdi-code-tags' : 'mdi-text-search' }}
+            </v-icon>
+            {{ searchMode === 'code-prefix' ? 'Code-Navigation' : 'Textsuche' }}
           </v-chip>
+          <span class="text-caption text-grey">
+            <template v-if="searchInput && searchMode === 'code-prefix'">
+              Tippen Sie weiter, um die Auswahl einzugrenzen
+            </template>
+            <template v-else-if="searchInput && searchMode === 'text-search'">
+              Suche in Bezeichnungen ({{ type === 'ops' ? 'nicht-numerisch' : 'Text' }})
+            </template>
+            <template v-else>
+              {{ type === 'icd' ? 'Buchstabe = Code, Text = Beschreibung' : 'Ziffer = Code, Text = Beschreibung' }}
+            </template>
+          </span>
+        </div>
+      </v-card-text>
+
+      <v-divider />
+
+      <!-- Results -->
+      <v-card-text class="pa-0" style="max-height: 440px; overflow-y: auto" @scroll="onScroll">
+        <!-- Items list -->
+        <v-list v-if="items.length > 0" lines="two" density="compact" class="pa-0">
+          <v-list-item
+            v-for="item in items"
+            :key="item.code"
+            :active="isSelected(item)"
+            color="primary"
+            class="px-4"
+            @click="selectItem(item)"
+          >
+            <template #prepend>
+              <v-chip
+                size="small"
+                color="primary"
+                :variant="isSelected(item) ? 'flat' : 'outlined'"
+                class="mr-3 font-weight-bold"
+                style="min-width: 76px; justify-content: center"
+              >
+                {{ item.code }}
+              </v-chip>
+            </template>
+
+            <v-list-item-title class="text-body-2">{{ item.label }}</v-list-item-title>
+            <v-list-item-subtitle class="text-caption">
+              {{ kindLabel(item.kind) }}
+              <span v-if="searchMode === 'code-prefix'" class="ml-1 text-grey">
+                · Klicken um zu navigieren oder auszuwählen
+              </span>
+            </v-list-item-subtitle>
+
+            <template v-if="isSelected(item)" #append>
+              <v-icon color="primary" size="small">mdi-check-circle</v-icon>
+            </template>
+          </v-list-item>
+
+          <!-- Infinite-scroll sentinel (text-search mode only) -->
+          <div
+            v-if="hasMore"
+            v-intersect="onIntersect"
+            class="d-flex justify-center pa-3"
+          >
+            <v-progress-circular v-if="loading" indeterminate size="24" />
+            <span v-else class="text-caption text-grey">Scrollen für mehr Ergebnisse…</span>
+          </div>
+        </v-list>
+
+        <!-- Loading state (initial) -->
+        <div v-else-if="loading" class="d-flex justify-center align-center pa-10">
+          <v-progress-circular indeterminate size="40" />
+        </div>
+
+        <!-- No results -->
+        <div
+          v-else-if="searchInput && searchInput.length >= minChars && !loading"
+          class="d-flex flex-column align-center justify-center pa-10 text-grey"
+        >
+          <v-icon size="48" class="mb-2">mdi-magnify-off</v-icon>
+          <span class="text-body-2">Keine Ergebnisse gefunden</span>
+          <span v-if="searchMode === 'code-prefix'" class="text-caption mt-1">
+            Geben Sie mehr Zeichen ein oder versuchen Sie Textsuche
+          </span>
+        </div>
+
+        <!-- Initial/empty state -->
+        <div v-else class="d-flex flex-column align-center justify-center pa-10 text-grey">
+          <v-icon size="52" class="mb-3">
+            {{ type === 'icd' ? 'mdi-hospital-box-outline' : 'mdi-needle' }}
+          </v-icon>
+          <span class="text-body-2 font-weight-medium mb-1">{{ searchPlaceholder }}</span>
+          <span class="text-caption">{{ hintText }}</span>
+          <div class="mt-3 text-caption text-center" style="max-width: 320px">
+            <span v-if="type === 'icd'">
+              <strong>Code-Navigation:</strong> Beginnen Sie mit einem Buchstaben (z.B. M, A, K)<br>
+              <strong>Textsuche:</strong> Geben Sie eine Beschreibung ein
+            </span>
+            <span v-else>
+              <strong>Code-Navigation:</strong> Beginnen Sie mit einer Ziffer (z.B. 5, 8)<br>
+              <strong>Textsuche:</strong> Geben Sie eine Beschreibung ein
+            </span>
+          </div>
+        </div>
+      </v-card-text>
+
+      <!-- Footer -->
+      <v-divider v-if="items.length > 0 || (multiple && Array.isArray(selectedValue) && (selectedValue as Array<any>).length > 0)" />
+      <v-card-actions class="px-4 py-2 d-flex align-center">
+        <span class="text-caption text-grey">
+          <template v-if="totalResults > 0">
+            {{ items.length }} von {{ totalResults }} Ergebnissen
+          </template>
+        </span>
+        <v-spacer />
+        <!-- Show selected count in multiple mode -->
+        <template v-if="multiple && Array.isArray(selectedValue) && (selectedValue as Array<any>).length > 0">
+          <v-chip size="small" color="primary" variant="tonal">
+            {{ (selectedValue as Array<any>).length }} ausgewählt
+          </v-chip>
+          <v-btn size="small" variant="text" class="ml-2" @click="dialogOpen = false">
+            Übernehmen
+          </v-btn>
         </template>
-        <v-list-item-title>{{ item.raw.label }}</v-list-item-title>
-      </v-list-item>
-    </template>
-
-    <!-- Custom selection slot for single selection -->
-    <template v-if="!multiple" #selection="{ item }">
-      <span class="text-body-2">
-        <strong>{{ item.raw.code }}</strong> – {{ item.raw.label }}
-      </span>
-    </template>
-
-    <!-- Chip selection slot for multiple selection -->
-    <template v-if="multiple && chips" #chip="{ item, props: chipProps }">
-      <v-chip v-bind="chipProps" size="small">
-        <strong>{{ item.raw.code }}</strong> – {{ item.raw.label }}
-      </v-chip>
-    </template>
-
-    <!-- Loading indicator at bottom for infinite scroll -->
-    <template #append-item>
-      <div v-if="hasMore" v-intersect="onIntersect" class="d-flex justify-center pa-2">
-        <v-progress-circular v-if="loading" indeterminate size="24" />
-        <span v-else class="text-caption text-grey">Scroll for more results…</span>
-      </div>
-      <div v-if="!loading && totalResults > 0" class="text-caption text-grey text-center pa-1">
-        {{ displayItems.length }} of {{ totalResults }} results
-      </div>
-    </template>
-  </v-autocomplete>
+        <v-btn v-else size="small" variant="text" @click="dialogOpen = false">
+          Abbrechen
+        </v-btn>
+      </v-card-actions>
+    </v-card>
+  </v-dialog>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch } from 'vue'
+import { ref, computed, watch, nextTick } from 'vue'
 import { useIcdOpsSearch } from '@/composables/useIcdOpsSearch'
 import type { IcdOpsEntry } from '@/services/icdopsService'
 
@@ -77,13 +271,13 @@ import type { IcdOpsEntry } from '@/services/icdopsService'
 export interface IcdOpsSearchFieldProps {
   /** 'icd' for ICD-10 diagnosis codes, 'ops' for OPS procedure codes */
   type: 'icd' | 'ops'
-  /** v-model value – the selected code string(s) (or full entry/entries if returnObject) */
+  /** v-model value – the selected code string(s) or full entry/entries if returnObject */
   modelValue?: string | string[] | IcdOpsEntry | IcdOpsEntry[] | (string | IcdOpsEntry)[] | null
   /** Input label */
   label?: string
   /** Placeholder text */
   placeholder?: string
-  /** Whether to return full { code, label, kind } object instead of just code */
+  /** Whether to return full { code, label, kind } object instead of just code string */
   returnObject?: boolean
   /** Allow multiple selections */
   multiple?: boolean
@@ -91,7 +285,7 @@ export interface IcdOpsSearchFieldProps {
   chips?: boolean
   /** Allow removing chips (useful with multiple) */
   closableChips?: boolean
-  /** Items per page */
+  /** Items per page (text-search mode) */
   limit?: number
   /** Kind filter */
   kind?: 'chapter' | 'block' | 'category' | 'all'
@@ -109,7 +303,7 @@ export interface IcdOpsSearchFieldProps {
   persistentHint?: boolean
   /** Minimum characters to start searching */
   minChars?: number
-  /** Debounce delay in ms */
+  /** Debounce delay in ms (defaults to VITE_ICD_OPS_DEBOUNCE_MS env var) */
   debounceMs?: number
 }
 
@@ -130,7 +324,7 @@ const props = withDefaults(defineProps<IcdOpsSearchFieldProps>(), {
   variant: 'outlined',
   persistentHint: false,
   minChars: 1,
-  debounceMs: 300,
+  debounceMs: undefined,
 })
 
 const emit = defineEmits<{
@@ -141,35 +335,41 @@ const emit = defineEmits<{
 // Composable
 // ──────────────────────────────────────────────────────────────
 
-const {
-  query,
-  items: searchResults,
-  loading,
-  error,
-  hasMore,
-  totalResults,
-  loadMore,
-} = useIcdOpsSearch(props.type, {
+const composableOptions = computed(() => ({
   limit: props.limit,
   kind: props.kind,
   debounceMs: props.debounceMs,
   minChars: props.minChars,
-})
+}))
+
+const {
+  query,
+  items,
+  loading,
+  error: searchError,
+  hasMore,
+  totalResults,
+  loadMore,
+  searchMode,
+} = useIcdOpsSearch(props.type, composableOptions.value)
 
 // ──────────────────────────────────────────────────────────────
 // Local state
 // ──────────────────────────────────────────────────────────────
 
+const dialogOpen = ref(false)
 const searchInput = ref('')
+const searchRef = ref<HTMLElement | null>(null)
+const fieldError = ref<string | null>(null)
 
-// Initialize selected value based on multiple mode
+// Initialize selected value
 type SingleValue = IcdOpsEntry | string | null
 type MultiValue = (IcdOpsEntry | string)[]
 type SelectedValueType = SingleValue | MultiValue
 
 const initializeSelectedValue = (): SelectedValueType => {
   if (props.multiple) {
-    if (Array.isArray(props.modelValue)) return props.modelValue
+    if (Array.isArray(props.modelValue)) return [...props.modelValue]
     if (props.modelValue) return [props.modelValue]
     return []
   }
@@ -182,47 +382,120 @@ const selectedValue = ref<SelectedValueType>(initializeSelectedValue())
 // Computed
 // ──────────────────────────────────────────────────────────────
 
-const displayItems = computed(() => searchResults.value)
+const hasValue = computed(() => {
+  if (props.multiple) {
+    return Array.isArray(selectedValue.value) && (selectedValue.value as Array<unknown>).length > 0
+  }
+  return selectedValue.value !== null && selectedValue.value !== undefined
+})
 
-const itemTitle = (item: IcdOpsEntry) => `${item.code} – ${item.label}`
-const itemValue = (item: IcdOpsEntry) => props.returnObject ? item : item.code
+const displayChips = computed((): (IcdOpsEntry | string)[] => {
+  if (!Array.isArray(selectedValue.value)) return []
+  return selectedValue.value as (IcdOpsEntry | string)[]
+})
 
 const hintText = computed(() => {
-  if (props.type === 'icd') return 'Search ICD-10-GM 2026 diagnosis codes'
-  return 'Search OPS 2026 procedure codes'
+  if (props.type === 'icd') return 'ICD-10-GM 2026 Diagnoseschlüssel'
+  return 'OPS 2026 Prozedurkode'
 })
 
-const noDataText = computed(() => {
-  if (loading.value) return 'Searching…'
-  if (searchInput.value && searchInput.value.length >= props.minChars) return 'No results found'
-  return `Type at least ${props.minChars} character${props.minChars > 1 ? 's' : ''} to search`
-})
-
-const hideNoData = computed(() => {
-  return !searchInput.value || searchInput.value.length < props.minChars
+const searchPlaceholder = computed(() => {
+  if (props.type === 'icd') return 'Code oder Bezeichnung eingeben…'
+  return 'Code (Ziffern) oder Bezeichnung eingeben…'
 })
 
 // ──────────────────────────────────────────────────────────────
-// Event handlers
+// Helpers
 // ──────────────────────────────────────────────────────────────
 
-function onSearchUpdate(value: string | null) {
-  if (value !== null) {
-    query.value = value
+function kindLabel(kind: string): string {
+  switch (kind) {
+    case 'chapter': return 'Kapitel'
+    case 'block': return 'Gruppe'
+    case 'category': return 'Kategorie'
+    default: return kind
+  }
+}
+
+function isSelected(item: IcdOpsEntry): boolean {
+  const code = item.code
+  if (props.multiple) {
+    if (!Array.isArray(selectedValue.value)) return false
+    return (selectedValue.value as (IcdOpsEntry | string)[]).some(
+      (v) => (typeof v === 'object' ? v.code : v) === code,
+    )
+  }
+  if (selectedValue.value === null || selectedValue.value === undefined) return false
+  const sv = selectedValue.value as SingleValue
+  return (typeof sv === 'object' && sv !== null ? (sv as IcdOpsEntry).code : sv) === code
+}
+
+// ──────────────────────────────────────────────────────────────
+// Dialog actions
+// ──────────────────────────────────────────────────────────────
+
+function openDialog() {
+  dialogOpen.value = true
+  nextTick(() => {
+    searchInput.value = ''
+    query.value = ''
+  })
+}
+
+function clearSearch() {
+  searchInput.value = ''
+  query.value = ''
+}
+
+function clearSelection() {
+  selectedValue.value = props.multiple ? [] : null
+  emit('update:modelValue', props.multiple ? [] : null)
+}
+
+function removeItem(idx: number) {
+  if (!Array.isArray(selectedValue.value)) return
+  const arr = [...(selectedValue.value as (IcdOpsEntry | string)[])]
+  arr.splice(idx, 1)
+  selectedValue.value = arr
+  emit('update:modelValue', arr)
+}
+
+function selectItem(item: IcdOpsEntry) {
+  const value = props.returnObject ? item : item.code
+
+  if (props.multiple) {
+    const arr = Array.isArray(selectedValue.value)
+      ? [...(selectedValue.value as (IcdOpsEntry | string)[])]
+      : []
+    const existingIdx = arr.findIndex(
+      (v) => (typeof v === 'object' ? (v as IcdOpsEntry).code : v) === item.code,
+    )
+    if (existingIdx >= 0) {
+      // Deselect
+      arr.splice(existingIdx, 1)
+    } else {
+      arr.push(value)
+    }
+    selectedValue.value = arr
+    emit('update:modelValue', arr)
+    // Stay open for multiple selection
+  } else {
+    selectedValue.value = value
+    emit('update:modelValue', value)
+    // Close dialog after single selection
+    dialogOpen.value = false
   }
 }
 
 function onScroll(e: Event) {
   const target = e.target as HTMLElement
   if (!target) return
-  // When user scrolls near the bottom, load more
   const { scrollTop, scrollHeight, clientHeight } = target
-  if (scrollTop + clientHeight >= scrollHeight - 50) {
+  if (scrollTop + clientHeight >= scrollHeight - 80) {
     loadMore()
   }
 }
 
-/** Intersection observer callback for the append-item sentinel */
 function onIntersect(isIntersecting: boolean) {
   if (isIntersecting && hasMore.value && !loading.value) {
     loadMore()
@@ -233,12 +506,12 @@ function onIntersect(isIntersecting: boolean) {
 // Watchers
 // ──────────────────────────────────────────────────────────────
 
-// Emit model value changes
-watch(selectedValue, (newVal) => {
-  emit('update:modelValue', newVal)
+// Sync search input to composable query
+watch(searchInput, (val) => {
+  query.value = val ?? ''
 })
 
-// Sync with external v-model changes
+// Sync external v-model changes → local selectedValue
 watch(
   () => props.modelValue,
   (newVal) => {
@@ -255,4 +528,24 @@ watch(
     }
   },
 )
+
+// Propagate composable error to field
+watch(searchError, (err) => {
+  fieldError.value = err
+})
 </script>
+
+<style scoped>
+.icd-ops-search-field :deep(.v-input__control) {
+  cursor: pointer;
+}
+
+.icd-ops-trigger {
+  border-radius: 4px;
+  transition: background 0.15s;
+}
+
+.icd-ops-trigger:hover {
+  background: rgba(var(--v-theme-on-surface), 0.04);
+}
+</style>
