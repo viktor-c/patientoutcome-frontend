@@ -25,6 +25,7 @@ const mockState = {
   hasMore: ref(false),
   version: ref('2026'),
   searchMode: ref<'code-prefix' | 'text-search'>('text-search'),
+  isGroupNav: ref(false),
   search: mockSearch,
   loadMore: mockLoadMore,
   clear: mockClear,
@@ -50,6 +51,7 @@ describe('IcdOpsSearchField.vue', () => {
     mockState.totalPages.value = 1
     mockState.version.value = '2026'
     mockState.searchMode.value = 'text-search'
+    mockState.isGroupNav.value = false
 
     vuetify = createVuetify({ components, directives })
   })
@@ -221,6 +223,28 @@ describe('IcdOpsSearchField.vue', () => {
     await nextTick()
 
     expect(document.body.innerHTML).toContain('Code-Navigation')
+  })
+
+  it('drills down (updates searchInput) instead of selecting when isGroupNav=true', async () => {
+    mockState.searchMode.value = 'code-prefix'
+    mockState.isGroupNav.value = true
+    mockState.items.value = [{ code: 'M20', label: 'Gruppe M20…', kind: 'block' }]
+    mockState.totalResults.value = 1
+
+    const wrapper = mountComponent()
+    await wrapper.find('.icd-ops-trigger').trigger('click')
+    await nextTick()
+    await nextTick()
+
+    const listItem = document.body.querySelector('.v-list-item')
+    expect(listItem).not.toBeNull()
+    listItem!.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+    await nextTick()
+
+    // No value should have been emitted (not selected)
+    expect(wrapper.emitted('update:modelValue')).toBeFalsy()
+    // The composable query should be updated to drill down
+    expect(mockState.query.value).toBe('M20')
   })
 
   it('clears selection on clear button click', async () => {

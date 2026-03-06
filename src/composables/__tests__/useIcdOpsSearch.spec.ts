@@ -204,6 +204,7 @@ describe('useIcdOpsSearch', () => {
     function createMockPrefixResult(
       type: 'icd' | 'ops',
       items = 5,
+      isGroup = true,
     ): IcdOpsPrefixResponse {
       return {
         items: Array.from({ length: items }, (_, i) => ({
@@ -214,7 +215,7 @@ describe('useIcdOpsSearch', () => {
         prefix: type === 'icd' ? 'M' : '5-',
         type,
         version: '2026',
-        isGroup: true,
+        isGroup,
       }
     }
 
@@ -280,6 +281,38 @@ describe('useIcdOpsSearch', () => {
 
       expect(hasMore.value).toBe(false)
       expect(totalResults.value).toBe(5)
+    })
+
+    it('isGroupNav is true when backend returns group representatives', async () => {
+      const mockResult = createMockPrefixResult('icd', 5, true)
+      mockSearchIcdPrefix.mockResolvedValue(mockResult)
+
+      const { search, isGroupNav } = useIcdOpsSearch('icd')
+      await search('M')
+
+      expect(isGroupNav.value).toBe(true)
+    })
+
+    it('isGroupNav is false when backend returns final selectable codes', async () => {
+      const mockResult = createMockPrefixResult('icd', 5, false)
+      mockSearchIcdPrefix.mockResolvedValue(mockResult)
+
+      const { search, isGroupNav } = useIcdOpsSearch('icd')
+      await search('M20')
+
+      expect(isGroupNav.value).toBe(false)
+    })
+
+    it('isGroupNav resets to false on clear()', async () => {
+      const mockResult = createMockPrefixResult('icd', 5, true)
+      mockSearchIcdPrefix.mockResolvedValue(mockResult)
+
+      const { search, clear, isGroupNav } = useIcdOpsSearch('icd')
+      await search('M')
+      expect(isGroupNav.value).toBe(true)
+
+      clear()
+      expect(isGroupNav.value).toBe(false)
     })
 
     it('prefix mode: loadMore is a no-op', async () => {

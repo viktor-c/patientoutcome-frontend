@@ -133,8 +133,11 @@
             {{ searchMode === 'code-prefix' ? 'Code-Navigation' : 'Textsuche' }}
           </v-chip>
           <span class="text-caption text-grey">
-            <template v-if="searchInput && searchMode === 'code-prefix'">
-              Tippen Sie weiter, um die Auswahl einzugrenzen
+            <template v-if="searchInput && searchMode === 'code-prefix' && isGroupNav">
+              Klicken Sie einen Code an, um die Suche zu verfeinern
+            </template>
+            <template v-else-if="searchInput && searchMode === 'code-prefix' && !isGroupNav">
+              Klicken Sie einen Code an, um ihn auszuwählen
             </template>
             <template v-else-if="searchInput && searchMode === 'text-search'">
               Suche in Bezeichnungen ({{ type === 'ops' ? 'nicht-numerisch' : 'Text' }})
@@ -175,8 +178,11 @@
             <v-list-item-title class="text-body-2">{{ item.label }}</v-list-item-title>
             <v-list-item-subtitle class="text-caption">
               {{ kindLabel(item.kind) }}
-              <span v-if="searchMode === 'code-prefix'" class="ml-1 text-grey">
-                · Klicken um zu navigieren oder auszuwählen
+              <span v-if="searchMode === 'code-prefix' && isGroupNav" class="ml-1 text-grey">
+                · Klicken um die Auswahl einzugrenzen
+              </span>
+              <span v-else-if="searchMode === 'code-prefix' && !isGroupNav" class="ml-1 text-grey">
+                · Klicken zum Auswählen
               </span>
             </v-list-item-subtitle>
 
@@ -351,6 +357,7 @@ const {
   totalResults,
   loadMore,
   searchMode,
+  isGroupNav,
 } = useIcdOpsSearch(props.type, composableOptions.value)
 
 // ──────────────────────────────────────────────────────────────
@@ -461,6 +468,12 @@ function removeItem(idx: number) {
 }
 
 function selectItem(item: IcdOpsEntry) {
+  // In code-prefix mode with group navigation: drill down instead of selecting
+  if (searchMode.value === 'code-prefix' && isGroupNav.value) {
+    searchInput.value = item.code
+    return
+  }
+
   const value = props.returnObject ? item : item.code
 
   if (props.multiple) {

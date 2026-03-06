@@ -109,6 +109,12 @@ export function useIcdOpsSearch(
    * 'text-search'  → full-text search with pagination / infinite scroll
    */
   const searchMode = ref<SearchMode>('text-search')
+  /**
+   * True when the last prefix response contained navigation group representatives
+   * (prefix was short, ≤2 alphanum chars) rather than final selectable codes.
+   * When true, clicking an item should drill down rather than select.
+   */
+  const isGroupNav = ref(false)
 
   // ─── Debounce timer ────────────────────────────────────
 
@@ -164,9 +170,11 @@ export function useIcdOpsSearch(
       totalResults.value = result.items.length
       totalPages.value = 1
       version.value = result.version
+      isGroupNav.value = result.isGroup ?? false
     } catch (err) {
       error.value = err instanceof Error ? err.message : 'Prefix search failed'
       items.value = []
+      isGroupNav.value = false
     } finally {
       loading.value = false
     }
@@ -238,6 +246,7 @@ export function useIcdOpsSearch(
     hasMore.value = false
     error.value = null
     searchMode.value = 'text-search'
+    isGroupNav.value = false
   }
 
   // ─── Auto-search on query change (debounced) ──────────
@@ -283,6 +292,12 @@ export function useIcdOpsSearch(
      * - 'text-search': full-text search in code descriptions
      */
     searchMode,
+    /**
+     * True when current code-prefix results are navigation group representatives
+     * (short prefix, ≤2 alphanum chars). Clicking an item should refine the search
+     * rather than select. False when items are final selectable codes.
+     */
+    isGroupNav,
     /** Trigger a search manually */
     search,
     /** Load next page (infinite scroll, text-search mode only) */
