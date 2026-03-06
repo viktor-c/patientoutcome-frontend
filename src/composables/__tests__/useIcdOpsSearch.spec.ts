@@ -20,7 +20,7 @@ vi.mock('@/services/icdopsService', () => ({
   // Real implementation inlined so composable's mode-detection works
   detectSearchMode: (type: 'icd' | 'ops', input: string) => {
     if (!input) return 'text-search'
-    if (type === 'icd') return /^[A-Za-z]/.test(input) ? 'code-prefix' : 'text-search'
+    if (type === 'icd') return /^[A-Za-z][0-9.\-]*$/.test(input) ? 'code-prefix' : 'text-search'
     return /^\d/.test(input) ? 'code-prefix' : 'text-search'
   },
 }))

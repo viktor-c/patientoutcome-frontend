@@ -282,16 +282,16 @@
                   rounded="md"
                   class="px-2"
                   min-height="36"
+                  style="cursor: pointer"
+                  @click="drillToCode(typeof val === 'object' ? (val as IcdOpsEntry).code : (val as string))"
                 >
-                  <!-- Code chip — click to drill into search -->
+                  <!-- Code chip — click bubbles to row handler -->
                   <template #prepend>
                     <v-chip
                       size="x-small"
                       color="primary"
                       variant="outlined"
                       class="mr-2 font-weight-bold"
-                      style="cursor: pointer"
-                      @click.stop="drillToCode(typeof val === 'object' ? (val as IcdOpsEntry).code : (val as string))"
                     >
                       {{ typeof val === 'object' ? (val as IcdOpsEntry).code : val }}
                     </v-chip>
@@ -301,7 +301,7 @@
                     {{ typeof val === 'object' ? (val as IcdOpsEntry).label : '' }}
                   </v-list-item-title>
 
-                  <!-- Remove button -->
+                  <!-- Remove button — stop propagation so it doesn't drill -->
                   <template #append>
                     <v-btn
                       icon

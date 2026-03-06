@@ -243,7 +243,10 @@ export interface SearchOptions {
 export function detectSearchMode(type: 'icd' | 'ops', input: string): 'code-prefix' | 'text-search' {
   if (!input || input.length === 0) return 'text-search'
   if (type === 'icd') {
-    return /^[A-Za-z]/.test(input) ? 'code-prefix' : 'text-search'
+    // Code-prefix only when input looks like an ICD code: one letter then digits/dots/hyphens only.
+    // "M", "M2", "M20", "M20.1" → code-prefix
+    // "hallux", "hallux valgus"  → text-search (letters after the first char)
+    return /^[A-Za-z][0-9.\-]*$/.test(input) ? 'code-prefix' : 'text-search'
   }
   // OPS: digit at position 0 → code-prefix; anything else → text-search
   return /^\d/.test(input) ? 'code-prefix' : 'text-search'

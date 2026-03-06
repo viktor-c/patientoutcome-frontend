@@ -266,16 +266,18 @@ describe('icdopsService', () => {
 
   describe('detectSearchMode', () => {
     describe('ICD type', () => {
-      it('returns code-prefix when input starts with a letter', () => {
+      it('returns code-prefix when input looks like an ICD code (letter + digits/dots)', () => {
         expect(detectSearchMode('icd', 'M')).toBe('code-prefix')
         expect(detectSearchMode('icd', 'A00')).toBe('code-prefix')
         expect(detectSearchMode('icd', 'Z99')).toBe('code-prefix')
-        expect(detectSearchMode('icd', 'k')).toBe('code-prefix') // lowercase
+        expect(detectSearchMode('icd', 'k')).toBe('code-prefix') // lowercase single letter
+        expect(detectSearchMode('icd', 'M20.1')).toBe('code-prefix')
       })
 
-      it('returns text-search when input does not start with a letter', () => {
-        expect(detectSearchMode('icd', 'Cholera')).toBe('code-prefix') // C is a letter!
-        expect(detectSearchMode('icd', 'arthrose')).toBe('code-prefix') // also letter
+      it('returns text-search when input is a word (multiple letters = description)', () => {
+        expect(detectSearchMode('icd', 'Cholera')).toBe('text-search')
+        expect(detectSearchMode('icd', 'arthrose')).toBe('text-search')
+        expect(detectSearchMode('icd', 'hallux valgus')).toBe('text-search')
       })
 
       it('returns text-search for empty input', () => {
