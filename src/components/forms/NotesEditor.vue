@@ -93,9 +93,9 @@ function deleteNote(index: number) {
 
 <template>
   <v-card class="my-2">
-    <v-card-title>
+    <!-- <v-card-title>
       <h4>{{ t(title) }}</h4>
-    </v-card-title>
+    </v-card-title> -->
     <v-card-text>
       <v-list>
         <v-list-item v-for="(note, index) in localNotes" :key="index">

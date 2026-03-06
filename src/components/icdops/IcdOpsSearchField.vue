@@ -157,7 +157,9 @@
         <div
           v-if="contextEntry && !isGroupNav"
           class="d-flex align-center px-4 py-2 ga-2"
-          style="background: rgba(var(--v-theme-primary), 0.06); border-bottom: 1px solid rgba(var(--v-theme-primary), 0.15)"
+          style="background: rgba(var(--v-theme-primary), 0.06); border-bottom: 1px solid rgba(var(--v-theme-primary), 0.15); cursor: pointer"
+          data-testid="context-entry-banner"
+          @click="drillToCode(contextEntry.code)"
         >
           <v-icon size="14" color="primary" class="flex-shrink-0">mdi-arrow-up-left</v-icon>
           <v-chip

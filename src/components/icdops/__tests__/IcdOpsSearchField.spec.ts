@@ -249,6 +249,26 @@ describe('IcdOpsSearchField.vue', () => {
     expect(mockState.query.value).toBe('M20')
   })
 
+  it('replaces search text with parent context code when context banner is clicked', async () => {
+    mockState.searchMode.value = 'code-prefix'
+    mockState.isGroupNav.value = false
+    mockState.query.value = '578852'
+    mockState.contextEntry.value = { code: '5-788.5', label: 'Osteotomie', kind: 'category' }
+    mockState.items.value = [{ code: '5-788.52', label: 'Test', kind: 'category' }]
+
+    const wrapper = mountComponent({ type: 'ops' })
+    await wrapper.find('.icd-ops-trigger').trigger('click')
+    await nextTick()
+    await nextTick()
+
+    const banner = document.body.querySelector('[data-testid="context-entry-banner"]') as HTMLElement | null
+    expect(banner).not.toBeNull()
+    banner!.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+    await nextTick()
+
+    expect(mockState.query.value).toBe('5-788.5')
+  })
+
   it('clears selection on clear button click', async () => {
     const wrapper = mountComponent({
       modelValue: 'A00',
