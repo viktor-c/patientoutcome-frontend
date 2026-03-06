@@ -115,6 +115,12 @@ export function useIcdOpsSearch(
    * When true, clicking an item should drill down rather than select.
    */
   const isGroupNav = ref(false)
+  /**
+   * When isGroupNav=false, the immediate parent category entry one level up.
+   * E.g. when listing codes under "5-788.x", this holds "5-788 Arthroplastik"
+   * so the component can display it as a context header.
+   */
+  const contextEntry = ref<IcdOpsEntry | null>(null)
 
   // ─── Debounce timer ────────────────────────────────────
 
@@ -171,10 +177,12 @@ export function useIcdOpsSearch(
       totalPages.value = 1
       version.value = result.version
       isGroupNav.value = result.isGroup ?? false
+      contextEntry.value = result.context ?? null
     } catch (err) {
       error.value = err instanceof Error ? err.message : 'Prefix search failed'
       items.value = []
       isGroupNav.value = false
+      contextEntry.value = null
     } finally {
       loading.value = false
     }
@@ -247,6 +255,7 @@ export function useIcdOpsSearch(
     error.value = null
     searchMode.value = 'text-search'
     isGroupNav.value = false
+    contextEntry.value = null
   }
 
   // ─── Auto-search on query change (debounced) ──────────
@@ -298,6 +307,11 @@ export function useIcdOpsSearch(
      * rather than select. False when items are final selectable codes.
      */
     isGroupNav,
+    /**
+     * When isGroupNav=false, the immediate parent category entry.
+     * Display above the results list to give context for terminal codes.
+     */
+    contextEntry,
     /** Trigger a search manually */
     search,
     /** Load next page (infinite scroll, text-search mode only) */

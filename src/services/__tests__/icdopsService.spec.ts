@@ -321,10 +321,15 @@ describe('icdopsService', () => {
       expect(normalizeOpsPrefix('5820')).toBe('5-820')
     })
 
-    it('handles already-hyphenated input (strips and re-inserts)', () => {
-      // User typed "5-2" – should stay "5-2"
+    it('inserts dot after fourth alphanumeric char for 5+ digits', () => {
+      expect(normalizeOpsPrefix('57886')).toBe('5-788.6')
+      expect(normalizeOpsPrefix('578860')).toBe('5-788.60')
+    })
+
+    it('handles already-hyphenated input idempotently', () => {
       expect(normalizeOpsPrefix('5-2')).toBe('5-2')
       expect(normalizeOpsPrefix('5-82')).toBe('5-82')
+      expect(normalizeOpsPrefix('5-788.6')).toBe('5-788.6')
     })
 
     it('returns empty string unchanged', () => {

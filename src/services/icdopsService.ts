@@ -254,16 +254,20 @@ export function detectSearchMode(type: 'icd' | 'ops', input: string): 'code-pref
 
 /**
  * Normalize a user-typed OPS prefix to the stored code format.
- * OPS codes are stored as "D-NNN.NN" (digit, hyphen, digits).
- *   "5"   → "5-"
- *   "52"  → "5-2"
- *   "521" → "5-21"
+ * Strips hyphens and dots, then rebuilds the canonical form:
+ *   "5"      → "5-"
+ *   "52"     → "5-2"
+ *   "521"    → "5-21"
+ *   "5788"   → "5-788"
+ *   "57886"  → "5-788.6"
+ *   "5-788.6" → "5-788.6"  (idempotent)
  */
 export function normalizeOpsPrefix(input: string): string {
-  const digits = input.replace(/-/g, '')
-  if (!digits) return input
-  if (digits.length === 1) return `${digits}-`
-  return `${digits[0]}-${digits.slice(1)}`
+  const alphanum = input.replace(/[-\.]/g, '')
+  if (!alphanum) return input
+  if (alphanum.length === 1) return `${alphanum}-`
+  if (alphanum.length <= 4) return `${alphanum[0]}-${alphanum.slice(1)}`
+  return `${alphanum[0]}-${alphanum.slice(1, 4)}.${alphanum.slice(4)}`
 }
 
 // ──────────────────────────────────────────────────────────────
@@ -276,6 +280,8 @@ export interface IcdOpsPrefixResponse {
   type: 'icd' | 'ops'
   version: string
   isGroup: boolean
+  /** Immediate parent category entry, provided when isGroup=false. */
+  context?: IcdOpsEntry
 }
 
 export interface IcdOpsPrefixServiceResponse {

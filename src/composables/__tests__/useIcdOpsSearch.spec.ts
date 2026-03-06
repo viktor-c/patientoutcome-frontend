@@ -205,6 +205,7 @@ describe('useIcdOpsSearch', () => {
       type: 'icd' | 'ops',
       items = 5,
       isGroup = true,
+      context?: IcdOpsPrefixResponse['context'],
     ): IcdOpsPrefixResponse {
       return {
         items: Array.from({ length: items }, (_, i) => ({
@@ -216,6 +217,7 @@ describe('useIcdOpsSearch', () => {
         type,
         version: '2026',
         isGroup,
+        ...(context ? { context } : {}),
       }
     }
 
@@ -313,6 +315,41 @@ describe('useIcdOpsSearch', () => {
 
       clear()
       expect(isGroupNav.value).toBe(false)
+    })
+
+    it('contextEntry is populated from result.context when isGroup=false', async () => {
+      const parentEntry = { code: 'M2', label: 'Arthropathien', kind: 'block' as const }
+      const mockResult = createMockPrefixResult('icd', 5, false, parentEntry)
+      mockSearchIcdPrefix.mockResolvedValue(mockResult)
+
+      const { search, contextEntry } = useIcdOpsSearch('icd')
+      await search('M20')
+
+      expect(contextEntry.value).toEqual(parentEntry)
+    })
+
+    it('contextEntry is null when isGroup=true (no parent needed for group navigation)', async () => {
+      const mockResult = createMockPrefixResult('icd', 5, true)
+      mockSearchIcdPrefix.mockResolvedValue(mockResult)
+
+      const { search, contextEntry } = useIcdOpsSearch('icd')
+      await search('M')
+
+      // isGroup=true → backend sends no context → contextEntry should be null
+      expect(contextEntry.value).toBeNull()
+    })
+
+    it('contextEntry resets to null on clear()', async () => {
+      const parentEntry = { code: 'M2', label: 'Arthropathien', kind: 'block' as const }
+      const mockResult = createMockPrefixResult('icd', 5, false, parentEntry)
+      mockSearchIcdPrefix.mockResolvedValue(mockResult)
+
+      const { search, clear, contextEntry } = useIcdOpsSearch('icd')
+      await search('M20')
+      expect(contextEntry.value).toEqual(parentEntry)
+
+      clear()
+      expect(contextEntry.value).toBeNull()
     })
 
     it('prefix mode: loadMore is a no-op', async () => {

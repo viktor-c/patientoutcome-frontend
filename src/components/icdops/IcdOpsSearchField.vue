@@ -153,6 +153,27 @@
 
       <!-- Results -->
       <v-card-text class="pa-0" style="max-height: 440px; overflow-y: auto" @scroll="onScroll">
+        <!-- Parent-context banner (terminal codes only) -->
+        <div
+          v-if="contextEntry && !isGroupNav"
+          class="d-flex align-center px-4 py-2 ga-2"
+          style="background: rgba(var(--v-theme-primary), 0.06); border-bottom: 1px solid rgba(var(--v-theme-primary), 0.15)"
+        >
+          <v-icon size="14" color="primary" class="flex-shrink-0">mdi-arrow-up-left</v-icon>
+          <v-chip
+            size="x-small"
+            color="primary"
+            variant="outlined"
+            class="font-weight-bold flex-shrink-0"
+          >
+            {{ contextEntry.code }}
+          </v-chip>
+          <span class="text-caption font-weight-medium text-truncate">{{ contextEntry.label }}</span>
+          <v-chip size="x-small" color="primary" variant="text" class="flex-shrink-0 text-caption">
+            {{ kindLabel(contextEntry.kind) }}
+          </v-chip>
+        </div>
+
         <!-- Items list -->
         <v-list v-if="items.length > 0" lines="two" density="compact" class="pa-0">
           <v-list-item
@@ -423,6 +444,7 @@ const {
   loadMore,
   searchMode,
   isGroupNav,
+  contextEntry,
 } = useIcdOpsSearch(props.type, composableOptions.value)
 
 // ──────────────────────────────────────────────────────────────

@@ -26,6 +26,7 @@ const mockState = {
   version: ref('2026'),
   searchMode: ref<'code-prefix' | 'text-search'>('text-search'),
   isGroupNav: ref(false),
+  contextEntry: ref<{ code: string; label: string; kind: string } | null>(null),
   search: mockSearch,
   loadMore: mockLoadMore,
   clear: mockClear,
@@ -52,6 +53,7 @@ describe('IcdOpsSearchField.vue', () => {
     mockState.version.value = '2026'
     mockState.searchMode.value = 'text-search'
     mockState.isGroupNav.value = false
+    mockState.contextEntry.value = null
 
     vuetify = createVuetify({ components, directives })
   })
