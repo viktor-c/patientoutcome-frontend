@@ -248,11 +248,76 @@
           </template>
         </span>
         <v-spacer />
-        <!-- Show selected count in multiple mode -->
+        <!-- Show selected count in multiple mode — hover to see/manage list -->
         <template v-if="multiple && Array.isArray(selectedValue) && (selectedValue as Array<any>).length > 0">
-          <v-chip size="small" color="primary" variant="tonal">
-            {{ (selectedValue as Array<any>).length }} ausgewählt
-          </v-chip>
+          <v-menu
+            open-on-hover
+            :close-on-content-click="false"
+            location="top end"
+            offset="6"
+            max-width="320"
+          >
+            <template #activator="{ props: menuProps }">
+              <v-chip
+                v-bind="menuProps"
+                size="small"
+                color="primary"
+                variant="tonal"
+                style="cursor: default"
+              >
+                {{ (selectedValue as Array<any>).length }} ausgewählt
+                <v-icon end size="12">mdi-chevron-up</v-icon>
+              </v-chip>
+            </template>
+
+            <!-- Popup list of selected codes -->
+            <v-card elevation="4" rounded="lg">
+              <v-card-title class="text-caption text-grey px-3 pt-2 pb-0">
+                Ausgewählte Codes
+              </v-card-title>
+              <v-list density="compact" class="pa-1" style="max-height: 240px; overflow-y: auto">
+                <v-list-item
+                  v-for="(val, idx) in displayChips"
+                  :key="typeof val === 'object' ? (val as IcdOpsEntry).code : val"
+                  rounded="md"
+                  class="px-2"
+                  min-height="36"
+                >
+                  <!-- Code chip — click to drill into search -->
+                  <template #prepend>
+                    <v-chip
+                      size="x-small"
+                      color="primary"
+                      variant="outlined"
+                      class="mr-2 font-weight-bold"
+                      style="cursor: pointer"
+                      @click.stop="drillToCode(typeof val === 'object' ? (val as IcdOpsEntry).code : (val as string))"
+                    >
+                      {{ typeof val === 'object' ? (val as IcdOpsEntry).code : val }}
+                    </v-chip>
+                  </template>
+
+                  <v-list-item-title class="text-caption text-truncate">
+                    {{ typeof val === 'object' ? (val as IcdOpsEntry).label : '' }}
+                  </v-list-item-title>
+
+                  <!-- Remove button -->
+                  <template #append>
+                    <v-btn
+                      icon
+                      variant="text"
+                      size="x-small"
+                      color="grey"
+                      @click.stop="removeItem(idx)"
+                    >
+                      <v-icon size="14">mdi-close</v-icon>
+                    </v-btn>
+                  </template>
+                </v-list-item>
+              </v-list>
+            </v-card>
+          </v-menu>
+
           <v-btn size="small" variant="text" class="ml-2" @click="dialogOpen = false">
             Übernehmen
           </v-btn>
@@ -452,6 +517,18 @@ function openDialog() {
 function clearSearch() {
   searchInput.value = ''
   query.value = ''
+}
+
+/**
+ * Set the search box to a specific code and focus it so the user
+ * can refine the code (e.g. from the selected-codes popup).
+ */
+function drillToCode(code: string) {
+  searchInput.value = code
+  nextTick(() => {
+    const el = (searchRef.value as any)?.$el?.querySelector('input')
+    el?.focus()
+  })
 }
 
 function clearSelection() {
