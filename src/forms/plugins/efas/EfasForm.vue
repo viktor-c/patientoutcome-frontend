@@ -19,7 +19,7 @@ const emit = defineEmits<FormComponentEvents>()
 const { t: tGlobal } = useI18n()
 
 // Use the shared form composable
-const { updateQuestion, t } = useForm({
+const { updateQuestion, getQuestion, t } = useForm({
   modelValue: toRef(props, 'modelValue'),
   calculateScore,
   translations,
@@ -51,14 +51,14 @@ const sportQuestions = computed(() => [
 
 // Check if a question is marked as N/A
 function isNA(section: string, questionKey: string): boolean {
-  const qData = props.modelValue[section]?.[questionKey]
+  const qData = getQuestion(section, questionKey)
   return qData === 'na'
 }
 
 // Toggle N/A status
 function toggleNA(section: string, questionKey: string) {
   if (!props.readonly) {
-    const qData = props.modelValue[section]?.[questionKey]
+    const qData = getQuestion(section, questionKey)
     const currentNA = qData === 'na'
     // Toggle between 'na' and null (unanswered)
     updateQuestion(section, questionKey, currentNA ? null : 'na')
@@ -75,7 +75,7 @@ function handleUpdate(section: string, questionKey: string, value: number) {
 
 // Get current value for a question
 function getCurrentValue(section: string, questionKey: string): number | null {
-  const qData = props.modelValue[section]?.[questionKey]
+  const qData = getQuestion(section, questionKey)
   if (typeof qData === 'number') {
     return qData
   }
