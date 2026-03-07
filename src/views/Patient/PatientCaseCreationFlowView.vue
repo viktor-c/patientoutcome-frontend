@@ -318,6 +318,10 @@ const nextStep = async () => {
       await surgeryFormRef.value.submit()
     }
   } else if (currentStep.value === 4) {
+    // Submit the consultation blueprint form to create consultations from selected blueprints
+    if (consultationFormRef.value) {
+      await consultationFormRef.value.submit()
+    }
     // Fetch consultations for the case to populate the QR code and links
     if (createdCase.value?.id) {
       try {
