@@ -51,6 +51,16 @@
           </v-col>
         </v-row>
 
+        <!-- Score Normalization Note -->
+        <v-row class="mb-4">
+          <v-col>
+            <v-alert type="info" variant="tonal" density="compact">
+              <v-icon start>mdi-information-outline</v-icon>
+              {{ t('statistics.normalizationNote') }}
+            </v-alert>
+          </v-col>
+        </v-row>
+
         <!-- Loading State -->
         <v-row v-if="loading" class="justify-center">
           <v-col cols="auto">
@@ -83,6 +93,11 @@
         <!-- Legend -->
         <v-row v-if="chartData" class="mt-4">
           <v-col>
+            <v-alert type="info" variant="tonal" density="compact" class="mb-3">
+              <v-icon start>mdi-help-circle-outline</v-icon>
+              {{ t('statistics.tooltipExplanation') }}
+            </v-alert>
+
             <v-card variant="outlined">
               <v-card-text>
                 <div class="d-flex flex-wrap gap-2">
@@ -234,6 +249,55 @@ const TEMPLATE_ID_TO_CATEGORY: Record<string, "aofas" | "efas" | "moxfq" | "vas"
   '67b4e612d0feb4ad99ae2e86': 'vas', // VAS template ID
 };
 
+const INVERTED_CATEGORIES: Record<"aofas" | "efas" | "moxfq" | "vas", boolean> = {
+  aofas: false,
+  efas: false,
+  moxfq: true,
+  vas: true,
+};
+
+const toChartScore = (category: "aofas" | "efas" | "moxfq" | "vas", normalizedScore: number | null): number | null => {
+  if (normalizedScore == null) return null;
+
+  const clamped = Math.max(0, Math.min(100, normalizedScore));
+  return INVERTED_CATEGORIES[category] ? 100 - clamped : clamped;
+};
+
+const formatScoreForTooltip = (value: number | null | undefined): string => {
+  if (value == null || Number.isNaN(value)) return t('common.notAvailable');
+  return Number.isInteger(value) ? String(value) : value.toFixed(2);
+};
+
+const getPointScoresByCategory = (point: RealTimePoint & Record<string, unknown>, category: "aofas" | "efas" | "moxfq" | "vas") => {
+  if (category === "aofas") {
+    return {
+      plotted: point.aofasScore as number | null | undefined,
+      normalized: point.aofasNormalizedScore as number | null | undefined,
+      raw: point.aofasRawScore as number | null | undefined,
+    };
+  }
+  if (category === "efas") {
+    return {
+      plotted: point.efasScore as number | null | undefined,
+      normalized: point.efasNormalizedScore as number | null | undefined,
+      raw: point.efasRawScore as number | null | undefined,
+    };
+  }
+  if (category === "moxfq") {
+    return {
+      plotted: point.moxfqScore as number | null | undefined,
+      normalized: point.moxfqNormalizedScore as number | null | undefined,
+      raw: point.moxfqRawScore as number | null | undefined,
+    };
+  }
+
+  return {
+    plotted: point.vasScore as number | null | undefined,
+    normalized: point.vasNormalizedScore as number | null | undefined,
+    raw: point.vasRawScore as number | null | undefined,
+  };
+};
+
 // Labels for each category; these will be updated from prom titles when available
 const aofasLabel = ref("AOFAS");
 const efasLabel = ref("EFAS");
@@ -290,7 +354,13 @@ const computeScoreDataFromConsultations = (consultations: CaseConsultation[] | u
         p => p.scoring && p.scoring.totalScore != null,
       )
       : null;
-    const dateStr = (firstPromWithScore?.createdAt ?? new Date()).toString();
+
+    // Include only consultations with at least one scored form
+    if (!firstPromWithScore?.createdAt) {
+      return;
+    }
+
+    const dateStr = firstPromWithScore.createdAt.toString();
     const consultationDate = new Date(dateStr);
     
     mixedItems.push({
@@ -340,6 +410,14 @@ const computeScoreDataFromConsultations = (consultations: CaseConsultation[] | u
       let efasScore: number | null = null;
       let moxfqScore: number | null = null;
       let vasScore: number | null = null;
+      let aofasNormalizedScore: number | null = null;
+      let efasNormalizedScore: number | null = null;
+      let moxfqNormalizedScore: number | null = null;
+      let vasNormalizedScore: number | null = null;
+      let aofasRawScore: number | null = null;
+      let efasRawScore: number | null = null;
+      let moxfqRawScore: number | null = null;
+      let vasRawScore: number | null = null;
 
       // Iterate prom entries and assign scores into categories using formTemplateId mapping
       if (consultation.proms && Array.isArray(consultation.proms)) {
@@ -350,7 +428,8 @@ const computeScoreDataFromConsultations = (consultations: CaseConsultation[] | u
           if (!hasTotal) continue;
 
           const tplId = prom.formTemplateId ? String(prom.formTemplateId) : null;
-          const score = prom.scoring?.totalScore?.normalizedScore ?? null;
+          const normalizedScore = prom.scoring?.totalScore?.normalizedScore ?? null;
+          const rawScore = prom.scoring?.totalScore?.rawScore ?? null;
 
           if (tplId && TEMPLATE_ID_TO_CATEGORY[tplId]) {
             const cat = TEMPLATE_ID_TO_CATEGORY[tplId];
@@ -362,9 +441,27 @@ const computeScoreDataFromConsultations = (consultations: CaseConsultation[] | u
               if (cat === "vas") vasLabel.value = prom.title;
             }
 
-            if (cat === "aofas" && score != null) aofasScore = score;
-            if (cat === "efas" && score != null) efasScore = score;
-            if (cat === "moxfq" && score != null) moxfqScore = score;
+            if (cat === "aofas" && normalizedScore != null) aofasScore = toChartScore("aofas", normalizedScore);
+            if (cat === "efas" && normalizedScore != null) efasScore = toChartScore("efas", normalizedScore);
+            if (cat === "moxfq" && normalizedScore != null) moxfqScore = toChartScore("moxfq", normalizedScore);
+            if (cat === "vas" && normalizedScore != null) vasScore = toChartScore("vas", normalizedScore);
+
+            if (cat === "aofas") {
+              aofasNormalizedScore = normalizedScore;
+              aofasRawScore = rawScore;
+            }
+            if (cat === "efas") {
+              efasNormalizedScore = normalizedScore;
+              efasRawScore = rawScore;
+            }
+            if (cat === "moxfq") {
+              moxfqNormalizedScore = normalizedScore;
+              moxfqRawScore = rawScore;
+            }
+            if (cat === "vas") {
+              vasNormalizedScore = normalizedScore;
+              vasRawScore = rawScore;
+            }
           }
         }
       }
@@ -379,10 +476,13 @@ const computeScoreDataFromConsultations = (consultations: CaseConsultation[] | u
           // Check if this is a VAS form (pain scale) by looking at title or structure
           if (prom.scoring?.totalScore?.normalizedScore !== undefined) {
             const score = prom.scoring.totalScore.normalizedScore ?? null;
+            const rawScore = prom.scoring.totalScore.rawScore ?? null;
             // VAS has a specific structure, check if rawData contains painScale
             const rawData = (prom.scoring?.rawFormData as Record<string, unknown>) ?? {};
             if ((rawData as Record<string, unknown>)?.painScale !== undefined) {
-              vasScore = score;
+              vasScore = toChartScore("vas", score);
+              vasNormalizedScore = score;
+              vasRawScore = rawScore;
             }
           }
         }
@@ -395,6 +495,14 @@ const computeScoreDataFromConsultations = (consultations: CaseConsultation[] | u
         efasScore,
         moxfqScore,
         vasScore,
+        aofasNormalizedScore,
+        efasNormalizedScore,
+        moxfqNormalizedScore,
+        vasNormalizedScore,
+        aofasRawScore,
+        efasRawScore,
+        moxfqRawScore,
+        vasRawScore,
       });
 
       (fixedInterval as unknown as Array<Record<string, unknown>>).push({
@@ -404,6 +512,14 @@ const computeScoreDataFromConsultations = (consultations: CaseConsultation[] | u
         efasScore,
         moxfqScore,
         vasScore,
+        aofasNormalizedScore,
+        efasNormalizedScore,
+        moxfqNormalizedScore,
+        vasNormalizedScore,
+        aofasRawScore,
+        efasRawScore,
+        moxfqRawScore,
+        vasRawScore,
       });
     }
   });
@@ -463,6 +579,7 @@ const chartData = computed<ChartData<"line"> | null>(() => {
   if (visibleSeries.value.aofas) {
     datasets.push({
       label: aofasLabel.value,
+      categoryKey: "aofas",
       data: isRealTime
         ? data.map(point => ({
           x: new Date(point.date ?? 0).getTime(),
@@ -479,6 +596,7 @@ const chartData = computed<ChartData<"line"> | null>(() => {
   if (visibleSeries.value.efas) {
     datasets.push({
       label: efasLabel.value,
+      categoryKey: "efas",
       data: isRealTime
         ? data.map(point => ({
           x: new Date(point.date ?? 0).getTime(),
@@ -495,6 +613,7 @@ const chartData = computed<ChartData<"line"> | null>(() => {
   if (visibleSeries.value.moxfq) {
     datasets.push({
       label: moxfqLabel.value,
+      categoryKey: "moxfq",
       data: isRealTime
         ? data.map(point => ({
           x: new Date(point.date ?? 0).getTime(),
@@ -511,6 +630,7 @@ const chartData = computed<ChartData<"line"> | null>(() => {
   if (visibleSeries.value.vas) {
     datasets.push({
       label: vasLabel.value,
+      categoryKey: "vas",
       data: isRealTime
         ? data.map(point => ({
           x: new Date(point.date ?? 0).getTime(),
@@ -689,11 +809,31 @@ const chartOptions = computed(() => {
   };
 
   if (timelineMode.value === "realTime") {
-     
+
     const stats = statistics.value as StatisticsWithSurgeries | null;
+    const realTimeData = scoreData.value?.realTime ?? [];
 
     // Calculate x-axis bounds
-    const referenceDate = (stats?.surgeryDate ? new Date(stats.surgeryDate) : null) || (stats?.caseCreatedAt ? new Date(stats.caseCreatedAt) : null) || new Date();
+    const firstScoredConsultationDate = acquisitionDates.value.length > 0
+      ? new Date(Math.min(...acquisitionDates.value.map(d => d.getTime())))
+      : null;
+    const surgeryDates = surgeries.value
+      .map(s => s.date)
+      .filter(Boolean)
+      .map(date => new Date(date).getTime())
+      .filter(timestamp => !Number.isNaN(timestamp));
+    const earliestSurgeryDate = surgeryDates.length > 0
+      ? new Date(Math.min(...surgeryDates))
+      : null;
+
+    const referenceDate = (stats?.surgeryDate ? new Date(stats.surgeryDate) : null)
+      || (stats?.caseCreatedAt ? new Date(stats.caseCreatedAt) : null)
+      || new Date();
+
+    const xAxisStartDate = [firstScoredConsultationDate, earliestSurgeryDate]
+      .filter((value): value is Date => value !== null)
+      .sort((a, b) => a.getTime() - b.getTime())[0] ?? referenceDate;
+
     const isSurgeryReference = !!stats?.surgeryDate;
 
     // BUG FIX (gffc branch): Use last consultation date instead of current date
@@ -724,6 +864,16 @@ const chartOptions = computed(() => {
               }
               return date ? date.toLocaleDateString(currentLocale.value) : '';
             },
+            label: (context: TooltipItem<"line">) => {
+              const point = realTimeData[context.dataIndex] as RealTimePoint & Record<string, unknown>;
+              const categoryKey = ((context.dataset as unknown) as { categoryKey?: "aofas" | "efas" | "moxfq" | "vas" }).categoryKey;
+              if (!point || !categoryKey) {
+                return `${context.dataset.label}: ${formatScoreForTooltip(context.parsed.y as number | null | undefined)}`;
+              }
+
+              const scores = getPointScoresByCategory(point, categoryKey);
+              return `${context.dataset.label}: ${t('statistics.tooltipPlotted')}: ${formatScoreForTooltip(scores.plotted)} | ${t('statistics.tooltipNormalized')}: ${formatScoreForTooltip(scores.normalized)} | ${t('statistics.tooltipRaw')}: ${formatScoreForTooltip(scores.raw)}`;
+            },
           },
         },
         annotation: {
@@ -734,7 +884,7 @@ const chartOptions = computed(() => {
         ...baseOptions.scales,
         x: {
           type: "time" as const,
-          min: referenceDate.getTime(),
+          min: xAxisStartDate.getTime(),
           max: lastConsultationDate.getTime(), // BUG FIX (gffc): was now.getTime()
           time: {
             unit: "week" as const,
@@ -752,6 +902,8 @@ const chartOptions = computed(() => {
       },
     };
   } else {
+    const fixedIntervalData = scoreData.value?.fixedInterval ?? [];
+
     return {
       ...baseOptions,
       plugins: {
@@ -768,6 +920,16 @@ const chartOptions = computed(() => {
                 return `${t('statistics.visitOn')} ${date.toLocaleDateString(currentLocale.value)} ${date.toLocaleTimeString(currentLocale.value, { hour: '2-digit', minute: '2-digit' })}`;
               }
               return t('statistics.visit', { number: dataIndex + 1 });
+            },
+            label: (context: TooltipItem<"line">) => {
+              const point = fixedIntervalData[context.dataIndex] as RealTimePoint & Record<string, unknown>;
+              const categoryKey = ((context.dataset as unknown) as { categoryKey?: "aofas" | "efas" | "moxfq" | "vas" }).categoryKey;
+              if (!point || !categoryKey) {
+                return `${context.dataset.label}: ${formatScoreForTooltip(context.parsed.y as number | null | undefined)}`;
+              }
+
+              const scores = getPointScoresByCategory(point, categoryKey);
+              return `${context.dataset.label}: ${t('statistics.tooltipPlotted')}: ${formatScoreForTooltip(scores.plotted)} | ${t('statistics.tooltipNormalized')}: ${formatScoreForTooltip(scores.normalized)} | ${t('statistics.tooltipRaw')}: ${formatScoreForTooltip(scores.raw)}`;
             },
           },
         },
