@@ -253,10 +253,10 @@ const cancelChanges = () => {
 const goBack = () => {
   if (hasChanges.value) {
     if (confirm(t('reviewForm.unsavedChangesWarning'))) {
-      router.back()
+      navigateToConsultationOverview()
     }
   } else {
-    router.back()
+    navigateToConsultationOverview()
   }
 }
 </script>

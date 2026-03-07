@@ -554,7 +554,7 @@ const handleCaseBlueprintApplied = (blueprint: Blueprint) => {
 
 const handleCaseCancel = () => {
   // Go back to step 1 or cancel the entire flow
-  router.back()
+  navigateBackFromCreationFlow()
 }
 
 // Handle surgery dialog events
@@ -572,7 +572,7 @@ const handleSurgerySubmit = async (surgery: Surgery) => {
 
 const handleSurgeryCancel = () => {
   // Go back to step 2 or cancel the entire flow
-  router.back()
+  navigateBackFromCreationFlow()
 }
 
 
@@ -694,6 +694,21 @@ const handleManualConsultationSubmitStep4 = async (consultation: Consultation) =
 
 
 const cancel = () => {
+  navigateBackFromCreationFlow()
+}
+
+const navigateBackFromCreationFlow = () => {
+  const patientIdFromRoute = route.query.patientId as string | undefined
+  const targetPatientId = createdPatient.value?.id || patientIdFromRoute
+
+  if (targetPatientId && targetPatientId.trim() !== '') {
+    router.push({
+      name: 'patientoverview',
+      params: { patientId: targetPatientId }
+    })
+    return
+  }
+
   router.back()
 }
 

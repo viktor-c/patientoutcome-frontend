@@ -197,6 +197,18 @@ const openPatientOverview = () => {
   }
 }
 
+const goBack = () => {
+  if (patient.value?.id) {
+    router.push({
+      name: 'patientoverview',
+      params: { patientId: patient.value.id }
+    })
+    return
+  }
+
+  router.back()
+}
+
 const openStatistics = () => {
   if (caseId) {
     router.push({
@@ -465,7 +477,7 @@ onMounted(() => {
             <v-btn
                    icon="mdi-arrow-left"
                    variant="text"
-                   @click="$router.back()"
+                   @click="goBack"
                    class="me-2"></v-btn>
             {{ t('patientCaseLanding.title') }}
           </div>

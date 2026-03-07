@@ -153,6 +153,11 @@ const openConsultation = (consultationId: string | null | undefined) => {
 }
 
 const goBack = () => {
+  if (patientRouteId.value) {
+    router.push({ name: 'patientoverview', params: { patientId: patientRouteId.value } })
+    return
+  }
+
   router.back()
 }
 
@@ -201,7 +206,12 @@ const deleteConsultation = async () => {
     await consultationApi.deleteConsultation({ consultationId })
     notifierStore.notify(t('consultationOverview.deleteSuccess'), 'success')
     confirmDeleteDialog.value = false
-    // Navigate back to previous page or patient case
+    if (patientRouteId.value) {
+      router.push({ name: 'patientoverview', params: { patientId: patientRouteId.value } })
+      return
+    }
+
+    // Fallback when patient id is unavailable
     router.back()
   } catch (error: unknown) {
     let errorMessage = 'An unexpected error occurred'
