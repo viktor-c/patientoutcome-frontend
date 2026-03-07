@@ -266,38 +266,35 @@ defineExpose({
               <strong>{{ t('patientOverview.notes') }}:</strong>
               {{ formatNotesList(consultation.notes) }}
             </div>
-
-            <!-- Forms -->
-            <div v-if="consultation.proms?.length" class="mt-3">
-              <div class="text-caption text-medium-emphasis mb-2">
-                {{ t('patientOverview.forms') }}:
+            <!-- Forms and Details button on same row -->
+            <div v-if="consultation.proms?.length" class="mt-3 d-flex align-center justify-space-between">
+              <div>
+                <div class="text-caption text-medium-emphasis mb-2">
+                  {{ t('patientOverview.forms') }}:
+                </div>
+                <div class="d-flex flex-wrap gap-1">
+                  <v-chip
+                          v-for="(form, formIndex) in consultation.proms"
+                    :key="form.id == null ? `form-${formIndex}` : String(form.id)"
+                          size="x-small"
+                          :color="form.patientFormData?.fillStatus === 'complete' ? 'success' : 'warning'"
+                          class="me-1">
+                    {{ form.title || t('patientOverview.unnamedForm') }}
+                    <template
+                              v-if="form.patientFormData?.subscales?.total !== undefined && form.patientFormData?.subscales?.total !== null && form.patientFormData?.subscales.totalScore.rawScore !== undefined && form.patientFormData?.subscales.totalScore.rawScore !== null">
+                      ({{ form.patientFormData?.subscales?.total.rawScore }})
+                    </template>
+                  </v-chip>
+                </div>
               </div>
-              <div class="d-flex flex-wrap gap-1">
-                <v-chip
-                        v-for="(form, formIndex) in consultation.proms"
-                  :key="form.id == null ? `form-${formIndex}` : String(form.id)"
-                        size="x-small"
-                        :color="form.patientFormData?.fillStatus === 'complete' ? 'success' : 'warning'"
-                        class="me-1">
-                  {{ form.title || t('patientOverview.unnamedForm') }}
-                  <template
-                            v-if="form.patientFormData?.subscales?.total !== undefined && form.patientFormData?.subscales?.total !== null && form.patientFormData?.subscales.totalScore.rawScore !== undefined && form.patientFormData?.subscales.totalScore.rawScore !== null">
-                    ({{ form.patientFormData?.subscales?.total.rawScore }})
-                  </template>
-                </v-chip>
-              </div>
-            </div>
 
-            <div class="d-flex justify-end mt-3">
-              <v-btn
-                     color="primary"
-                     variant="text"
-                     size="small">
-                <RouterLink
-                            :to="{ name: 'consultationoverview', params: { consultationId: getConsultationId(consultation) } }">
-                  {{ t('patientOverview.viewDetails') }}
+              <div class="ms-3">
+                <RouterLink :to="{ name: 'consultationoverview', params: { consultationId: getConsultationId(consultation) } }">
+                  <v-btn color="primary" variant="text" size="small">
+                    {{ t('patientOverview.viewDetails') }}
+                  </v-btn>
                 </RouterLink>
-              </v-btn>
+              </div>
             </div>
           </v-card-text>
         </v-card>

@@ -1088,7 +1088,7 @@ export default {
     visitedBy: 'Besucht von',
     forms: 'Formulare',
     unnamedForm: 'Unbenanntes Formular',
-    viewDetails: 'Details anzeigen',
+    viewDetails: 'Details',
     noForms: 'Keine Formulare',
     formsCompleted: 'Formulare abgeschlossen',
     created: 'Erstellt',

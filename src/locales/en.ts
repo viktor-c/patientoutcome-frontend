@@ -1087,7 +1087,7 @@ export default {
     visitedBy: 'Visited By',
     forms: 'Forms',
     unnamedForm: 'Unnamed Form',
-    viewDetails: 'View Details',
+    viewDetails: 'Details',
     noForms: 'No Forms',
     formsCompleted: 'Forms Completed',
     created: 'Created',
