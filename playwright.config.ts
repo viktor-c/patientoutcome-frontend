@@ -57,12 +57,16 @@ export default defineConfig({
         ...devices['Desktop Firefox'],
       },
     },
-    {
-      name: 'webkit',
-      use: {
-        ...devices['Desktop Safari'],
-      },
-    },
+    ...(process.env.PW_INCLUDE_WEBKIT === 'true'
+      ? [
+          {
+            name: 'webkit',
+            use: {
+              ...devices['Desktop Safari'],
+            },
+          },
+        ]
+      : []),
 
     /* Test against mobile viewports. */
     // {
