@@ -18,6 +18,7 @@ import { patientCaseApi, consultationApi, surgeryApi } from '@/api'
 import CreateEditConsultationDialog from '@/components/dialogs/CreateEditConsultationDialog.vue'
 import CreateBatchConsultationsDialog from '@/components/dialogs/CreateBatchConsultationsDialog.vue'
 import CreateEditSurgeryDialog from '@/components/dialogs/CreateEditSurgeryDialog.vue'
+import CascadeDeleteDialog from '@/components/dialogs/CascadeDeleteDialog.vue'
 
 const { t } = useI18n()
 const route = useRoute()
@@ -45,6 +46,13 @@ const editingSurgery = ref<Surgery | null>(null)
 
 // Delete confirmation dialog states
 const showDeleteConfirmDialog = ref(false)
+const showCascadeDeleteDialog = ref(false)
+const cascadeDeleteConfig = ref<{
+  title: string
+  warningText: string
+  finalWarningText: string
+  options: Array<{ key: string; label: string; count: number; defaultChecked: boolean }>
+} | null>(null)
 const deleteConfirmData = ref<{
   type: 'case' | 'consultation' | 'surgery'
   id: string
@@ -394,7 +402,43 @@ const getConsultationStatusText = (consultation: Consultation): string => {
 // Delete handlers
 const initiateDelete = (type: 'case' | 'consultation' | 'surgery', id: string, title: string) => {
   deleteConfirmData.value = { type, id, title }
-  showDeleteConfirmDialog.value = true
+
+  if (type === 'surgery') {
+    showDeleteConfirmDialog.value = true
+    return
+  }
+
+  if (type === 'consultation') {
+    const targetConsultation = consultations.value.find(c => c.id === id)
+    cascadeDeleteConfig.value = {
+      title: t('consultationOverview.confirmDelete'),
+      warningText: t('consultationOverview.deleteWarning'),
+      finalWarningText: t('consultationOverview.deleteFinalWarning'),
+      options: [
+        {
+          key: 'deleteForms',
+          label: t('cascadeDeleteDialog.formsLabel'),
+          count: targetConsultation?.proms?.length || 0,
+          defaultChecked: true,
+        },
+      ],
+    }
+    showCascadeDeleteDialog.value = true
+    return
+  }
+
+  const consultationCount = consultations.value.length
+  const formCount = consultations.value.reduce((sum, consultation) => sum + (consultation.proms?.length || 0), 0)
+  cascadeDeleteConfig.value = {
+    title: t('patientOverview.confirmDeleteCase'),
+    warningText: t('patientOverview.deleteCaseWarning'),
+    finalWarningText: t('patientOverview.deleteCaseFinalWarning'),
+    options: [
+      { key: 'deleteConsultations', label: t('cascadeDeleteDialog.consultationsLabel'), count: consultationCount, defaultChecked: true },
+      { key: 'deleteForms', label: t('cascadeDeleteDialog.formsLabel'), count: formCount, defaultChecked: true },
+    ],
+  }
+  showCascadeDeleteDialog.value = true
 }
 
 const confirmDelete = async () => {
@@ -404,20 +448,9 @@ const confirmDelete = async () => {
   try {
     const { type, id } = deleteConfirmData.value
 
-    if (type === 'consultation') {
-      await consultationApi.deleteConsultation({ consultationId: id })
-      notifierStore.notify(t('alerts.consultation.deleted'), 'success')
-    } else if (type === 'surgery') {
+    if (type === 'surgery') {
       await surgeryApi.deleteSurgeryById({ surgeryId: id })
       notifierStore.notify(t('alerts.surgery.deleted'), 'success')
-    } else if (type === 'case') {
-      await patientCaseApi.deletePatientCaseById({ patientId: patient.value?.id || '', caseId: id })
-      notifierStore.notify(t('alerts.case.deleted'), 'success')
-      // Redirect to patient overview after deleting the case
-      setTimeout(() => {
-        router.push({ name: 'patientoverview', params: { patientId: patient.value?.id } })
-      }, 1000)
-      return
     }
 
     // Reload data after deletion
@@ -442,6 +475,69 @@ const confirmDelete = async () => {
     showDeleteConfirmDialog.value = false
     deleteConfirmData.value = null
   }
+}
+
+const confirmCascadeDelete = async (selectedOptions: Record<string, boolean>) => {
+  if (!deleteConfirmData.value) return
+
+  isDeleting.value = true
+  try {
+    const { type, id } = deleteConfirmData.value
+
+    if (type === 'consultation') {
+      await consultationApi.deleteConsultation(
+        { consultationId: id },
+        {
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            deleteForms: selectedOptions.deleteForms === true,
+          }),
+        },
+      )
+      notifierStore.notify(t('alerts.consultation.deleted'), 'success')
+      await loadCaseData()
+    } else if (type === 'case') {
+      await patientCaseApi.softDeletePatientCaseById(
+        { patientId: patient.value?.id || '', caseId: id },
+        {
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            deleteConsultations: selectedOptions.deleteConsultations === true,
+            deleteForms: selectedOptions.deleteForms === true,
+          }),
+        },
+      )
+      notifierStore.notify(t('alerts.case.deleted'), 'success')
+      router.push({ name: 'patientoverview', params: { patientId: patient.value?.id } })
+      return
+    }
+  } catch (err: unknown) {
+    let errorMessage = 'An error occurred'
+    if (err instanceof ResponseError) {
+      try {
+        const errorData = await err.response.clone().json()
+        errorMessage = errorData.message || errorMessage
+      } catch {
+        errorMessage = `HTTP ${err.response.status}`
+      }
+    } else if (err instanceof Error) {
+      errorMessage = err.message
+    }
+
+    console.error('Error deleting item:', errorMessage)
+    notifierStore.notify(t('alerts.general.deleteFailed'), 'error')
+  } finally {
+    isDeleting.value = false
+    showCascadeDeleteDialog.value = false
+    cascadeDeleteConfig.value = null
+    deleteConfirmData.value = null
+  }
+}
+
+const cancelCascadeDelete = () => {
+  showCascadeDeleteDialog.value = false
+  cascadeDeleteConfig.value = null
+  deleteConfirmData.value = null
 }
 
 // Lifecycle
@@ -907,9 +1003,6 @@ onMounted(() => {
           <p v-else-if="deleteConfirmData.type === 'surgery'" class="mb-2">
             {{ t('alerts.surgery.confirmDelete') }}
           </p>
-          <p v-else-if="deleteConfirmData.type === 'case'" class="mb-2">
-            {{ t('alerts.case.confirmDelete') }}
-          </p>
           <p class="text-grey text-sm font-weight-bold mt-4">
             {{ deleteConfirmData.title }}
           </p>
@@ -933,6 +1026,17 @@ onMounted(() => {
         </v-card-actions>
       </v-card>
     </v-dialog>
+
+    <CascadeDeleteDialog
+               v-if="cascadeDeleteConfig"
+               v-model="showCascadeDeleteDialog"
+               :title="cascadeDeleteConfig.title"
+               :warning-text="cascadeDeleteConfig.warningText"
+               :final-warning-text="cascadeDeleteConfig.finalWarningText"
+               :options="cascadeDeleteConfig.options"
+               :loading="isDeleting"
+               @cancel="cancelCascadeDelete"
+               @confirm="confirmCascadeDelete" />
 
     <v-dialog
               v-model="showMoveConsultationConfirmDialog"

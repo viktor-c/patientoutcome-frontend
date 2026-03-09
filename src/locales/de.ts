@@ -1102,6 +1102,14 @@ export default {
     confirmDeleteCaseFinal: 'Bestätigung zum Löschen des Falls',
     deleteCaseFinalWarning: 'Dies ist Ihre abschließende Bestätigung. Das Löschen dieses Falls kann nicht rückgängig gemacht werden. Alle Daten gehen verloren.',
   },
+  cascadeDeleteDialog: {
+    finalTitle: 'Letzte Löschbestätigung',
+    alsoDeleteLabel: 'Folgende Dokumente ebenfalls löschen:',
+    casesLabel: 'Fälle',
+    consultationsLabel: 'Konsultationen',
+    formsLabel: 'Formulare',
+    items: 'Eintrag | Einträge',
+  },
   patientCaseLanding: {
     title: 'Patientenfall',
     loading: 'Falldaten werden geladen...',

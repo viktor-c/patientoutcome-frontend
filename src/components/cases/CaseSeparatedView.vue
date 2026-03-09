@@ -7,6 +7,7 @@ import { type Consultation, type Surgery, type GetAllPatientCases200ResponseResp
 import { surgeryApi, consultationApi } from '@/api'
 import { useNotifierStore, useConsultationStore } from '@/stores/'
 import CreateEditSurgeryDialog from '@/components/dialogs/CreateEditSurgeryDialog.vue'
+import CascadeDeleteDialog from '@/components/dialogs/CascadeDeleteDialog.vue'
 
 // Props
 interface Props {
@@ -32,6 +33,10 @@ const consultationStore = useConsultationStore()
 // Surgery dialog state
 const showSurgeryDialog = ref(false)
 const selectedSurgery = ref<Surgery | null>(null)
+const showDeleteConsultationDialog = ref(false)
+const deletingConsultation = ref(false)
+const selectedConsultationId = ref<string | null>(null)
+const selectedConsultationFormCount = ref(0)
 
 // Helper function to safely format dates
 const safeFormatDate = (date: string | null | undefined, format: string = 'DD.MM.YYYY HH:mm'): string => {
@@ -40,10 +45,21 @@ const safeFormatDate = (date: string | null | undefined, format: string = 'DD.MM
 }
 
 // Delete a consultation
-const deleteConsultation = async (caseId: string, consultationId: string) => {
+const deleteConsultation = async (selectedOptions: Record<string, boolean>) => {
+  if (!selectedConsultationId.value) return
+
   try {
-    await consultationApi.deleteConsultation({ consultationId })
-    console.log('Consultation deleted successfully:', consultationId)
+    deletingConsultation.value = true
+    await consultationApi.deleteConsultation(
+      { consultationId: selectedConsultationId.value },
+      {
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          deleteForms: selectedOptions.deleteForms === true,
+        }),
+      },
+    )
+    console.log('Consultation deleted successfully:', selectedConsultationId.value)
     notifierStore.notify(t('alerts.consultation.deleted'), 'success')
     emit('refreshCases')
   } catch (error: unknown) {
@@ -53,7 +69,25 @@ const deleteConsultation = async (caseId: string, consultationId: string) => {
     }
     console.error('Error deleting consultation:', errorMessage)
     notifierStore.notify(t('alerts.consultation.deletionFailed'), 'error')
+  } finally {
+    deletingConsultation.value = false
+    showDeleteConsultationDialog.value = false
+    selectedConsultationId.value = null
+    selectedConsultationFormCount.value = 0
   }
+}
+
+const openDeleteConsultation = (consultation: Consultation) => {
+  if (!consultation.id) return
+  selectedConsultationId.value = consultation.id
+  selectedConsultationFormCount.value = consultation.proms?.length || 0
+  showDeleteConsultationDialog.value = true
+}
+
+const cancelDeleteConsultation = () => {
+  showDeleteConsultationDialog.value = false
+  selectedConsultationId.value = null
+  selectedConsultationFormCount.value = 0
 }
 
 // Delete a surgery
@@ -226,30 +260,9 @@ const editConsultation = (consultation: Consultation) => {
           <v-btn size="small" color="primary" @click="editConsultation(consultation)">
             <v-icon icon="mdi-pencil"></v-icon>{{ t('buttons.editConsultation') }}
           </v-btn>
-          <v-dialog max-width="500">
-            <template v-slot:activator="{ props: activatorProps }">
-              <v-btn class="text-right" v-bind="activatorProps" size="small" variant="plain" color="error">
-                <v-icon icon="mdi-trash-can"></v-icon>{{ t('buttons.deleteConsultation') }}
-              </v-btn>
-            </template>
-            <template v-slot:default="{ isActive }">
-              <v-card title="Dialog">
-                <v-card-text>
-                  {{ t('alerts.consultation.confirmDelete', { consultationId: consultation.id }) }}
-                  <v-divider></v-divider>
-                </v-card-text>
-                <v-card-actions>
-                  <v-spacer></v-spacer>
-                  <v-btn
-                         color="error"
-                         :text="t('buttons.confirmDelete')"
-                         @click="caseItem.id && consultation.id && (isActive.value = false, deleteConsultation(caseItem.id, consultation.id))">
-                  </v-btn>
-                  <v-btn color="primary" :text="t('buttons.abortDeletion')" @click="isActive.value = false"></v-btn>
-                </v-card-actions>
-              </v-card>
-            </template>
-          </v-dialog>
+          <v-btn class="text-right" size="small" variant="plain" color="error" @click="openDeleteConsultation(consultation)">
+            <v-icon icon="mdi-trash-can"></v-icon>{{ t('buttons.deleteConsultation') }}
+          </v-btn>
         </td>
       </tr>
       <tr>
@@ -272,6 +285,16 @@ const editConsultation = (consultation: Consultation) => {
                              @submit="handleSurgerySubmit"
                              @cancel="handleSurgeryCancel" />
   </v-dialog>
+
+  <CascadeDeleteDialog
+                       v-model="showDeleteConsultationDialog"
+                       :title="t('consultationOverview.confirmDelete')"
+                       :warning-text="t('consultationOverview.deleteWarning')"
+                       :final-warning-text="t('consultationOverview.deleteFinalWarning')"
+                       :options="[{ key: 'deleteForms', label: t('cascadeDeleteDialog.formsLabel'), count: selectedConsultationFormCount, defaultChecked: true }]"
+                       :loading="deletingConsultation"
+                       @cancel="cancelDeleteConsultation"
+                       @confirm="deleteConsultation" />
 </template>
 
 <style scoped>

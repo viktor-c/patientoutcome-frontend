@@ -1101,6 +1101,14 @@ export default {
     confirmDeleteCaseFinal: 'Confirm Case Deletion',
     deleteCaseFinalWarning: 'This is your final confirmation. Deleting this case cannot be undone. All data will be lost.',
   },
+  cascadeDeleteDialog: {
+    finalTitle: 'Final Deletion Confirmation',
+    alsoDeleteLabel: 'Also delete following documents:',
+    casesLabel: 'cases',
+    consultationsLabel: 'consultations',
+    formsLabel: 'forms',
+    items: 'item | items',
+  },
   patientCaseLanding: {
     title: 'Patient Case Landing',
     loading: 'Loading case data...',

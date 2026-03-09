@@ -7,16 +7,18 @@ import { useNotifierStore } from '@/stores/notifierStore'
 
 import {
   ResponseError,
+  type FindAllCodes200ResponseResponseObjectInnerConsultationId as Consultation,
   type Patient,
   type Surgery,
   type GetAllPatientCases200ResponseResponseObjectInner as PatientCaseWithDetails,
 } from '@/api'
-import { patientApi, patientCaseApi, surgeryApi } from '@/api'
+import { consultationApi, patientApi, patientCaseApi, surgeryApi } from '@/api'
 
 // Import components
 import PatientCaseCard from '@/components/cards/PatientCaseCard.vue'
 import CreateEditConsultationDialog from '@/components/dialogs/CreateEditConsultationDialog.vue'
 import CreateEditSurgeryDialog from '@/components/dialogs/CreateEditSurgeryDialog.vue'
+import CascadeDeleteDialog from '@/components/dialogs/CascadeDeleteDialog.vue'
 
 const componentName = 'PatientOverview.vue'
 const { t } = useI18n()
@@ -48,13 +50,17 @@ const selectedCaseIdForSurgery = ref<string | null>(null)
 const showDeleteSurgeryConfirmDialog = ref(false)
 const selectedSurgeryForDelete = ref<string | null>(null)
 
-// Delete patient dialog states
-const showDeletePatientConfirmDialog = ref(false)
-const deletePatientConfirmStep = ref(0) // 0 = first confirm, 1 = second confirm
+// Reusable cascade delete dialog state
+const showCascadeDeleteDialog = ref(false)
+const deleteDialogLoading = ref(false)
+const deleteDialogConfig = ref<{
+  title: string
+  warningText: string
+  finalWarningText: string
+  options: Array<{ key: string; label: string; count: number; defaultChecked: boolean }>
+} | null>(null)
+const deleteContext = ref<'patient' | 'case' | null>(null)
 
-// Delete case dialog states
-const showDeleteCaseConfirmDialog = ref(false)
-const deleteCaseConfirmStep = ref(0) // 0 = first confirm, 1 = second confirm
 const selectedCaseForDelete = ref<string | null>(null)
 
 // Helper function to safely format dates
@@ -225,24 +231,100 @@ const refreshCases = async () => {
   }
 }
 
-// Delete patient functions
-const openDeletePatientDialog = () => {
-  deletePatientConfirmStep.value = 0
-  showDeletePatientConfirmDialog.value = true
+const getConsultationCountForCase = (patientCase: PatientCaseWithDetails | null | undefined): number => {
+  return patientCase?.consultations?.length || 0
 }
 
-const confirmDeletePatient = () => {
-  if (deletePatientConfirmStep.value === 0) {
-    deletePatientConfirmStep.value = 1
+const getFormCountForCase = (patientCase: PatientCaseWithDetails | null | undefined): number => {
+  if (!patientCase?.consultations?.length) return 0
+  return patientCase.consultations.reduce((sum, consultation) => {
+    return sum + (consultation.proms?.length || 0)
+  }, 0)
+}
+
+const getPatientDeletionCounts = () => {
+  const caseCount = cases.value.length
+  const consultationCount = cases.value.reduce((sum, patientCase) => sum + getConsultationCountForCase(patientCase), 0)
+  const formCount = cases.value.reduce((sum, patientCase) => sum + getFormCountForCase(patientCase), 0)
+
+  return {
+    caseCount,
+    consultationCount,
+    formCount,
   }
 }
 
-const executeDeletePatient = async () => {
+const getCaseDeletionCountsFromApi = async (caseId: string): Promise<{ consultationCount: number; formCount: number }> => {
+  const response = await consultationApi.getAllConsultations({ caseId })
+  const consultationList = (response.responseObject || []) as Consultation[]
+
+  return {
+    consultationCount: consultationList.length,
+    formCount: consultationList.reduce((sum, consultation) => sum + (consultation.proms?.length || 0), 0),
+  }
+}
+
+const getPatientDeletionCountsFromApi = async (): Promise<{ caseCount: number; consultationCount: number; formCount: number }> => {
+  const caseIds = cases.value
+    .map(patientCase => patientCase.id)
+    .filter((id): id is string => Boolean(id))
+
+  const caseCount = caseIds.length
+  if (!caseIds.length) {
+    return { caseCount: 0, consultationCount: 0, formCount: 0 }
+  }
+
+  const caseCounts = await Promise.all(caseIds.map(caseId => getCaseDeletionCountsFromApi(caseId)))
+  const consultationCount = caseCounts.reduce((sum, item) => sum + item.consultationCount, 0)
+  const formCount = caseCounts.reduce((sum, item) => sum + item.formCount, 0)
+
+  return { caseCount, consultationCount, formCount }
+}
+
+const openDeletePatientDialog = async () => {
+  let counts = getPatientDeletionCounts()
+
   try {
-    await patientApi.softDeletePatient({ id: patientId })
+    deleteDialogLoading.value = true
+    counts = await getPatientDeletionCountsFromApi()
+  } catch (error) {
+    console.error(`${componentName}: Failed to fetch accurate deletion counts for patient`, error)
+  } finally {
+    deleteDialogLoading.value = false
+  }
+
+  deleteContext.value = 'patient'
+  deleteDialogConfig.value = {
+    title: t('patientOverview.confirmDeletePatient'),
+    warningText: t('patientOverview.deletePatientWarning'),
+    finalWarningText: t('patientOverview.deletePatientFinalWarning'),
+    options: [
+      { key: 'deleteCases', label: t('cascadeDeleteDialog.casesLabel'), count: counts.caseCount, defaultChecked: true },
+      { key: 'deleteConsultations', label: t('cascadeDeleteDialog.consultationsLabel'), count: counts.consultationCount, defaultChecked: true },
+      { key: 'deleteForms', label: t('cascadeDeleteDialog.formsLabel'), count: counts.formCount, defaultChecked: true },
+    ],
+  }
+  showCascadeDeleteDialog.value = true
+}
+
+const executeDeletePatient = async (selectedOptions: Record<string, boolean>) => {
+  try {
+    deleteDialogLoading.value = true
+    await patientApi.softDeletePatient(
+      { id: patientId },
+      {
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          deleteCases: selectedOptions.deleteCases === true,
+          deleteConsultations: selectedOptions.deleteConsultations === true,
+          deleteForms: selectedOptions.deleteForms === true,
+        }),
+      },
+    )
     notifierStore.notify(t('alerts.patient.deleted'), 'success')
-    showDeletePatientConfirmDialog.value = false
-    deletePatientConfirmStep.value = 0
+    showCascadeDeleteDialog.value = false
+    deleteContext.value = null
+    deleteDialogConfig.value = null
     goBack()
   } catch (error: unknown) {
     let errorMessage = 'An unexpected error occurred'
@@ -251,39 +333,66 @@ const executeDeletePatient = async () => {
     }
     console.error(`${componentName}: Failed to delete patient:`, errorMessage)
     notifierStore.notify(t('alerts.patient.deleteFailed'), 'error')
+  } finally {
+    deleteDialogLoading.value = false
   }
-}
-
-const cancelDeletePatient = () => {
-  showDeletePatientConfirmDialog.value = false
-  deletePatientConfirmStep.value = 0
 }
 
 // Delete case functions
-const openDeleteCaseDialog = (caseId: string | null | undefined) => {
+const openDeleteCaseDialog = async (caseId: string | null | undefined) => {
   if (!caseId) return
-  selectedCaseForDelete.value = caseId
-  deleteCaseConfirmStep.value = 0
-  showDeleteCaseConfirmDialog.value = true
-}
 
-const confirmDeleteCase = () => {
-  if (deleteCaseConfirmStep.value === 0) {
-    deleteCaseConfirmStep.value = 1
+  const patientCase = cases.value.find(c => c.id === caseId)
+  let consultationCount = getConsultationCountForCase(patientCase)
+  let formCount = getFormCountForCase(patientCase)
+
+  try {
+    deleteDialogLoading.value = true
+    const counts = await getCaseDeletionCountsFromApi(caseId)
+    consultationCount = counts.consultationCount
+    formCount = counts.formCount
+  } catch (error) {
+    console.error(`${componentName}: Failed to fetch accurate deletion counts for case ${caseId}`, error)
+  } finally {
+    deleteDialogLoading.value = false
   }
+
+  deleteContext.value = 'case'
+  selectedCaseForDelete.value = caseId
+  deleteDialogConfig.value = {
+    title: t('patientOverview.confirmDeleteCase'),
+    warningText: t('patientOverview.deleteCaseWarning'),
+    finalWarningText: t('patientOverview.deleteCaseFinalWarning'),
+    options: [
+      { key: 'deleteConsultations', label: t('cascadeDeleteDialog.consultationsLabel'), count: consultationCount, defaultChecked: true },
+      { key: 'deleteForms', label: t('cascadeDeleteDialog.formsLabel'), count: formCount, defaultChecked: true },
+    ],
+  }
+  showCascadeDeleteDialog.value = true
 }
 
-const executeDeleteCase = async () => {
+const executeDeleteCase = async (selectedOptions: Record<string, boolean>) => {
   if (!selectedCaseForDelete.value) return
   
   try {
-    await patientCaseApi.softDeletePatientCaseById({ 
-      patientId, 
-      caseId: selectedCaseForDelete.value 
-    })
+    deleteDialogLoading.value = true
+    await patientCaseApi.softDeletePatientCaseById(
+      {
+        patientId,
+        caseId: selectedCaseForDelete.value,
+      },
+      {
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          deleteConsultations: selectedOptions.deleteConsultations === true,
+          deleteForms: selectedOptions.deleteForms === true,
+        }),
+      },
+    )
     notifierStore.notify(t('alerts.case.deleted'), 'success')
-    showDeleteCaseConfirmDialog.value = false
-    deleteCaseConfirmStep.value = 0
+    showCascadeDeleteDialog.value = false
+    deleteContext.value = null
+    deleteDialogConfig.value = null
     selectedCaseForDelete.value = null
     await refreshCases()
   } catch (error: unknown) {
@@ -293,13 +402,27 @@ const executeDeleteCase = async () => {
     }
     console.error(`${componentName}: Failed to delete case:`, errorMessage)
     notifierStore.notify(t('alerts.case.deletionFailed'), 'error')
+  } finally {
+    deleteDialogLoading.value = false
   }
 }
 
-const cancelDeleteCase = () => {
-  showDeleteCaseConfirmDialog.value = false
-  deleteCaseConfirmStep.value = 0
+const cancelCascadeDelete = () => {
+  showCascadeDeleteDialog.value = false
+  deleteContext.value = null
+  deleteDialogConfig.value = null
   selectedCaseForDelete.value = null
+}
+
+const confirmCascadeDelete = async (selectedOptions: Record<string, boolean>) => {
+  if (deleteContext.value === 'patient') {
+    await executeDeletePatient(selectedOptions)
+    return
+  }
+
+  if (deleteContext.value === 'case') {
+    await executeDeleteCase(selectedOptions)
+  }
 }
 </script>
 
@@ -482,99 +605,16 @@ const cancelDeleteCase = () => {
                  @cancel="cancelSurgeryDialog" />
         </v-dialog>
 
-    <!-- Delete Patient Confirmation Dialog -->
-    <v-dialog
-              v-model="showDeletePatientConfirmDialog"
-              max-width="400px">
-      <v-card>
-        <v-card-title v-if="deletePatientConfirmStep === 0" class="text-h5">
-          {{ t('patientOverview.confirmDeletePatient') }}
-        </v-card-title>
-        <v-card-title v-else class="text-h5 text-error">
-          {{ t('patientOverview.confirmDeletePatientFinal') }}
-        </v-card-title>
-
-        <v-card-text v-if="deletePatientConfirmStep === 0" class="py-4">
-          <p>{{ t('patientOverview.deletePatientWarning') }}</p>
-        </v-card-text>
-
-        <v-card-text v-else class="py-4">
-          <p class="text-error font-weight-bold">
-            {{ t('patientOverview.deletePatientFinalWarning') }}
-          </p>
-        </v-card-text>
-
-        <v-card-actions class="justify-end">
-          <v-btn
-                 color="default"
-                 variant="text"
-                 @click="cancelDeletePatient">
-            {{ t('buttons.cancel') }}
-          </v-btn>
-          <v-btn
-                 v-if="deletePatientConfirmStep === 0"
-                 color="error"
-                 variant="elevated"
-                 @click="confirmDeletePatient">
-            {{ t('buttons.delete') }}
-          </v-btn>
-          <v-btn
-                 v-else
-                 color="error"
-                 variant="elevated"
-                 @click="executeDeletePatient">
-            {{ t('buttons.confirmDelete') }}
-          </v-btn>
-        </v-card-actions>
-      </v-card>
-    </v-dialog>
-
-    <!-- Delete Case Confirmation Dialog -->
-    <v-dialog
-              v-model="showDeleteCaseConfirmDialog"
-              max-width="400px">
-      <v-card>
-        <v-card-title v-if="deleteCaseConfirmStep === 0" class="text-h5">
-          {{ t('patientOverview.confirmDeleteCase') }}
-        </v-card-title>
-        <v-card-title v-else class="text-h5 text-error">
-          {{ t('patientOverview.confirmDeleteCaseFinal') }}
-        </v-card-title>
-
-        <v-card-text v-if="deleteCaseConfirmStep === 0" class="py-4">
-          <p>{{ t('patientOverview.deleteCaseWarning') }}</p>
-        </v-card-text>
-
-        <v-card-text v-else class="py-4">
-          <p class="text-error font-weight-bold">
-            {{ t('patientOverview.deleteCaseFinalWarning') }}
-          </p>
-        </v-card-text>
-
-        <v-card-actions class="justify-end">
-          <v-btn
-                 color="default"
-                 variant="text"
-                 @click="cancelDeleteCase">
-            {{ t('buttons.cancel') }}
-          </v-btn>
-          <v-btn
-                 v-if="deleteCaseConfirmStep === 0"
-                 color="error"
-                 variant="elevated"
-                 @click="confirmDeleteCase">
-            {{ t('buttons.delete') }}
-          </v-btn>
-          <v-btn
-                 v-else
-                 color="error"
-                 variant="elevated"
-                 @click="executeDeleteCase">
-            {{ t('buttons.confirmDelete') }}
-          </v-btn>
-        </v-card-actions>
-      </v-card>
-    </v-dialog>
+    <CascadeDeleteDialog
+                         v-if="deleteDialogConfig"
+                         v-model="showCascadeDeleteDialog"
+                         :title="deleteDialogConfig.title"
+                         :warning-text="deleteDialogConfig.warningText"
+                         :final-warning-text="deleteDialogConfig.finalWarningText"
+                         :options="deleteDialogConfig.options"
+                         :loading="deleteDialogLoading"
+                         @cancel="cancelCascadeDelete"
+                         @confirm="confirmCascadeDelete" />
 
     <!-- Delete Surgery Confirmation Dialog -->
     <v-dialog

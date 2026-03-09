@@ -14,6 +14,7 @@ import {
 } from '@/api'
 import { consultationApi, userApi, kioskApi, codeApi, formApi } from '@/api'
 import CreateEditConsultationDialog from '@/components/dialogs/CreateEditConsultationDialog.vue'
+import CascadeDeleteDialog from '@/components/dialogs/CascadeDeleteDialog.vue'
 import QRCodeDisplay from '@/components/QRCodeDisplay.vue'
 import ScoreScale from '@/components/ScoreScale.vue'
 import { useUserStore, useFormTemplateStore } from '@/stores'
@@ -37,7 +38,7 @@ const consultation = ref<FindAllCodes200ResponseResponseObjectInnerConsultationI
 const previousConsultations = ref<FindAllCodes200ResponseResponseObjectInnerConsultationId[]>([])
 const loading = ref(true)
 const deleteDialog = ref(false)
-const confirmDeleteDialog = ref(false)
+const deletingConsultation = ref(false)
 const showEditDialog = ref(false)
 const editingNoteIndex = ref<number | null>(null)
 const editedNote = ref<string>('')
@@ -194,18 +195,21 @@ const initiateDelete = () => {
   deleteDialog.value = true
 }
 
-// Delete consultation - second confirmation
-const confirmDelete = () => {
-  deleteDialog.value = false
-  confirmDeleteDialog.value = true
-}
-
 // Actually delete the consultation
-const deleteConsultation = async () => {
+const deleteConsultation = async (selectedOptions: Record<string, boolean>) => {
   try {
-    await consultationApi.deleteConsultation({ consultationId })
+    deletingConsultation.value = true
+    await consultationApi.deleteConsultation(
+      { consultationId },
+      {
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          deleteForms: selectedOptions.deleteForms === true,
+        }),
+      },
+    )
     notifierStore.notify(t('consultationOverview.deleteSuccess'), 'success')
-    confirmDeleteDialog.value = false
+    deleteDialog.value = false
     if (patientRouteId.value) {
       router.push({ name: 'patientoverview', params: { patientId: patientRouteId.value } })
       return
@@ -220,14 +224,15 @@ const deleteConsultation = async () => {
     }
     console.error(`${componentName}: Failed to delete consultation:`, errorMessage)
     notifierStore.notify(t('consultationOverview.deleteError'), 'error')
-    confirmDeleteDialog.value = false
+    deleteDialog.value = false
+  } finally {
+    deletingConsultation.value = false
   }
 }
 
 // Cancel delete
 const cancelDelete = () => {
   deleteDialog.value = false
-  confirmDeleteDialog.value = false
 }
 
 // Notes management
@@ -1350,49 +1355,15 @@ const assignedCodeExpiresOn = computed<string | undefined>(() => {
                                     @cancel="showEditDialog = false" />
     </v-dialog>
 
-    <!-- First Delete Confirmation Dialog -->
-    <v-dialog v-model="deleteDialog" max-width="500">
-      <v-card>
-        <v-card-title class="text-h5">
-          <v-icon color="warning" class="me-2">mdi-alert</v-icon>
-          {{ t('consultationOverview.confirmDelete') }}
-        </v-card-title>
-        <v-card-text>
-          {{ t('consultationOverview.deleteWarning') }}
-        </v-card-text>
-        <v-card-actions>
-          <v-spacer></v-spacer>
-          <v-btn color="grey" variant="text" @click="cancelDelete">
-            {{ t('common.cancel') }}
-          </v-btn>
-          <v-btn color="warning" variant="text" @click="confirmDelete">
-            {{ t('common.continue') }}
-          </v-btn>
-        </v-card-actions>
-      </v-card>
-    </v-dialog>
-
-    <!-- Second Delete Confirmation Dialog -->
-    <v-dialog v-model="confirmDeleteDialog" max-width="500">
-      <v-card>
-        <v-card-title class="text-h5">
-          <v-icon color="error" class="me-2">mdi-alert-circle</v-icon>
-          {{ t('consultationOverview.finalConfirmation') }}
-        </v-card-title>
-        <v-card-text>
-          {{ t('consultationOverview.deleteFinalWarning') }}
-        </v-card-text>
-        <v-card-actions>
-          <v-spacer></v-spacer>
-          <v-btn color="grey" variant="text" @click="cancelDelete">
-            {{ t('common.cancel') }}
-          </v-btn>
-          <v-btn color="error" variant="flat" @click="deleteConsultation">
-            {{ t('consultationOverview.deleteConfirm') }}
-          </v-btn>
-        </v-card-actions>
-      </v-card>
-    </v-dialog>
+    <CascadeDeleteDialog
+                         v-model="deleteDialog"
+                         :title="t('consultationOverview.confirmDelete')"
+                         :warning-text="t('consultationOverview.deleteWarning')"
+                         :final-warning-text="t('consultationOverview.deleteFinalWarning')"
+                         :options="[{ key: 'deleteForms', label: t('cascadeDeleteDialog.formsLabel'), count: consultation?.proms?.length || 0, defaultChecked: true }]"
+                         :loading="deletingConsultation"
+                         @cancel="cancelDelete"
+                         @confirm="deleteConsultation" />
 
     <!-- Archive Form Confirmation Dialog -->
     <v-dialog v-model="archiveFormDialog" max-width="600">
