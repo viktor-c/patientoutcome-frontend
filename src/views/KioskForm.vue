@@ -47,6 +47,11 @@ const fetchConsultationForms = async () => {
       console.log('KioskForm: Found', allFormIds.value.length, 'forms, current index:', currentFormIndex.value)
     }
   } catch (err: unknown) {
+    if (err instanceof Error && 'response' in err && (err as any).response.status === 404) {
+      // no consultation assigned; forms list should remain empty
+      console.debug('KioskForm: no consultation available, skipping form list build')
+      return
+    }
     console.error('Failed to fetch consultation forms:', err)
   }
 }

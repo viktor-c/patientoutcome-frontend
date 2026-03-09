@@ -60,7 +60,20 @@ const loadConsultation = async () => {
     if (response.responseObject) {
       await processConsultation(response.responseObject)
     }
-  } catch (err) {
+  } catch (err: unknown) {
+    // the backend returns 404 when no consultation is assigned to the kiosk user
+    if (err instanceof Error && 'response' in err) {
+      // runtime.ResponseError has a response property
+      const resp: any = (err as any).response
+      if (resp && resp.status === 404) {
+        // treat as empty state, not a hard error
+        console.debug('KioskView: no consultation assigned yet')
+        consultation.value = null
+        loading.value = false
+        return
+      }
+    }
+
     console.error('Failed to load consultation:', err)
     error.value = true
     notifier.error(t('kiosk.error'))
