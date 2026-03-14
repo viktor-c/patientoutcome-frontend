@@ -353,7 +353,8 @@ onMounted(async () => {
                       :to="{ name: 'patientcaselanding', params: { caseId: getCaseIdFromPatientCase(item.patientCaseId) || item.patientCaseId } }"
                       class="text-caption">
 
-            {{ getPatientCaseExternalIds(item) || (getCaseIdFromPatientCase(item.patientCaseId) || item.patientCaseId) }}
+            {{ getPatientCaseExternalIds(item) || (getCaseIdFromPatientCase(item.patientCaseId) || item.patientCaseId)
+            }}
           </RouterLink>
         </div>
         <span v-else>{{ t('dashboard.noPatientCase') }}</span>

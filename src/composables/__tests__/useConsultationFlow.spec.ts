@@ -20,7 +20,7 @@ vi.mock('@/stores', () => ({
 }))
 
 vi.mock('@/adapters/apiAdapters', () => ({
-  mapApiFormsToForms: vi.fn((proms) => 
+  mapApiFormsToForms: vi.fn((proms) =>
     proms.map((prom: unknown, idx: number) => {
       const promRecord = asPromRecord(prom)
       return {
@@ -38,7 +38,7 @@ vi.mock('@/adapters/apiAdapters', () => ({
 }))
 
 vi.mock('@/utils/consultationForms', () => ({
-  extractConsultationForms: vi.fn((consultation, lookup) => 
+  extractConsultationForms: vi.fn((consultation, lookup) =>
     (consultation.proms || []).map((prom: unknown) => {
       const promRecord = asPromRecord(prom)
       const formTemplateId = typeof promRecord.formTemplateId === 'string' ? promRecord.formTemplateId : ''
@@ -88,21 +88,21 @@ describe('useConsultationFlow', () => {
   describe('isFormComplete', () => {
     it('should return true for complete status', () => {
       const { isFormComplete } = useConsultationFlow()
-      
+
       expect(isFormComplete({ formFillStatus: 'complete' } as unknown as Form)).toBe(true)
       expect(isFormComplete({ formFillStatus: 'completed' } as unknown as Form)).toBe(true)
     })
 
     it('should return false for incomplete status', () => {
       const { isFormComplete } = useConsultationFlow()
-      
+
       expect(isFormComplete({ formFillStatus: 'incomplete' } as unknown as Form)).toBe(false)
       expect(isFormComplete({ formFillStatus: 'pending' } as unknown as Form)).toBe(false)
     })
 
     it('should check patientFormData.fillStatus as fallback', () => {
       const { isFormComplete } = useConsultationFlow()
-      
+
       expect(isFormComplete({ patientFormData: { fillStatus: 'complete' } } as unknown as Form)).toBe(true)
       expect(isFormComplete({ patientFormData: { fillStatus: 'pending' } } as unknown as Form)).toBe(false)
     })

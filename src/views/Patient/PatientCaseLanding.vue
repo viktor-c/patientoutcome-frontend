@@ -624,7 +624,7 @@ onMounted(() => {
                   </template>
                   <v-list-item-title>{{ t('patientCaseLanding.createdAt') }}</v-list-item-title>
                   <v-list-item-subtitle>{{ safeFormatDate(patientCase.createdAt, dateFormats.isoDate)
-                    }}</v-list-item-subtitle>
+                  }}</v-list-item-subtitle>
                 </v-list-item>
 
                 <v-list-item v-if="patientCase?.mainDiagnosis">
@@ -1037,15 +1037,15 @@ onMounted(() => {
     </v-dialog>
 
     <CascadeDeleteDialog
-               v-if="cascadeDeleteConfig"
-               v-model="showCascadeDeleteDialog"
-               :title="cascadeDeleteConfig.title"
-               :warning-text="cascadeDeleteConfig.warningText"
-               :final-warning-text="cascadeDeleteConfig.finalWarningText"
-               :options="cascadeDeleteConfig.options"
-               :loading="isDeleting"
-               @cancel="cancelCascadeDelete"
-               @confirm="confirmCascadeDelete" />
+                         v-if="cascadeDeleteConfig"
+                         v-model="showCascadeDeleteDialog"
+                         :title="cascadeDeleteConfig.title"
+                         :warning-text="cascadeDeleteConfig.warningText"
+                         :final-warning-text="cascadeDeleteConfig.finalWarningText"
+                         :options="cascadeDeleteConfig.options"
+                         :loading="isDeleting"
+                         @cancel="cancelCascadeDelete"
+                         @confirm="confirmCascadeDelete" />
 
     <v-dialog
               v-model="showMoveConsultationConfirmDialog"

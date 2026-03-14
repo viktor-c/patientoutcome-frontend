@@ -222,7 +222,7 @@ describe('CreateEditSurgeryDialog.vue', () => {
           diagnosis: string[]
         }
       }
-      
+
       expect(vm.form.patientCase).toBe('case-123')
     })
   })
@@ -402,7 +402,7 @@ describe('CreateEditSurgeryDialog.vue', () => {
 
       // Verify component exists and emits are captured
       expect(wrapper.exists()).toBe(true)
-      
+
       // Component should be ready for emit events
       expect(typeof wrapper.emitted).toBe('function')
     })

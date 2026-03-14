@@ -474,7 +474,7 @@ const confirmCascadeDelete = async (selectedOptions: Record<string, boolean>) =>
                   </template>
                   <v-list-item-title>{{ t('patientOverview.externalId') }}</v-list-item-title>
                   <v-list-item-subtitle>{{ patient.externalPatientId || t('common.notAvailable')
-                    }}</v-list-item-subtitle>
+                  }}</v-list-item-subtitle>
                 </v-list-item>
 
                 <v-list-item>

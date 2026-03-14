@@ -111,7 +111,7 @@ const processFormData = async (submissionData: FormSubmissionData) => {
   if (form.value && form.value._id) {
     // Update local state with full PatientFormData structure
     form.value.patientFormData = submissionData
-    
+
     // Auto-save to backend with full PatientFormData structure
     try {
       await formApi.updateForm({
@@ -174,10 +174,10 @@ const goBackToKiosk = () => {
       <v-card>
         <v-card-text>
           <PluginFormRenderer
-                       :key="formId"
-                       :template-id="currentForm?.formTemplateId || formId"
-                       :model-value="currentForm?.patientFormData || null"
-                       @update:model-value="processFormData" />
+                              :key="formId"
+                              :template-id="currentForm?.formTemplateId || formId"
+                              :model-value="currentForm?.patientFormData || null"
+                              @update:model-value="processFormData" />
         </v-card-text>
       </v-card>
     </div>

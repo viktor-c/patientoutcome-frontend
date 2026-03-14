@@ -1105,7 +1105,7 @@ const assignedConsultationAccessWindow = computed(() => {
               <h4 class="mb-3">{{ t('consultationOverview.assignAdditionalKiosk') }}</h4>
               <p class="text-caption text-medium-emphasis mt-2">{{
                 t('consultationOverview.selectionAssignsImmediately')
-                }}</p>
+              }}</p>
               <v-row>
                 <v-col cols="12" md="8">
                   <v-autocomplete
@@ -1169,7 +1169,7 @@ const assignedConsultationAccessWindow = computed(() => {
                   </v-autocomplete>
                   <p class="text-caption text-medium-emphasis mt-2">{{
                     t('consultationOverview.selectionAssignsImmediately')
-                    }}</p>
+                  }}</p>
                 </v-col>
 
                 <v-col cols="12" md="4">
@@ -1260,7 +1260,7 @@ const assignedConsultationAccessWindow = computed(() => {
                 </v-autocomplete>
                 <p class="text-caption text-medium-emphasis mt-2">{{
                   t('consultationOverview.selectionAssignsImmediately')
-                  }}</p>
+                }}</p>
               </v-col>
             </v-row>
           </div>
