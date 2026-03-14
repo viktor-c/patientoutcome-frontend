@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, vi, type Mock } from 'vitest'
+import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { formVersionService } from '@/services/formVersionService'
 
 // Mock the API

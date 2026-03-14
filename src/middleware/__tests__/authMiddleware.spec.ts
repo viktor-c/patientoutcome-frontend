@@ -1,7 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { authMiddleware } from '@/middleware/authMiddleware'
 import type { ResponseContext } from '@/api/runtime'
-import { useUserStore } from '@/stores/userStore'
 import router from '@/router'
 
 // Mock dependencies - factories run at mock time
@@ -42,21 +41,21 @@ describe('authMiddleware', () => {
     it('should return response for 200 status', async () => {
       const context = createMockContext(200)
       const result = await authMiddleware.post!(context)
-      
+
       expect(result).toBe(context.response)
     })
 
     it('should return response for 201 status', async () => {
       const context = createMockContext(201)
       const result = await authMiddleware.post!(context)
-      
+
       expect(result).toBe(context.response)
     })
 
     it('should return response for 204 status', async () => {
       const context = createMockContext(204)
       const result = await authMiddleware.post!(context)
-      
+
       expect(result).toBe(context.response)
     })
   })
@@ -64,19 +63,19 @@ describe('authMiddleware', () => {
   describe('401 Unauthorized', () => {
     it('should throw error with appropriate message', async () => {
       const context = createMockContext(401)
-      
+
       await expect(authMiddleware.post!(context)).rejects.toThrow()
     })
 
     it('should redirect to login on 401', async () => {
       const context = createMockContext(401)
-      
+
       try {
         await authMiddleware.post!(context)
       } catch {
         // Expected to throw
       }
-      
+
       expect(router.push).toHaveBeenCalled()
     })
   })
@@ -85,7 +84,7 @@ describe('authMiddleware', () => {
     it('should return response for 403 status', async () => {
       const context = createMockContext(403)
       const result = await authMiddleware.post!(context)
-      
+
       // 403 should return response for component to handle
       expect(result).toBe(context.response)
     })
@@ -94,7 +93,7 @@ describe('authMiddleware', () => {
       vi.clearAllMocks()
       const context = createMockContext(403)
       await authMiddleware.post!(context)
-      
+
       expect(router.push).not.toHaveBeenCalled()
     })
   })
@@ -103,21 +102,21 @@ describe('authMiddleware', () => {
     it('should return response for 400 Bad Request', async () => {
       const context = createMockContext(400)
       const result = await authMiddleware.post!(context)
-      
+
       expect(result).toBe(context.response)
     })
 
     it('should return response for 404 Not Found', async () => {
       const context = createMockContext(404)
       const result = await authMiddleware.post!(context)
-      
+
       expect(result).toBe(context.response)
     })
 
     it('should return response for 500 Internal Server Error', async () => {
       const context = createMockContext(500)
       const result = await authMiddleware.post!(context)
-      
+
       expect(result).toBe(context.response)
     })
   })

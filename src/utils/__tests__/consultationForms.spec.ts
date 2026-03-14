@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
-import { extractConsultationForms, type ConsultationPromWithTitle } from '../consultationForms'
-import type { Consultation } from '@/api'
+import { extractConsultationForms } from '../consultationForms'
+import type { ApiConsultationFlexible, ApiConsultationProm } from '@/types'
 
 describe('consultationForms util', () => {
   it('returns empty list for null or undefined consultation', () => {
@@ -9,12 +9,12 @@ describe('consultationForms util', () => {
   })
 
   it('ignores non-array proms', () => {
-    const c = { proms: 'not-an-array' } as unknown as Consultation
+    const c = { proms: 'not-an-array' } as unknown as ApiConsultationFlexible
     expect(extractConsultationForms(c)).toEqual([])
   })
 
   it('extracts id and title when both are present', () => {
-    const c: Consultation = {
+    const c: ApiConsultationFlexible = {
       patientCaseId: 'case',
       dateAndTime: '',
       reasonForConsultation: [],
@@ -22,7 +22,7 @@ describe('consultationForms util', () => {
       proms: [
         { id: 'form-1', title: 'Form One' },
         { id: 'form-2', title: 'Form Two' },
-      ] as any,
+      ] as unknown as ApiConsultationProm[],
       images: [],
       visitedBy: [],
     }
@@ -34,7 +34,7 @@ describe('consultationForms util', () => {
   })
 
   it('uses templateLookup to fill missing titles', () => {
-    const c: Consultation = {
+    const c: ApiConsultationFlexible = {
       patientCaseId: 'case',
       dateAndTime: '',
       reasonForConsultation: [],
@@ -42,7 +42,7 @@ describe('consultationForms util', () => {
       proms: [
         { formTemplateId: 'tpl-1' },
         { formTemplateId: 'tpl-2' },
-      ] as any,
+      ] as unknown as ApiConsultationProm[],
       images: [],
       visitedBy: [],
     }
@@ -55,7 +55,7 @@ describe('consultationForms util', () => {
   })
 
   it('falls back to id when title cannot be determined', () => {
-    const c: Consultation = {
+    const c: ApiConsultationFlexible = {
       patientCaseId: 'case',
       dateAndTime: '',
       reasonForConsultation: [],
@@ -63,7 +63,7 @@ describe('consultationForms util', () => {
       proms: [
         { formTemplateId: 'tpl-foo' },
         { id: 'explicit-id' },
-      ] as any,
+      ] as unknown as ApiConsultationProm[],
       images: [],
       visitedBy: [],
     }
@@ -75,12 +75,12 @@ describe('consultationForms util', () => {
   })
 
   it('ignores strange prom values', () => {
-    const c: Consultation = {
+    const c: ApiConsultationFlexible = {
       patientCaseId: 'case',
       dateAndTime: '',
       reasonForConsultation: [],
       notes: [],
-      proms: [null, undefined, 'string'] as any,
+      proms: [null, undefined, 'string'] as unknown as ApiConsultationProm[],
       images: [],
       visitedBy: [],
     }

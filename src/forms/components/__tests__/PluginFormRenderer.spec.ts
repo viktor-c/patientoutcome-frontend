@@ -10,6 +10,7 @@ import type { ScoringData } from '@/types/backend/scoring'
 import { h } from 'vue'
 import type { Component } from 'vue'
 import { createI18n } from 'vue-i18n'
+import en from '@/locales/en'
 
 // Mock the registry module
 const mockGetFormPlugin = vi.fn()
@@ -96,7 +97,7 @@ describe('PluginFormRenderer.vue', () => {
     i18n = createI18n({
       legacy: false,
       locale: 'en',
-      messages: { en: {} },
+      messages: { en },
     })
 
     mockPlugin = createMockPlugin()

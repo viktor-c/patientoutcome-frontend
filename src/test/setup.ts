@@ -1,4 +1,13 @@
 import { vi } from 'vitest'
+import { config } from '@vue/test-utils'
+
+// Stub common third-party / navigation components that are not under test
+// and would otherwise cause "Failed to resolve component" Vue warnings.
+config.global.stubs = {
+  RouterLink: { template: '<a><slot /></a>' },
+  RouterView: { template: '<div />' },
+  VueDatePicker: { template: '<input data-stub="VueDatePicker" />' },
+}
 
 // Mock visualViewport for Vuetify overlays in test environment
 Object.defineProperty(window, 'visualViewport', {

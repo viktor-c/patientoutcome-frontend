@@ -76,7 +76,7 @@ vi.mock('@/api', () => ({
 
 vi.mock('@/composables/useDateFormat', () => ({
   useDateFormat: () => ({
-    formatLocalizedCustomDate: (date: string, format: string) => date,
+    formatLocalizedCustomDate: (date: string) => date,
   }),
 }))
 
@@ -93,7 +93,7 @@ vi.mock('@/composables/useFormValidation', () => ({
 
 vi.mock('@/utils/dayjs', () => ({
   dayjs: Object.assign(
-    (date?: string) => ({
+    () => ({
       utc: () => ({
         startOf: () => ({
           add: () => ({

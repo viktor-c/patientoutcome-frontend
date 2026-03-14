@@ -14,9 +14,15 @@ const mockSearch = vi.fn()
 const mockLoadMore = vi.fn()
 const mockClear = vi.fn()
 
+interface MockIcdOpsItem {
+  code: string
+  label: string
+  kind: string
+}
+
 const mockState = {
   query: ref(''),
-  items: ref([] as any[]),
+  items: ref([] as MockIcdOpsItem[]),
   loading: ref(false),
   error: ref(null as string | null),
   currentPage: ref(1),
@@ -204,7 +210,7 @@ describe('IcdOpsSearchField.vue', () => {
     expect(emitted).toBeTruthy()
     const val = emitted![emitted!.length - 1][0]
     expect(typeof val).toBe('object')
-    expect((val as any).code).toBe('A00')
+    expect((val as { code?: string }).code).toBe('A00')
   })
 
   it('shows search mode indicator in dialog', async () => {
