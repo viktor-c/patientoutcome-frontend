@@ -16,6 +16,7 @@ export default {
     fillFields: 'Please fill in both username and password.',
     loginSuccessfull: 'Successfully logged in',
     logoutSuccessfull: 'You are logged out',
+    sessionExpired: 'Your session has expired. Please log in again.',
   },
   logout: {
     processing: 'Logging out...',

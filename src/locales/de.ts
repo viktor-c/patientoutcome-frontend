@@ -18,6 +18,7 @@ export default {
     fillFields: 'Bitte füllen Sie Benutzername und Passwort aus.',
     loginSuccessfull: 'Erfolgreich angemeldet',
     logoutSuccessfull: 'Du bist abgemeldet',
+    sessionExpired: 'Ihre Sitzung ist abgelaufen. Bitte melden Sie sich erneut an.',
   },
   logout: {
     processing: 'Abmeldung läuft...',
