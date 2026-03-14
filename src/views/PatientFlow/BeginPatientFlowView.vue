@@ -65,7 +65,9 @@ const validateCode = async () => {
 
         // Handle different error statuses
         if (statusCode === 404 || statusCode === 400 || statusCode === 500) {
-          errorMessage.value = t('flow.invalidCodeMessage')
+          errorMessage.value = errMessage.includes('not currently active')
+            ? t('flow.consultationNotActiveMessage')
+            : t('flow.invalidCodeMessage')
           patientCode.value = '' // Clear the input to allow re-entry
           showNormalFlow()
         }

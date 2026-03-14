@@ -2,23 +2,21 @@
 import { ref, onMounted, watch } from 'vue';
 import { useNotifierStore } from '@/stores/';
 import { userApi, userDepartmentApi } from '@/api';
-import type { UpdateUserRequest } from '@/api/models/UpdateUserRequest';
 import { useUserStore } from '@/stores/userStore';
-import type { GetUsers200ResponseResponseObjectInner } from '@/api/models/GetUsers200ResponseResponseObjectInner';
-import type { UserDepartment } from '@/api/models/UserDepartment';
+import type { ApiUpdateUserRequest as UpdateUserRequest, ApiUserResponse, ApiUserDepartment as UserDepartment } from '@/types';
 import EditUserDialog from '@/components/dialogs/EditUserDialog.vue';
 import { useI18n } from 'vue-i18n';
 
 const { t } = useI18n();
 
 const notifierStore = useNotifierStore();
-const users = ref<GetUsers200ResponseResponseObjectInner[]>([]);
+const users = ref<ApiUserResponse[]>([]);
 const loading = ref(false);
 const search = ref('');
 const showEditDialog = ref(false);
-const selectedUser = ref<GetUsers200ResponseResponseObjectInner | null>(null);
+const selectedUser = ref<ApiUserResponse | null>(null);
 const showDeleteConfirm = ref(false);
-const userToDelete = ref<GetUsers200ResponseResponseObjectInner | null>(null);
+const userToDelete = ref<ApiUserResponse | null>(null);
 const departments = ref<UserDepartment[]>([]);
 
 const headers = [
@@ -57,7 +55,7 @@ const loadDepartments = async () => {
   }
 };
 
-const cloneUser = (user: GetUsers200ResponseResponseObjectInner) => {
+const cloneUser = (user: ApiUserResponse) => {
   // Use structuredClone where available for deep cloning, otherwise fall back to JSON clone
   // We only do this to avoid mutating objects referenced by the data table through Vue reactivity.
   try {
@@ -69,14 +67,14 @@ const cloneUser = (user: GetUsers200ResponseResponseObjectInner) => {
   return JSON.parse(JSON.stringify(user));
 };
 
-const editUser = (user: GetUsers200ResponseResponseObjectInner) => {
+const editUser = (user: ApiUserResponse) => {
   selectedUser.value = cloneUser(user);
   showEditDialog.value = true;
 };
 
 const userStore = useUserStore();
 
-const saveUser = async (updatedUser: GetUsers200ResponseResponseObjectInner) => {
+const saveUser = async (updatedUser: ApiUserResponse) => {
   console.debug('UserManagement.saveUser: updating user', updatedUser?.username, 'as admin', userStore.username);
 
   // User must have an id to be updated
@@ -117,7 +115,7 @@ const saveUser = async (updatedUser: GetUsers200ResponseResponseObjectInner) => 
   }
 };
 
-const confirmDelete = (user: GetUsers200ResponseResponseObjectInner) => {
+const confirmDelete = (user: ApiUserResponse) => {
   // Check if user being deleted is the logged-in user
   if (user.username === userStore.username) {
     // Check if user is an admin

@@ -7,11 +7,9 @@ import { useNotifierStore } from '@/stores/notifierStore'
 
 import {
   ResponseError,
-  type FindAllCodes200ResponseResponseObjectInnerConsultationId as Consultation,
   type Patient,
-  type Surgery,
-  type GetAllPatientCases200ResponseResponseObjectInner as PatientCaseWithDetails,
 } from '@/api'
+import type { ApiConsultation as Consultation, ApiPatientCaseWithDetails as PatientCaseWithDetails } from '@/types'
 import { consultationApi, patientApi, patientCaseApi, surgeryApi } from '@/api'
 
 // Import components
@@ -162,7 +160,7 @@ const handleCreateSurgery = (caseId: string | null | undefined) => {
   }
 }
 
-const handleSurgeryCreated = async (_surgery: Surgery) => {
+const handleSurgeryCreated = async () => {
   showCreateSurgeryDialog.value = false
   selectedCaseIdForSurgery.value = null
   await refreshCases()
@@ -373,7 +371,7 @@ const openDeleteCaseDialog = async (caseId: string | null | undefined) => {
 
 const executeDeleteCase = async (selectedOptions: Record<string, boolean>) => {
   if (!selectedCaseForDelete.value) return
-  
+
   try {
     deleteDialogLoading.value = true
     await patientCaseApi.softDeletePatientCaseById(
@@ -594,16 +592,16 @@ const confirmCascadeDelete = async (selectedOptions: Record<string, boolean>) =>
                                     @cancel="cancelConsultationDialog" />
     </v-dialog>
 
-        <!-- Create Surgery Dialog -->
-        <v-dialog
-            v-model="showCreateSurgeryDialog"
-            max-width="1200px">
-          <CreateEditSurgeryDialog
-                 v-if="selectedCaseIdForSurgery"
-                 :patient-case-id="selectedCaseIdForSurgery"
-                 @submit="handleSurgeryCreated"
-                 @cancel="cancelSurgeryDialog" />
-        </v-dialog>
+    <!-- Create Surgery Dialog -->
+    <v-dialog
+              v-model="showCreateSurgeryDialog"
+              max-width="1200px">
+      <CreateEditSurgeryDialog
+                               v-if="selectedCaseIdForSurgery"
+                               :patient-case-id="selectedCaseIdForSurgery"
+                               @submit="handleSurgeryCreated"
+                               @cancel="cancelSurgeryDialog" />
+    </v-dialog>
 
     <CascadeDeleteDialog
                          v-if="deleteDialogConfig"

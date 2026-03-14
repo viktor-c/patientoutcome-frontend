@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia'
 import { useLocalStorage } from '@vueuse/core'
-import type { UpdateUserRequest } from '@/api/models/UpdateUserRequest';
+import type { ApiUpdateUserRequest as UpdateUserRequest } from '@/types';
 
 import { userApi } from '@/api';
 
@@ -10,6 +10,8 @@ export const useUserStore = defineStore('user', () => {
   const belongsToCenter = useLocalStorage('belongsToCenter', [] as string[])
   const department = useLocalStorage('department', '')
   const email = useLocalStorage('email', '')
+  const consultationAccessDaysBefore = useLocalStorage('consultationAccessDaysBefore', 3)
+  const consultationAccessDaysAfter = useLocalStorage('consultationAccessDaysAfter', 30)
   // number of days to look back when showing consultations (per-user setting)
   const daysBeforeConsultations = useLocalStorage('daysBeforeConsultations', 7)
   const roles = useLocalStorage('roles', [] as string[])
@@ -24,6 +26,8 @@ export const useUserStore = defineStore('user', () => {
     belongsToCenter: string[]
     department: string
     email?: string // Optional email field
+    consultationAccessDaysBefore?: number
+    consultationAccessDaysAfter?: number
     roles?: string[] // Optional roles array field
     permissions?: string[] // Optional permissions array field
     postopWeek?: number // Optional postopWeek field for kiosk users
@@ -35,6 +39,8 @@ export const useUserStore = defineStore('user', () => {
     belongsToCenter.value = data.belongsToCenter
     department.value = data.department
     email.value = data.email || '' // Ensure email is set, default to empty string if not provided
+    consultationAccessDaysBefore.value = data.consultationAccessDaysBefore ?? 3
+    consultationAccessDaysAfter.value = data.consultationAccessDaysAfter ?? 30
     roles.value = data.roles || [] // Ensure roles is set, default to empty array if not provided
     permissions.value = data.permissions || [] // Ensure permissions is set, default to empty array if not provided
     postopWeek.value = data.postopWeek // Set postopWeek for kiosk users
@@ -47,6 +53,8 @@ export const useUserStore = defineStore('user', () => {
     belongsToCenter.value = []
     department.value = ''
     email.value = ''
+    consultationAccessDaysBefore.value = 3
+    consultationAccessDaysAfter.value = 30
     roles.value = []
     permissions.value = []
     postopWeek.value = undefined
@@ -98,6 +106,7 @@ export const useUserStore = defineStore('user', () => {
 
   return {
     username, belongsToCenter, department, email, roles, permissions,
+    consultationAccessDaysBefore, consultationAccessDaysAfter,
     daysBeforeConsultations, postopWeek,
     // Methods
     setSession, clearSession, logout,

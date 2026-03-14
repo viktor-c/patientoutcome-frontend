@@ -7,13 +7,12 @@ import dayjs from 'dayjs';
 import localizedFormat from 'dayjs/plugin/localizedFormat';
 import 'dayjs/locale/en';
 import 'dayjs/locale/de';
-import type { GetBackupHistory200ResponseResponseObjectInner } from '@/api/models/GetBackupHistory200ResponseResponseObjectInner';
-import type { GetAllCredentials200ResponseResponseObjectInner } from '@/api/models/GetAllCredentials200ResponseResponseObjectInner';
+import type { ApiBackupHistoryEntry, ApiCredential as GetAllCredentials200ResponseResponseObjectInner } from '@/types';
 
 dayjs.extend(localizedFormat);
 
 interface Props {
-  backupHistory: GetBackupHistory200ResponseResponseObjectInner[];
+  backupHistory: ApiBackupHistoryEntry[];
   credentials: GetAllCredentials200ResponseResponseObjectInner[];
   loading: boolean;
 }
@@ -21,7 +20,7 @@ interface Props {
 const props = defineProps<Props>();
 const emit = defineEmits<{
   refresh: [];
-  restore: [backup: GetBackupHistory200ResponseResponseObjectInner];
+  restore: [backup: ApiBackupHistoryEntry];
 }>();
 
 const notifierStore = useNotifierStore();
@@ -36,7 +35,7 @@ const locale = computed(() => {
 // Delete confirmation
 const deleteDialog = ref(false);
 const deleteConfirmDialog = ref(false);
-const backupToDelete = ref<GetBackupHistory200ResponseResponseObjectInner | null>(null);
+const backupToDelete = ref<ApiBackupHistoryEntry | null>(null);
 const deleteConfirmationWord = ref('');
 const requiredConfirmationWord = ref('');
 const deleteLoading = ref(false);
@@ -67,7 +66,7 @@ const formatDate = (dateString: string | null | undefined): string => {
   return dayjs(dateString).locale(locale.value).format('L LTS');
 };
 
-const downloadBackup = async (backup: GetBackupHistory200ResponseResponseObjectInner) => {
+const downloadBackup = async (backup: ApiBackupHistoryEntry) => {
   try {
     const response = await backupApi.downloadBackupRaw({
       id: backup.id!,
@@ -88,11 +87,11 @@ const downloadBackup = async (backup: GetBackupHistory200ResponseResponseObjectI
   }
 };
 
-const openRestoreDialog = (backup: GetBackupHistory200ResponseResponseObjectInner) => {
+const openRestoreDialog = (backup: ApiBackupHistoryEntry) => {
   emit('restore', backup);
 };
 
-const openDeleteDialog = (backup: GetBackupHistory200ResponseResponseObjectInner) => {
+const openDeleteDialog = (backup: ApiBackupHistoryEntry) => {
   backupToDelete.value = backup;
   deleteDialog.value = true;
 };
@@ -135,7 +134,7 @@ const cancelDelete = () => {
   deleteConfirmationWord.value = '';
 };
 
-const getStorageDisplayName = (backup: GetBackupHistory200ResponseResponseObjectInner): string => {
+const getStorageDisplayName = (backup: ApiBackupHistoryEntry): string => {
   if (backup.storageType === 'local') {
     return 'Server Storage';
   }
@@ -149,7 +148,7 @@ const getStorageDisplayName = (backup: GetBackupHistory200ResponseResponseObject
   return typeLabels[backup.storageType] || backup.storageType;
 };
 
-const getCredentialName = (backup: GetBackupHistory200ResponseResponseObjectInner): string => {
+const getCredentialName = (backup: ApiBackupHistoryEntry): string => {
   if (backup.storageType === 'local') {
     return 'Server';
   }
@@ -164,7 +163,7 @@ const getCredentialName = (backup: GetBackupHistory200ResponseResponseObjectInne
   return '-';
 };
 
-const getLocationDetails = (backup: GetBackupHistory200ResponseResponseObjectInner): string => {
+const getLocationDetails = (backup: ApiBackupHistoryEntry): string => {
   const parts: string[] = [];
 
   const credName = getCredentialName(backup);
@@ -181,7 +180,7 @@ const getLocationDetails = (backup: GetBackupHistory200ResponseResponseObjectInn
   return parts.join('\n');
 };
 
-const getRestoreStatusDisplay = (backup: GetBackupHistory200ResponseResponseObjectInner): string => {
+const getRestoreStatusDisplay = (backup: ApiBackupHistoryEntry): string => {
   if (backup.wasRestored && backup.lastRestoredAt) {
     return `Restored: ${formatDate(backup.lastRestoredAt)}`;
   }
@@ -194,11 +193,10 @@ const getRestoreStatusDisplay = (backup: GetBackupHistory200ResponseResponseObje
     <v-card-title>Backup History</v-card-title>
     <v-card-text>
       <v-data-table
-        :headers="backupHistoryHeaders"
-        :items="backupHistory"
-        :loading="loading"
-        class="elevation-1"
-      >
+                    :headers="backupHistoryHeaders"
+                    :items="backupHistory"
+                    :loading="loading"
+                    class="elevation-1">
         <template v-slot:[`item.storage`]="{ item }">
           <v-tooltip location="top">
             <template v-slot:activator="{ props }">
@@ -234,21 +232,20 @@ const getRestoreStatusDisplay = (backup: GetBackupHistory200ResponseResponseObje
         </template>
         <template v-slot:[`item.status`]="{ item }">
           <v-chip
-            :color="item.status === 'completed' ? 'success' : item.status === 'failed' ? 'error' : 'info'"
-            size="small"
-          >
+                  :color="item.status === 'completed' ? 'success' : item.status === 'failed' ? 'error' : 'info'"
+                  size="small">
             {{ item.status }}
           </v-chip>
         </template>
         <template v-slot:[`item.restoreStatus`]="{ item }">
-          <v-tooltip :text="item.wasRestored && item.lastRestoredBy ? `Restored by: ${item.lastRestoredBy}` : 'This backup has not been restored yet'" location="top">
+          <v-tooltip :text="item.wasRestored && item.lastRestoredBy ? `Restored by: ${item.lastRestoredBy}` : 'This backup has not been restored yet'"
+                     location="top">
             <template v-slot:activator="{ props }">
               <v-chip
-                v-bind="props"
-                :color="item.wasRestored ? 'success' : 'default'"
-                :prepend-icon="item.wasRestored ? 'mdi-check-circle' : 'mdi-circle-outline'"
-                size="small"
-              >
+                      v-bind="props"
+                      :color="item.wasRestored ? 'success' : 'default'"
+                      :prepend-icon="item.wasRestored ? 'mdi-check-circle' : 'mdi-circle-outline'"
+                      size="small">
                 {{ getRestoreStatusDisplay(item) }}
               </v-chip>
             </template>
@@ -258,38 +255,35 @@ const getRestoreStatusDisplay = (backup: GetBackupHistory200ResponseResponseObje
           <v-tooltip :text="t('backup.download')" location="top">
             <template v-slot:activator="{ props }">
               <v-btn
-                v-bind="props"
-                icon="mdi-download"
-                size="small"
-                variant="text"
-                @click="downloadBackup(item)"
-                :disabled="item.status !== 'completed'"
-              />
+                     v-bind="props"
+                     icon="mdi-download"
+                     size="small"
+                     variant="text"
+                     @click="downloadBackup(item)"
+                     :disabled="item.status !== 'completed'" />
             </template>
           </v-tooltip>
           <v-tooltip :text="t('backup.restore')" location="top">
             <template v-slot:activator="{ props }">
               <v-btn
-                v-bind="props"
-                icon="mdi-database-import"
-                size="small"
-                variant="text"
-                color="primary"
-                @click="openRestoreDialog(item)"
-                :disabled="item.status !== 'completed'"
-              />
+                     v-bind="props"
+                     icon="mdi-database-import"
+                     size="small"
+                     variant="text"
+                     color="primary"
+                     @click="openRestoreDialog(item)"
+                     :disabled="item.status !== 'completed'" />
             </template>
           </v-tooltip>
           <v-tooltip :text="t('backup.delete')" location="top">
             <template v-slot:activator="{ props }">
               <v-btn
-                v-bind="props"
-                icon="mdi-delete"
-                size="small"
-                variant="text"
-                color="error"
-                @click="openDeleteDialog(item)"
-              />
+                     v-bind="props"
+                     icon="mdi-delete"
+                     size="small"
+                     variant="text"
+                     color="error"
+                     @click="openDeleteDialog(item)" />
             </template>
           </v-tooltip>
         </template>
@@ -310,8 +304,11 @@ const getRestoreStatusDisplay = (backup: GetBackupHistory200ResponseResponseObje
           </v-alert>
           <div class="mt-4">
             <div><strong>Backup:</strong> {{ backupToDelete?.filename }}</div>
-            <div><strong>Created:</strong> {{ backupToDelete?.startedAt ? formatDate(backupToDelete.startedAt) : 'N/A' }}</div>
-            <div><strong>Size:</strong> {{ backupToDelete?.sizeBytes ? formatBytes(backupToDelete.sizeBytes) : 'N/A' }}</div>
+            <div><strong>Created:</strong> {{ backupToDelete?.startedAt ? formatDate(backupToDelete.startedAt) : 'N/A'
+              }}
+            </div>
+            <div><strong>Size:</strong> {{ backupToDelete?.sizeBytes ? formatBytes(backupToDelete.sizeBytes) : 'N/A' }}
+            </div>
           </div>
         </v-card-text>
         <v-card-actions>
@@ -341,25 +338,23 @@ const getRestoreStatusDisplay = (backup: GetBackupHistory200ResponseResponseObje
             <p class="text-h5 text-center text-error my-3">"{{ requiredConfirmationWord }}"</p>
           </div>
           <v-text-field
-            v-model="deleteConfirmationWord"
-            label="Type confirmation word"
-            variant="outlined"
-            :hint="`Type '${requiredConfirmationWord}' to confirm`"
-            persistent-hint
-            autofocus
-            @keyup.enter="confirmDeleteStep2"
-          />
+                        v-model="deleteConfirmationWord"
+                        label="Type confirmation word"
+                        variant="outlined"
+                        :hint="`Type '${requiredConfirmationWord}' to confirm`"
+                        persistent-hint
+                        autofocus
+                        @keyup.enter="confirmDeleteStep2" />
         </v-card-text>
         <v-card-actions>
           <v-spacer />
           <v-btn text @click="cancelDelete">Cancel</v-btn>
           <v-btn
-            color="error"
-            variant="flat"
-            :loading="deleteLoading"
-            :disabled="deleteConfirmationWord.toLowerCase() !== requiredConfirmationWord"
-            @click="confirmDeleteStep2"
-          >
+                 color="error"
+                 variant="flat"
+                 :loading="deleteLoading"
+                 :disabled="deleteConfirmationWord.toLowerCase() !== requiredConfirmationWord"
+                 @click="confirmDeleteStep2">
             Delete Permanently
           </v-btn>
         </v-card-actions>

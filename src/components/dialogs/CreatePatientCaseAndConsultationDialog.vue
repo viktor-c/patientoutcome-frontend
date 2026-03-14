@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { ResponseError, type GetAllPatientCases200ResponseResponseObjectInner as PatientCaseFromApi } from '@/api'
+import { ResponseError } from '@/api'
+import type { ApiPatientCaseWithDetails as PatientCaseFromApi } from '@/types'
 import PatientCaseCreateEditForm from '@/components/forms/PatientCaseCreateEditForm.vue'
 import { useNotifierStore } from '@/stores/notifierStore'
 import { useUserStore } from '@/stores/userStore'
@@ -34,7 +35,7 @@ const loadingDepartments = ref(false)
 const fetchUserDepartments = async () => {
   // Parse department from userStore - it could be a string or array
   let departmentIds: string[] = []
-  
+
   if (typeof userStore.department === 'string') {
     // Single department - could be comma-separated or single ID
     if (userStore.department.includes(',')) {
@@ -62,7 +63,7 @@ const fetchUserDepartments = async () => {
     const response = await userDepartmentApi.getAllDepartments()
     if (response.success && response.responseObject) {
       // Filter to only show departments the user belongs to
-      userDepartments.value = response.responseObject.filter(d => 
+      userDepartments.value = response.responseObject.filter(d =>
         d.id && departmentIds.includes(d.id)
       )
     }
@@ -224,7 +225,7 @@ const removeExternalId = (idx: number) => {
                       outlined
                       dense
                       clearable></v-select>
-            
+
             <!-- Show dropdown if user has multiple departments -->
             <v-select
                       v-if="userDepartments.length > 1"
@@ -238,7 +239,7 @@ const removeExternalId = (idx: number) => {
                       variant="outlined"
                       density="compact"
                       required></v-select>
-            
+
             <!-- Show readonly field if user has only one department -->
             <v-text-field
                           v-else

@@ -59,6 +59,7 @@ export default {
     enterPatientCode: 'Patient code',
     codeHint: 'Please enter at least 5 characters',
     invalidCodeMessage: 'The code you entered is invalid.',
+    consultationNotActiveMessage: 'This consultation is currently outside the allowed form access window.',
     successMessage: 'The forms will now be shown.',
     allFormsFilled: 'All forms have been filled out.',
     noFormsAvailable: 'No forms available for this case.',
@@ -328,6 +329,7 @@ export default {
     pdfError: 'Failed to generate PDF',
     expiresAt: 'Expires: {date}',
     accessExpired: 'This access link has expired.',
+    accessWindowRange: 'Form access window: {from} – {until}',
   },
   alerts: {
     patient: {
@@ -1486,13 +1488,15 @@ export default {
     restoreDefaultDeselectedHint: 'Session, user, and backup-related tables are deselected by default.',
   },
   departmentCodeSettings: {
-    title: 'Department Code Settings',
-    subtitle: 'Configure how long patient access codes remain valid',
-    codeLifeLabel: 'Code validity duration',
-    codeLifeHint: 'e.g. 4h (4 hours), 2d (2 days), 3w (3 weeks)',
-    codeLifeInvalidFormat: 'Use format: number + h/d/w (e.g. 4h, 2d, 3w)',
-    saveSuccess: 'Code life setting saved successfully',
-    saveError: 'Failed to save code life setting',
+    title: 'Department Consultation Access Settings',
+    subtitle: 'Configure how many days before and after a consultation patients may access forms',
+    daysBeforeLabel: 'Days before consultation',
+    daysBeforeHint: 'Patients can start filling forms this many days before the consultation date',
+    daysAfterLabel: 'Days after consultation',
+    daysAfterHint: 'Patients can continue filling forms this many days after the consultation date',
+    dayRangeInvalid: 'Use a whole number between 0 and 365 days.',
+    saveSuccess: 'Consultation access window saved successfully',
+    saveError: 'Failed to save consultation access window',
   },
   settings: {
     title: 'Application Settings',

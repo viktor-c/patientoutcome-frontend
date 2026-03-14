@@ -7,15 +7,15 @@ import { useNotifierStore } from '@/stores/notifierStore'
 
 import {
   ResponseError,
-  type FindAllCodes200ResponseResponseObjectInnerConsultationId,
-  type FindAllCodes200ResponseResponseObjectInnerConsultationIdPromsInner,
   type Note,
   type UserNoPassword
 } from '@/api'
-import { consultationApi, userApi, kioskApi, codeApi, formApi } from '@/api'
+import type { ApiConsultation, ApiConsultationForm } from '@/types'
+import { consultationApi, userApi, kioskApi, codeApi, formApi, activateCodeForCase } from '@/api'
 import CreateEditConsultationDialog from '@/components/dialogs/CreateEditConsultationDialog.vue'
 import CascadeDeleteDialog from '@/components/dialogs/CascadeDeleteDialog.vue'
 import QRCodeDisplay from '@/components/QRCodeDisplay.vue'
+import { getConsultationAccessWindowFromConsultation } from '@/utils/consultationAccessWindow'
 import ScoreScale from '@/components/ScoreScale.vue'
 import { useUserStore, useFormTemplateStore } from '@/stores'
 import { generateScaleInfo } from '@/utils/scaleInfo'
@@ -34,8 +34,8 @@ const formTemplateStore = useFormTemplateStore()
 const consultationId = route.params.consultationId as string
 
 // State
-const consultation = ref<FindAllCodes200ResponseResponseObjectInnerConsultationId | null>(null)
-const previousConsultations = ref<FindAllCodes200ResponseResponseObjectInnerConsultationId[]>([])
+const consultation = ref<ApiConsultation | null>(null)
+const previousConsultations = ref<ApiConsultation[]>([])
 const loading = ref(true)
 const deleteDialog = ref(false)
 const deletingConsultation = ref(false)
@@ -113,9 +113,17 @@ onMounted(async () => {
     if (consultation.value && consultation.value.proms && Array.isArray(consultation.value.proms)) {
       await formTemplateStore.fetchIfNeeded()
       const lookup = formTemplateStore.templateLookup
-      consultation.value.proms.forEach((p: any) => {
-        if (p && !p.title && p.formTemplateId && lookup[p.formTemplateId]) {
-          p.title = lookup[p.formTemplateId]
+      consultation.value.proms.forEach((prom) => {
+        if (!prom || typeof prom !== 'object') return
+        const promRecord = prom as Record<string, unknown>
+        const title = promRecord.title
+        const formTemplateId = promRecord.formTemplateId
+        if (
+          (typeof title !== 'string' || title.length === 0) &&
+          typeof formTemplateId === 'string' &&
+          lookup[formTemplateId]
+        ) {
+          promRecord.title = lookup[formTemplateId]
         }
       })
     }
@@ -494,11 +502,11 @@ const availableCodesForSelection = computed(() => {
 })
 
 const assignCode = async () => {
-  if (!selectedCode.value || !consultation.value?.id) return
+  if (!selectedCode.value || !caseRouteId.value) return
 
   try {
     assigningCode.value = true
-    await codeApi.activateCode({ code: selectedCode.value, consultationId: consultation.value.id })
+    await activateCodeForCase(selectedCode.value, caseRouteId.value)
     notifierStore.notify(t('consultationOverview.codeAssigned'), 'success')
     // Reset selected code first to prevent watch from re-triggering
     selectedCode.value = null
@@ -530,7 +538,7 @@ const CREATE_NEW_CODE = '__CREATE_NEW_CODE__'
 
 // Create a new code and assign it to the consultation
 const createAndAssignNewCode = async () => {
-  if (!consultation.value?.id) return
+  if (!caseRouteId.value) return
 
   try {
     assigningCode.value = true
@@ -542,7 +550,7 @@ const createAndAssignNewCode = async () => {
     }
     const newCode = newCodes[0].code
 
-    await codeApi.activateCode({ code: newCode, consultationId: consultation.value.id })
+    await activateCodeForCase(newCode, caseRouteId.value)
 
     notifierStore.notify(t('consultationOverview.codeCreatedAndAssigned'), 'success')
     // Reset selected code first to prevent watch from re-triggering
@@ -672,7 +680,7 @@ const cancelArchiveForm = () => {
 }
 
 // Get form scores
-const getFormScore = (form: FindAllCodes200ResponseResponseObjectInnerConsultationIdPromsInner): string => {
+const getFormScore = (form: ApiConsultationForm): string => {
   if (form.patientFormData?.totalScore?.rawScore !== undefined && form.patientFormData?.totalScore?.rawScore !== null) {
     return form.patientFormData.totalScore.rawScore.toString()
   }
@@ -690,7 +698,7 @@ const getFormStatusColor = (status: string | undefined): string => {
   }
 }
 
-const getFormAccessLevel = (form: FindAllCodes200ResponseResponseObjectInnerConsultationIdPromsInner): string => {
+const getFormAccessLevel = (form: ApiConsultationForm): string => {
   const formRecord = form as unknown as Record<string, unknown>
   return (formRecord.accessLevel || 'patient').toString()
 }
@@ -706,7 +714,7 @@ const formatDuration = (seconds: number | undefined): string => {
 }
 
 // Calculate duration from form start and end times
-const calculateFormDuration = (form: FindAllCodes200ResponseResponseObjectInnerConsultationIdPromsInner): string => {
+const calculateFormDuration = (form: ApiConsultationForm): string => {
   const formRecord = form as unknown as Record<string, unknown>
 
   // Try to use completionTimeSeconds first
@@ -732,6 +740,20 @@ const calculateFormDuration = (form: FindAllCodes200ResponseResponseObjectInnerC
   return `${minutes}:${String(secs).padStart(2, '0')} min`
 }
 
+const getFormStartTime = (form: ApiConsultationForm): string | null => {
+  if (form.patientFormData?.beginFill) return form.patientFormData.beginFill
+  const formRecord = form as unknown as Record<string, unknown>
+  const startTime = formRecord.formStartTime
+  return typeof startTime === 'string' ? startTime : null
+}
+
+const hasFormCompletionInfo = (form: ApiConsultationForm): boolean => {
+  if (form.patientFormData?.completedAt) return true
+  const formRecord = form as unknown as Record<string, unknown>
+  const completionTimeSeconds = formRecord.completionTimeSeconds
+  return typeof completionTimeSeconds === 'number'
+}
+
 // Compute the patient flow URL for QR code
 const patientFlowUrl = computed(() => {
   const code = assignedCode.value
@@ -740,11 +762,12 @@ const patientFlowUrl = computed(() => {
   return `${baseUrl}/flow/${code}`
 })
 
-// Compute expiry date of the currently assigned code
-const assignedCodeExpiresOn = computed<string | undefined>(() => {
-  const code = consultation.value?.formAccessCode as PopulatedCode | undefined
-  if (!code || typeof code === 'string') return undefined
-  return code.expiresOn
+const assignedConsultationAccessWindow = computed(() => {
+  if (!consultation.value) return null
+  return getConsultationAccessWindowFromConsultation(consultation.value, {
+    consultationAccessDaysBefore: userStore.consultationAccessDaysBefore,
+    consultationAccessDaysAfter: userStore.consultationAccessDaysAfter,
+  })
 })
 </script>
 
@@ -918,13 +941,12 @@ const assignedCodeExpiresOn = computed<string | undefined>(() => {
                   <div v-if="form.patientFormData?.totalScore && form.formTemplateId" class="mb-3">
                     <ScoreScale :scale-info="generateScaleInfo(form.patientFormData.totalScore, form.formTemplateId)" />
                   </div>
-                  <p class="text-body-2 mb-2" v-if="form.patientFormData?.beginFill || (form as any)?.formStartTime">
+                  <p class="text-body-2 mb-2" v-if="getFormStartTime(form)">
                     <strong>{{ t('consultationOverview.formStartTime') }}:</strong>
-                    {{ safeFormatDate(form.patientFormData?.beginFill ||
-                      (form as any)?.formStartTime, 'DD.MM.YYYY HH:mm:ss') }}
+                    {{ safeFormatDate(getFormStartTime(form), 'DD.MM.YYYY HH:mm:ss') }}
                   </p>
                   <p class="text-body-2 mb-2"
-                     v-if="(form.patientFormData?.beginFill || (form as any)?.formStartTime) && (form.patientFormData?.completedAt || (form as any)?.completionTimeSeconds)">
+                     v-if="getFormStartTime(form) && hasFormCompletionInfo(form)">
                     <strong>{{ t('consultationOverview.formDuration') }}:</strong>
                     {{ calculateFormDuration(form) }}
                   </p>
@@ -941,7 +963,7 @@ const assignedCodeExpiresOn = computed<string | undefined>(() => {
                   <v-btn
                          color="primary"
                          variant="text"
-                        @click="openForm(normalizeFormId(form.id))">
+                         @click="openForm(normalizeFormId(form.id))">
                     {{ t('consultationOverview.reviewForm') }}
                   </v-btn>
                   <v-spacer></v-spacer>
@@ -1083,7 +1105,7 @@ const assignedCodeExpiresOn = computed<string | undefined>(() => {
               <h4 class="mb-3">{{ t('consultationOverview.assignAdditionalKiosk') }}</h4>
               <p class="text-caption text-medium-emphasis mt-2">{{
                 t('consultationOverview.selectionAssignsImmediately')
-              }}</p>
+                }}</p>
               <v-row>
                 <v-col cols="12" md="8">
                   <v-autocomplete
@@ -1147,7 +1169,7 @@ const assignedCodeExpiresOn = computed<string | undefined>(() => {
                   </v-autocomplete>
                   <p class="text-caption text-medium-emphasis mt-2">{{
                     t('consultationOverview.selectionAssignsImmediately')
-                  }}</p>
+                    }}</p>
                 </v-col>
 
                 <v-col cols="12" md="4">
@@ -1183,7 +1205,10 @@ const assignedCodeExpiresOn = computed<string | undefined>(() => {
                 </v-list-item-subtitle>
                 <template #append>
                   <div class="d-flex gap-2 align-center">
-                    <QRCodeDisplay v-if="patientFlowUrl" :url="patientFlowUrl" :expires-on="assignedCodeExpiresOn" />
+                    <QRCodeDisplay
+                                   v-if="patientFlowUrl"
+                                   :url="patientFlowUrl"
+                                   :access-window="assignedConsultationAccessWindow" />
                     <v-btn
                            color="error"
                            variant="tonal"
@@ -1235,7 +1260,7 @@ const assignedCodeExpiresOn = computed<string | undefined>(() => {
                 </v-autocomplete>
                 <p class="text-caption text-medium-emphasis mt-2">{{
                   t('consultationOverview.selectionAssignsImmediately')
-                }}</p>
+                  }}</p>
               </v-col>
             </v-row>
           </div>
@@ -1285,7 +1310,7 @@ const assignedCodeExpiresOn = computed<string | undefined>(() => {
                   <v-row>
                     <v-col
                            v-for="(form, formIndex) in prevConsultation.proms"
-                            :key="form.id == null ? `prev-form-${formIndex}` : String(form.id)"
+                           :key="form.id == null ? `prev-form-${formIndex}` : String(form.id)"
                            cols="12"
                            md="6">
                       <v-card variant="outlined" size="small">
@@ -1321,7 +1346,7 @@ const assignedCodeExpiresOn = computed<string | undefined>(() => {
                                    color="primary"
                                    variant="text"
                                    size="small"
-                              @click="openForm(normalizeFormId(form.id))">
+                                   @click="openForm(normalizeFormId(form.id))">
                               {{ t('consultationOverview.review') }}
                             </v-btn>
                           </div>

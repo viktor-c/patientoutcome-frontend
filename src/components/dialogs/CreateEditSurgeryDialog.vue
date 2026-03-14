@@ -7,13 +7,13 @@ import type { Dayjs } from 'dayjs'
 import {
   type Surgery,
   type CreateSurgerySchema,
-  type GetUsers200ResponseResponseObjectInner as User,
   type Blueprint,
   type AnaesthesiaType,
   ResponseError,
   SurgerySideEnum,
   SearchBlueprintsBlueprintForEnum,
 } from '@/api'
+import type { ApiUserResponse as User } from '@/types'
 import { useNotifierStore } from '@/stores/notifierStore'
 import { surgeryApi, userApi, blueprintApi } from '@/api'
 import { useUserStore } from '@/stores/userStore'
@@ -776,25 +776,25 @@ defineExpose({
           </v-col>
           <v-col cols="12" md="6" lg="4">
             <IcdOpsSearchField
-                        type="icd"
-                        :label="t('surgery.diagnosisICD10')"
-                        v-model="form.diagnosisICD10"
-                        multiple
-                        chips
-                        clearable
-                        closable-chips />
+                               type="icd"
+                               :label="t('surgery.diagnosisICD10')"
+                               v-model="form.diagnosisICD10"
+                               multiple
+                               chips
+                               clearable
+                               closable-chips />
           </v-col>
         </v-row>
 
         <!-- OPS Codes -->
         <IcdOpsSearchField
-                    type="ops"
-                    :label="t('surgery.oPSCodes')"
-                    v-model="form.oPSCodes"
-                    multiple
-                    chips
-                    clearable
-                    closable-chips />
+                           type="ops"
+                           :label="t('surgery.oPSCodes')"
+                           v-model="form.oPSCodes"
+                           multiple
+                           chips
+                           clearable
+                           closable-chips />
 
         <!-- Surgery Details -->
         <v-row>

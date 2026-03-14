@@ -11,6 +11,36 @@ import type { FormQuestions, PatientFormData } from './scoring'
 // we use an inline import here to avoid exporting the long generated symbol itself
 export type ApiPatientFormData = import('@/api').FindAllCodes200ResponseResponseObjectInnerConsultationIdPromsInnerPatientFormData
 
+// alias for API consultation visitor type (helps shield components from long generated names)
+// we use an inline import here to avoid exporting the long generated symbol itself
+export type ApiConsultationVisitor = import('@/api').FindAllCodes200ResponseResponseObjectInnerConsultationIdVisitedByInner
+
+// aliases for commonly used generated API response types
+export type ApiCode = import('@/api').FindAllCodes200ResponseResponseObjectInner
+export type ApiConsultation = import('@/api').FindAllCodes200ResponseResponseObjectInnerConsultationId
+export type ApiConsultationForm = import('@/api').FindAllCodes200ResponseResponseObjectInnerConsultationIdPromsInner
+export type ApiConsultationNote = import('@/api').FindAllCodes200ResponseResponseObjectInnerConsultationIdNotesInner
+export type ApiConsultationProm = ApiConsultationForm | ApiConsultationVisitor | string
+export type ApiConsultationFlexible = Omit<import('@/api').Consultation, 'proms'> & {
+  proms: ApiConsultationProm[]
+}
+export type ApiPatientCaseWithDetails = import('@/api').GetAllPatientCases200ResponseResponseObjectInner
+export type ApiPatientCaseSurgery = import('@/api').GetAllPatientCases200ResponseResponseObjectInnerSurgeriesInner
+export type ApiPatientCaseSurgerySide = import('@/api').GetAllPatientCases200ResponseResponseObjectInnerSurgeriesInnerSideEnum
+export type ApiPatientCaseSurgeryAnaesthesiaType = import('@/api').GetAllPatientCases200ResponseResponseObjectInnerSurgeriesInnerAnaesthesiaType
+export type ApiUserResponse = import('@/api').GetUsers200ResponseResponseObjectInner
+export type ApiBackupHistoryEntry = import('@/api').GetBackupHistory200ResponseResponseObjectInner
+export type ApiFormTemplate = import('@/api').FormTemplate
+export type ApiUpdateUserRequest = import('@/api').UpdateUserRequest
+export type ApiUserDepartment = import('@/api').UserDepartment
+export type ApiCollectionMetadata = import('@/api').CollectionMetadata
+export type ApiBackupMetadata = import('@/api').GetBackupMetadata200ResponseResponseObject
+export type ApiCredential = import('@/api').GetAllCredentials200ResponseResponseObjectInner
+export type ApiBackupJob = import('@/api').GetAllBackupJobs200ResponseResponseObjectInner
+export type ApiCreateBackupJobRequest = import('@/api').CreateBackupJobRequest
+export type ApiUpdateBackupJobRequest = import('@/api').UpdateBackupJobRequest
+export type ApiCreateCredentialsRequest = import('@/api').CreateCredentialsRequest
+
 export interface Patient {
   _id?: string
   id?: string | null // For OpenAPI compatibility (can be null)

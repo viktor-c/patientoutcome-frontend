@@ -81,3 +81,52 @@ export async function updateDepartmentCodeLife(departmentId: string, externalAcc
   }
   return await res.json();
 }
+
+export async function updateDepartmentConsultationAccessWindow(
+  departmentId: string,
+  consultationAccessDaysBefore: number,
+  consultationAccessDaysAfter: number,
+) {
+  const base = apiConfig.basePath ?? '';
+  const url = `${base.replace(/\/$/, '')}/userDepartment/${encodeURIComponent(departmentId)}/consultation-access-window`;
+  const res = await fetch(url, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    credentials: 'include',
+    body: JSON.stringify({ consultationAccessDaysBefore, consultationAccessDaysAfter }),
+  });
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`Failed to update department consultation access window: ${res.status} ${res.statusText}: ${text}`);
+  }
+  return await res.json();
+}
+
+export async function activateCodeForCase(code: string, caseId: string) {
+  const base = apiConfig.basePath ?? '';
+  const url = `${base.replace(/\/$/, '')}/form-access-code/activate/${encodeURIComponent(code)}/case/${encodeURIComponent(caseId)}`;
+  const res = await fetch(url, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    credentials: 'include',
+  });
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`Failed to activate code for patient case: ${res.status} ${res.statusText}: ${text}`);
+  }
+  return await res.json();
+}
+
+export async function getActiveCodeForCase(caseId: string) {
+  const base = apiConfig.basePath ?? '';
+  const url = `${base.replace(/\/$/, '')}/form-access-code/active/case/${encodeURIComponent(caseId)}`;
+  const res = await fetch(url, {
+    method: 'GET',
+    credentials: 'include',
+  });
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`Failed to get active code for case: ${res.status} ${res.statusText}: ${text}`);
+  }
+  return await res.json();
+}

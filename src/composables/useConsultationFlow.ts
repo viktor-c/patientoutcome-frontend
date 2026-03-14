@@ -3,8 +3,13 @@ import { useFormTemplateStore } from '@/stores'
 import { mapApiFormsToForms } from '@/adapters/apiAdapters'
 import { extractConsultationForms } from '@/utils/consultationForms'
 import { logger } from '@/services/logger'
-import type { Consultation } from '@/api'
-import type { Form } from '@/types'
+import type { ApiConsultationFlexible, ApiConsultationForm, ApiConsultationProm, Form } from '@/types'
+
+const isConsultationFormProm = (prom: ApiConsultationProm): prom is ApiConsultationForm => {
+  if (!prom || typeof prom !== 'object') return false
+  const promRecord = prom as Record<string, unknown>
+  return 'patientFormData' in promRecord && 'consultationId' in promRecord
+}
 
 export function useConsultationFlow() {
   const formTemplateStore = useFormTemplateStore()
@@ -15,7 +20,15 @@ export function useConsultationFlow() {
 
   const isFormComplete = (form: Form) => {
     // Check various common status fields from different API versions/sources
-    const status = form.formFillStatus || (form.patientFormData as any)?.fillStatus
+    const patientFormDataRecord =
+      form.patientFormData && typeof form.patientFormData === 'object'
+        ? (form.patientFormData as unknown as Record<string, unknown>)
+        : null
+    const fillStatus =
+      patientFormDataRecord && typeof patientFormDataRecord.fillStatus === 'string'
+        ? patientFormDataRecord.fillStatus
+        : undefined
+    const status = form.formFillStatus || fillStatus
     return status === 'complete' || status === 'completed'
   }
 
@@ -23,7 +36,7 @@ export function useConsultationFlow() {
    * Processes a consultation object to extract and normalize forms.
    * Enriches titles from the form template cache if missing.
    */
-  const processConsultation = async (consultation: Consultation) => {
+  const processConsultation = async (consultation: ApiConsultationFlexible | null | undefined) => {
     if (!consultation || !consultation.proms) {
       allForms.value = []
       return
@@ -38,7 +51,8 @@ export function useConsultationFlow() {
       const formsWithTitles = extractConsultationForms(consultation, tempLookup)
 
       // We map the raw proms to our internal Form shape
-      const mappedForms = mapApiFormsToForms(consultation.proms as any)
+      const formProms = consultation.proms.filter(isConsultationFormProm)
+      const mappedForms = mapApiFormsToForms(formProms)
 
       // Final merge of titles if mapApiFormToForm missed them
       const mergedForms = mappedForms.map((f, idx) => {

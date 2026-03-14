@@ -2,33 +2,30 @@
   <!-- ── Trigger ─────────────────────────────────────────────── -->
   <div class="icd-ops-search-field">
     <v-input
-      :label="label"
-      :hint="hintText"
-      :persistent-hint="persistentHint"
-      :error-messages="fieldError ? [fieldError] : []"
-      :disabled="disabled"
-      :density="density"
-      :variant="variant"
-      hide-details="auto"
-      style="cursor: pointer"
-      @click="!disabled && !readonly ? openDialog() : undefined"
-    >
+             :label="label"
+             :hint="hintText"
+             :persistent-hint="persistentHint"
+             :error-messages="fieldError ? [fieldError] : []"
+             :disabled="disabled"
+             :density="density"
+             :variant="variant"
+             hide-details="auto"
+             style="cursor: pointer"
+             @click="!disabled && !readonly ? openDialog() : undefined">
       <template #default>
         <div
-          class="icd-ops-trigger d-flex align-center flex-wrap ga-1 pa-1 w-100"
-          style="min-height: 40px; cursor: pointer"
-        >
+             class="icd-ops-trigger d-flex align-center flex-wrap ga-1 pa-1 w-100"
+             style="min-height: 40px; cursor: pointer">
           <!-- Multiple selections: chips -->
           <template v-if="multiple && Array.isArray(selectedValue) && selectedValue.length">
             <v-chip
-              v-for="(val, idx) in displayChips"
-              :key="idx"
-              size="small"
-              color="primary"
-              :closable="closableChips && !disabled && !readonly"
-              @click.stop
-              @click:close="removeItem(idx)"
-            >
+                    v-for="(val, idx) in displayChips"
+                    :key="idx"
+                    size="small"
+                    color="primary"
+                    :closable="closableChips && !disabled && !readonly"
+                    @click.stop
+                    @click:close="removeItem(idx)">
               <strong>{{ typeof val === 'object' ? val.code : val }}</strong>
               <span v-if="typeof val === 'object'" class="ml-1 text-truncate" style="max-width: 160px">
                 – {{ val.label }}
@@ -59,14 +56,13 @@
 
           <!-- Clear button -->
           <v-btn
-            v-if="clearable && hasValue && !disabled && !readonly"
-            icon
-            variant="text"
-            size="x-small"
-            class="ml-1"
-            :aria-label="`${label || type.toUpperCase()} zurücksetzen`"
-            @click.stop="clearSelection"
-          >
+                 v-if="clearable && hasValue && !disabled && !readonly"
+                 icon
+                 variant="text"
+                 size="x-small"
+                 class="ml-1"
+                 :aria-label="`${label || type.toUpperCase()} zurücksetzen`"
+                 @click.stop="clearSelection">
             <v-icon size="small">mdi-close-circle-outline</v-icon>
           </v-btn>
 
@@ -79,24 +75,22 @@
 
   <!-- ── Dialog ──────────────────────────────────────────────── -->
   <v-dialog
-    v-model="dialogOpen"
-    max-width="680"
-    scrollable
-    :persistent="false"
-  >
+            v-model="dialogOpen"
+            max-width="680"
+            scrollable
+            :persistent="false">
     <v-card>
       <!-- Header -->
       <v-card-title class="d-flex align-center py-3 px-4 bg-primary text-white">
         <v-icon class="mr-2">{{ type === 'icd' ? 'mdi-hospital-box-outline' : 'mdi-needle' }}</v-icon>
         <span>{{ type === 'icd' ? 'ICD-10-GM Diagnose' : 'OPS Prozedur' }}</span>
         <v-chip
-          v-if="multiple"
-          size="x-small"
-          color="white"
-          text-color="primary"
-          variant="tonal"
-          class="ml-2"
-        >
+                v-if="multiple"
+                size="x-small"
+                color="white"
+                text-color="primary"
+                variant="tonal"
+                class="ml-2">
           Mehrfachauswahl
         </v-chip>
         <v-spacer />
@@ -108,25 +102,23 @@
       <!-- Search bar -->
       <v-card-text class="pa-3 pb-1" style="position: sticky; top: 0; z-index: 1; background: white">
         <v-text-field
-          ref="searchRef"
-          v-model="searchInput"
-          :placeholder="searchPlaceholder"
-          prepend-inner-icon="mdi-magnify"
-          clearable
-          autofocus
-          density="compact"
-          variant="outlined"
-          hide-details
-          @click:clear="clearSearch"
-        />
+                      ref="searchRef"
+                      v-model="searchInput"
+                      :placeholder="searchPlaceholder"
+                      prepend-inner-icon="mdi-magnify"
+                      clearable
+                      autofocus
+                      density="compact"
+                      variant="outlined"
+                      hide-details
+                      @click:clear="clearSearch" />
 
         <!-- Mode indicator -->
         <div class="d-flex align-center mt-1 mb-1 ga-2">
           <v-chip
-            size="x-small"
-            :color="searchMode === 'code-prefix' ? 'primary' : 'secondary'"
-            variant="tonal"
-          >
+                  size="x-small"
+                  :color="searchMode === 'code-prefix' ? 'primary' : 'secondary'"
+                  variant="tonal">
             <v-icon start size="10">
               {{ searchMode === 'code-prefix' ? 'mdi-code-tags' : 'mdi-text-search' }}
             </v-icon>
@@ -155,19 +147,17 @@
       <v-card-text class="pa-0" style="max-height: 440px; overflow-y: auto" @scroll="onScroll">
         <!-- Parent-context banner (terminal codes only) -->
         <div
-          v-if="contextEntry && !isGroupNav"
-          class="d-flex align-center px-4 py-2 ga-2"
-          style="background: rgba(var(--v-theme-primary), 0.06); border-bottom: 1px solid rgba(var(--v-theme-primary), 0.15); cursor: pointer"
-          data-testid="context-entry-banner"
-          @click="drillToCode(contextEntry.code)"
-        >
+             v-if="contextEntry && !isGroupNav"
+             class="d-flex align-center px-4 py-2 ga-2"
+             style="background: rgba(var(--v-theme-primary), 0.06); border-bottom: 1px solid rgba(var(--v-theme-primary), 0.15); cursor: pointer"
+             data-testid="context-entry-banner"
+             @click="drillToCode(contextEntry.code)">
           <v-icon size="14" color="primary" class="flex-shrink-0">mdi-arrow-up-left</v-icon>
           <v-chip
-            size="x-small"
-            color="primary"
-            variant="outlined"
-            class="font-weight-bold flex-shrink-0"
-          >
+                  size="x-small"
+                  color="primary"
+                  variant="outlined"
+                  class="font-weight-bold flex-shrink-0">
             {{ contextEntry.code }}
           </v-chip>
           <span class="text-caption font-weight-medium text-truncate">{{ contextEntry.label }}</span>
@@ -179,21 +169,19 @@
         <!-- Items list -->
         <v-list v-if="items.length > 0" lines="two" density="compact" class="pa-0">
           <v-list-item
-            v-for="item in items"
-            :key="item.code"
-            :active="isSelected(item)"
-            color="primary"
-            class="px-4"
-            @click="selectItem(item)"
-          >
+                       v-for="item in items"
+                       :key="item.code"
+                       :active="isSelected(item)"
+                       color="primary"
+                       class="px-4"
+                       @click="selectItem(item)">
             <template #prepend>
               <v-chip
-                size="small"
-                color="primary"
-                :variant="isSelected(item) ? 'flat' : 'outlined'"
-                class="mr-3 font-weight-bold"
-                style="min-width: 76px; justify-content: center"
-              >
+                      size="small"
+                      color="primary"
+                      :variant="isSelected(item) ? 'flat' : 'outlined'"
+                      class="mr-3 font-weight-bold"
+                      style="min-width: 76px; justify-content: center">
                 {{ item.code }}
               </v-chip>
             </template>
@@ -216,10 +204,9 @@
 
           <!-- Infinite-scroll sentinel (text-search mode only) -->
           <div
-            v-if="hasMore"
-            v-intersect="onIntersect"
-            class="d-flex justify-center pa-3"
-          >
+               v-if="hasMore"
+               v-intersect="onIntersect"
+               class="d-flex justify-center pa-3">
             <v-progress-circular v-if="loading" indeterminate size="24" />
             <span v-else class="text-caption text-grey">Scrollen für mehr Ergebnisse…</span>
           </div>
@@ -232,9 +219,8 @@
 
         <!-- No results -->
         <div
-          v-else-if="searchInput && searchInput.length >= minChars && !loading"
-          class="d-flex flex-column align-center justify-center pa-10 text-grey"
-        >
+             v-else-if="searchInput && searchInput.length >= minChars && !loading"
+             class="d-flex flex-column align-center justify-center pa-10 text-grey">
           <v-icon size="48" class="mb-2">mdi-magnify-off</v-icon>
           <span class="text-body-2">Keine Ergebnisse gefunden</span>
           <span v-if="searchMode === 'code-prefix'" class="text-caption mt-1">
@@ -263,7 +249,8 @@
       </v-card-text>
 
       <!-- Footer -->
-      <v-divider v-if="items.length > 0 || (multiple && Array.isArray(selectedValue) && (selectedValue as Array<any>).length > 0)" />
+      <v-divider
+                 v-if="items.length > 0 || (multiple && Array.isArray(selectedValue) && (selectedValue as Array<any>).length > 0)" />
       <v-card-actions class="px-4 py-2 d-flex align-center">
         <span class="text-caption text-grey">
           <template v-if="totalResults > 0">
@@ -274,22 +261,20 @@
         <!-- Show selected count in multiple mode — hover to see/manage list -->
         <template v-if="multiple && Array.isArray(selectedValue) && (selectedValue as Array<any>).length > 0">
           <v-menu
-            open-on-hover
-            :close-on-content-click="false"
-            location="top end"
-            offset="6"
-            max-width="320"
-          >
+                  open-on-hover
+                  :close-on-content-click="false"
+                  location="top end"
+                  offset="6"
+                  max-width="320">
             <template #activator="{ props: menuProps }">
               <v-chip
-                v-bind="menuProps"
-                size="small"
-                color="primary"
-                variant="tonal"
-                style="cursor: default"
-              >
+                      v-bind="menuProps"
+                      size="small"
+                      color="primary"
+                      variant="tonal"
+                      style="cursor: default">
                 {{ (selectedValue as Array<any>).length }} ausgewählt
-                <v-icon end size="12">mdi-chevron-up</v-icon>
+                  <v-icon end size="12">mdi-chevron-up</v-icon>
               </v-chip>
             </template>
 
@@ -300,22 +285,20 @@
               </v-card-title>
               <v-list density="compact" class="pa-1" style="max-height: 240px; overflow-y: auto">
                 <v-list-item
-                  v-for="(val, idx) in displayChips"
-                  :key="typeof val === 'object' ? (val as IcdOpsEntry).code : val"
-                  rounded="md"
-                  class="px-2"
-                  min-height="36"
-                  style="cursor: pointer"
-                  @click="drillToCode(typeof val === 'object' ? (val as IcdOpsEntry).code : (val as string))"
-                >
+                             v-for="(val, idx) in displayChips"
+                             :key="typeof val === 'object' ? (val as IcdOpsEntry).code : val"
+                             rounded="md"
+                             class="px-2"
+                             min-height="36"
+                             style="cursor: pointer"
+                             @click="drillToCode(typeof val === 'object' ? (val as IcdOpsEntry).code : (val as string))">
                   <!-- Code chip — click bubbles to row handler -->
                   <template #prepend>
                     <v-chip
-                      size="x-small"
-                      color="primary"
-                      variant="outlined"
-                      class="mr-2 font-weight-bold"
-                    >
+                            size="x-small"
+                            color="primary"
+                            variant="outlined"
+                            class="mr-2 font-weight-bold">
                       {{ typeof val === 'object' ? (val as IcdOpsEntry).code : val }}
                     </v-chip>
                   </template>
@@ -327,12 +310,11 @@
                   <!-- Remove button — stop propagation so it doesn't drill -->
                   <template #append>
                     <v-btn
-                      icon
-                      variant="text"
-                      size="x-small"
-                      color="grey"
-                      @click.stop="removeItem(idx)"
-                    >
+                           icon
+                           variant="text"
+                           size="x-small"
+                           color="grey"
+                           @click.stop="removeItem(idx)">
                       <v-icon size="14">mdi-close</v-icon>
                     </v-btn>
                   </template>
@@ -455,7 +437,9 @@ const {
 
 const dialogOpen = ref(false)
 const searchInput = ref('')
-const searchRef = ref<HTMLElement | null>(null)
+import type { VTextField } from 'vuetify/components'
+
+const searchRef = ref<InstanceType<typeof VTextField> | null>(null)
 const fieldError = ref<string | null>(null)
 
 // Initialize selected value
@@ -550,8 +534,8 @@ function clearSearch() {
 function drillToCode(code: string) {
   searchInput.value = code
   nextTick(() => {
-    const el = (searchRef.value as any)?.$el?.querySelector('input')
-    el?.focus()
+    const inputEl = searchRef.value?.$el?.querySelector('input') as HTMLInputElement | null
+    inputEl?.focus()
   })
 }
 

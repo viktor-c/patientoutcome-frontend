@@ -11,9 +11,9 @@ import {
   type UserNoPassword,
   type GetFormTemplatesShortlist200ResponseResponseObjectInner as FormTemplateShortList,
   ResponseError,
-  type FindAllCodes200ResponseResponseObjectInner as Code,
   SearchBlueprintsBlueprintForEnum,
 } from '@/api'
+import type { ApiCode as Code } from '@/types'
 import { useNotifierStore } from '@/stores/notifierStore'
 import { consultationApi, userApi, formtemplateApi, codeApi, blueprintApi } from '@/api'
 import dayjs from 'dayjs'

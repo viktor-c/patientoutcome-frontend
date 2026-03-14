@@ -2,11 +2,11 @@
 import { ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import {
-  type GetAllPatientCases200ResponseResponseObjectInnerSurgeriesInner as Surgery,
-  type GetAllPatientCases200ResponseResponseObjectInnerSurgeriesInnerSideEnum as SurgerySide,
-  type GetAllPatientCases200ResponseResponseObjectInnerSurgeriesInnerAnaesthesiaType as AnaesthesiaType,
-  type FindAllCodes200ResponseResponseObjectInnerConsultationIdNotesInner as Note
-} from '@/api'
+  type ApiPatientCaseSurgery as Surgery,
+  type ApiPatientCaseSurgerySide as SurgerySide,
+  type ApiPatientCaseSurgeryAnaesthesiaType as AnaesthesiaType,
+  type ApiConsultationNote as Note
+} from '@/types'
 const { t } = useI18n()
 
 // Emits

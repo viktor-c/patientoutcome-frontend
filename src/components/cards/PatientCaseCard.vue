@@ -3,9 +3,7 @@ import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useDateFormat } from '@/composables/useDateFormat'
 import ConsultationCard from '@/components/consultation/ConsultationCard.vue'
-import {
-  type GetAllPatientCases200ResponseResponseObjectInner as PatientCaseWithDetails,
-} from '@/api'
+import type { ApiPatientCaseWithDetails as PatientCaseWithDetails } from '@/types'
 
 const { t } = useI18n()
 const { formatLocalizedCustomDate } = useDateFormat()
@@ -201,7 +199,7 @@ const handleDeleteCase = () => {
                 <v-list-item>
                   <v-list-item-title>{{ t('patientOverview.medicalHistory') }}</v-list-item-title>
                   <v-list-item-subtitle>{{ patientCase.medicalHistory || t('common.notAvailable')
-                    }}</v-list-item-subtitle>
+                  }}</v-list-item-subtitle>
                 </v-list-item>
 
                 <v-list-item v-if="patientCase.supervisors?.length">

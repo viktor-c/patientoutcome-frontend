@@ -8,9 +8,9 @@ import {
   type Consultation,
   type UserNoPassword,
   ResponseError,
-  type FindAllCodes200ResponseResponseObjectInner as Code,
   type GetFormTemplatesShortlist200ResponseResponseObjectInner as FormTemplateShortList,
 } from '@/api'
+import type { ApiCode as Code } from '@/types'
 import { useNotifierStore } from '@/stores/notifierStore'
 import CreateEditConsultationDialog from '@/components/dialogs/CreateEditConsultationDialog.vue'
 import NotesEditor from '@/components/forms/NotesEditor.vue'

@@ -85,11 +85,20 @@ const patientDisplayName = computed(() => {
 // Extract the first department ID from the patient case so that form-template selection
 // in CreateEditConsultationDialog is scoped to that department.
 const caseDepartmentId = computed<string | undefined>(() => {
-  const depts = (patientCase.value?.patient as any)?.departments
+  const depts = patientCase.value?.patient?.departments
   if (!depts || !depts.length) return undefined
   const first = depts[0]
   if (typeof first === 'string') return first
-  return (first as any)?.id || (first as any)?._id || undefined
+  if (first && typeof first === 'object') {
+    const departmentRecord = first as Record<string, unknown>
+    if (typeof departmentRecord.id === 'string' && departmentRecord.id.length > 0) {
+      return departmentRecord.id
+    }
+    if (typeof departmentRecord._id === 'string' && departmentRecord._id.length > 0) {
+      return departmentRecord._id
+    }
+  }
+  return undefined
 })
 
 const pastConsultations = computed(() => {

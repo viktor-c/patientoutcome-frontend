@@ -17,8 +17,33 @@ const notifier = useNotifierStore()
 const { formatLocalizedDate } = useDateFormat()
 const { allForms, isFormComplete, processConsultation, getFirstIncompleteFormId } = useConsultationFlow()
 
+type ErrorWithResponse = Error & { response?: { status?: number } }
+
+const hasResponseStatus = (error: unknown): error is ErrorWithResponse => {
+  return (
+    error instanceof Error &&
+    typeof error === 'object' &&
+    error !== null &&
+    'response' in error
+  )
+}
+
 // Localise a single reason entry (string or object). Falls back to raw value.
 const localizeReason = (r: unknown) => localizeConsultationReason(r, { t, te })
+
+const getConsultationAccessCode = (value: unknown): string | null => {
+  if (typeof value === 'string' && value.length > 0) return value
+  if (!value || typeof value !== 'object') return null
+  const record = value as Record<string, unknown>
+  const code = record.code
+  return typeof code === 'string' && code.length > 0 ? code : null
+}
+
+const hasSubscales = (value: unknown): boolean => {
+  if (!value || typeof value !== 'object') return false
+  const record = value as Record<string, unknown>
+  return !!record.subscales
+}
 
 // Start surveys: navigate to the first incomplete form for this consultation
 const startSurveys = () => {
@@ -62,16 +87,12 @@ const loadConsultation = async () => {
     }
   } catch (err: unknown) {
     // the backend returns 404 when no consultation is assigned to the kiosk user
-    if (err instanceof Error && 'response' in err) {
-      // runtime.ResponseError has a response property
-      const resp: any = (err as any).response
-      if (resp && resp.status === 404) {
-        // treat as empty state, not a hard error
-        console.debug('KioskView: no consultation assigned yet')
-        consultation.value = null
-        loading.value = false
-        return
-      }
+    if (hasResponseStatus(err) && err.response?.status === 404) {
+      // treat as empty state, not a hard error
+      console.debug('KioskView: no consultation assigned yet')
+      consultation.value = null
+      loading.value = false
+      return
     }
 
     console.error('Failed to load consultation:', err)
@@ -184,7 +205,7 @@ onMounted(() => {
                     {{ t('kiosk.patientCode') }}:
                   </div>
                   <div class="text-h6 text-primary">
-                    {{ (consultation.responseObject.formAccessCode as any)?.code ??
+                    {{ getConsultationAccessCode(consultation.responseObject.formAccessCode) ??
                       consultation.responseObject.formAccessCode ?? t('common.notAvailable') }}
                   </div>
                 </v-col>
@@ -265,7 +286,7 @@ onMounted(() => {
                   <v-list-item-subtitle>
                     <span v-if="formItem.description">{{ formItem.description }}</span>
                     <span class="ml-4">
-                      {{ (formItem.patientFormData as any)?.subscales ?
+                      {{ hasSubscales(formItem.patientFormData) ?
                         `${t('kiosk.subscales.totalScore')}` : t('kiosk.noScore') }}
                     </span>
                   </v-list-item-subtitle>

@@ -7,14 +7,13 @@ import type { IcdOpsEntry } from '@/services/icdopsService'
 import {
   type CreateCaseSchema,
   type PatientCase,
-  type GetAllPatientCases200ResponseResponseObjectInner as PatientCaseWithDetails,
-  type GetAllPatientCases200ResponseResponseObjectInnerSurgeriesInner as PatientCaseSurgery,
   type Note,
   type User,
   type Blueprint,
   ResponseError,
   SearchBlueprintsBlueprintForEnum,
 } from '@/api/'
+import type { ApiPatientCaseWithDetails as PatientCaseWithDetails, ApiPatientCaseSurgery as PatientCaseSurgery } from '@/types'
 
 // Importing the notifier store for notifications
 import { useNotifierStore } from '@/stores/notifierStore'
@@ -428,26 +427,26 @@ loadDefaultBlueprints()
     </p>
 
     <!-- Blueprint Selection Section -->
-      
-        <v-autocomplete v-if="isCreating" class="mb-4"
-                        v-model="selectedBlueprint"
-                        v-model:search="blueprintSearchQuery"
-                        :items="blueprints"
-                        :loading="loadingBlueprints"
-                        :label="t('forms.blueprint.selectBlueprint')"
-                        :placeholder="t('forms.blueprint.searchBlueprintsPlaceholder')"
-                        :no-data-text="t('forms.blueprint.noBlueprints')"
-                        item-title="title"
-                        item-value="id"
-                        return-object
-                        clearable
-                        variant="underlined"
-                        @update:model-value="(blueprint) => blueprint && applyBlueprint(blueprint)">
-          <template v-slot:item="{ props, item }">
-            <v-list-item v-bind="props" :title="item.raw.title" :subtitle="item.raw.description">
-            </v-list-item>
-          </template>
-        </v-autocomplete>
+
+    <v-autocomplete v-if="isCreating" class="mb-4"
+                    v-model="selectedBlueprint"
+                    v-model:search="blueprintSearchQuery"
+                    :items="blueprints"
+                    :loading="loadingBlueprints"
+                    :label="t('forms.blueprint.selectBlueprint')"
+                    :placeholder="t('forms.blueprint.searchBlueprintsPlaceholder')"
+                    :no-data-text="t('forms.blueprint.noBlueprints')"
+                    item-title="title"
+                    item-value="id"
+                    return-object
+                    clearable
+                    variant="underlined"
+                    @update:model-value="(blueprint) => blueprint && applyBlueprint(blueprint)">
+      <template v-slot:item="{ props, item }">
+        <v-list-item v-bind="props" :title="item.raw.title" :subtitle="item.raw.description">
+        </v-list-item>
+      </template>
+    </v-autocomplete>
 
     <v-form @submit.prevent="submit">
       <!-- Full width fields -->
@@ -482,14 +481,14 @@ loadDefaultBlueprints()
         </v-col>
         <v-col cols="12" md="6" lg="4">
           <IcdOpsSearchField
-                      type="icd"
-                      :label="t('forms.patientCase.mainDiagnosisICD10')"
-                      v-model="mainDiagnosisICD10Entries"
-                      return-object
-                      multiple
-                      chips
-                      clearable
-                      closable-chips />
+                             type="icd"
+                             :label="t('forms.patientCase.mainDiagnosisICD10')"
+                             v-model="mainDiagnosisICD10Entries"
+                             return-object
+                             multiple
+                             chips
+                             clearable
+                             closable-chips />
         </v-col>
       </v-row>
 
@@ -509,14 +508,14 @@ loadDefaultBlueprints()
         </v-col>
         <v-col cols="12" md="6" lg="4">
           <IcdOpsSearchField
-                      type="icd"
-                      :label="t('forms.patientCase.otherDiagnosisICD10')"
-                      v-model="otherDiagnosisICD10Entries"
-                      return-object
-                      multiple
-                      chips
-                      clearable
-                      closable-chips />
+                             type="icd"
+                             :label="t('forms.patientCase.otherDiagnosisICD10')"
+                             v-model="otherDiagnosisICD10Entries"
+                             return-object
+                             multiple
+                             chips
+                             clearable
+                             closable-chips />
         </v-col>
       </v-row>
 

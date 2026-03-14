@@ -82,6 +82,8 @@ const login = async () => {
         department: Array.isArray(apiUser.department) ? apiUser.department[0] || '' : apiUser.department || '',
         belongsToCenter: apiUser.belongsToCenter ? [apiUser.belongsToCenter] : [],
         email: apiUser.email || '',
+        consultationAccessDaysBefore: (apiUser as unknown as Record<string, unknown>).consultationAccessDaysBefore as number | undefined,
+        consultationAccessDaysAfter: (apiUser as unknown as Record<string, unknown>).consultationAccessDaysAfter as number | undefined,
         roles: apiUser.roles || [],
         permissions: apiUser.permissions || []
       })

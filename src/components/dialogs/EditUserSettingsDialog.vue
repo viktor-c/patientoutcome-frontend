@@ -4,8 +4,7 @@ import { useI18n } from 'vue-i18n';
 import ChangePasswordDialog from './ChangePasswordDialog.vue';
 import { useUserStore } from '@/stores/userStore';
 import { userDepartmentApi } from '@/api';
-import type { UpdateUserRequest } from '@/api/models/UpdateUserRequest';
-import type { UserDepartment } from '@/api';
+import type { ApiUpdateUserRequest as UpdateUserRequest, ApiUserDepartment as UserDepartment } from '@/types';
 
 const { t } = useI18n();
 
@@ -49,10 +48,10 @@ const fetchDepartmentData = async () => {
 
       // Find and set department name
       if (user.value.department) {
-        const dept = Array.isArray(user.value.department) 
-          ? user.value.department[0] 
+        const dept = Array.isArray(user.value.department)
+          ? user.value.department[0]
           : user.value.department;
-        
+
         const foundDept = departments.value.find(d => d.id === dept);
         if (foundDept) {
           user.value.departmentName = foundDept.name;
@@ -61,10 +60,10 @@ const fetchDepartmentData = async () => {
 
       // Find and set center name
       if (user.value.belongsToCenter) {
-        const centerId = Array.isArray(user.value.belongsToCenter) 
-          ? user.value.belongsToCenter[0] 
+        const centerId = Array.isArray(user.value.belongsToCenter)
+          ? user.value.belongsToCenter[0]
           : user.value.belongsToCenter;
-        
+
         const foundCenter = centers.value.find(c => c.id === centerId);
         if (foundCenter) {
           user.value.belongsToCenterName = foundCenter.name;
@@ -128,24 +127,22 @@ async function save() {
         <v-text-field v-if="user" v-model="user.name" :label="t('editUserSettings.name')" />
         <v-text-field v-if="user" v-model="user.username" :label="t('editUserSettings.username')" />
         <v-text-field v-if="user" v-model="user.email" :label="t('editUserSettings.email')" />
-        <v-text-field 
-          v-if="user" 
-          v-model="user.departmentName" 
-          :label="t('editUserSettings.department')" 
-          readonly
-          :loading="loadingDepartments"
-          :hint="t('editUserSettings.departmentReadOnly')"
-          persistent-hint
-        />
-        <v-text-field 
-          v-if="user" 
-          v-model="user.belongsToCenterName" 
-          :label="t('editUserSettings.belongsToCenter')" 
-          readonly
-          :loading="loadingDepartments"
-          :hint="t('editUserSettings.centerReadOnly')"
-          persistent-hint
-        />
+        <v-text-field
+                      v-if="user"
+                      v-model="user.departmentName"
+                      :label="t('editUserSettings.department')"
+                      readonly
+                      :loading="loadingDepartments"
+                      :hint="t('editUserSettings.departmentReadOnly')"
+                      persistent-hint />
+        <v-text-field
+                      v-if="user"
+                      v-model="user.belongsToCenterName"
+                      :label="t('editUserSettings.belongsToCenter')"
+                      readonly
+                      :loading="loadingDepartments"
+                      :hint="t('editUserSettings.centerReadOnly')"
+                      persistent-hint />
         <v-text-field
                       v-if="user"
                       type="number"

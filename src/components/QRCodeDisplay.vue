@@ -52,6 +52,10 @@
               <v-icon start size="small">mdi-information</v-icon>
               {{ t('qrCode.scanInfo') }}
             </v-chip>
+            <v-chip v-if="props.accessWindow" size="small" color="info" variant="tonal" class="ml-2">
+              <v-icon start size="small">mdi-calendar-clock</v-icon>
+              {{ getAccessWindowLabel() }}
+            </v-chip>
             <v-chip v-if="props.expiresOn" size="small" color="warning" variant="tonal" class="ml-2">
               <v-icon start size="small">mdi-clock-alert-outline</v-icon>
               {{ t('qrCode.expiresAt', { date: new Date(props.expiresOn).toLocaleString() }) }}
@@ -90,6 +94,7 @@ import { ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useNotifierStore } from '@/stores/notifierStore'
 import { logger } from '@/services/logger'
+import type { ConsultationAccessWindow } from '@/utils/consultationAccessWindow'
 
 const { t } = useI18n()
 const notifierStore = useNotifierStore()
@@ -100,6 +105,7 @@ interface Props {
   title?: string
   subtitle?: string
   expiresOn?: string
+  accessWindow?: ConsultationAccessWindow | null
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -112,6 +118,14 @@ const dialogOpen = ref(false)
 const loading = ref(false)
 const generatingPDF = ref(false)
 const qrCodeDataUrl = ref<string | null>(null)
+
+const getAccessWindowLabel = () => {
+  if (!props.accessWindow) return ''
+  return t('qrCode.accessWindowRange', {
+    from: new Date(props.accessWindow.activeFrom).toLocaleString(),
+    until: new Date(props.accessWindow.activeUntil).toLocaleString(),
+  })
+}
 
 // Generate QR code when dialog opens
 watch(dialogOpen, async (isOpen) => {
@@ -212,6 +226,14 @@ const downloadPDF = async () => {
         nextLineY,
         { align: 'center' }
       )
+      doc.setTextColor(0, 0, 0)
+      nextLineY += 5
+    }
+
+    if (props.accessWindow) {
+      doc.setFontSize(8)
+      doc.setTextColor(0, 90, 140)
+      doc.text(getAccessWindowLabel(), pageWidth / 2, nextLineY, { align: 'center' })
       doc.setTextColor(0, 0, 0)
       nextLineY += 5
     }

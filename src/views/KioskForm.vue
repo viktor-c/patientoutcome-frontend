@@ -29,6 +29,17 @@ const currentForm = computed(() => form.value)
 // Computed formId from route params
 const formId = computed(() => route.params.formId as string)
 
+type ErrorWithResponse = Error & { response?: { status?: number } }
+
+const hasResponseStatus = (error: unknown): error is ErrorWithResponse => {
+  return (
+    error instanceof Error &&
+    typeof error === 'object' &&
+    error !== null &&
+    'response' in error
+  )
+}
+
 
 
 // Fetch consultation data to get the list of all forms
@@ -47,7 +58,7 @@ const fetchConsultationForms = async () => {
       console.log('KioskForm: Found', allFormIds.value.length, 'forms, current index:', currentFormIndex.value)
     }
   } catch (err: unknown) {
-    if (err instanceof Error && 'response' in err && (err as any).response.status === 404) {
+    if (hasResponseStatus(err) && err.response?.status === 404) {
       // no consultation assigned; forms list should remain empty
       console.debug('KioskForm: no consultation available, skipping form list build')
       return

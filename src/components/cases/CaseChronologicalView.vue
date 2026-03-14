@@ -3,7 +3,8 @@ import { ref, computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
 import { useDateFormat } from '@/composables/useDateFormat'
-import { type Consultation, type Surgery, type GetAllPatientCases200ResponseResponseObjectInner, ResponseError } from '@/api'
+import { type Consultation, type Surgery, ResponseError } from '@/api'
+import type { ApiPatientCaseWithDetails } from '@/types'
 import { surgeryApi, consultationApi } from '@/api'
 import { useNotifierStore, useConsultationStore } from '@/stores/'
 import CreateEditSurgeryDialog from '@/components/dialogs/CreateEditSurgeryDialog.vue'
@@ -18,7 +19,7 @@ interface CombinedItem {
 
 // Props
 interface Props {
-  caseItem: GetAllPatientCases200ResponseResponseObjectInner & {
+  caseItem: ApiPatientCaseWithDetails & {
     consultations?: Consultation[]
   }
   patientId: string
