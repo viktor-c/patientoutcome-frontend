@@ -267,13 +267,19 @@ onMounted(async () => {
         <DashboardSearchDialog />
       </v-col>
       <v-col cols="12" sm="6" md="4" class="d-flex justify-end">
-        <v-btn
-               color="primary"
-               variant="elevated"
-               prepend-icon="mdi-creation"
-               @click="startCreationFlow">
-          {{ t('buttons.startCreationFlow') }}
-        </v-btn>
+        <v-tooltip location="bottom" :text="t('buttons.startCreationFlow')">
+          <template #activator="{ props }">
+            <v-btn
+                   v-bind="props"
+                   icon
+                   color="primary"
+                   variant="elevated"
+                   class="creation-flow-btn"
+                   @click="startCreationFlow">
+              <v-icon>mdi-creation</v-icon>
+            </v-btn>
+          </template>
+        </v-tooltip>
       </v-col>
     </v-row>
 
@@ -387,3 +393,17 @@ onMounted(async () => {
     </v-data-table>
   </v-container>
 </template>
+
+<style scoped>
+.creation-flow-btn {
+  box-shadow: 0 0 8px 2px rgba(var(--v-theme-primary), 0.35),
+              0 2px 6px rgba(0, 0, 0, 0.2);
+  transition: box-shadow 0.25s ease, transform 0.2s ease;
+}
+
+.creation-flow-btn:hover {
+  box-shadow: 0 0 18px 6px rgba(var(--v-theme-primary), 0.65),
+              0 4px 12px rgba(0, 0, 0, 0.25);
+  transform: scale(1.07);
+}
+</style>
