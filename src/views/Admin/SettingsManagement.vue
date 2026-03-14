@@ -60,8 +60,8 @@ const loadSettings = async () => {
           editedValues.value[categoryKey][fieldKey] = getFieldValue(field);
         }
       }
-      // Expand all panels by default
-      expandedPanels.value = Object.keys(settings.value.settings);
+      // Keep all panels collapsed by default
+      expandedPanels.value = [];
     }
   } catch (error) {
     notifierStore.notify(t('settings.loadError'), 'error');
@@ -153,6 +153,20 @@ const validateField = (field: SettingField, value: string | number | boolean): s
   }
 
   if (field.type === 'string' && typeof value === 'string') {
+    const validation = field.validation as unknown;
+    const enumValues =
+      validation && typeof validation === 'object' && Array.isArray((validation as Record<string, unknown>).enum)
+        ? ((validation as Record<string, unknown>).enum as unknown[]).filter(
+            (entry): entry is string => typeof entry === 'string',
+          )
+        : [];
+    if (enumValues.length > 0 && value && !enumValues.includes(value)) {
+      return getLocalizedText({
+        en: `Value must be one of: ${enumValues.join(', ')}`,
+        de: `Wert muss einer der folgenden sein: ${enumValues.join(', ')}`,
+      });
+    }
+
     if (field.validation?.minLength && value.length < field.validation.minLength) {
       return getLocalizedText({
         en: `Minimum length is ${field.validation.minLength} characters`,
@@ -200,6 +214,35 @@ const getFieldRules = (field: SettingField) => {
     const error = validateField(field, v);
     return error === null || error;
   }];
+};
+
+const getFieldEnumOptions = (field: SettingField): string[] => {
+  const validation = field.validation as unknown;
+  if (!validation || typeof validation !== 'object') return [];
+  const enumValues = (validation as Record<string, unknown>).enum;
+  if (!Array.isArray(enumValues)) return [];
+  return enumValues.filter((value): value is string => typeof value === 'string');
+};
+
+const hasEnumOptions = (field: SettingField): boolean => {
+  return getFieldEnumOptions(field).length > 0;
+};
+
+const permissionRoleFallbackOptions = ['patient', 'study-nurse', 'doctor', 'admin'];
+
+const isPermissionRoleField = (categoryKey: string, field: SettingField): boolean => {
+  return categoryKey === 'permissions' && field.type === 'string';
+};
+
+const shouldUseSelect = (categoryKey: string, field: SettingField): boolean => {
+  return isPermissionRoleField(categoryKey, field) || (field.type === 'string' && hasEnumOptions(field));
+};
+
+const getSelectItems = (categoryKey: string, field: SettingField): string[] => {
+  const enumOptions = getFieldEnumOptions(field);
+  if (enumOptions.length > 0) return enumOptions;
+  if (isPermissionRoleField(categoryKey, field)) return permissionRoleFallbackOptions;
+  return [];
 };
 
 onMounted(() => {
@@ -326,8 +369,23 @@ const saveDepartmentConsultationAccessWindow = async () => {
                   cols="12"
                   md="6"
                 >
+                  <v-select
+                    v-if="shouldUseSelect(category.key, field)"
+                    v-model="editedValues[category.key][fieldKey]"
+                    :items="getSelectItems(category.key, field)"
+                    :label="getLocalizedText(field.description)"
+                    :hint="getLocalizedText(field.helpText)"
+                    :rules="getFieldRules(field)"
+                    :required="field.required"
+                    persistent-hint
+                    variant="outlined"
+                    density="comfortable"
+                    :menu-props="{ maxHeight: 280 }"
+                    :clearable="false"
+                  ></v-select>
+
                   <v-text-field
-                    v-if="field.type === 'string'"
+                    v-else-if="field.type === 'string'"
                     v-model="editedValues[category.key][fieldKey]"
                     :label="getLocalizedText(field.description)"
                     :hint="getLocalizedText(field.helpText)"
@@ -368,6 +426,77 @@ const saveDepartmentConsultationAccessWindow = async () => {
               </v-row>
             </v-expansion-panel-text>
           </v-expansion-panel>
+          <v-expansion-panel v-if="isDoctorOrAbove && deptId" :value="'department-consultation-access'">
+        <v-expansion-panel-title>
+          <div class="d-flex align-center">
+            <v-icon class="mr-2">mdi-clock-edit-outline</v-icon>
+            <strong>{{ t('departmentCodeSettings.title') }}</strong>
+          </div>
+        </v-expansion-panel-title>
+
+        <v-expansion-panel-text>
+          <v-card flat>
+            <v-card-text>
+              <p class="text-body-2 text-medium-emphasis mb-4">
+                {{ t('departmentCodeSettings.subtitle') }}
+                <span v-if="deptName" class="font-weight-medium"> ({{ deptName }})</span>
+              </p>
+              <v-alert v-if="consultationAccessWindowError" type="error" variant="tonal" class="mb-4">
+                {{ consultationAccessWindowError }}
+              </v-alert>
+              <v-row>
+                <v-col cols="12" md="4">
+                  <v-text-field
+                    v-model.number="consultationAccessDaysBefore"
+                    type="number"
+                    :label="t('departmentCodeSettings.daysBeforeLabel')"
+                    :hint="t('departmentCodeSettings.daysBeforeHint')"
+                    :min="MIN_ACCESS_DAYS"
+                    :max="MAX_ACCESS_DAYS"
+                    persistent-hint
+                    variant="outlined"
+                    density="comfortable"
+                    @input="consultationAccessWindowError = null"
+                  ></v-text-field>
+                </v-col>
+                <v-col cols="12" md="4">
+                  <v-text-field
+                    v-model.number="consultationAccessDaysAfter"
+                    type="number"
+                    :label="t('departmentCodeSettings.daysAfterLabel')"
+                    :hint="t('departmentCodeSettings.daysAfterHint')"
+                    :min="MIN_ACCESS_DAYS"
+                    :max="MAX_ACCESS_DAYS"
+                    persistent-hint
+                    variant="outlined"
+                    density="comfortable"
+                    @input="consultationAccessWindowError = null"
+                  ></v-text-field>
+                </v-col>
+              </v-row>
+            </v-card-text>
+
+            <v-card-actions>
+              <v-btn
+                color="primary"
+                :loading="savingConsultationAccessWindow"
+                :disabled="!hasConsultationAccessWindowChanges || savingConsultationAccessWindow"
+                @click="saveDepartmentConsultationAccessWindow"
+              >
+                <v-icon start>mdi-content-save</v-icon>
+                {{ t('settings.save') }}
+              </v-btn>
+              <v-btn
+                variant="text"
+                :disabled="!hasConsultationAccessWindowChanges || savingConsultationAccessWindow"
+                @click="consultationAccessDaysBefore = originalConsultationAccessDaysBefore; consultationAccessDaysAfter = originalConsultationAccessDaysAfter; consultationAccessWindowError = null"
+              >
+                {{ t('settings.reset') }}
+              </v-btn>
+            </v-card-actions>
+          </v-card>
+        </v-expansion-panel-text>
+      </v-expansion-panel>
         </v-expansion-panels>
 
         <v-alert v-if="!loading && !settings" type="error" class="mt-4">
@@ -376,71 +505,7 @@ const saveDepartmentConsultationAccessWindow = async () => {
       </v-card-text>
     </v-card>
 
-    <!-- Department consultation access settings (visible to doctor+ users) -->
-    <v-card v-if="isDoctorOrAbove && deptId" class="mt-4">
-      <v-card-title class="d-flex align-center">
-        <v-icon class="mr-2">mdi-clock-edit-outline</v-icon>
-        {{ t('departmentCodeSettings.title') }}
-      </v-card-title>
-      <v-divider></v-divider>
-      <v-card-text>
-        <p class="text-body-2 text-medium-emphasis mb-4">
-          {{ t('departmentCodeSettings.subtitle') }}
-          <span v-if="deptName" class="font-weight-medium"> ({{ deptName }})</span>
-        </p>
-        <v-alert v-if="consultationAccessWindowError" type="error" variant="tonal" class="mb-4">
-          {{ consultationAccessWindowError }}
-        </v-alert>
-        <v-row>
-          <v-col cols="12" md="4">
-            <v-text-field
-              v-model.number="consultationAccessDaysBefore"
-              type="number"
-              :label="t('departmentCodeSettings.daysBeforeLabel')"
-              :hint="t('departmentCodeSettings.daysBeforeHint')"
-              :min="MIN_ACCESS_DAYS"
-              :max="MAX_ACCESS_DAYS"
-              persistent-hint
-              variant="outlined"
-              density="comfortable"
-              @input="consultationAccessWindowError = null"
-            ></v-text-field>
-          </v-col>
-          <v-col cols="12" md="4">
-            <v-text-field
-              v-model.number="consultationAccessDaysAfter"
-              type="number"
-              :label="t('departmentCodeSettings.daysAfterLabel')"
-              :hint="t('departmentCodeSettings.daysAfterHint')"
-              :min="MIN_ACCESS_DAYS"
-              :max="MAX_ACCESS_DAYS"
-              persistent-hint
-              variant="outlined"
-              density="comfortable"
-              @input="consultationAccessWindowError = null"
-            ></v-text-field>
-          </v-col>
-        </v-row>
-      </v-card-text>
-      <v-card-actions>
-        <v-btn
-          color="primary"
-          :loading="savingConsultationAccessWindow"
-          :disabled="!hasConsultationAccessWindowChanges || savingConsultationAccessWindow"
-          @click="saveDepartmentConsultationAccessWindow"
-        >
-          <v-icon start>mdi-content-save</v-icon>
-          {{ t('settings.save') }}
-        </v-btn>
-        <v-btn
-          variant="text"
-          :disabled="!hasConsultationAccessWindowChanges || savingConsultationAccessWindow"
-          @click="consultationAccessDaysBefore = originalConsultationAccessDaysBefore; consultationAccessDaysAfter = originalConsultationAccessDaysAfter; consultationAccessWindowError = null"
-        >
-          {{ t('settings.reset') }}
-        </v-btn>
-      </v-card-actions>
-    </v-card>
+    
   </v-container>
 </template>
 
