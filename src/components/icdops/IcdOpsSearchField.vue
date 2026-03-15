@@ -1,8 +1,11 @@
 <template>
   <!-- ── Trigger ─────────────────────────────────────────────── -->
   <div class="icd-ops-search-field">
+    <v-label v-if="label" class="icd-ops-field-label text-caption mb-1 d-block">
+      {{ label }}
+    </v-label>
+
     <v-input
-             :label="label"
              :hint="hintText"
              :persistent-hint="persistentHint"
              :error-messages="fieldError ? [fieldError] : []"
@@ -79,7 +82,7 @@
             max-width="680"
             scrollable
             :persistent="false">
-    <v-card>
+    <v-card class="icd-ops-dialog-card">
       <!-- Header -->
       <v-card-title class="d-flex align-center py-3 px-4 bg-primary text-white">
         <v-icon class="mr-2">{{ type === 'icd' ? 'mdi-hospital-box-outline' : 'mdi-needle' }}</v-icon>
@@ -100,7 +103,7 @@
       </v-card-title>
 
       <!-- Search bar -->
-      <v-card-text class="pa-3 pb-1" style="position: sticky; top: 0; z-index: 1; background: white">
+      <v-card-text class="pa-3 pb-1 icd-ops-search-header" style="position: sticky; top: 0; z-index: 1; background: white">
         <v-text-field
                       ref="searchRef"
                       v-model="searchInput"
@@ -144,7 +147,7 @@
       <v-divider />
 
       <!-- Results -->
-      <v-card-text class="pa-0" style="max-height: 440px; overflow-y: auto" @scroll="onScroll">
+      <v-card-text class="pa-0 icd-ops-results" @scroll="onScroll">
         <!-- Parent-context banner (terminal codes only) -->
         <div
              v-if="contextEntry && !isGroupNav"
@@ -339,6 +342,7 @@
 import { ref, computed, watch, nextTick } from 'vue'
 import { useIcdOpsSearch } from '@/composables/useIcdOpsSearch'
 import type { IcdOpsEntry } from '@/services/icdopsService'
+import type { VTextField } from 'vuetify/components'
 
 // ──────────────────────────────────────────────────────────────
 // Props
@@ -437,8 +441,6 @@ const {
 
 const dialogOpen = ref(false)
 const searchInput = ref('')
-import type { VTextField } from 'vuetify/components'
-
 const searchRef = ref<InstanceType<typeof VTextField> | null>(null)
 const fieldError = ref<string | null>(null)
 
@@ -645,5 +647,35 @@ watch(searchError, (err) => {
 
 .icd-ops-trigger:hover {
   background: rgba(var(--v-theme-on-surface), 0.04);
+}
+
+.icd-ops-dialog-card {
+  height: 50vh;
+  min-height: 50vh;
+  max-height: 50vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.icd-ops-search-header {
+  flex: 0 0 auto;
+}
+
+.icd-ops-results {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: stretch;
+}
+
+@media (max-width: 600px) {
+  .icd-ops-dialog-card {
+    height: 80vh;
+    min-height: 80vh;
+    max-height: 80vh;
+  }
 }
 </style>

@@ -451,9 +451,9 @@ watch(() => form.value.side, (newVal) => {
   }
 })
 
-watch(() => form.value.diagnosis, (newVal) => {
+watch(() => form.value.diagnosisICD10, (newVal) => {
   if (Array.isArray(newVal) && newVal.length > 0) {
-    clearFieldError('diagnosis')
+    clearFieldError('diagnosisICD10')
   }
 }, { deep: true })
 
@@ -530,8 +530,8 @@ const saveSurgery = async () => {
 
     // Validate required fields
     const validationRules = {
-      diagnosis: [
-        (v: unknown) => (Array.isArray(v) && v.length > 0 ? true : 'Diagnosis is required'),
+      diagnosisICD10: [
+        (v: unknown) => (Array.isArray(v) && v.length > 0 ? true : 'ICD-10 diagnosis is required'),
       ],
       surgeryDate: [
         (v: unknown) => (v ? true : 'Surgery date is required'),
@@ -581,10 +581,14 @@ const saveSurgery = async () => {
       return surgeon as string
     }).filter(Boolean) || []
 
+    const diagnosisValues = Array.isArray(form.value.diagnosisICD10)
+      ? [...form.value.diagnosisICD10]
+      : []
+
     // Prepare the data for API call
     const surgeryData: CreateSurgerySchema = {
       externalId: form.value.externalId,
-      diagnosis: form.value.diagnosis,
+      diagnosis: diagnosisValues,
       diagnosisICD10: form.value.diagnosisICD10,
       therapy: form.value.therapy,
       oPSCodes: form.value.oPSCodes,
@@ -756,25 +760,9 @@ defineExpose({
           </v-col>
         </v-row>
 
-        <!-- Grouped Diagnosis Fields -->
+        <!-- Diagnosis ICD-10 -->
         <v-row>
-          <v-col cols="12" md="6" lg="8">
-            <v-combobox
-                        :label="t('surgery.diagnosis')"
-                        v-model="form.diagnosis"
-                        :items="form.diagnosis"
-                        multiple
-                        outlined
-                        dense
-                        chips
-                        clearable
-                        closable-chips
-                        :hint="t('forms.hints.required')"
-                        persistent-hint
-                        :error="hasError('diagnosis')"
-                        :error-messages="hasError('diagnosis') ? [getError('diagnosis')] : []"></v-combobox>
-          </v-col>
-          <v-col cols="12" md="6" lg="4">
+          <v-col cols="12">
             <IcdOpsSearchField
                                type="icd"
                                :label="t('surgery.diagnosisICD10')"

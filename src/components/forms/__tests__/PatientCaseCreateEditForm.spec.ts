@@ -48,7 +48,7 @@ vi.mock('@/composables/useFormValidation', () => ({
 vi.mock('@/components/icdops/IcdOpsSearchField.vue', () => ({
   default: {
     name: 'IcdOpsSearchField',
-    template: '<div class="mock-icd-search-field"><slot /></div>',
+    template: '<div class="mock-icd-search-field">{{ label }}<slot /></div>',
     props: ['type', 'modelValue', 'label', 'multiple', 'chips', 'clearable', 'closableChips', 'returnObject'],
     emits: ['update:modelValue'],
   },
@@ -101,7 +101,7 @@ describe('PatientCaseCreateEditForm.vue', () => {
         stubs: {
           IcdOpsSearchField: {
             name: 'IcdOpsSearchField',
-            template: '<div class="mock-icd-search-field"></div>',
+            template: '<div class="mock-icd-search-field">{{ label }}</div>',
             props: ['type', 'modelValue', 'label', 'multiple', 'chips', 'clearable', 'closableChips', 'returnObject'],
             emits: ['update:modelValue'],
           },

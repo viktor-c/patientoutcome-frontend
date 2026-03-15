@@ -106,9 +106,8 @@ describe('IcdOpsSearchField.vue', () => {
 
   it('renders the label', () => {
     const wrapper = mountComponent({ label: 'Diagnose' })
-    // Label is forwarded to v-input
-    const input = wrapper.findComponent({ name: 'VInput' })
-    expect(input.props('label')).toBe('Diagnose')
+    // Label is rendered via the explicit v-label above the trigger
+    expect(wrapper.find('.icd-ops-field-label').text()).toBe('Diagnose')
   })
 
   it('renders selected single value as code + label', async () => {

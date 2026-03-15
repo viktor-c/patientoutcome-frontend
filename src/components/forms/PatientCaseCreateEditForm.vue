@@ -21,7 +21,7 @@ import { useNotifierStore } from '@/stores/notifierStore'
 const notifierStore = useNotifierStore()
 
 const { t } = useI18n()
-const { errors, validateForm, clearAllErrors, touchField, isFieldTouched, resetFormState } = useFormValidation()
+const { validateForm, clearAllErrors, resetFormState } = useFormValidation()
 
 // Props
 const props = defineProps<{
@@ -101,20 +101,6 @@ watch(otherDiagnosisICD10Entries, (entries) => {
   formCase.value.otherDiagnosisICD10 = extractCodes(entries)
 }, { deep: true })
 
-// Helper to determine if we should show error for a field
-const shouldShowError = (fieldName: string): boolean => {
-  return formSubmitted.value || isFieldTouched(fieldName)
-}
-
-// Helper to get error message (only if field should show error)
-const getErrorIfNeeded = (fieldName: string): string => {
-  return shouldShowError(fieldName) ? errors[fieldName] || '' : ''
-}
-
-// Helper to determine if field has error (only if field should show error)
-const hasErrorIfNeeded = (fieldName: string): boolean => {
-  return shouldShowError(fieldName) && !!errors[fieldName]
-}
 
 // Initialize form data on mount or when props change
 watch(
@@ -459,30 +445,12 @@ loadDefaultBlueprints()
                   :label="t('forms.patientCase.caseDescription')"
                   rows="3"></v-textarea>
 
-      <!-- Grouped diagnosis fields with responsive layout -->
-      <!-- Main Diagnosis Row -->
+      <!-- Diagnosis fields -->
       <v-row>
-        <v-col cols="12" md="6" lg="8">
-          <v-combobox
-                      :label="t('forms.patientCase.mainDiagnosis')"
-                      v-model="formCase.mainDiagnosis"
-                      :items="formCase.mainDiagnosis"
-                      multiple
-                      outlined
-                      dense
-                      chips
-                      clearable
-                      closable-chips
-                      :hint="t('forms.hints.required')"
-                      persistent-hint
-                      :error="hasErrorIfNeeded('mainDiagnosis')"
-                      :error-messages="[getErrorIfNeeded('mainDiagnosis')]"
-                      @blur="touchField('mainDiagnosis')"></v-combobox>
-        </v-col>
-        <v-col cols="12" md="6" lg="4">
+        <v-col cols="12">
           <IcdOpsSearchField
                              type="icd"
-                             :label="t('forms.patientCase.mainDiagnosisICD10')"
+                             :label="t('forms.patientCase.mainDiagnosis')"
                              v-model="mainDiagnosisICD10Entries"
                              return-object
                              multiple
@@ -492,24 +460,11 @@ loadDefaultBlueprints()
         </v-col>
       </v-row>
 
-      <!-- Other Diagnosis Row -->
       <v-row>
-        <v-col cols="12" md="6" lg="8">
-          <v-combobox
-                      :label="t('forms.patientCase.otherDiagnosis')"
-                      v-model="formCase.otherDiagnosis"
-                      :items="formCase.otherDiagnosis"
-                      multiple
-                      outlined
-                      dense
-                      chips
-                      clearable
-                      closable-chips></v-combobox>
-        </v-col>
-        <v-col cols="12" md="6" lg="4">
+        <v-col cols="12">
           <IcdOpsSearchField
                              type="icd"
-                             :label="t('forms.patientCase.otherDiagnosisICD10')"
+                             :label="t('forms.patientCase.otherDiagnosis')"
                              v-model="otherDiagnosisICD10Entries"
                              return-object
                              multiple

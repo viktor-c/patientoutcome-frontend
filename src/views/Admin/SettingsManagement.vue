@@ -60,8 +60,8 @@ const loadSettings = async () => {
           editedValues.value[categoryKey][fieldKey] = getFieldValue(field);
         }
       }
-      // Keep all panels collapsed by default
-      expandedPanels.value = [];
+      // Expand all setting categories by default so fields are visible immediately.
+      expandedPanels.value = Object.keys(settings.value.settings);
     }
   } catch (error) {
     notifierStore.notify(t('settings.loadError'), 'error');
@@ -245,6 +245,18 @@ const getSelectItems = (categoryKey: string, field: SettingField): string[] => {
   return [];
 };
 
+const getSelectModelValue = (categoryKey: string, fieldKey: string): string => {
+  const value = editedValues.value[categoryKey]?.[fieldKey];
+  return typeof value === 'string' ? value : '';
+};
+
+const setSelectModelValue = (categoryKey: string, fieldKey: string, value: string | null): void => {
+  if (!editedValues.value[categoryKey]) {
+    editedValues.value[categoryKey] = {};
+  }
+  editedValues.value[categoryKey][fieldKey] = value ?? '';
+};
+
 onMounted(() => {
   loadSettings();
   if (isDoctorOrAbove.value) {
@@ -371,7 +383,8 @@ const saveDepartmentConsultationAccessWindow = async () => {
                 >
                   <v-select
                     v-if="shouldUseSelect(category.key, field)"
-                    v-model="editedValues[category.key][fieldKey]"
+                    :model-value="getSelectModelValue(category.key, String(fieldKey))"
+                    @update:model-value="setSelectModelValue(category.key, String(fieldKey), $event)"
                     :items="getSelectItems(category.key, field)"
                     :label="getLocalizedText(field.description)"
                     :hint="getLocalizedText(field.helpText)"
