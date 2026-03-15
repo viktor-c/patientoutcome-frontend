@@ -3,11 +3,8 @@ import { ref, computed, onMounted, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useDateFormat } from '@/composables/useDateFormat'
 import { consultationApi } from '@/api'
-import type {
-  GetAllConsultations200Response,
-  FindAllCodes200ResponseResponseObjectInnerConsultationId as Consultation,
-  FindAllCodes200ResponseResponseObjectInnerConsultationIdNotesInner as ConsultationNote
-} from '@/api'
+import type { GetAllConsultations200Response } from '@/api'
+import type { ApiConsultation as Consultation, ApiConsultationNote as ConsultationNote } from '@/types'
 
 const { t } = useI18n()
 const { formatLocalizedCustomDate } = useDateFormat()
@@ -275,7 +272,7 @@ defineExpose({
                 <div class="d-flex flex-wrap gap-1">
                   <v-chip
                           v-for="(form, formIndex) in consultation.proms"
-                    :key="form.id == null ? `form-${formIndex}` : String(form.id)"
+                          :key="form.id == null ? `form-${formIndex}` : String(form.id)"
                           size="x-small"
                           :color="form.patientFormData?.fillStatus === 'complete' ? 'success' : 'warning'"
                           class="me-1">
@@ -289,7 +286,8 @@ defineExpose({
               </div>
 
               <div class="ms-3">
-                <RouterLink :to="{ name: 'consultationoverview', params: { consultationId: getConsultationId(consultation) } }">
+                <RouterLink
+                            :to="{ name: 'consultationoverview', params: { consultationId: getConsultationId(consultation) } }">
                   <v-btn color="primary" variant="text" size="small">
                     {{ t('patientOverview.viewDetails') }}
                   </v-btn>

@@ -8,8 +8,8 @@ import {
   type Consultation,
   type Blueprint,
   ResponseError,
-  type GetAllPatientCases200ResponseResponseObjectInner
 } from '@/api'
+import type { ApiPatientCaseWithDetails } from '@/types'
 
 import PatientCaseCreateEditForm from '@/components/forms/PatientCaseCreateEditForm.vue'
 import CreateEditSurgeryDialog from '@/components/dialogs/CreateEditSurgeryDialog.vue'
@@ -22,7 +22,7 @@ import { useNotifierStore } from '@/stores/'
 const notifierStore = useNotifierStore()
 
 // Extended type for UI purposes
-interface ExtendedPatientCase extends GetAllPatientCases200ResponseResponseObjectInner {
+interface ExtendedPatientCase extends ApiPatientCaseWithDetails {
   showConsultations?: boolean
   displayMode?: 'separated' | 'chronological'
 }
@@ -48,7 +48,7 @@ const caseDialogVisible = ref(false)
 // Blueprint creation flow state
 const showCreateFlow = ref(false)
 const currentFlowStep = ref(1) // 1: Case, 2: Surgery, 3: Consultation Selection, 4: Consultation Creation
-const createdCase = ref<GetAllPatientCases200ResponseResponseObjectInner | null>(null)
+const createdCase = ref<ApiPatientCaseWithDetails | null>(null)
 const createdSurgery = ref<Surgery | null>(null)
 const createdConsultations = ref<Consultation[]>([])
 
@@ -181,7 +181,7 @@ const startCreateFlow = () => {
 }
 
 // Handle case creation from blueprint flow
-const handleCaseSubmit = (caseData: GetAllPatientCases200ResponseResponseObjectInner) => {
+const handleCaseSubmit = (caseData: ApiPatientCaseWithDetails) => {
   createdCase.value = caseData
   currentFlowStep.value = 2
   notifierStore.notify(t('creationFlow.caseCreated'), 'success')
@@ -298,7 +298,7 @@ watch(currentFlowStep, (newStep, oldStep) => {
 // Complete the creation flow and navigate to the newly created case
 const completeCreateFlow = () => {
   showCreateFlow.value = false
-  
+
   // Reset flow state
   const caseIdToNavigateTo = createdCase.value?.id
   currentFlowStep.value = 1
@@ -306,9 +306,9 @@ const completeCreateFlow = () => {
   createdSurgery.value = null
   createdConsultations.value = []
   selectedConsultationBlueprints.value = []
-  
+
   notifierStore.notify(t('creationFlow.flowCompleted'), 'success')
-  
+
   // Auto-redirect to the newly created case
   if (caseIdToNavigateTo) {
     setTimeout(() => {

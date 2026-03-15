@@ -8,6 +8,7 @@ import { useNotifierStore, useUserStore } from '@/stores/'
 
 import AppAlert from '@/components/AppAlert.vue'
 import { EditUserSettingsDialog } from '@/components/dialogs/';
+import { useSessionWatcher } from '@/composables/useSessionWatcher'
 
 const { locale, t } = useI18n()
 
@@ -26,6 +27,9 @@ const router = useRouter()
 const showEditUserSettingsKey = ref(0);
 
 const shouldShowNavBar = computed(() => userStore.isAuthenticated() && !userStore.isKioskUser())
+
+// Proactively detect expired sessions when the user returns to the tab after being away.
+useSessionWatcher()
 
 // Format time based on locale
 function formatDateTime(DateTime: string) {

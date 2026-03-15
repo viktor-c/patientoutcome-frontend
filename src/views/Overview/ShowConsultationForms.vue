@@ -8,6 +8,7 @@ import { ResponseError } from '@/api'
 import { useNotifierStore } from '@/stores/notifierStore'
 import { logger } from '@/services/logger'
 import { useConsultationFlow } from '@/composables/useConsultationFlow'
+import { getConsultationAccessWindowFromConsultation, type ConsultationAccessWindow } from '@/utils/consultationAccessWindow'
 
 import type { Form, PatientFormData } from '@/types/index'
 import type { FormSubmissionData } from '@/forms/types'
@@ -45,7 +46,7 @@ const showReviewOption = ref(false) // Show review option after all forms are fi
 // completedForms and allForms are now reactive from the composable
 const isReviewMode = ref(false) // True when reviewing completed forms
 const isFinalized = ref(false) // True after code is deactivated
-const codeExpiresOn = ref<string | null>(null) // Expiry date from formAccessCode
+const consultationAccessWindow = ref<ConsultationAccessWindow | null>(null)
 
 const notifierStore = useNotifierStore()
 
@@ -61,12 +62,7 @@ onMounted(async () => {
       throw new Error('Consultation not found for the provided code.')
     }
 
-    // Extract code expiry if present
-    const accessCode = consultationResponse.responseObject.formAccessCode as unknown
-    if (accessCode && typeof accessCode === 'object') {
-      const expiresOnRaw = (accessCode as Record<string, unknown>)['expiresOn']
-      if (typeof expiresOnRaw === 'string') codeExpiresOn.value = expiresOnRaw
-    }
+    consultationAccessWindow.value = getConsultationAccessWindowFromConsultation(consultationResponse.responseObject)
 
     // Use the shared consultation flow logic
     await processConsultation(consultationResponse.responseObject)
@@ -82,15 +78,17 @@ onMounted(async () => {
 
     currentFormIndex.value = 0 // Reset to the first form
   } catch (error: unknown) {
-    let errorMessage = 'An unexpected error occurred'
+    let message = 'An unexpected error occurred'
     if (error instanceof ResponseError) {
-      errorMessage = (await error.response.json()).message
+      message = (await error.response.json()).message
     }
-    logger.error('Error fetching consultation forms:', errorMessage)
-    // errorMessage.value = t('alerts.consultation.fetchFormsFailed');
+    logger.error('Error fetching consultation forms:', message)
+    errorMessage.value = message.includes('not currently active')
+      ? t('flow.consultationNotActiveMessage')
+      : t('alerts.consultation.fetchFormsFailed')
   } finally {
     isLoading.value = false
-    if (forms.value.length === 0 && completedForms.value.length === 0) {
+    if (!errorMessage.value && forms.value.length === 0 && completedForms.value.length === 0) {
       router.go(-1)
       notifierStore.notify(t('flow.noFormsAvailable'), 'error')
     }
@@ -293,16 +291,20 @@ const isSmallScreen = computed(() => window.innerWidth < 1300)
     <v-progress-circular indeterminate color="primary" size="64"></v-progress-circular>
   </v-container>
   <v-container v-else :class="isSmallScreen ? 'w-100' : 'w-75'">
-    <!-- Code expiry notice (only relevant for external access via code) -->
+    <!-- Consultation access window notice (only relevant for external access via code) -->
     <v-alert
-             v-if="externalCode && codeExpiresOn"
-             :type="new Date(codeExpiresOn) < new Date() ? 'error' : 'warning'"
+             v-if="externalCode && consultationAccessWindow"
+             :type="consultationAccessWindow.isActive ? 'info' : 'warning'"
              variant="tonal"
              class="mb-3"
              density="compact">
-      <v-icon start>mdi-clock-alert-outline</v-icon>
-      <span v-if="new Date(codeExpiresOn) < new Date()">{{ t('qrCode.accessExpired') }}</span>
-      <span v-else>{{ t('qrCode.expiresAt', { date: new Date(codeExpiresOn).toLocaleString() }) }}</span>
+      <v-icon start>mdi-calendar-clock</v-icon>
+      <span>
+        {{ t('qrCode.accessWindowRange', {
+          from: new Date(consultationAccessWindow.activeFrom).toLocaleString(),
+          until: new Date(consultationAccessWindow.activeUntil).toLocaleString()
+        }) }}
+      </span>
     </v-alert>
     <!-- <v-container class="progress-bar-container">
       <v-progress-linear color="green" :model-value="formFillProgress" :height="8"></v-progress-linear>

@@ -3,7 +3,7 @@ import { mount, flushPromises } from '@vue/test-utils'
 import { createVuetify } from 'vuetify'
 import * as components from 'vuetify/components'
 import * as directives from 'vuetify/directives'
-import { ref, nextTick } from 'vue'
+import { ref } from 'vue'
 import DashboardView from '../DashboardView.vue'
 
 // Mock dependencies
@@ -62,7 +62,7 @@ vi.mock('@/api', () => ({
     getAllConsultationsOnDay: (...args: unknown[]) => mockGetAllConsultationsOnDay(...args),
   },
   patientCaseApi: {},
-  ResponseError: class ResponseError extends Error {},
+  ResponseError: class ResponseError extends Error { },
 }))
 
 vi.mock('@/stores/userStore', () => ({
@@ -74,7 +74,7 @@ vi.mock('@/stores/userStore', () => ({
 
 vi.mock('@/composables/useDateFormat', () => ({
   useDateFormat: () => ({
-    formatLocalizedCustomDate: (date: string, format: string) => {
+    formatLocalizedCustomDate: (date: string) => {
       if (!date) return 'N/A'
       return new Date(date).toLocaleDateString()
     },
@@ -130,7 +130,7 @@ describe('DashboardView.vue', () => {
     it('should navigate to creation flow when add button is clicked', async () => {
       const wrapper = mountComponent()
       await flushPromises()
-      
+
       // Find add button by icon or text
       const addButton = wrapper.find('[data-testid="add-consultation-btn"]')
       if (addButton.exists()) {
@@ -144,17 +144,17 @@ describe('DashboardView.vue', () => {
     it('should fetch consultations on mount', async () => {
       mountComponent()
       await flushPromises()
-      
+
       expect(mockGetAllConsultationsOnDay).toHaveBeenCalled()
     })
 
     it('should handle API errors gracefully', async () => {
-      const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
+      const consoleError = vi.spyOn(console, 'error').mockImplementation(() => { })
       mockGetAllConsultationsOnDay.mockRejectedValueOnce(new Error('Network error'))
-      
+
       const wrapper = mountComponent()
       await flushPromises()
-      
+
       // Component should still render
       expect(wrapper.exists()).toBe(true)
       consoleError.mockRestore()
@@ -169,10 +169,10 @@ describe('DashboardView.vue', () => {
           dateAndTime: null,
         }],
       })
-      
+
       const wrapper = mountComponent()
       await flushPromises()
-      
+
       // Should render N/A or similar for null dates
       expect(wrapper.exists()).toBe(true)
     })
@@ -182,7 +182,7 @@ describe('DashboardView.vue', () => {
     it('should extract patient external IDs', async () => {
       const wrapper = mountComponent()
       await flushPromises()
-      
+
       // The component should render patient IDs
       expect(wrapper.exists()).toBe(true)
     })

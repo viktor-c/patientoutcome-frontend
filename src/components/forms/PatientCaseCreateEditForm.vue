@@ -7,14 +7,13 @@ import type { IcdOpsEntry } from '@/services/icdopsService'
 import {
   type CreateCaseSchema,
   type PatientCase,
-  type GetAllPatientCases200ResponseResponseObjectInner as PatientCaseWithDetails,
-  type GetAllPatientCases200ResponseResponseObjectInnerSurgeriesInner as PatientCaseSurgery,
   type Note,
   type User,
   type Blueprint,
   ResponseError,
   SearchBlueprintsBlueprintForEnum,
 } from '@/api/'
+import type { ApiPatientCaseWithDetails as PatientCaseWithDetails, ApiPatientCaseSurgery as PatientCaseSurgery } from '@/types'
 
 // Importing the notifier store for notifications
 import { useNotifierStore } from '@/stores/notifierStore'
@@ -22,7 +21,7 @@ import { useNotifierStore } from '@/stores/notifierStore'
 const notifierStore = useNotifierStore()
 
 const { t } = useI18n()
-const { errors, validateForm, clearAllErrors, touchField, isFieldTouched, resetFormState } = useFormValidation()
+const { validateForm, clearAllErrors, resetFormState } = useFormValidation()
 
 // Props
 const props = defineProps<{
@@ -102,20 +101,6 @@ watch(otherDiagnosisICD10Entries, (entries) => {
   formCase.value.otherDiagnosisICD10 = extractCodes(entries)
 }, { deep: true })
 
-// Helper to determine if we should show error for a field
-const shouldShowError = (fieldName: string): boolean => {
-  return formSubmitted.value || isFieldTouched(fieldName)
-}
-
-// Helper to get error message (only if field should show error)
-const getErrorIfNeeded = (fieldName: string): string => {
-  return shouldShowError(fieldName) ? errors[fieldName] || '' : ''
-}
-
-// Helper to determine if field has error (only if field should show error)
-const hasErrorIfNeeded = (fieldName: string): boolean => {
-  return shouldShowError(fieldName) && !!errors[fieldName]
-}
 
 // Initialize form data on mount or when props change
 watch(
@@ -428,26 +413,26 @@ loadDefaultBlueprints()
     </p>
 
     <!-- Blueprint Selection Section -->
-      
-        <v-autocomplete v-if="isCreating" class="mb-4"
-                        v-model="selectedBlueprint"
-                        v-model:search="blueprintSearchQuery"
-                        :items="blueprints"
-                        :loading="loadingBlueprints"
-                        :label="t('forms.blueprint.selectBlueprint')"
-                        :placeholder="t('forms.blueprint.searchBlueprintsPlaceholder')"
-                        :no-data-text="t('forms.blueprint.noBlueprints')"
-                        item-title="title"
-                        item-value="id"
-                        return-object
-                        clearable
-                        variant="underlined"
-                        @update:model-value="(blueprint) => blueprint && applyBlueprint(blueprint)">
-          <template v-slot:item="{ props, item }">
-            <v-list-item v-bind="props" :title="item.raw.title" :subtitle="item.raw.description">
-            </v-list-item>
-          </template>
-        </v-autocomplete>
+
+    <v-autocomplete v-if="isCreating" class="mb-4"
+                    v-model="selectedBlueprint"
+                    v-model:search="blueprintSearchQuery"
+                    :items="blueprints"
+                    :loading="loadingBlueprints"
+                    :label="t('forms.blueprint.selectBlueprint')"
+                    :placeholder="t('forms.blueprint.searchBlueprintsPlaceholder')"
+                    :no-data-text="t('forms.blueprint.noBlueprints')"
+                    item-title="title"
+                    item-value="id"
+                    return-object
+                    clearable
+                    variant="underlined"
+                    @update:model-value="(blueprint) => blueprint && applyBlueprint(blueprint)">
+      <template v-slot:item="{ props, item }">
+        <v-list-item v-bind="props" :title="item.raw.title" :subtitle="item.raw.description">
+        </v-list-item>
+      </template>
+    </v-autocomplete>
 
     <v-form @submit.prevent="submit">
       <!-- Full width fields -->
@@ -460,63 +445,32 @@ loadDefaultBlueprints()
                   :label="t('forms.patientCase.caseDescription')"
                   rows="3"></v-textarea>
 
-      <!-- Grouped diagnosis fields with responsive layout -->
-      <!-- Main Diagnosis Row -->
+      <!-- Diagnosis fields -->
       <v-row>
-        <v-col cols="12" md="6" lg="8">
-          <v-combobox
-                      :label="t('forms.patientCase.mainDiagnosis')"
-                      v-model="formCase.mainDiagnosis"
-                      :items="formCase.mainDiagnosis"
-                      multiple
-                      outlined
-                      dense
-                      chips
-                      clearable
-                      closable-chips
-                      :hint="t('forms.hints.required')"
-                      persistent-hint
-                      :error="hasErrorIfNeeded('mainDiagnosis')"
-                      :error-messages="[getErrorIfNeeded('mainDiagnosis')]"
-                      @blur="touchField('mainDiagnosis')"></v-combobox>
-        </v-col>
-        <v-col cols="12" md="6" lg="4">
+        <v-col cols="12">
           <IcdOpsSearchField
-                      type="icd"
-                      :label="t('forms.patientCase.mainDiagnosisICD10')"
-                      v-model="mainDiagnosisICD10Entries"
-                      return-object
-                      multiple
-                      chips
-                      clearable
-                      closable-chips />
+                             type="icd"
+                             :label="t('forms.patientCase.mainDiagnosis')"
+                             v-model="mainDiagnosisICD10Entries"
+                             return-object
+                             multiple
+                             chips
+                             clearable
+                             closable-chips />
         </v-col>
       </v-row>
 
-      <!-- Other Diagnosis Row -->
       <v-row>
-        <v-col cols="12" md="6" lg="8">
-          <v-combobox
-                      :label="t('forms.patientCase.otherDiagnosis')"
-                      v-model="formCase.otherDiagnosis"
-                      :items="formCase.otherDiagnosis"
-                      multiple
-                      outlined
-                      dense
-                      chips
-                      clearable
-                      closable-chips></v-combobox>
-        </v-col>
-        <v-col cols="12" md="6" lg="4">
+        <v-col cols="12">
           <IcdOpsSearchField
-                      type="icd"
-                      :label="t('forms.patientCase.otherDiagnosisICD10')"
-                      v-model="otherDiagnosisICD10Entries"
-                      return-object
-                      multiple
-                      chips
-                      clearable
-                      closable-chips />
+                             type="icd"
+                             :label="t('forms.patientCase.otherDiagnosis')"
+                             v-model="otherDiagnosisICD10Entries"
+                             return-object
+                             multiple
+                             chips
+                             clearable
+                             closable-chips />
         </v-col>
       </v-row>
 

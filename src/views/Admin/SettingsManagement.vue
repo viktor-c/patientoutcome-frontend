@@ -3,7 +3,7 @@ import { ref, onMounted, computed } from 'vue';
 import { useNotifierStore } from '@/stores/';
 import { useUserStore } from '@/stores/userStore';
 import { useI18n } from 'vue-i18n';
-import { settingsApi, userDepartmentApi, updateDepartmentCodeLife } from '@/api';
+import { settingsApi, userDepartmentApi, updateDepartmentConsultationAccessWindow } from '@/api';
 import type { 
   GetSettings200ResponseResponseObject,
   GetSettings200ResponseResponseObjectSettingsValueFieldsValue 
@@ -20,15 +20,18 @@ const settings = ref<GetSettings200ResponseResponseObject | null>(null);
 const editedValues = ref<Record<string, Record<string, string | number | boolean>>>({});
 const expandedPanels = ref<string[]>([]);
 
-// Department code life state (doctor+ only)
+// Department consultation access state (doctor+ only)
 const isDoctorOrAbove = computed(() => userStore.hasRole('doctor') || userStore.hasRole('admin'));
 const deptName = ref<string>('');
 const deptId = ref<string>('');
-const codeLifeValue = ref<string>('');
-const codeLifeOriginal = ref<string>('');
-const savingCodeLife = ref(false);
-const codeLifeError = ref<string | null>(null);
-const CODE_LIFE_PATTERN = /^\d+[hdw]$/;
+const consultationAccessDaysBefore = ref<number>(userStore.consultationAccessDaysBefore);
+const consultationAccessDaysAfter = ref<number>(userStore.consultationAccessDaysAfter);
+const originalConsultationAccessDaysBefore = ref<number>(userStore.consultationAccessDaysBefore);
+const originalConsultationAccessDaysAfter = ref<number>(userStore.consultationAccessDaysAfter);
+const savingConsultationAccessWindow = ref(false);
+const consultationAccessWindowError = ref<string | null>(null);
+const MIN_ACCESS_DAYS = 0;
+const MAX_ACCESS_DAYS = 365;
 
 // Helper to convert API value type to primitive
 const getFieldValue = (field: SettingField): string | number | boolean => {
@@ -57,7 +60,7 @@ const loadSettings = async () => {
           editedValues.value[categoryKey][fieldKey] = getFieldValue(field);
         }
       }
-      // Expand all panels by default
+      // Expand all setting categories by default so fields are visible immediately.
       expandedPanels.value = Object.keys(settings.value.settings);
     }
   } catch (error) {
@@ -150,6 +153,20 @@ const validateField = (field: SettingField, value: string | number | boolean): s
   }
 
   if (field.type === 'string' && typeof value === 'string') {
+    const validation = field.validation as unknown;
+    const enumValues =
+      validation && typeof validation === 'object' && Array.isArray((validation as Record<string, unknown>).enum)
+        ? ((validation as Record<string, unknown>).enum as unknown[]).filter(
+            (entry): entry is string => typeof entry === 'string',
+          )
+        : [];
+    if (enumValues.length > 0 && value && !enumValues.includes(value)) {
+      return getLocalizedText({
+        en: `Value must be one of: ${enumValues.join(', ')}`,
+        de: `Wert muss einer der folgenden sein: ${enumValues.join(', ')}`,
+      });
+    }
+
     if (field.validation?.minLength && value.length < field.validation.minLength) {
       return getLocalizedText({
         en: `Minimum length is ${field.validation.minLength} characters`,
@@ -199,46 +216,106 @@ const getFieldRules = (field: SettingField) => {
   }];
 };
 
+const getFieldEnumOptions = (field: SettingField): string[] => {
+  const validation = field.validation as unknown;
+  if (!validation || typeof validation !== 'object') return [];
+  const enumValues = (validation as Record<string, unknown>).enum;
+  if (!Array.isArray(enumValues)) return [];
+  return enumValues.filter((value): value is string => typeof value === 'string');
+};
+
+const hasEnumOptions = (field: SettingField): boolean => {
+  return getFieldEnumOptions(field).length > 0;
+};
+
+const permissionRoleFallbackOptions = ['patient', 'study-nurse', 'doctor', 'admin'];
+
+const isPermissionRoleField = (categoryKey: string, field: SettingField): boolean => {
+  return categoryKey === 'permissions' && field.type === 'string';
+};
+
+const shouldUseSelect = (categoryKey: string, field: SettingField): boolean => {
+  return isPermissionRoleField(categoryKey, field) || (field.type === 'string' && hasEnumOptions(field));
+};
+
+const getSelectItems = (categoryKey: string, field: SettingField): string[] => {
+  const enumOptions = getFieldEnumOptions(field);
+  if (enumOptions.length > 0) return enumOptions;
+  if (isPermissionRoleField(categoryKey, field)) return permissionRoleFallbackOptions;
+  return [];
+};
+
+const getSelectModelValue = (categoryKey: string, fieldKey: string): string => {
+  const value = editedValues.value[categoryKey]?.[fieldKey];
+  return typeof value === 'string' ? value : '';
+};
+
+const setSelectModelValue = (categoryKey: string, fieldKey: string, value: string | null): void => {
+  if (!editedValues.value[categoryKey]) {
+    editedValues.value[categoryKey] = {};
+  }
+  editedValues.value[categoryKey][fieldKey] = value ?? '';
+};
+
 onMounted(() => {
   loadSettings();
   if (isDoctorOrAbove.value) {
-    loadDepartmentCodeLife();
+    loadDepartmentConsultationAccessWindow();
   }
 });
 
-// Load user's department and its current code life setting
-const loadDepartmentCodeLife = async () => {
+// Load user's department and its current consultation access settings
+const loadDepartmentConsultationAccessWindow = async () => {
   try {
     const response = await userDepartmentApi.getUserDepartment();
     const dept = response.responseObject as unknown as Record<string, unknown> | null;
     if (dept) {
       deptId.value = String(dept['_id'] || dept['id'] || '');
       deptName.value = String(dept['name'] || '');
-      codeLifeValue.value = String(dept['externalAccessCodeLife'] || '4h');
-      codeLifeOriginal.value = codeLifeValue.value;
+      consultationAccessDaysBefore.value = Number(dept['consultationAccessDaysBefore'] ?? userStore.consultationAccessDaysBefore ?? 3);
+      consultationAccessDaysAfter.value = Number(dept['consultationAccessDaysAfter'] ?? userStore.consultationAccessDaysAfter ?? 30);
+      originalConsultationAccessDaysBefore.value = consultationAccessDaysBefore.value;
+      originalConsultationAccessDaysAfter.value = consultationAccessDaysAfter.value;
     }
   } catch {
     // Department info not critical — fail silently
   }
 };
 
-// Save department code life setting
-const saveDepartmentCodeLife = async () => {
-  codeLifeError.value = null;
-  if (!CODE_LIFE_PATTERN.test(codeLifeValue.value)) {
-    codeLifeError.value = t('departmentCodeSettings.codeLifeInvalidFormat');
+const hasConsultationAccessWindowChanges = computed(() => {
+  return consultationAccessDaysBefore.value !== originalConsultationAccessDaysBefore.value
+    || consultationAccessDaysAfter.value !== originalConsultationAccessDaysAfter.value;
+});
+
+// Save department consultation access settings
+const saveDepartmentConsultationAccessWindow = async () => {
+  consultationAccessWindowError.value = null;
+  if (
+    consultationAccessDaysBefore.value < MIN_ACCESS_DAYS
+    || consultationAccessDaysBefore.value > MAX_ACCESS_DAYS
+    || consultationAccessDaysAfter.value < MIN_ACCESS_DAYS
+    || consultationAccessDaysAfter.value > MAX_ACCESS_DAYS
+  ) {
+    consultationAccessWindowError.value = t('departmentCodeSettings.dayRangeInvalid');
     return;
   }
   if (!deptId.value) return;
-  savingCodeLife.value = true;
+  savingConsultationAccessWindow.value = true;
   try {
-    await updateDepartmentCodeLife(deptId.value, codeLifeValue.value);
-    codeLifeOriginal.value = codeLifeValue.value;
+    await updateDepartmentConsultationAccessWindow(
+      deptId.value,
+      consultationAccessDaysBefore.value,
+      consultationAccessDaysAfter.value,
+    );
+    originalConsultationAccessDaysBefore.value = consultationAccessDaysBefore.value;
+    originalConsultationAccessDaysAfter.value = consultationAccessDaysAfter.value;
+    userStore.consultationAccessDaysBefore = consultationAccessDaysBefore.value;
+    userStore.consultationAccessDaysAfter = consultationAccessDaysAfter.value;
     notifierStore.notify(t('departmentCodeSettings.saveSuccess'), 'success');
   } catch {
     notifierStore.notify(t('departmentCodeSettings.saveError'), 'error');
   } finally {
-    savingCodeLife.value = false;
+    savingConsultationAccessWindow.value = false;
   }
 };
 </script>
@@ -304,8 +381,24 @@ const saveDepartmentCodeLife = async () => {
                   cols="12"
                   md="6"
                 >
+                  <v-select
+                    v-if="shouldUseSelect(category.key, field)"
+                    :model-value="getSelectModelValue(category.key, String(fieldKey))"
+                    @update:model-value="setSelectModelValue(category.key, String(fieldKey), $event)"
+                    :items="getSelectItems(category.key, field)"
+                    :label="getLocalizedText(field.description)"
+                    :hint="getLocalizedText(field.helpText)"
+                    :rules="getFieldRules(field)"
+                    :required="field.required"
+                    persistent-hint
+                    variant="outlined"
+                    density="comfortable"
+                    :menu-props="{ maxHeight: 280 }"
+                    :clearable="false"
+                  ></v-select>
+
                   <v-text-field
-                    v-if="field.type === 'string'"
+                    v-else-if="field.type === 'string'"
                     v-model="editedValues[category.key][fieldKey]"
                     :label="getLocalizedText(field.description)"
                     :hint="getLocalizedText(field.helpText)"
@@ -346,6 +439,77 @@ const saveDepartmentCodeLife = async () => {
               </v-row>
             </v-expansion-panel-text>
           </v-expansion-panel>
+          <v-expansion-panel v-if="isDoctorOrAbove && deptId" :value="'department-consultation-access'">
+        <v-expansion-panel-title>
+          <div class="d-flex align-center">
+            <v-icon class="mr-2">mdi-clock-edit-outline</v-icon>
+            <strong>{{ t('departmentCodeSettings.title') }}</strong>
+          </div>
+        </v-expansion-panel-title>
+
+        <v-expansion-panel-text>
+          <v-card flat>
+            <v-card-text>
+              <p class="text-body-2 text-medium-emphasis mb-4">
+                {{ t('departmentCodeSettings.subtitle') }}
+                <span v-if="deptName" class="font-weight-medium"> ({{ deptName }})</span>
+              </p>
+              <v-alert v-if="consultationAccessWindowError" type="error" variant="tonal" class="mb-4">
+                {{ consultationAccessWindowError }}
+              </v-alert>
+              <v-row>
+                <v-col cols="12" md="4">
+                  <v-text-field
+                    v-model.number="consultationAccessDaysBefore"
+                    type="number"
+                    :label="t('departmentCodeSettings.daysBeforeLabel')"
+                    :hint="t('departmentCodeSettings.daysBeforeHint')"
+                    :min="MIN_ACCESS_DAYS"
+                    :max="MAX_ACCESS_DAYS"
+                    persistent-hint
+                    variant="outlined"
+                    density="comfortable"
+                    @input="consultationAccessWindowError = null"
+                  ></v-text-field>
+                </v-col>
+                <v-col cols="12" md="4">
+                  <v-text-field
+                    v-model.number="consultationAccessDaysAfter"
+                    type="number"
+                    :label="t('departmentCodeSettings.daysAfterLabel')"
+                    :hint="t('departmentCodeSettings.daysAfterHint')"
+                    :min="MIN_ACCESS_DAYS"
+                    :max="MAX_ACCESS_DAYS"
+                    persistent-hint
+                    variant="outlined"
+                    density="comfortable"
+                    @input="consultationAccessWindowError = null"
+                  ></v-text-field>
+                </v-col>
+              </v-row>
+            </v-card-text>
+
+            <v-card-actions>
+              <v-btn
+                color="primary"
+                :loading="savingConsultationAccessWindow"
+                :disabled="!hasConsultationAccessWindowChanges || savingConsultationAccessWindow"
+                @click="saveDepartmentConsultationAccessWindow"
+              >
+                <v-icon start>mdi-content-save</v-icon>
+                {{ t('settings.save') }}
+              </v-btn>
+              <v-btn
+                variant="text"
+                :disabled="!hasConsultationAccessWindowChanges || savingConsultationAccessWindow"
+                @click="consultationAccessDaysBefore = originalConsultationAccessDaysBefore; consultationAccessDaysAfter = originalConsultationAccessDaysAfter; consultationAccessWindowError = null"
+              >
+                {{ t('settings.reset') }}
+              </v-btn>
+            </v-card-actions>
+          </v-card>
+        </v-expansion-panel-text>
+      </v-expansion-panel>
         </v-expansion-panels>
 
         <v-alert v-if="!loading && !settings" type="error" class="mt-4">
@@ -354,49 +518,7 @@ const saveDepartmentCodeLife = async () => {
       </v-card-text>
     </v-card>
 
-    <!-- Department Code Life Settings (visible to doctor+ users) -->
-    <v-card v-if="isDoctorOrAbove && deptId" class="mt-4">
-      <v-card-title class="d-flex align-center">
-        <v-icon class="mr-2">mdi-clock-edit-outline</v-icon>
-        {{ t('departmentCodeSettings.title') }}
-      </v-card-title>
-      <v-divider></v-divider>
-      <v-card-text>
-        <p class="text-body-2 text-medium-emphasis mb-4">
-          {{ t('departmentCodeSettings.subtitle') }}
-          <span v-if="deptName" class="font-weight-medium"> ({{ deptName }})</span>
-        </p>
-        <v-text-field
-          v-model="codeLifeValue"
-          :label="t('departmentCodeSettings.codeLifeLabel')"
-          :hint="t('departmentCodeSettings.codeLifeHint')"
-          :error-messages="codeLifeError ? [codeLifeError] : []"
-          persistent-hint
-          variant="outlined"
-          density="comfortable"
-          style="max-width: 320px"
-          @input="codeLifeError = null"
-        ></v-text-field>
-      </v-card-text>
-      <v-card-actions>
-        <v-btn
-          color="primary"
-          :loading="savingCodeLife"
-          :disabled="codeLifeValue === codeLifeOriginal || savingCodeLife"
-          @click="saveDepartmentCodeLife"
-        >
-          <v-icon start>mdi-content-save</v-icon>
-          {{ t('settings.save') }}
-        </v-btn>
-        <v-btn
-          variant="text"
-          :disabled="codeLifeValue === codeLifeOriginal || savingCodeLife"
-          @click="codeLifeValue = codeLifeOriginal; codeLifeError = null"
-        >
-          {{ t('settings.reset') }}
-        </v-btn>
-      </v-card-actions>
-    </v-card>
+    
   </v-container>
 </template>
 

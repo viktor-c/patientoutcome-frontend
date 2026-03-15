@@ -9,6 +9,7 @@ let isLoggingOut = false
  * Middleware to handle authentication errors globally.
  * - 401 Unauthorized: User is not logged in -> logout and redirect to login
  * - 403 Forbidden: User is logged in but lacks permission -> let component handle it
+ * - 2xx / other: Updates the locally-tracked session expiry (rolling sessions).
  */
 export const authMiddleware: Middleware = {
   post: async (context: ResponseContext): Promise<Response | void> => {
@@ -50,6 +51,18 @@ export const authMiddleware: Middleware = {
       console.warn('403 Forbidden: User lacks permission for this resource.')
       // Return response so component can handle the error appropriately
       return response
+    }
+
+    // For any successful response: keep the locally-tracked session expiry in sync.
+    // The backend uses rolling sessions, so each successful request resets the server
+    // cookie lifetime; we mirror that here so the session watcher stays accurate.
+    try {
+      const userStore = useUserStore()
+      if (userStore.isAuthenticated()) {
+        userStore.updateLastActivity()
+      }
+    } catch {
+      // Store not ready yet – ignore
     }
 
     // Return the response for successful requests

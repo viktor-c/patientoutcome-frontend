@@ -14,7 +14,7 @@ vi.mock('vue-i18n', () => ({
 
 vi.mock('@/composables/useDateFormat', () => ({
   useDateFormat: () => ({
-    formatLocalizedCustomDate: (date: string, format: string) => {
+    formatLocalizedCustomDate: (date: string) => {
       if (!date) return ''
       return new Date(date).toLocaleDateString()
     },

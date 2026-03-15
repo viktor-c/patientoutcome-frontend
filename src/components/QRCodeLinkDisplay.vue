@@ -4,11 +4,13 @@ import { useI18n } from 'vue-i18n'
 import { useNotifierStore } from '@/stores/notifierStore'
 import QRCodeDisplay from '@/components/QRCodeDisplay.vue'
 import { logger } from '@/services/logger'
+import type { ConsultationAccessWindow } from '@/utils/consultationAccessWindow'
 
 interface Props {
   url: string
   label?: string
   hideUrl?: boolean
+  accessWindow?: ConsultationAccessWindow | null
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -51,7 +53,7 @@ const openUrl = () => {
                   class="mb-3">
       <template #append-inner>
         <!-- QR Code -->
-        <QRCodeDisplay :url="url" :size="180" />
+        <QRCodeDisplay :url="url" :size="180" :access-window="accessWindow" />
         <v-btn
                icon="mdi-content-copy"
                size="x-small"

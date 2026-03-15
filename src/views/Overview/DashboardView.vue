@@ -1,10 +1,11 @@
 <script setup lang="ts">
 import { ref, onMounted, computed } from 'vue'
 import { useRouter } from 'vue-router'
-import { ResponseError, type Consultation, type FindAllCodes200ResponseResponseObjectInnerConsultationId } from '@/api'
+import { ResponseError, type Consultation } from '@/api'
 import { useI18n } from 'vue-i18n'
 import { useDateFormat } from '@/composables/useDateFormat'
 import DashboardSearchDialog from '@/components/dialogs/DashboardSearchDialog.vue'
+import type { ApiConsultation } from '@/types'
 
 import { consultationApi } from '@/api'
 import { patientCaseApi } from '@/api'
@@ -23,7 +24,7 @@ const safeFormatDate = (date: string | null | undefined, format: string = 'DD.MM
   return formatLocalizedCustomDate(date, format)
 }
 
-const consultations = ref<FindAllCodes200ResponseResponseObjectInnerConsultationId[]>([])
+const consultations = ref<ApiConsultation[]>([])
 
 // Full headers for desktop, reduced set for small screens
 const desktopHeaders = [
@@ -120,14 +121,50 @@ const getAccessInfo = (item: unknown): { code?: string; kioskNumber?: number } =
 }
 
 // Calculate completion ratio style for progress buttons
-const getCompletionStyle = (proms: any[]) => {
+const getCompletionStyle = (proms: unknown[]) => {
   if (!proms || proms.length === 0) return {}
-  const completed = proms.filter(p => (p as any).patientFormData?.fillStatus === 'complete').length
+  const completed = proms.filter((prom) => {
+    if (!prom || typeof prom !== 'object') return false
+    const promRecord = prom as Record<string, unknown>
+    const patientFormData =
+      promRecord.patientFormData && typeof promRecord.patientFormData === 'object'
+        ? (promRecord.patientFormData as Record<string, unknown>)
+        : null
+    return patientFormData?.fillStatus === 'complete'
+  }).length
   const ratio = (completed / proms.length) * 100
   return {
     background: `linear-gradient(90deg, rgba(76, 175, 80, 0.5) 0%, rgba(76, 175, 80, 0.5) ${ratio}%, transparent ${ratio}%, transparent 100%)`,
     transition: 'background 0.3s ease'
   }
+}
+
+const getFormId = (form: unknown): string | null => {
+  if (!form || typeof form !== 'object') return null
+  const formRecord = form as Record<string, unknown>
+  const id = formRecord.id
+  if (typeof id === 'string' && id.length > 0) return id
+  if (id && typeof id === 'object') {
+    const nestedId = id as Record<string, unknown>
+    if (typeof nestedId.id === 'string' && nestedId.id.length > 0) return nestedId.id
+    if (typeof nestedId._id === 'string' && nestedId._id.length > 0) return nestedId._id
+  }
+  return null
+}
+
+const getFormTitle = (form: unknown): string => {
+  if (!form || typeof form !== 'object') return t('forms.consultation.untitledForm')
+  const title = (form as Record<string, unknown>).title
+  return typeof title === 'string' && title.length > 0 ? title : t('forms.consultation.untitledForm')
+}
+
+const getCaseIdFromPatientCase = (patientCase: unknown): string | null => {
+  if (typeof patientCase === 'string' && patientCase.length > 0) return patientCase
+  if (!patientCase || typeof patientCase !== 'object') return null
+  const patientCaseRecord = patientCase as Record<string, unknown>
+  if (typeof patientCaseRecord._id === 'string' && patientCaseRecord._id.length > 0) return patientCaseRecord._id
+  if (typeof patientCaseRecord.id === 'string' && patientCaseRecord.id.length > 0) return patientCaseRecord.id
+  return null
 }
 
 const openPatientOverviewFromCase = async (caseId: string | null | undefined) => {
@@ -230,13 +267,19 @@ onMounted(async () => {
         <DashboardSearchDialog />
       </v-col>
       <v-col cols="12" sm="6" md="4" class="d-flex justify-end">
-        <v-btn
-               color="primary"
-               variant="elevated"
-               prepend-icon="mdi-creation"
-               @click="startCreationFlow">
-          {{ t('buttons.startCreationFlow') }}
-        </v-btn>
+        <v-tooltip location="bottom" :text="t('buttons.startCreationFlow')">
+          <template #activator="{ props }">
+            <v-btn
+                   v-bind="props"
+                   icon
+                   color="primary"
+                   variant="elevated"
+                   class="creation-flow-btn"
+                   @click="startCreationFlow">
+              <v-icon>mdi-creation</v-icon>
+            </v-btn>
+          </template>
+        </v-tooltip>
       </v-col>
     </v-row>
 
@@ -277,10 +320,10 @@ onMounted(async () => {
                     <th>Score</th>
                   </tr>
 
-                  <tr v-for="(form, index) in item.proms || []" :key="(form as any).id || index">
+                  <tr v-for="(form, index) in item.proms || []" :key="getFormId(form) || index">
                     <td>
-                      Review <RouterLink v-if="(form as any).id" :to="`/review-form/${(form as any).id}`" @click.stop>
-                        {{ (form as any).title || t('forms.consultation.untitledForm') }}</RouterLink>
+                      Review <RouterLink v-if="getFormId(form)" :to="`/review-form/${getFormId(form)}`" @click.stop>
+                        {{ getFormTitle(form) }}</RouterLink>
                       <span v-else>{{ t('forms.consultation.untitledForm') }}</span>
                     </td>
                     <td>
@@ -303,7 +346,7 @@ onMounted(async () => {
                color="primary"
                class="text-none pa-0"
                style="min-width: auto; height: auto;"
-               @click.stop="openPatientOverviewFromCase((item.patientCaseId as any)?._id || item.patientCaseId)">
+               @click.stop="openPatientOverviewFromCase(getCaseIdFromPatientCase(item.patientCaseId) || item.patientCaseId)">
           <span class="text-truncate" style="max-width: 160px; display: inline-block; vertical-align: middle;">
             {{ getPatientExternalIds(item) || t('common.notAvailable') }}
           </span>
@@ -313,10 +356,11 @@ onMounted(async () => {
         <div v-if="item.patientCaseId" class="d-flex flex-column gap-1">
           <RouterLink
                       @click.stop
-                      :to="{ name: 'patientcaselanding', params: { caseId: (item.patientCaseId as any)?._id || item.patientCaseId } }"
+                      :to="{ name: 'patientcaselanding', params: { caseId: getCaseIdFromPatientCase(item.patientCaseId) || item.patientCaseId } }"
                       class="text-caption">
 
-            {{ getPatientCaseExternalIds(item) || ((item.patientCaseId as any)?._id || item.patientCaseId) }}
+            {{ getPatientCaseExternalIds(item) || (getCaseIdFromPatientCase(item.patientCaseId) || item.patientCaseId)
+            }}
           </RouterLink>
         </div>
         <span v-else>{{ t('dashboard.noPatientCase') }}</span>
@@ -349,3 +393,17 @@ onMounted(async () => {
     </v-data-table>
   </v-container>
 </template>
+
+<style scoped>
+.creation-flow-btn {
+  box-shadow: 0 0 8px 2px rgba(var(--v-theme-primary), 0.35),
+              0 2px 6px rgba(0, 0, 0, 0.2);
+  transition: box-shadow 0.25s ease, transform 0.2s ease;
+}
+
+.creation-flow-btn:hover {
+  box-shadow: 0 0 18px 6px rgba(var(--v-theme-primary), 0.65),
+              0 4px 12px rgba(0, 0, 0, 0.25);
+  transform: scale(1.07);
+}
+</style>

@@ -13,10 +13,10 @@ const mockSearchIcdPrefix = vi.fn()
 const mockSearchOpsPrefix = vi.fn()
 
 vi.mock('@/services/icdopsService', () => ({
-  searchIcd: (...args: any[]) => mockSearchIcd(...args),
-  searchOps: (...args: any[]) => mockSearchOps(...args),
-  searchIcdPrefix: (...args: any[]) => mockSearchIcdPrefix(...args),
-  searchOpsPrefix: (...args: any[]) => mockSearchOpsPrefix(...args),
+  searchIcd: (...args: unknown[]) => mockSearchIcd(...args),
+  searchOps: (...args: unknown[]) => mockSearchOps(...args),
+  searchIcdPrefix: (...args: unknown[]) => mockSearchIcdPrefix(...args),
+  searchOpsPrefix: (...args: unknown[]) => mockSearchOpsPrefix(...args),
   // Real implementation inlined so composable's mode-detection works
   detectSearchMode: (type: 'icd' | 'ops', input: string) => {
     if (!input) return 'text-search'

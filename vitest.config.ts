@@ -11,7 +11,7 @@ const resolvedViteConfig:
   | ((env: ConfigEnv) => UserConfig) =
   typeof viteConfig === 'function'
     ? // call with a minimal env object; cast to ConfigEnv so types line up
-      (viteConfig as (env: ConfigEnv) => UserConfig)({ mode: 'test', command: 'build' })
+    (viteConfig as (env: ConfigEnv) => UserConfig)({ mode: 'test', command: 'build' })
     : (viteConfig as UserConfig)
 
 export default mergeConfig(
@@ -21,6 +21,7 @@ export default mergeConfig(
       environment: 'jsdom',
       exclude: [...configDefaults.exclude, 'e2e/**'],
       root: fileURLToPath(new URL('./', import.meta.url)),
+      setupFiles: ['src/test/setup.ts'],
       css: {
         // Mock CSS modules to avoid CSS import errors
         modules: {

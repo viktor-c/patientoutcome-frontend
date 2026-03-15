@@ -7,11 +7,13 @@ import dayjs from 'dayjs';
 import localizedFormat from 'dayjs/plugin/localizedFormat';
 import 'dayjs/locale/en';
 import 'dayjs/locale/de';
-import type { GetAllBackupJobs200ResponseResponseObjectInner } from '@/api/models/GetAllBackupJobs200ResponseResponseObjectInner';
-import type { GetAllCredentials200ResponseResponseObjectInner } from '@/api/models/GetAllCredentials200ResponseResponseObjectInner';
-import type { CollectionMetadata } from '@/api/models/CollectionMetadata';
-import type { CreateBackupJobRequest } from '@/api/models/CreateBackupJobRequest';
-import type { UpdateBackupJobRequest } from '@/api/models/UpdateBackupJobRequest';
+import type {
+  ApiBackupJob as GetAllBackupJobs200ResponseResponseObjectInner,
+  ApiCredential as GetAllCredentials200ResponseResponseObjectInner,
+  ApiCollectionMetadata as CollectionMetadata,
+  ApiCreateBackupJobRequest as CreateBackupJobRequest,
+  ApiUpdateBackupJobRequest as UpdateBackupJobRequest,
+} from '@/types';
 
 dayjs.extend(localizedFormat);
 
@@ -101,7 +103,7 @@ const formatSchedule = (frequency: string, cronExpression?: string | null): stri
   if (frequency === 'custom' && cronExpression) {
     return `Custom: ${cronExpression}`;
   }
-  
+
   // Extract time from cron expression
   let timeStr = '';
   if (cronExpression) {
@@ -112,7 +114,7 @@ const formatSchedule = (frequency: string, cronExpression?: string | null): stri
       timeStr = ` at ${hour.padStart(2, '0')}:${minute.padStart(2, '0')}`;
     }
   }
-  
+
   if (frequency === 'daily') {
     return `Daily${timeStr}`;
   } else if (frequency === 'weekly') {
@@ -120,13 +122,13 @@ const formatSchedule = (frequency: string, cronExpression?: string | null): stri
   } else if (frequency === 'monthly') {
     return `Monthly (1st)${timeStr}`;
   }
-  
+
   return frequency;
 };
 
 const passwordsMatch = computed(() => {
   if (!newJob.value.encryptionEnabled) return true;
-  return newJob.value.encryptionPassword === newJob.value.encryptionPasswordConfirm 
+  return newJob.value.encryptionPassword === newJob.value.encryptionPasswordConfirm
     && newJob.value.encryptionPassword.length > 0;
 });
 
@@ -171,7 +173,7 @@ const openNewJobDialog = () => {
 
 const editJob = (job: GetAllBackupJobs200ResponseResponseObjectInner) => {
   editingJob.value = job;
-  
+
   // Extract time from cron expression if available
   let scheduleTime = '02:00';
   if (job.cronExpression) {
@@ -182,7 +184,7 @@ const editJob = (job: GetAllBackupJobs200ResponseResponseObjectInner) => {
       scheduleTime = `${hour.padStart(2, '0')}:${minute.padStart(2, '0')}`;
     }
   }
-  
+
   newJob.value = {
     name: job.name,
     description: job.description || '',
@@ -336,60 +338,54 @@ defineExpose({
     </v-card-title>
     <v-card-text>
       <v-data-table
-        :headers="jobHeaders"
-        :items="backupJobs"
-        :loading="loading"
-        class="elevation-1"
-      >
+                    :headers="jobHeaders"
+                    :items="backupJobs"
+                    :loading="loading"
+                    class="elevation-1">
         <template v-slot:[`item.frequency`]="{ item }">
           {{ formatSchedule(item.frequency, item.cronExpression) }}
         </template>
         <template v-slot:[`item.enabled`]="{ item }">
           <v-switch
-            :model-value="item.enabled"
-            color="success"
-            hide-details
-            density="compact"
-            @click="toggleJobEnabled(item)"
-          />
+                    :model-value="item.enabled"
+                    color="success"
+                    hide-details
+                    density="compact"
+                    @click="toggleJobEnabled(item)" />
         </template>
         <template v-slot:[`item.lastRunAt`]="{ item }">
           {{ formatDate(item.lastRunAt) }}
         </template>
         <template v-slot:[`item.lastRunStatus`]="{ item }">
           <v-chip
-            v-if="item.lastRunStatus"
-            :color="item.lastRunStatus === 'success' ? 'success' : item.lastRunStatus === 'failed' ? 'error' : 'info'"
-            size="small"
-          >
+                  v-if="item.lastRunStatus"
+                  :color="item.lastRunStatus === 'success' ? 'success' : item.lastRunStatus === 'failed' ? 'error' : 'info'"
+                  size="small">
             {{ item.lastRunStatus }}
           </v-chip>
           <span v-else class="text-caption">Not run yet</span>
         </template>
         <template v-slot:[`item.actions`]="{ item }">
           <v-btn
-            icon="mdi-play"
-            size="small"
-            variant="text"
-            color="success"
-            @click="triggerJob(item)"
-            title="Run now"
-          />
+                 icon="mdi-play"
+                 size="small"
+                 variant="text"
+                 color="success"
+                 @click="triggerJob(item)"
+                 title="Run now" />
           <v-btn
-            icon="mdi-pencil"
-            size="small"
-            variant="text"
-            @click="editJob(item)"
-            title="Edit"
-          />
+                 icon="mdi-pencil"
+                 size="small"
+                 variant="text"
+                 @click="editJob(item)"
+                 title="Edit" />
           <v-btn
-            icon="mdi-delete"
-            size="small"
-            variant="text"
-            color="error"
-            @click="deleteJob(item)"
-            title="Delete"
-          />
+                 icon="mdi-delete"
+                 size="small"
+                 variant="text"
+                 color="error"
+                 @click="deleteJob(item)"
+                 title="Delete" />
         </template>
       </v-data-table>
     </v-card-text>
@@ -405,118 +401,106 @@ defineExpose({
             <v-row>
               <v-col cols="12" md="6">
                 <v-text-field
-                  v-model="newJob.name"
-                  label="Job Name"
-                  required
-                />
+                              v-model="newJob.name"
+                              label="Job Name"
+                              required />
               </v-col>
               <v-col cols="12" md="6">
                 <v-text-field
-                  v-model="newJob.retentionDays"
-                  label="Retention (days)"
-                  type="number"
-                  hint="How long to keep backups"
-                />
+                              v-model="newJob.retentionDays"
+                              label="Retention (days)"
+                              type="number"
+                              hint="How long to keep backups" />
               </v-col>
             </v-row>
 
             <v-row>
               <v-col cols="12">
                 <v-textarea
-                  v-model="newJob.description"
-                  label="Description"
-                  rows="2"
-                />
+                            v-model="newJob.description"
+                            label="Description"
+                            rows="2" />
               </v-col>
             </v-row>
 
             <v-row>
               <v-col cols="12" md="6">
                 <v-select
-                  v-model="newJob.frequency"
-                  :items="frequencyOptions"
-                  label="Schedule Frequency"
-                />
+                          v-model="newJob.frequency"
+                          :items="frequencyOptions"
+                          label="Schedule Frequency" />
                 <input
-                  v-if="newJob.frequency !== 'custom'"
-                  v-model="newJob.scheduleTime"
-                  type="time"
-                  class="time-input mt-2"
-                  step="60"
-                />
+                       v-if="newJob.frequency !== 'custom'"
+                       v-model="newJob.scheduleTime"
+                       type="time"
+                       class="time-input mt-2"
+                       step="60" />
                 <div v-if="newJob.frequency !== 'custom'" class="text-caption text-medium-emphasis mt-1">
                   Time in 24-hour format (HH:MM)
                 </div>
                 <v-text-field
-                  v-if="newJob.frequency === 'custom'"
-                  v-model="newJob.cronExpression"
-                  label="Cron Expression"
-                  placeholder="0 2 * * *"
-                  hint="Unix cron format"
-                  class="mt-2"
-                />
+                              v-if="newJob.frequency === 'custom'"
+                              v-model="newJob.cronExpression"
+                              label="Cron Expression"
+                              placeholder="0 2 * * *"
+                              hint="Unix cron format"
+                              class="mt-2" />
               </v-col>
               <v-col cols="12" md="6">
                 <v-select
-                  v-model="newJob.storageType"
-                  :items="storageTypeOptions"
-                  label="Storage Type"
-                />
+                          v-model="newJob.storageType"
+                          :items="storageTypeOptions"
+                          label="Storage Type" />
                 <v-select
-                  v-if="newJob.storageType !== 'local'"
-                  v-model="newJob.credentialId"
-                  :items="availableCredentials"
-                  item-title="name"
-                  item-value="_id"
-                  label="Select Credentials"
-                  class="mt-2"
-                />
+                          v-if="newJob.storageType !== 'local'"
+                          v-model="newJob.credentialId"
+                          :items="availableCredentials"
+                          item-title="name"
+                          item-value="_id"
+                          label="Select Credentials"
+                          class="mt-2" />
               </v-col>
             </v-row>
 
             <v-row>
               <v-col cols="12">
                 <v-select
-                  v-model="newJob.collections"
-                  :items="collections"
-                  item-title="name"
-                  item-value="name"
-                  label="Collections to Backup"
-                  multiple
-                  chips
-                  closable-chips
-                  hint="Leave empty to backup all collections"
-                  persistent-hint
-                />
+                          v-model="newJob.collections"
+                          :items="collections"
+                          item-title="name"
+                          item-value="name"
+                          label="Collections to Backup"
+                          multiple
+                          chips
+                          closable-chips
+                          hint="Leave empty to backup all collections"
+                          persistent-hint />
               </v-col>
             </v-row>
 
             <v-row>
               <v-col cols="12">
                 <v-checkbox
-                  v-model="newJob.encryptionEnabled"
-                  label="Enable backup encryption"
-                  hint="Encrypt backups with a password"
-                />
+                            v-model="newJob.encryptionEnabled"
+                            label="Enable backup encryption"
+                            hint="Encrypt backups with a password" />
                 <v-text-field
-                  v-if="newJob.encryptionEnabled"
-                  v-model="newJob.encryptionPassword"
-                  label="Encryption Password"
-                  type="password"
-                  class="mt-2"
-                  hint="Leave empty to keep existing password (if editing)"
-                  persistent-hint
-                />
+                              v-if="newJob.encryptionEnabled"
+                              v-model="newJob.encryptionPassword"
+                              label="Encryption Password"
+                              type="password"
+                              class="mt-2"
+                              hint="Leave empty to keep existing password (if editing)"
+                              persistent-hint />
                 <v-text-field
-                  v-if="newJob.encryptionEnabled"
-                  v-model="newJob.encryptionPasswordConfirm"
-                  label="Confirm Encryption Password"
-                  type="password"
-                  class="mt-2"
-                  :error="!passwordsMatch"
-                  :hint="!passwordsMatch ? 'Passwords do not match' : 'Re-enter password to confirm'"
-                  persistent-hint
-                />
+                              v-if="newJob.encryptionEnabled"
+                              v-model="newJob.encryptionPasswordConfirm"
+                              label="Confirm Encryption Password"
+                              type="password"
+                              class="mt-2"
+                              :error="!passwordsMatch"
+                              :hint="!passwordsMatch ? 'Passwords do not match' : 'Re-enter password to confirm'"
+                              persistent-hint />
               </v-col>
             </v-row>
           </v-form>
@@ -525,11 +509,10 @@ defineExpose({
           <v-spacer />
           <v-btn text @click="showJobDialog = false">Cancel</v-btn>
           <v-btn
-            color="primary"
-            :loading="loading"
-            :disabled="newJob.encryptionEnabled && !passwordsMatch"
-            @click="saveJob"
-          >
+                 color="primary"
+                 :loading="loading"
+                 :disabled="newJob.encryptionEnabled && !passwordsMatch"
+                 @click="saveJob">
             Save
           </v-btn>
         </v-card-actions>

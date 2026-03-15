@@ -3,7 +3,8 @@ import { ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
 import { useDateFormat } from '@/composables/useDateFormat'
-import { type Consultation, type Surgery, type GetAllPatientCases200ResponseResponseObjectInner, ResponseError } from '@/api'
+import { type Consultation, type Surgery, ResponseError } from '@/api'
+import type { ApiPatientCaseWithDetails } from '@/types'
 import { surgeryApi, consultationApi } from '@/api'
 import { useNotifierStore, useConsultationStore } from '@/stores/'
 import CreateEditSurgeryDialog from '@/components/dialogs/CreateEditSurgeryDialog.vue'
@@ -11,7 +12,7 @@ import CascadeDeleteDialog from '@/components/dialogs/CascadeDeleteDialog.vue'
 
 // Props
 interface Props {
-  caseItem: GetAllPatientCases200ResponseResponseObjectInner & {
+  caseItem: ApiPatientCaseWithDetails & {
     consultations?: Consultation[]
   }
   patientId: string
@@ -260,7 +261,8 @@ const editConsultation = (consultation: Consultation) => {
           <v-btn size="small" color="primary" @click="editConsultation(consultation)">
             <v-icon icon="mdi-pencil"></v-icon>{{ t('buttons.editConsultation') }}
           </v-btn>
-          <v-btn class="text-right" size="small" variant="plain" color="error" @click="openDeleteConsultation(consultation)">
+          <v-btn class="text-right" size="small" variant="plain" color="error"
+                 @click="openDeleteConsultation(consultation)">
             <v-icon icon="mdi-trash-can"></v-icon>{{ t('buttons.deleteConsultation') }}
           </v-btn>
         </td>

@@ -161,7 +161,7 @@ describe('ConsultationOverview - Archive Form Functionality', () => {
     await wrapper.vm.$nextTick()
 
     // Archive buttons should not exist for non-doctor roles
-    const archiveButtons = wrapper.findAll('.v-btn[color="warning"]').filter(btn => 
+    const archiveButtons = wrapper.findAll('.v-btn[color="warning"]').filter(btn =>
       btn.html().includes('mdi-archive')
     )
     expect(archiveButtons.length).toBe(0)

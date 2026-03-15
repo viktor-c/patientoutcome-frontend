@@ -14,9 +14,15 @@ const mockSearch = vi.fn()
 const mockLoadMore = vi.fn()
 const mockClear = vi.fn()
 
+interface MockIcdOpsItem {
+  code: string
+  label: string
+  kind: string
+}
+
 const mockState = {
   query: ref(''),
-  items: ref([] as any[]),
+  items: ref([] as MockIcdOpsItem[]),
   loading: ref(false),
   error: ref(null as string | null),
   currentPage: ref(1),
@@ -100,9 +106,8 @@ describe('IcdOpsSearchField.vue', () => {
 
   it('renders the label', () => {
     const wrapper = mountComponent({ label: 'Diagnose' })
-    // Label is forwarded to v-input
-    const input = wrapper.findComponent({ name: 'VInput' })
-    expect(input.props('label')).toBe('Diagnose')
+    // Label is rendered via the explicit v-label above the trigger
+    expect(wrapper.find('.icd-ops-field-label').text()).toBe('Diagnose')
   })
 
   it('renders selected single value as code + label', async () => {
@@ -204,7 +209,7 @@ describe('IcdOpsSearchField.vue', () => {
     expect(emitted).toBeTruthy()
     const val = emitted![emitted!.length - 1][0]
     expect(typeof val).toBe('object')
-    expect((val as any).code).toBe('A00')
+    expect((val as { code?: string }).code).toBe('A00')
   })
 
   it('shows search mode indicator in dialog', async () => {

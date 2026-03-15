@@ -76,7 +76,7 @@ vi.mock('@/api', () => ({
 
 vi.mock('@/composables/useDateFormat', () => ({
   useDateFormat: () => ({
-    formatLocalizedCustomDate: (date: string, format: string) => date,
+    formatLocalizedCustomDate: (date: string) => date,
   }),
 }))
 
@@ -93,7 +93,7 @@ vi.mock('@/composables/useFormValidation', () => ({
 
 vi.mock('@/utils/dayjs', () => ({
   dayjs: Object.assign(
-    (date?: string) => ({
+    () => ({
       utc: () => ({
         startOf: () => ({
           add: () => ({
@@ -222,7 +222,7 @@ describe('CreateEditSurgeryDialog.vue', () => {
           diagnosis: string[]
         }
       }
-      
+
       expect(vm.form.patientCase).toBe('case-123')
     })
   })
@@ -402,7 +402,7 @@ describe('CreateEditSurgeryDialog.vue', () => {
 
       // Verify component exists and emits are captured
       expect(wrapper.exists()).toBe(true)
-      
+
       // Component should be ready for emit events
       expect(typeof wrapper.emitted).toBe('function')
     })

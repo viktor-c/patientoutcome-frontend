@@ -11,8 +11,12 @@ import {
   type GetFormTemplatesShortlist200ResponseResponseObjectInner as FormTemplateShortList,
   type GetFormTemplates200ResponseResponseObjectInner as FormTemplateFull,
   ResponseError,
-  type FindAllCodes200ResponseResponseObjectInner as Code,
 } from '@/api'
+import type {
+  ApiCode as Code,
+  ApiConsultationFlexible,
+  ApiConsultationProm,
+} from '@/types'
 import { useNotifierStore } from '@/stores/notifierStore'
 import { useFormTemplateStore } from '@/stores'
 import { consultationApi, userApi, codeApi, formtemplateApi } from '@/api'
@@ -24,7 +28,7 @@ import NotesEditor from '@/components/forms/NotesEditor.vue'
 const props = defineProps<{
   patientId: string | null | undefined
   caseId: string
-  consultation?: Consultation | null
+  consultation?: ApiConsultationFlexible | null
   /** Department ID of the patient case – used to load only the relevant form templates */
   departmentId?: string
 }>()
@@ -41,10 +45,56 @@ const { errors, validateForm, clearAllErrors, resetFormState } = useFormValidati
 
 const isEditMode = ref(!!(props.consultation && props.consultation.id))
 
+type ConsultationFormState = Consultation & {
+  formTemplates?: string[]
+  consultationAccessDaysBefore?: number
+  consultationAccessDaysAfter?: number
+}
+
+type TemplateWithAccess = (FormTemplateShortList | FormTemplateFull) & { accessLevel?: string }
+
+const extractId = (value: unknown): string | null => {
+  if (typeof value === 'string' && value.length > 0) return value
+  if (!value || typeof value !== 'object') return null
+
+  const record = value as Record<string, unknown>
+  const directId = record.id
+  if (typeof directId === 'string' && directId.length > 0) return directId
+
+  const nestedId = record._id
+  if (typeof nestedId === 'string' && nestedId.length > 0) return nestedId
+
+  return null
+}
+
+const getPromTemplateId = (prom: ApiConsultationProm): string | null => {
+  if (typeof prom === 'string') return prom
+  if (!prom || typeof prom !== 'object') return null
+
+  const templateId = extractId((prom as Record<string, unknown>).formTemplateId)
+  if (templateId) return templateId
+
+  return extractId((prom as Record<string, unknown>).id)
+}
+
+const getTemplateAccess = (template: unknown): string => {
+  if (!template || typeof template !== 'object') return 'patient'
+  const accessLevel = (template as { accessLevel?: unknown }).accessLevel
+  return typeof accessLevel === 'string' && accessLevel.length > 0 ? accessLevel : 'patient'
+}
+
+const getTemplateTitle = (template: unknown): string => {
+  if (!template || typeof template !== 'object') return ''
+  const title = (template as { title?: unknown }).title
+  return typeof title === 'string' ? title : ''
+}
+
 // Create form data with proper typing
-const form = ref<Consultation & { formTemplates?: string[] }>({
+const form = ref<ConsultationFormState>({
   patientCaseId: props.caseId,
   dateAndTime: new Date().toISOString(),
+  consultationAccessDaysBefore: userStore.consultationAccessDaysBefore,
+  consultationAccessDaysAfter: userStore.consultationAccessDaysAfter,
   reasonForConsultation: [],
   notes: [],
   proms: [],
@@ -54,10 +104,17 @@ const form = ref<Consultation & { formTemplates?: string[] }>({
 })
 
 // helper used when a consultation object needs to be applied to form state
-function populateFormFromConsultation(cons: Consultation) {
+function populateFormFromConsultation(cons: ApiConsultationFlexible) {
   form.value = { ...cons }
   form.value.patientCaseId = props.caseId
   form.value.dateAndTime = getLocalizedDayjs(cons.dateAndTime || new Date()).toISOString()
+  const consultationRecord = cons as unknown as Record<string, unknown>
+  form.value.consultationAccessDaysBefore = Number(
+    consultationRecord.consultationAccessDaysBefore ?? userStore.consultationAccessDaysBefore,
+  ) as never
+  form.value.consultationAccessDaysAfter = Number(
+    consultationRecord.consultationAccessDaysAfter ?? userStore.consultationAccessDaysAfter,
+  ) as never
 
   // Keep reasonForConsultation as array (backend type)
   if (Array.isArray(cons.reasonForConsultation)) {
@@ -68,18 +125,26 @@ function populateFormFromConsultation(cons: Consultation) {
 
   // fill titles using template cache
   if (cons.proms && Array.isArray(cons.proms)) {
-    cons.proms.forEach((p: any) => {
-      if (p && !p.title && p.formTemplateId) {
-        const tpl = formTemplates.value.find(t => t.id === p.formTemplateId)
-        if (tpl) p.title = tpl.title
+    cons.proms.forEach((prom) => {
+      if (!prom || typeof prom !== 'object') return
+
+      const record = prom as Record<string, unknown>
+      const title = record.title
+      const templateId = getPromTemplateId(prom)
+
+      if ((typeof title !== 'string' || title.length === 0) && templateId) {
+        const template = formTemplates.value.find((currentTemplate) => currentTemplate.id === templateId)
+        if (template) {
+          record.title = template.title
+        }
       }
     })
   }
 
   if (cons.proms?.length) {
-    selectedFormTemplates.value = cons.proms.map((prom: any) => {
-      return typeof prom === 'string' ? prom : prom.id || prom.formTemplateId
-    }).filter(Boolean) as string[]
+    selectedFormTemplates.value = cons.proms
+      .map((prom) => getPromTemplateId(prom))
+      .filter((id): id is string => typeof id === 'string' && id.length > 0)
   } else {
     form.value.proms = []
     selectedFormTemplates.value = []
@@ -107,6 +172,8 @@ watch(
       form.value = {
         patientCaseId: props.caseId,
         dateAndTime: new Date().toISOString(),
+        consultationAccessDaysBefore: userStore.consultationAccessDaysBefore,
+        consultationAccessDaysAfter: userStore.consultationAccessDaysAfter,
         reasonForConsultation: [],
         notes: [],
         proms: [],
@@ -138,8 +205,6 @@ const formSubmitted = ref(false)
 // Clinicians can assign both patient-facing and authenticated (clinician) forms to a consultation,
 // so we show both. Only 'inactive' forms are hidden (unless the user is an admin).
 const availableFormTemplates = computed(() => {
-  type TemplateWithAccess = (FormTemplateShortList | FormTemplateFull) & { accessLevel?: string }
-
   return formTemplates.value.filter((template: TemplateWithAccess) => {
     const accessLevel = template.accessLevel
 
@@ -263,6 +328,11 @@ const saveConsultation = async () => {
       formTemplates: selectedFormTemplates.value,
     }
 
+      ; (consultationData as unknown as Record<string, unknown>).consultationAccessDaysBefore =
+        Number((form.value as unknown as Record<string, unknown>).consultationAccessDaysBefore ?? userStore.consultationAccessDaysBefore)
+      ; (consultationData as unknown as Record<string, unknown>).consultationAccessDaysAfter =
+        Number((form.value as unknown as Record<string, unknown>).consultationAccessDaysAfter ?? userStore.consultationAccessDaysAfter)
+
     consultationStore.setConsultation(form.value)
     let response
 
@@ -298,16 +368,20 @@ const saveConsultation = async () => {
     // created so that parent components can render them immediately without
     // needing to refetch or look up template names
     if (response && response.responseObject && Array.isArray(response.responseObject.proms)) {
-      response.responseObject.proms = (response.responseObject.proms as any[]).map(prom => {
-        if (prom && typeof prom === 'object') {
-          const rec = prom as Record<string, any>
-          if ((!rec.title || rec.title === '') && rec.formTemplateId) {
-            const tpl = formTemplates.value.find(t => t.id === rec.formTemplateId)
-            if (tpl) {
-              rec.title = tpl.title
-            }
+      response.responseObject.proms = response.responseObject.proms.map((prom) => {
+        if (!prom || typeof prom !== 'object') return prom
+
+        const promRecord = prom
+        const title = promRecord.title
+        const templateId = getPromTemplateId(prom as ApiConsultationProm)
+
+        if ((typeof title !== 'string' || title.length === 0) && templateId) {
+          const template = formTemplates.value.find((currentTemplate) => currentTemplate.id === templateId)
+          if (template) {
+            promRecord.title = template.title
           }
         }
+
         return prom
       })
     }
@@ -415,6 +489,33 @@ defineExpose({
           </v-col>
         </v-row>
 
+        <v-row>
+          <v-col cols="12" md="6">
+            <v-text-field
+                          v-model.number="form.consultationAccessDaysBefore"
+                          type="number"
+                          :min="0"
+                          :max="365"
+                          :label="t('departmentCodeSettings.daysBeforeLabel')"
+                          :hint="t('departmentCodeSettings.daysBeforeHint')"
+                          persistent-hint
+                          outlined
+                          dense></v-text-field>
+          </v-col>
+          <v-col cols="12" md="6">
+            <v-text-field
+                          v-model.number="form.consultationAccessDaysAfter"
+                          type="number"
+                          :min="0"
+                          :max="365"
+                          :label="t('departmentCodeSettings.daysAfterLabel')"
+                          :hint="t('departmentCodeSettings.daysAfterHint')"
+                          persistent-hint
+                          outlined
+                          dense></v-text-field>
+          </v-col>
+        </v-row>
+
         <!-- Notes Editor Component -->
         <NotesEditor
                      v-model:notes="form.notes"
@@ -439,9 +540,9 @@ defineExpose({
           <template #chip="{ item, props: chipProps }">
             <v-chip
                     v-bind="chipProps"
-                    :color="getAccessLevelColor((item.raw as any).accessLevel || 'patient')"
+                    :color="getAccessLevelColor(getTemplateAccess(item.raw))"
                     closable>
-              <span>{{ (item.raw as any).title }}</span>
+              <span>{{ getTemplateTitle(item.raw) }}</span>
             </v-chip>
           </template>
 
@@ -450,10 +551,9 @@ defineExpose({
             <v-list-item v-bind="itemProps">
               <v-chip
                       size="x-small"
-                      :color="getAccessLevelColor((item.raw as any).accessLevel || 'patient')"
+                      :color="getAccessLevelColor(getTemplateAccess(item.raw))"
                       class="ml-2">
-                <!-- {{ ((item.raw as any).accessLevel || 'patient').toUpperCase() }} -->
-                {{ getAccessLevelDescription((item.raw as any).accessLevel || 'patient') }}
+                {{ getAccessLevelDescription(getTemplateAccess(item.raw)) }}
               </v-chip>
 
             </v-list-item>

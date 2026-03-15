@@ -12,9 +12,9 @@ import type {
   Surgery,
   CreatePatientRequest,
   CreateCaseSchema,
-  Blueprint,
-  GetAllPatientCases200ResponseResponseObjectInner
+  Blueprint
 } from '@/api'
+import type { ApiPatientCaseWithDetails } from '@/types'
 import { ResponseError, userDepartmentApi } from '@/api'
 //step 1: create patient
 //step 2: create case
@@ -26,6 +26,7 @@ import ConsultationBlueprintSelectionDialog from '@/components/dialogs/Consultat
 import CreateEditConsultationDialog from '@/components/dialogs/CreateEditConsultationDialog.vue'
 import QRCodeLinkDisplay from '@/components/QRCodeLinkDisplay.vue'
 import { logger } from '@/services/logger'
+import { getConsultationAccessWindowFromConsultation } from '@/utils/consultationAccessWindow'
 
 const { t } = useI18n()
 const { formatLocalizedCustomDate, dateFormats } = useDateFormat()
@@ -94,7 +95,7 @@ const caseData = ref<CreateCaseSchema>({
 
 // Created objects
 const createdPatient = ref<Patient | null>(null)
-const createdCase = ref<GetAllPatientCases200ResponseResponseObjectInner | null>(null)
+const createdCase = ref<ApiPatientCaseWithDetails | null>(null)
 const createdSurgery = ref<Surgery | null>(null)
 const createdConsultations = ref<Consultation[]>([])
 
@@ -226,35 +227,25 @@ const getFormAccessCodeValue = (accessCode: unknown): string | null => {
   return null
 }
 
-const getConsultationAccessCode = (consultation: Consultation | null | undefined): string | null => {
-  if (!consultation) return null
-  return getFormAccessCodeValue(consultation.formAccessCode as unknown)
-}
-
-const getConsultationQRCodeUrl = (consultation: Consultation): string => {
-  const consultationCode = getConsultationAccessCode(consultation)
-  if (!consultationCode) return ''
-  const baseUrl = window.location.origin
-  return `${baseUrl}/flow/${consultationCode}`
-}
-
 const getConsultationForms = (consultation: Consultation): ConsultationPromWithTitle[] => {
   if (!Array.isArray(consultation.proms)) return []
 
   // the consultation only has form templates, but no proms yet
+  const getTemplateAccessLevel = (templateId: string | null): string | null => {
+    if (!templateId) return null
+    const template = formTemplateStore.templates.find((currentTemplate) => currentTemplate.id === templateId)
+    if (!template || typeof template !== 'object') return null
+    const accessLevel = (template as Record<string, unknown>).accessLevel
+    return typeof accessLevel === 'string' ? accessLevel : null
+  }
+
   return (consultation.proms as unknown[])
     .filter((prom): prom is Record<string, unknown> => isRecord(prom))
     .map((prom) => {
       const id = typeof prom.id === 'string' ? prom.id : null
       const formTemplateId = typeof prom.formTemplateId === 'string' ? prom.formTemplateId : null
       const templateLookupId = formTemplateId || id
-      let accessLevel: string | null = null
-
-      // if we know the template ID, try to look up its accessLevel from the cache
-      if (templateLookupId) {
-        const tpl = formTemplateStore.templates.find(t => t.id === templateLookupId)
-        accessLevel = (tpl && (tpl as any).accessLevel) || null
-      }
+      const accessLevel = getTemplateAccessLevel(templateLookupId)
 
       return {
         id,
@@ -505,7 +496,7 @@ const handleCancelDuplicateDialog = () => {
 }
 
 // Handle case creation from embedded form
-const handleCaseSubmit = (caseData: GetAllPatientCases200ResponseResponseObjectInner) => {
+const handleCaseSubmit = (caseData: ApiPatientCaseWithDetails) => {
   createdCase.value = caseData
   const isUpdate = caseData.id === createdCase.value?.id
   console.log(isUpdate ? 'Case updated:' : 'Case created:', caseData.id)
@@ -666,11 +657,12 @@ const handleConsultationsSubmit = async (consultations: Consultation[]) => {
 
 // Handle manual consultation creation in step 4
 const handleManualConsultationSubmitStep4 = async (consultation: Consultation) => {
+  const consultationRecord = consultation as unknown as Record<string, unknown>
   // log full object for debugging; this is where unknown forms were observed
   logger.info('📝 Manual consultation created:', {
     consultationId: consultation.id,
-    proms: (consultation as any).proms,
-    formTemplates: (consultation as any).formTemplates,
+    proms: consultation.proms,
+    formTemplates: consultationRecord.formTemplates,
   })
 
   // Add the manually created consultation to the list
@@ -793,6 +785,14 @@ const getQRCodeUrl = () => {
   const baseUrl = window.location.origin
   return `${baseUrl}/flow/${firstConsultationCode.value}`
 }
+
+const firstConsultationAccessWindow = computed(() => {
+  if (!firstConsultation.value) return null
+  return getConsultationAccessWindowFromConsultation(firstConsultation.value, {
+    consultationAccessDaysBefore: userStore.consultationAccessDaysBefore,
+    consultationAccessDaysAfter: userStore.consultationAccessDaysAfter,
+  })
+})
 
 // Generate First Consultation URL
 const getFirstConsultationUrl = () => {
@@ -1145,6 +1145,7 @@ onMounted(async () => {
                                        v-if="firstConsultationCode"
                                        :url="getQRCodeUrl()"
                                        :label="t('creationFlow.patientFlowQrUrl')"
+                                       :access-window="firstConsultationAccessWindow"
                                        class="mb-4" />
 
                     <!-- First Consultation Link (using new component) -->

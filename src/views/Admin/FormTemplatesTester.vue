@@ -3,8 +3,7 @@ import { ref } from 'vue'
 import PluginFormRenderer from '@/forms/components/PluginFormRenderer.vue'
 
 import { formtemplateApi } from '@/api'
-import type { FormTemplate } from '@/api/models/FormTemplate'
-import type { PatientFormData } from '@/types'
+import type { ApiFormTemplate as FormTemplate, PatientFormData } from '@/types'
 import { getAccessLevelColor, getAccessLevelDescription } from '@/services/formVersionService'
 
 // Available form templates to test
@@ -356,13 +355,18 @@ const handleTemplateChange = () => {
               <v-expansion-panel>
                 <v-expansion-panel-title>View Raw Data</v-expansion-panel-title>
                 <v-expansion-panel-text>
-                  <pre class="text-caption" style="overflow: auto;">{{ JSON.stringify(formData?.rawFormData, null, 2) }}</pre>
+                  <pre class="text-caption" style="overflow: auto;">{{ JSON.stringify(formData?.rawFormData, null, 2) }}
+              </pre>
                 </v-expansion-panel-text>
               </v-expansion-panel>
               <v-expansion-panel>
                 <v-expansion-panel-title>View Form Metadata</v-expansion-panel-title>
                 <v-expansion-panel-text>
-                  <pre class="text-caption" style="overflow: auto;">{{ JSON.stringify(formData ? { fillStatus: formData.fillStatus, completedAt: formData.completedAt, beginFill: formData.beginFill } : null, null, 2) }}</pre>
+                  <pre class="text-caption" style="overflow: auto;">{{ JSON.stringify(formData ? {
+                    fillStatus:
+                      formData.fillStatus, completedAt: formData.completedAt, beginFill: formData.beginFill
+                  } : null, null, 2)
+                }}</pre>
                 </v-expansion-panel-text>
               </v-expansion-panel>
             </v-expansion-panels>

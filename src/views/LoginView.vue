@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { onMounted, ref, computed } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRouter, useRoute } from 'vue-router'
 import { useUserStore } from '@/stores/userStore'
 import { ResponseError } from '@/api'
 import { useNotifierStore } from '@/stores/notifierStore'
@@ -10,8 +10,12 @@ import { userApi, setupApi } from '@/api'
 const { t } = useI18n()
 
 const router = useRouter()
+const route = useRoute()
 const userStore = useUserStore()
 const notifierStore = useNotifierStore()
+
+/** True when the user was redirected here because the server session expired. */
+const sessionExpired = computed(() => route.query.reason === 'session-expired')
 
 // Prefill the username with `kiosk` so kiosk mode is ready on page load
 const username = ref('')
@@ -82,6 +86,8 @@ const login = async () => {
         department: Array.isArray(apiUser.department) ? apiUser.department[0] || '' : apiUser.department || '',
         belongsToCenter: apiUser.belongsToCenter ? [apiUser.belongsToCenter] : [],
         email: apiUser.email || '',
+        consultationAccessDaysBefore: (apiUser as unknown as Record<string, unknown>).consultationAccessDaysBefore as number | undefined,
+        consultationAccessDaysAfter: (apiUser as unknown as Record<string, unknown>).consultationAccessDaysAfter as number | undefined,
         roles: apiUser.roles || [],
         permissions: apiUser.permissions || []
       })
@@ -131,6 +137,16 @@ const login = async () => {
     <v-card v-else>
       <v-card-title>{{ t('login.title') }}</v-card-title>
       <v-card-text>
+        <!-- Session expired warning – shown when redirected back from a protected route -->
+        <v-alert
+          v-if="sessionExpired"
+          type="warning"
+          variant="tonal"
+          class="mb-4"
+          closable
+        >
+          {{ t('login.sessionExpired') }}
+        </v-alert>
         <v-form @submit.prevent="login">
           <v-text-field v-model="username" :label="t('login.username')" outlined dense required
                         autocomplete="username" autofocus></v-text-field>

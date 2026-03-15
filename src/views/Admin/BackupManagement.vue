@@ -10,10 +10,12 @@ import 'dayjs/locale/de';
 import CredentialsManager from '@/components/backup/CredentialsManager.vue';
 import BackupJobsManager from '@/components/backup/BackupJobsManager.vue';
 import BackupHistoryList from '@/components/backup/BackupHistoryList.vue';
-import type { GetBackupHistory200ResponseResponseObjectInner } from '@/api/models/GetBackupHistory200ResponseResponseObjectInner';
-import type { CollectionMetadata } from '@/api/models/CollectionMetadata';
-import type { GetBackupMetadata200ResponseResponseObject } from '@/api/models/GetBackupMetadata200ResponseResponseObject';
-import type { GetAllCredentials200ResponseResponseObjectInner } from '@/api/models/GetAllCredentials200ResponseResponseObjectInner';
+import type {
+  ApiBackupHistoryEntry,
+  ApiCollectionMetadata as CollectionMetadata,
+  ApiBackupMetadata as GetBackupMetadata200ResponseResponseObject,
+  ApiCredential as GetAllCredentials200ResponseResponseObjectInner,
+} from '@/types';
 
 dayjs.extend(localizedFormat);
 
@@ -33,8 +35,8 @@ const collections = ref<CollectionMetadata[]>([]);
 const credentials = ref<GetAllCredentials200ResponseResponseObjectInner[]>([]);
 
 // Manual backup data
-const backupHistory = ref<GetBackupHistory200ResponseResponseObjectInner[]>([]);
-const selectedBackup = ref<GetBackupHistory200ResponseResponseObjectInner | null>(null);
+const backupHistory = ref<ApiBackupHistoryEntry[]>([]);
+const selectedBackup = ref<ApiBackupHistoryEntry | null>(null);
 const showRestoreDialog = ref(false);
 const selectedCollections = ref<string[]>([]);
 const restoreMode = ref<'merge' | 'replace'>('merge');
@@ -164,7 +166,7 @@ const createManualBackup = async () => {
   }
 };
 
-const openRestoreDialog = async (backup: GetBackupHistory200ResponseResponseObjectInner) => {
+const openRestoreDialog = async (backup: ApiBackupHistoryEntry) => {
   selectedBackup.value = backup;
   showRestoreDialog.value = true;
   backupPassword.value = '';
@@ -339,9 +341,8 @@ onMounted(async () => {
     <v-row>
       <v-col cols="12">
         <CredentialsManager
-          :credentials="credentials"
-          @refresh="loadCredentials"
-        />
+                            :credentials="credentials"
+                            @refresh="loadCredentials" />
       </v-col>
     </v-row>
 
@@ -371,41 +372,39 @@ onMounted(async () => {
                     <v-row>
                       <v-col cols="12">
                         <v-alert
-                          v-if="!hasRemoteCredentials"
-                          type="info"
-                          variant="tonal"
-                          density="compact"
-                          class="mb-4"
-                        >
-                          Backup will be saved to the server filesystem. Add remote storage credentials to enable cloud backup options.
+                                 v-if="!hasRemoteCredentials"
+                                 type="info"
+                                 variant="tonal"
+                                 density="compact"
+                                 class="mb-4">
+                          Backup will be saved to the server filesystem. Add remote storage credentials to enable cloud
+                          backup options.
                         </v-alert>
                       </v-col>
                     </v-row>
                     <v-row>
                       <v-col cols="12" md="6">
                         <v-select
-                          v-model="selectedBackupCollections"
-                          :items="collections"
-                          item-title="name"
-                          item-value="name"
-                          label="Collections to Backup"
-                          multiple
-                          chips
-                          closable-chips
-                          hint="Select all collections you want to backup"
-                          persistent-hint
-                        />
+                                  v-model="selectedBackupCollections"
+                                  :items="collections"
+                                  item-title="name"
+                                  item-value="name"
+                                  label="Collections to Backup"
+                                  multiple
+                                  chips
+                                  closable-chips
+                                  hint="Select all collections you want to backup"
+                                  persistent-hint />
                       </v-col>
                       <v-col cols="12" md="6">
                         <v-select
-                          v-model="selectedDestination"
-                          :items="backupDestinations"
-                          item-title="title"
-                          item-value="value"
-                          label="Backup Destination"
-                          hint="Select where to save the backup"
-                          persistent-hint
-                        >
+                                  v-model="selectedDestination"
+                                  :items="backupDestinations"
+                                  item-title="title"
+                                  item-value="value"
+                                  label="Backup Destination"
+                                  hint="Select where to save the backup"
+                                  persistent-hint>
                           <template v-slot:item="{ props, item }">
                             <v-list-item v-bind="props">
                               <template v-slot:subtitle>
@@ -419,47 +418,42 @@ onMounted(async () => {
                     <v-row>
                       <v-col cols="12">
                         <v-checkbox
-                          v-model="encryptBackup"
-                          label="Encrypt backup with password"
-                          hint="Password cannot be changed once set"
-                          persistent-hint
-                        />
+                                    v-model="encryptBackup"
+                                    label="Encrypt backup with password"
+                                    hint="Password cannot be changed once set"
+                                    persistent-hint />
                         <v-text-field
-                          v-if="encryptBackup"
-                          v-model="encryptionPassword"
-                          label="Encryption Password"
-                          type="password"
-                          class="mt-2"
-                          hint="Keep this password safe - you'll need it to restore"
-                          persistent-hint
-                        />
+                                      v-if="encryptBackup"
+                                      v-model="encryptionPassword"
+                                      label="Encryption Password"
+                                      type="password"
+                                      class="mt-2"
+                                      hint="Keep this password safe - you'll need it to restore"
+                                      persistent-hint />
                         <v-text-field
-                          v-if="encryptBackup"
-                          v-model="encryptionPasswordConfirm"
-                          label="Confirm Encryption Password"
-                          type="password"
-                          class="mt-2"
-                          :error="!passwordsMatch"
-                          :hint="!passwordsMatch ? 'Passwords do not match' : 'Re-enter password to confirm'"
-                          persistent-hint
-                        />
+                                      v-if="encryptBackup"
+                                      v-model="encryptionPasswordConfirm"
+                                      label="Confirm Encryption Password"
+                                      type="password"
+                                      class="mt-2"
+                                      :error="!passwordsMatch"
+                                      :hint="!passwordsMatch ? 'Passwords do not match' : 'Re-enter password to confirm'"
+                                      persistent-hint />
                       </v-col>
                     </v-row>
                   </v-card-text>
                   <v-card-actions>
                     <v-spacer />
                     <v-btn
-                      color="secondary"
-                      @click="uploadDialog = true"
-                    >
+                           color="secondary"
+                           @click="uploadDialog = true">
                       <v-icon left>mdi-upload</v-icon>
                       Upload Backup
                     </v-btn>
                     <v-btn
-                      color="primary"
-                      :loading="manualBackupLoading"
-                      @click="createManualBackup"
-                    >
+                           color="primary"
+                           :loading="manualBackupLoading"
+                           @click="createManualBackup">
                       <v-icon left>mdi-database-export</v-icon>
                       Create Backup
                     </v-btn>
@@ -474,9 +468,8 @@ onMounted(async () => {
             <v-row>
               <v-col cols="12">
                 <BackupJobsManager
-                  :credentials="credentials"
-                  :collections="collections"
-                />
+                                   :credentials="credentials"
+                                   :collections="collections" />
               </v-col>
             </v-row>
           </v-window-item>
@@ -510,11 +503,10 @@ onMounted(async () => {
           <v-row v-if="currentMetadata?.isEncrypted">
             <v-col cols="12">
               <v-text-field
-                v-model="backupPassword"
-                label="Backup Password"
-                type="password"
-                required
-              />
+                            v-model="backupPassword"
+                            label="Backup Password"
+                            type="password"
+                            required />
             </v-col>
           </v-row>
 
@@ -527,16 +519,14 @@ onMounted(async () => {
               <v-card variant="outlined" class="scrollable-collection-list">
                 <v-list density="compact">
                   <v-list-item
-                    v-for="item in collectionComparison"
-                    :key="item.name"
-                    class="collection-item"
-                  >
+                               v-for="item in collectionComparison"
+                               :key="item.name"
+                               class="collection-item">
                     <template v-slot:prepend>
                       <v-checkbox
-                        :model-value="selectedCollections.includes(item.name)"
-                        @update:model-value="(val) => toggleCollection(item.name, val)"
-                        hide-details
-                      />
+                                  :model-value="selectedCollections.includes(item.name)"
+                                  @update:model-value="(val) => toggleCollection(item.name, val)"
+                                  hide-details />
                     </template>
                     <v-list-item-title>{{ item.name }}</v-list-item-title>
                     <v-list-item-subtitle>
@@ -563,10 +553,9 @@ onMounted(async () => {
           <v-spacer />
           <v-btn text @click="showRestoreDialog = false">Cancel</v-btn>
           <v-btn
-            color="primary"
-            :loading="loading"
-            @click="restoreBackup"
-          >
+                 color="primary"
+                 :loading="loading"
+                 @click="restoreBackup">
             Restore Selected Collections
           </v-btn>
         </v-card-actions>
@@ -579,21 +568,19 @@ onMounted(async () => {
         <v-card-title>Upload Backup File</v-card-title>
         <v-card-text>
           <v-file-input
-            v-model="uploadFile"
-            label="Select backup file (.tar.gz)"
-            accept=".tar.gz,.tgz"
-            prepend-icon="mdi-file-upload"
-            show-size
-          />
+                        v-model="uploadFile"
+                        label="Select backup file (.tar.gz)"
+                        accept=".tar.gz,.tgz"
+                        prepend-icon="mdi-file-upload"
+                        show-size />
         </v-card-text>
         <v-card-actions>
           <v-spacer />
           <v-btn text @click="uploadDialog = false">Cancel</v-btn>
           <v-btn
-            color="primary"
-            :loading="loading"
-            @click="handleFileUpload"
-          >
+                 color="primary"
+                 :loading="loading"
+                 @click="handleFileUpload">
             Upload
           </v-btn>
         </v-card-actions>
@@ -604,12 +591,11 @@ onMounted(async () => {
     <v-row class="mt-4">
       <v-col cols="12">
         <BackupHistoryList
-          :backup-history="backupHistory"
-          :credentials="credentials"
-          :loading="loading"
-          @refresh="loadBackupHistory"
-          @restore="openRestoreDialog"
-        />
+                           :backup-history="backupHistory"
+                           :credentials="credentials"
+                           :loading="loading"
+                           @refresh="loadBackupHistory"
+                           @restore="openRestoreDialog" />
       </v-col>
     </v-row>
   </v-container>

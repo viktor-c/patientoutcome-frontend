@@ -29,6 +29,17 @@ const currentForm = computed(() => form.value)
 // Computed formId from route params
 const formId = computed(() => route.params.formId as string)
 
+type ErrorWithResponse = Error & { response?: { status?: number } }
+
+const hasResponseStatus = (error: unknown): error is ErrorWithResponse => {
+  return (
+    error instanceof Error &&
+    typeof error === 'object' &&
+    error !== null &&
+    'response' in error
+  )
+}
+
 
 
 // Fetch consultation data to get the list of all forms
@@ -47,7 +58,7 @@ const fetchConsultationForms = async () => {
       console.log('KioskForm: Found', allFormIds.value.length, 'forms, current index:', currentFormIndex.value)
     }
   } catch (err: unknown) {
-    if (err instanceof Error && 'response' in err && (err as any).response.status === 404) {
+    if (hasResponseStatus(err) && err.response?.status === 404) {
       // no consultation assigned; forms list should remain empty
       console.debug('KioskForm: no consultation available, skipping form list build')
       return
@@ -100,7 +111,7 @@ const processFormData = async (submissionData: FormSubmissionData) => {
   if (form.value && form.value._id) {
     // Update local state with full PatientFormData structure
     form.value.patientFormData = submissionData
-    
+
     // Auto-save to backend with full PatientFormData structure
     try {
       await formApi.updateForm({
@@ -163,10 +174,10 @@ const goBackToKiosk = () => {
       <v-card>
         <v-card-text>
           <PluginFormRenderer
-                       :key="formId"
-                       :template-id="currentForm?.formTemplateId || formId"
-                       :model-value="currentForm?.patientFormData || null"
-                       @update:model-value="processFormData" />
+                              :key="formId"
+                              :template-id="currentForm?.formTemplateId || formId"
+                              :model-value="currentForm?.patientFormData || null"
+                              @update:model-value="processFormData" />
         </v-card-text>
       </v-card>
     </div>

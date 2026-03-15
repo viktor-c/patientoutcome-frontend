@@ -15,6 +15,9 @@ vi.mock('vue-router', () => ({
     push: mockRouterPush,
     currentRoute: { value: { query: mockRouteQuery.value } },
   }),
+  useRoute: () => ({
+    query: mockRouteQuery.value,
+  }),
 }))
 
 vi.mock('vue-i18n', () => ({

@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest'
+import { describe, it, expect, beforeEach } from 'vitest'
 import { setActivePinia, createPinia } from 'pinia'
 import { useConsultationStore } from '@/stores/consultationStore'
 import { ConsultationReasonForConsultationEnum, type Consultation } from '@/api'
@@ -36,13 +36,13 @@ describe('consultationStore', () => {
     it('should overwrite existing consultation', () => {
       const store = useConsultationStore()
       store.setConsultation(mockConsultation)
-      
+
       const newConsultation: Consultation = {
         ...mockConsultation,
         id: 'consultation-456',
       }
       store.setConsultation(newConsultation)
-      
+
       expect(store.consultation).toEqual(newConsultation)
       expect(store.consultation?.id).toBe('consultation-456')
     })
@@ -53,7 +53,7 @@ describe('consultationStore', () => {
       const store = useConsultationStore()
       store.setConsultation(mockConsultation)
       expect(store.consultation).not.toBeNull()
-      
+
       store.clearConsultation()
       expect(store.consultation).toBeNull()
     })
@@ -61,7 +61,7 @@ describe('consultationStore', () => {
     it('should be safe to call when already null', () => {
       const store = useConsultationStore()
       expect(store.consultation).toBeNull()
-      
+
       store.clearConsultation()
       expect(store.consultation).toBeNull()
     })
@@ -70,13 +70,13 @@ describe('consultationStore', () => {
   describe('reactivity', () => {
     it('should be reactive when consultation changes', () => {
       const store = useConsultationStore()
-      
+
       // Verify state changes correctly by checking values
       expect(store.consultation).toBeNull()
-      
+
       store.setConsultation(mockConsultation)
       expect(store.consultation).toEqual(mockConsultation)
-      
+
       store.clearConsultation()
       expect(store.consultation).toBeNull()
     })

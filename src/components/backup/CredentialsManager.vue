@@ -2,8 +2,10 @@
 import { ref, computed } from 'vue';
 import { useNotifierStore } from '@/stores/';
 import { backupApi } from '@/api';
-import type { GetAllCredentials200ResponseResponseObjectInner } from '@/api/models/GetAllCredentials200ResponseResponseObjectInner';
-import type { CreateCredentialsRequest } from '@/api/models/CreateCredentialsRequest';
+import type {
+  ApiCredential as GetAllCredentials200ResponseResponseObjectInner,
+  ApiCreateCredentialsRequest as CreateCredentialsRequest,
+} from '@/types';
 
 const notifierStore = useNotifierStore();
 const loading = ref(false);
@@ -103,7 +105,7 @@ const saveCredential = async () => {
   // Validate required fields based on storage type
   const requiredFields = credentialFields.value.filter(f => !f.key.includes('optional'));
   const missingFields = requiredFields.filter(f => !newCredential.value.credentials[f.key]);
-  
+
   if (missingFields.length > 0 && !editingCredential.value) {
     notifierStore.notify(`Please fill in all required fields`, 'info');
     return;
@@ -116,13 +118,13 @@ const saveCredential = async () => {
       const hasNewCredentials = Object.keys(newCredential.value.credentials).some(
         key => newCredential.value.credentials[key]
       );
-      
+
       if (!hasNewCredentials) {
         notifierStore.notify('Please provide new credentials to update', 'info');
         loading.value = false;
         return;
       }
-      
+
       // Delete old and create new (backend doesn't support update)
       await backupApi.deleteCredentials({ id: editingCredential.value.id });
       await backupApi.createCredentials({
@@ -135,7 +137,7 @@ const saveCredential = async () => {
       });
       notifierStore.notify('Credentials saved successfully', 'success');
     }
-    
+
     showCredentialDialog.value = false;
     emit('refresh');
   } catch (error) {
@@ -175,16 +177,15 @@ const deleteCredential = async (credential: GetAllCredentials200ResponseResponse
         <span>Storage Credentials</span>
         <v-spacer />
         <v-btn
-          icon
-          variant="text"
-          size="small"
-          @click="expanded = !expanded"
-        >
+               icon
+               variant="text"
+               size="small"
+               @click="expanded = !expanded">
           <v-icon>{{ expanded ? 'mdi-chevron-up' : 'mdi-chevron-down' }}</v-icon>
         </v-btn>
       </div>
     </v-card-title>
-    
+
     <v-expand-transition>
       <v-card-text v-show="expanded">
         <v-alert type="info" density="compact" class="mb-4">
@@ -200,9 +201,8 @@ const deleteCredential = async (credential: GetAllCredentials200ResponseResponse
 
         <v-list v-if="props.credentials.length > 0">
           <v-list-item
-            v-for="credential in props.credentials"
-            :key="credential.id"
-          >
+                       v-for="credential in props.credentials"
+                       :key="credential.id">
             <template #prepend>
               <v-avatar color="primary" size="40">
                 <v-icon>mdi-key</v-icon>
@@ -214,20 +214,18 @@ const deleteCredential = async (credential: GetAllCredentials200ResponseResponse
 
             <template #append>
               <v-btn
-                icon="mdi-pencil"
-                size="small"
-                variant="text"
-                @click="openEditCredentialDialog(credential)"
-                title="Edit"
-              />
+                     icon="mdi-pencil"
+                     size="small"
+                     variant="text"
+                     @click="openEditCredentialDialog(credential)"
+                     title="Edit" />
               <v-btn
-                icon="mdi-delete"
-                size="small"
-                variant="text"
-                color="error"
-                @click="deleteCredential(credential)"
-                title="Delete"
-              />
+                     icon="mdi-delete"
+                     size="small"
+                     variant="text"
+                     color="error"
+                     @click="deleteCredential(credential)"
+                     title="Delete" />
             </template>
           </v-list-item>
         </v-list>
@@ -249,23 +247,21 @@ const deleteCredential = async (credential: GetAllCredentials200ResponseResponse
             <v-row>
               <v-col cols="12">
                 <v-text-field
-                  v-model="newCredential.name"
-                  label="Credential Name"
-                  required
-                  hint="A descriptive name for these credentials"
-                  persistent-hint
-                />
+                              v-model="newCredential.name"
+                              label="Credential Name"
+                              required
+                              hint="A descriptive name for these credentials"
+                              persistent-hint />
               </v-col>
             </v-row>
 
             <v-row>
               <v-col cols="12">
                 <v-select
-                  v-model="newCredential.storageType"
-                  :items="storageTypeOptions"
-                  label="Storage Type"
-                  :disabled="!!editingCredential"
-                />
+                          v-model="newCredential.storageType"
+                          :items="storageTypeOptions"
+                          label="Storage Type"
+                          :disabled="!!editingCredential" />
               </v-col>
             </v-row>
 
@@ -275,17 +271,15 @@ const deleteCredential = async (credential: GetAllCredentials200ResponseResponse
 
             <v-row>
               <v-col
-                v-for="field in credentialFields"
-                :key="field.key"
-                cols="12"
-              >
+                     v-for="field in credentialFields"
+                     :key="field.key"
+                     cols="12">
                 <v-text-field
-                  v-model="newCredential.credentials[field.key]"
-                  :label="field.label"
-                  :type="field.type"
-                  :placeholder="field.placeholder"
-                  :required="!field.key.includes('optional')"
-                />
+                              v-model="newCredential.credentials[field.key]"
+                              :label="field.label"
+                              :type="field.type"
+                              :placeholder="field.placeholder"
+                              :required="!field.key.includes('optional')" />
               </v-col>
             </v-row>
 
@@ -298,10 +292,9 @@ const deleteCredential = async (credential: GetAllCredentials200ResponseResponse
           <v-spacer />
           <v-btn text @click="showCredentialDialog = false">Cancel</v-btn>
           <v-btn
-            color="primary"
-            :loading="loading"
-            @click="saveCredential"
-          >
+                 color="primary"
+                 :loading="loading"
+                 @click="saveCredential">
             {{ editingCredential ? 'Update' : 'Save' }} Credentials
           </v-btn>
         </v-card-actions>

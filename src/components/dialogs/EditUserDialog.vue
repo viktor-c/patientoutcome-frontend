@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, watch, computed } from 'vue';
-import type { GetUsers200ResponseResponseObjectInner as UserResponseType} from '@/api/models/GetUsers200ResponseResponseObjectInner';
-import type { UserDepartment } from '@/api/models/UserDepartment';
+import type { ApiUserResponse as UserResponseType } from '@/types';
+import type { ApiUserDepartment as UserDepartment } from '@/types';
 
 const props = defineProps<{
   show: boolean;

@@ -7,6 +7,9 @@ const defaultBase = import.meta.env.DEV
   ? (import.meta.env.VITE_API_URL || '/api')
   : (import.meta.env.VITE_API_URL || 'https://prom.example.com');
 
+/** The configured API base path – used by composables that need raw fetch calls. */
+export const apiBasePath = defaultBase;
+
 const fileName = "src/api.ts";
 
 const apiConfig = new Configuration({
@@ -80,4 +83,83 @@ export async function updateDepartmentCodeLife(departmentId: string, externalAcc
     throw new Error(`Failed to update department code life: ${res.status} ${res.statusText}: ${text}`);
   }
   return await res.json();
+}
+
+export async function updateDepartmentConsultationAccessWindow(
+  departmentId: string,
+  consultationAccessDaysBefore: number,
+  consultationAccessDaysAfter: number,
+) {
+  const base = apiConfig.basePath ?? '';
+  const url = `${base.replace(/\/$/, '')}/userDepartment/${encodeURIComponent(departmentId)}/consultation-access-window`;
+  const res = await fetch(url, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    credentials: 'include',
+    body: JSON.stringify({ consultationAccessDaysBefore, consultationAccessDaysAfter }),
+  });
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`Failed to update department consultation access window: ${res.status} ${res.statusText}: ${text}`);
+  }
+  return await res.json();
+}
+
+export async function activateCodeForCase(code: string, caseId: string) {
+  const base = apiConfig.basePath ?? '';
+  const url = `${base.replace(/\/$/, '')}/form-access-code/activate/${encodeURIComponent(code)}/case/${encodeURIComponent(caseId)}`;
+  const res = await fetch(url, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    credentials: 'include',
+  });
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`Failed to activate code for patient case: ${res.status} ${res.statusText}: ${text}`);
+  }
+  return await res.json();
+}
+
+export async function getActiveCodeForCase(caseId: string) {
+  const base = apiConfig.basePath ?? '';
+  const url = `${base.replace(/\/$/, '')}/form-access-code/active/case/${encodeURIComponent(caseId)}`;
+  const res = await fetch(url, {
+    method: 'GET',
+    credentials: 'include',
+  });
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`Failed to get active code for case: ${res.status} ${res.statusText}: ${text}`);
+  }
+  return await res.json();
+}
+
+/**
+ * Lightweight session health probe.  Calls `GET /user/session` and returns:
+ * - `{ authenticated: true, username, expiresAt }` when the session is active
+ * - `{ authenticated: false }` when the server returns 401
+ * - `null` when a network error occurs (treat as "unknown – do not force logout")
+ *
+ * Because `rolling: true` is active on the backend, this call also refreshes the
+ * session cookie lifetime on the server.
+ */
+export async function checkSessionRaw(): Promise<
+  { authenticated: true; username: string | null; expiresAt: string } |
+  { authenticated: false } |
+  null
+> {
+  try {
+    const base = (apiConfig.basePath ?? '').replace(/\/$/, '');
+    const res = await fetch(`${base}/user/session`, { credentials: 'include' });
+    if (res.status === 401) return { authenticated: false };
+    if (!res.ok) return null; // network/server error – don't force logout
+    const json = await res.json();
+    const obj = json?.responseObject;
+    if (obj?.authenticated) {
+      return { authenticated: true, username: obj.username ?? null, expiresAt: obj.expiresAt };
+    }
+    return { authenticated: false };
+  } catch {
+    return null; // network unavailable – don't force logout
+  }
 }

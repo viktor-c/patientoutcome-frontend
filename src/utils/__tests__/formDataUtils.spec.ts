@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { extractObjectId, toApiPatientFormData } from '../formDataUtils'
+import type { FormSubmissionData } from '@/forms/types'
 
 describe('formDataUtils', () => {
   describe('extractObjectId', () => {
@@ -58,8 +59,8 @@ describe('formDataUtils', () => {
 
   describe('toApiPatientFormData', () => {
     it('should pass through the data unchanged', () => {
-      const data = { section: { q1: 1, q2: 2 } }
-      const result = toApiPatientFormData(data as any)
+      const data = { section: { q1: 1, q2: 2 } } as unknown as FormSubmissionData
+      const result = toApiPatientFormData(data)
       expect(result).toBe(data)
     })
   })

@@ -18,6 +18,7 @@ export default {
     fillFields: 'Bitte füllen Sie Benutzername und Passwort aus.',
     loginSuccessfull: 'Erfolgreich angemeldet',
     logoutSuccessfull: 'Du bist abgemeldet',
+    sessionExpired: 'Ihre Sitzung ist abgelaufen. Bitte melden Sie sich erneut an.',
   },
   logout: {
     processing: 'Abmeldung läuft...',
@@ -307,6 +308,7 @@ export default {
     enterPatientCode: 'Patientencode ein',
     codeHint: 'Bitte geben Sie mindestens 4 Zeichen ein',
     invalidCodeMessage: 'Der eingegebene Code ist ungültig.',
+    consultationNotActiveMessage: 'Diese Konsultation liegt derzeit außerhalb des erlaubten Formular-Zeitfensters.',
     successMessage: 'Die Formulare werden jetzt angezeigt.',
     allFormsFilled: 'Alle Formulare wurden ausgefüllt.',
     noFormsAvailable: 'Keine Formulare für diesen Fall verfügbar.',
@@ -576,6 +578,7 @@ export default {
     pdfError: 'Fehler beim Erstellen der PDF',
     expiresAt: 'Läuft ab: {date}',
     accessExpired: 'Dieser Zugangslink ist abgelaufen.',
+    accessWindowRange: 'Formularzugriff möglich von {from} bis {until}',
   },
   alerts: {
     patient: {
@@ -1487,13 +1490,15 @@ export default {
     restoreDefaultDeselectedHint: 'Sitzungs-, Benutzer- und backup-bezogene Tabellen sind standardmäßig abgewählt.',
   },
   departmentCodeSettings: {
-    title: 'Abteilungs-Code-Einstellungen',
-    subtitle: 'Konfigurieren Sie, wie lange Patientenzugangscodes gültig sind',
-    codeLifeLabel: 'Gültigkeitsdauer des Codes',
-    codeLifeHint: 'z.B. 4h (4 Stunden), 2d (2 Tage), 3w (3 Wochen)',
-    codeLifeInvalidFormat: 'Format: Zahl + h/d/w (z.B. 4h, 2d, 3w)',
-    saveSuccess: 'Code-Gültigkeitsdauer erfolgreich gespeichert',
-    saveError: 'Fehler beim Speichern der Code-Gültigkeitsdauer',
+    title: 'Abteilungs-Einstellungen für Konsultationszugriff',
+    subtitle: 'Konfigurieren Sie, wie viele Tage vor und nach einer Konsultation Patienten Formulare ausfüllen dürfen',
+    daysBeforeLabel: 'Tage vor der Konsultation',
+    daysBeforeHint: 'Ab so vielen Tagen vor dem Termin dürfen Patienten mit dem Ausfüllen beginnen',
+    daysAfterLabel: 'Tage nach der Konsultation',
+    daysAfterHint: 'So viele Tage nach dem Termin bleibt der Formularzugriff möglich',
+    dayRangeInvalid: 'Bitte eine ganze Zahl zwischen 0 und 365 Tagen eingeben.',
+    saveSuccess: 'Konsultations-Zeitfenster erfolgreich gespeichert',
+    saveError: 'Fehler beim Speichern des Konsultations-Zeitfensters',
   },
   settings: {
     title: 'Anwendungseinstellungen',

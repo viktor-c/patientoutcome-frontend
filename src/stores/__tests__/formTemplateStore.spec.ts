@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, vi, type Mock } from 'vitest'
+import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { setActivePinia, createPinia } from 'pinia'
 import { useFormTemplateStore } from '@/stores/formTemplateStore'
 import type { GetFormTemplatesShortlist200ResponseResponseObjectInner as FormTemplateShortList } from '@/api'
@@ -88,7 +88,7 @@ describe('formTemplateStore', () => {
       )
 
       const store = useFormTemplateStore()
-      
+
       // Start two concurrent fetches
       const fetch1 = store.fetchIfNeeded()
       const fetch2 = store.fetchIfNeeded()
@@ -104,7 +104,7 @@ describe('formTemplateStore', () => {
     })
 
     it('should handle API errors gracefully', async () => {
-      const consoleWarn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+      const consoleWarn = vi.spyOn(console, 'warn').mockImplementation(() => { })
       mockGetFormTemplatesShortlist.mockRejectedValue(new Error('Network error'))
 
       const store = useFormTemplateStore()
@@ -113,7 +113,7 @@ describe('formTemplateStore', () => {
       expect(consoleWarn).toHaveBeenCalled()
       expect(store.templates).toEqual([])
       expect(store.loading).toBe(false)
-      
+
       consoleWarn.mockRestore()
     })
 

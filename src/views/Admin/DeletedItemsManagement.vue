@@ -4,9 +4,8 @@ import { useI18n } from 'vue-i18n'
 import {
   ResponseError,
   type Patient,
-  type GetAllPatientCases200ResponseResponseObjectInner,
-  type FindAllCodes200ResponseResponseObjectInnerConsultationIdPromsInner,
 } from '@/api'
+import type { ApiPatientCaseWithDetails, ApiConsultationForm } from '@/types'
 import { extractObjectId } from '@/utils/formDataUtils'
 import { useNotifierStore } from '@/stores/notifierStore'
 import { patientApi, caseApi, formApi } from '@/api'
@@ -25,14 +24,14 @@ const patientsTotalPages = ref(0)
 const patientsTotal = ref(0)
 
 // Deleted cases state
-const deletedCases = ref<GetAllPatientCases200ResponseResponseObjectInner[]>([])
+const deletedCases = ref<ApiPatientCaseWithDetails[]>([])
 const casesPage = ref(1)
 const casesLimit = ref(10)
 const casesTotalPages = ref(0)
 const casesTotal = ref(0)
 
 // Deleted forms state
-const deletedForms = ref<FindAllCodes200ResponseResponseObjectInnerConsultationIdPromsInner[]>([])
+const deletedForms = ref<ApiConsultationForm[]>([])
 const formsPage = ref(1)
 const formsLimit = ref(10)
 const formsTotalPages = ref(0)
@@ -55,11 +54,11 @@ const casePatientDisplay = (patient: unknown): string => {
   return extractObjectId(patient) || '-'
 }
 
-const caseIdForActions = (item: GetAllPatientCases200ResponseResponseObjectInner): string => {
+const caseIdForActions = (item: ApiPatientCaseWithDetails): string => {
   return extractObjectId(item) || item.id || ''
 }
 
-const casePatientIdForActions = (item: GetAllPatientCases200ResponseResponseObjectInner): string => {
+const casePatientIdForActions = (item: ApiPatientCaseWithDetails): string => {
   return extractObjectId(item.patient) || ''
 }
 
@@ -78,7 +77,7 @@ const formDeletedByDisplay = (deletedBy: unknown): string => {
   return extractObjectId(deletedBy) || '-'
 }
 
-const formIdForActions = (item: FindAllCodes200ResponseResponseObjectInnerConsultationIdPromsInner): string => {
+const formIdForActions = (item: ApiConsultationForm): string => {
   return extractObjectId(item) || ''
 }
 
@@ -278,8 +277,10 @@ watch(activeTab, (newTab) => {
 
       <v-tabs v-model="activeTab" bg-color="primary">
         <v-tab value="deletedPatients">{{ t('admin.deletedItemsManagement.deletedPatients') }}</v-tab>
-        <v-tab value="deletedCases" @click="fetchDeletedCases">{{ t('admin.deletedItemsManagement.deletedCases') }}</v-tab>
-        <v-tab value="deletedForms" @click="fetchDeletedForms">{{ t('admin.deletedItemsManagement.deletedForms') }}</v-tab>
+        <v-tab value="deletedCases" @click="fetchDeletedCases">{{ t('admin.deletedItemsManagement.deletedCases')
+          }}</v-tab>
+        <v-tab value="deletedForms" @click="fetchDeletedForms">{{ t('admin.deletedItemsManagement.deletedForms')
+          }}</v-tab>
       </v-tabs>
 
       <v-card-text>
@@ -287,18 +288,18 @@ watch(activeTab, (newTab) => {
           <!-- Deleted Patients Tab -->
           <v-tabs-window-item value="deletedPatients">
             <v-data-table
-              :headers="[
-                { title: t('forms.externalId'), key: 'externalPatientId', sortable: false },
-                { title: t('forms.sex'), key: 'sex', sortable: false },
-                { title: t('common.deletedAt'), key: 'deletedAt', sortable: false },
-                { title: t('common.actions'), key: 'actions', sortable: false, align: 'end' }
-              ]"
-              :items="deletedPatients"
-              :items-length="patientsTotal"
-              :items-per-page="patientsLimit"
-              :page="patientsPage"
-              hide-default-footer
-              class="elevation-1">
+                          :headers="[
+                            { title: t('forms.externalId'), key: 'externalPatientId', sortable: false },
+                            { title: t('forms.sex'), key: 'sex', sortable: false },
+                            { title: t('common.deletedAt'), key: 'deletedAt', sortable: false },
+                            { title: t('common.actions'), key: 'actions', sortable: false, align: 'end' }
+                          ]"
+                          :items="deletedPatients"
+                          :items-length="patientsTotal"
+                          :items-per-page="patientsLimit"
+                          :page="patientsPage"
+                          hide-default-footer
+                          class="elevation-1">
               <template #item.externalPatientId="{ item }">
                 {{ item.externalPatientId?.[0] || '-' }}
               </template>
@@ -313,19 +314,19 @@ watch(activeTab, (newTab) => {
 
               <template #item.actions="{ item }">
                 <div class="d-flex justify-end ga-2">
-                  <v-btn 
-                    size="small" 
-                    color="success" 
-                    variant="text" 
-                    icon="mdi-restore"
-                    @click="restorePatient(item.id!)">
+                  <v-btn
+                         size="small"
+                         color="success"
+                         variant="text"
+                         icon="mdi-restore"
+                         @click="restorePatient(item.id!)">
                   </v-btn>
-                  <v-btn 
-                    size="small" 
-                    color="error" 
-                    variant="text" 
-                    icon="mdi-delete-forever"
-                    @click="permanentDeletePatient(item.id!)">
+                  <v-btn
+                         size="small"
+                         color="error"
+                         variant="text"
+                         icon="mdi-delete-forever"
+                         @click="permanentDeletePatient(item.id!)">
                   </v-btn>
                 </div>
               </template>
@@ -333,10 +334,10 @@ watch(activeTab, (newTab) => {
               <template #bottom>
                 <div class="d-flex justify-center align-center pa-4">
                   <v-pagination
-                    v-model="patientsPage"
-                    :length="patientsTotalPages"
-                    :total-visible="7"
-                    @update:modelValue="fetchDeletedPatients">
+                                v-model="patientsPage"
+                                :length="patientsTotalPages"
+                                :total-visible="7"
+                                @update:modelValue="fetchDeletedPatients">
                   </v-pagination>
                   <span class="ml-4 text-caption">
                     {{ t('pagination.showing', {
@@ -353,18 +354,18 @@ watch(activeTab, (newTab) => {
           <!-- Deleted Cases Tab -->
           <v-tabs-window-item value="deletedCases">
             <v-data-table
-              :headers="[
-                { title: t('forms.externalId'), key: 'externalId', sortable: false },
-                { title: t('common.patient'), key: 'patient', sortable: false },
-                { title: t('common.deletedAt'), key: 'deletedAt', sortable: false },
-                { title: t('common.actions'), key: 'actions', sortable: false, align: 'end' }
-              ]"
-              :items="deletedCases"
-              :items-length="casesTotal"
-              :items-per-page="casesLimit"
-              :page="casesPage"
-              hide-default-footer
-              class="elevation-1">
+                          :headers="[
+                            { title: t('forms.externalId'), key: 'externalId', sortable: false },
+                            { title: t('common.patient'), key: 'patient', sortable: false },
+                            { title: t('common.deletedAt'), key: 'deletedAt', sortable: false },
+                            { title: t('common.actions'), key: 'actions', sortable: false, align: 'end' }
+                          ]"
+                          :items="deletedCases"
+                          :items-length="casesTotal"
+                          :items-per-page="casesLimit"
+                          :page="casesPage"
+                          hide-default-footer
+                          class="elevation-1">
               <template #item.externalId="{ item }">
                 {{ item.externalId || '-' }}
               </template>
@@ -379,19 +380,19 @@ watch(activeTab, (newTab) => {
 
               <template #item.actions="{ item }">
                 <div class="d-flex justify-end ga-2">
-                  <v-btn 
-                    size="small" 
-                    color="success" 
-                    variant="text" 
-                    icon="mdi-restore"
-                    @click="restoreCase(caseIdForActions(item))">
+                  <v-btn
+                         size="small"
+                         color="success"
+                         variant="text"
+                         icon="mdi-restore"
+                         @click="restoreCase(caseIdForActions(item))">
                   </v-btn>
-                  <v-btn 
-                    size="small" 
-                    color="error" 
-                    variant="text" 
-                    icon="mdi-delete-forever"
-                    @click="permanentDeleteCase(casePatientIdForActions(item), caseIdForActions(item))">
+                  <v-btn
+                         size="small"
+                         color="error"
+                         variant="text"
+                         icon="mdi-delete-forever"
+                         @click="permanentDeleteCase(casePatientIdForActions(item), caseIdForActions(item))">
                   </v-btn>
                 </div>
               </template>
@@ -399,10 +400,10 @@ watch(activeTab, (newTab) => {
               <template #bottom>
                 <div class="d-flex justify-center align-center pa-4">
                   <v-pagination
-                    v-model="casesPage"
-                    :length="casesTotalPages"
-                    :total-visible="7"
-                    @update:modelValue="fetchDeletedCases">
+                                v-model="casesPage"
+                                :length="casesTotalPages"
+                                :total-visible="7"
+                                @update:modelValue="fetchDeletedCases">
                   </v-pagination>
                   <span class="ml-4 text-caption">
                     {{ t('pagination.showing', {
@@ -419,20 +420,20 @@ watch(activeTab, (newTab) => {
           <!-- Deleted Forms Tab -->
           <v-tabs-window-item value="deletedForms">
             <v-data-table
-              :headers="[
-                { title: t('forms.consultation.formTitle'), key: 'title', sortable: false },
-                { title: t('common.consultation'), key: 'consultationId', sortable: false },
-                { title: t('common.deletedBy'), key: 'deletedBy', sortable: false },
-                { title: t('common.deletionReason'), key: 'deletionReason', sortable: false },
-                { title: t('common.deletedAt'), key: 'deletedAt', sortable: false },
-                { title: t('common.actions'), key: 'actions', sortable: false, align: 'end' }
-              ]"
-              :items="deletedForms"
-              :items-length="formsTotal"
-              :items-per-page="formsLimit"
-              :page="formsPage"
-              hide-default-footer
-              class="elevation-1">
+                          :headers="[
+                            { title: t('forms.consultation.formTitle'), key: 'title', sortable: false },
+                            { title: t('common.consultation'), key: 'consultationId', sortable: false },
+                            { title: t('common.deletedBy'), key: 'deletedBy', sortable: false },
+                            { title: t('common.deletionReason'), key: 'deletionReason', sortable: false },
+                            { title: t('common.deletedAt'), key: 'deletedAt', sortable: false },
+                            { title: t('common.actions'), key: 'actions', sortable: false, align: 'end' }
+                          ]"
+                          :items="deletedForms"
+                          :items-length="formsTotal"
+                          :items-per-page="formsLimit"
+                          :page="formsPage"
+                          hide-default-footer
+                          class="elevation-1">
               <template #item.title="{ item }">
                 {{ item.title || '-' }}
               </template>
@@ -462,19 +463,19 @@ watch(activeTab, (newTab) => {
 
               <template #item.actions="{ item }">
                 <div class="d-flex justify-end ga-2">
-                  <v-btn 
-                    size="small" 
-                    color="success" 
-                    variant="text" 
-                    icon="mdi-restore"
-                    @click="restoreForm(formIdForActions(item))">
+                  <v-btn
+                         size="small"
+                         color="success"
+                         variant="text"
+                         icon="mdi-restore"
+                         @click="restoreForm(formIdForActions(item))">
                   </v-btn>
-                  <v-btn 
-                    size="small" 
-                    color="error" 
-                    variant="text" 
-                    icon="mdi-delete-forever"
-                    @click="permanentDeleteForm(formIdForActions(item))">
+                  <v-btn
+                         size="small"
+                         color="error"
+                         variant="text"
+                         icon="mdi-delete-forever"
+                         @click="permanentDeleteForm(formIdForActions(item))">
                   </v-btn>
                 </div>
               </template>
@@ -482,10 +483,10 @@ watch(activeTab, (newTab) => {
               <template #bottom>
                 <div class="d-flex justify-center align-center pa-4">
                   <v-pagination
-                    v-model="formsPage"
-                    :length="formsTotalPages"
-                    :total-visible="7"
-                    @update:modelValue="fetchDeletedForms">
+                                v-model="formsPage"
+                                :length="formsTotalPages"
+                                :total-visible="7"
+                                @update:modelValue="fetchDeletedForms">
                   </v-pagination>
                   <span class="ml-4 text-caption">
                     {{ t('pagination.showing', {

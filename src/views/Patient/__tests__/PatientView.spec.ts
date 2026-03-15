@@ -180,7 +180,6 @@ describe('PatientView.vue', () => {
       vm.newPatient.externalPatientId = '' // Empty
 
       // The warning is shown but the creation continues - just verify it shows
-      const initialWarning = vm.showExternalIdWarning
       await vm.createPatient()
 
       // Either the warning was shown or it was already true

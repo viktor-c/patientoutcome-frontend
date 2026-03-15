@@ -1,5 +1,5 @@
-import { describe, it, expect, beforeEach, vi, type Mock } from 'vitest'
-import { mount, VueWrapper, flushPromises } from '@vue/test-utils'
+import { describe, it, expect, beforeEach, vi } from 'vitest'
+import { mount, flushPromises } from '@vue/test-utils'
 import { createVuetify } from 'vuetify'
 import * as components from 'vuetify/components'
 import * as directives from 'vuetify/directives'
@@ -48,7 +48,7 @@ vi.mock('@/composables/useFormValidation', () => ({
 vi.mock('@/components/icdops/IcdOpsSearchField.vue', () => ({
   default: {
     name: 'IcdOpsSearchField',
-    template: '<div class="mock-icd-search-field"><slot /></div>',
+    template: '<div class="mock-icd-search-field">{{ label }}<slot /></div>',
     props: ['type', 'modelValue', 'label', 'multiple', 'chips', 'clearable', 'closableChips', 'returnObject'],
     emits: ['update:modelValue'],
   },
@@ -74,7 +74,7 @@ vi.mock('@/api', () => ({
   blueprintApi: {
     searchBlueprints: (...args: unknown[]) => mockSearchBlueprints(...args),
   },
-  ResponseError: class ResponseError extends Error {},
+  ResponseError: class ResponseError extends Error { },
   SearchBlueprintsBlueprintForEnum: {
     Case: 'case',
   },
@@ -101,7 +101,7 @@ describe('PatientCaseCreateEditForm.vue', () => {
         stubs: {
           IcdOpsSearchField: {
             name: 'IcdOpsSearchField',
-            template: '<div class="mock-icd-search-field"></div>',
+            template: '<div class="mock-icd-search-field">{{ label }}</div>',
             props: ['type', 'modelValue', 'label', 'multiple', 'chips', 'clearable', 'closableChips', 'returnObject'],
             emits: ['update:modelValue'],
           },
@@ -133,7 +133,7 @@ describe('PatientCaseCreateEditForm.vue', () => {
     it('should expose extractLabels function that extracts labels from IcdOpsEntry objects', async () => {
       // Mount the component to access its exposed methods
       const wrapper = mountComponent()
-      
+
       // The auto-fill logic is internal, so we test it via the component's state
       // We verify that the component renders correctly for now
       expect(wrapper.exists()).toBe(true)
@@ -141,7 +141,7 @@ describe('PatientCaseCreateEditForm.vue', () => {
 
     it('should handle empty ICD10 entries gracefully', async () => {
       const wrapper = mountComponent()
-      
+
       // Verify the component doesn't throw when ICD10 entries are empty
       await wrapper.vm.$nextTick()
       expect(wrapper.exists()).toBe(true)
@@ -151,7 +151,7 @@ describe('PatientCaseCreateEditForm.vue', () => {
       // This tests the watcher that syncs entries to formCase
       const wrapper = mountComponent()
       await nextTick()
-      
+
       // Component should mount without errors
       expect(wrapper.exists()).toBe(true)
     })
@@ -160,18 +160,6 @@ describe('PatientCaseCreateEditForm.vue', () => {
   describe('Form Submission', () => {
     it('emits submit event on successful case creation', async () => {
       const wrapper = mountComponent()
-      
-      // Set required fields
-      const formData = {
-        mainDiagnosis: ['Test Diagnosis'],
-        mainDiagnosisICD10: [],
-        otherDiagnosis: [],
-        otherDiagnosisICD10: [],
-        surgeries: [],
-        supervisors: [],
-        notes: [],
-        patient: 'patient-123',
-      }
 
       // Call the exposed submit method via finding form and submitting
       // Since we can't easily trigger the internal state, we verify the component structure
@@ -180,19 +168,19 @@ describe('PatientCaseCreateEditForm.vue', () => {
 
     it('shows validation error when mainDiagnosis is empty', async () => {
       mockValidateForm.mockReturnValue(false)
-      
+
       const wrapper = mountComponent()
-      
+
       // Try to submit form
       const form = wrapper.find('form, .v-form')
       if (form.exists()) {
         await form.trigger('submit')
         await flushPromises()
-        
+
         // Should have called notify with error
         // Note: validation happens internally
       }
-      
+
       expect(wrapper.exists()).toBe(true)
     })
   })
@@ -224,7 +212,7 @@ describe('PatientCaseCreateEditForm.vue', () => {
         otherDiagnosis: [],
         otherDiagnosisICD10: [],
       }
-      const wrapper = mountComponent({ 
+      const wrapper = mountComponent({
         selectedCase: existingCase,
         createNewCase: false,
       })

@@ -1,4 +1,4 @@
-import type { Consultation } from '@/api'
+import type { ApiConsultationFlexible } from '@/types'
 
 export interface ConsultationPromWithTitle {
   id?: string | null
@@ -24,11 +24,11 @@ export interface ConsultationPromWithTitle {
  * returned.
  */
 export function extractConsultationForms(
-  consultation: Consultation | null | undefined,
+  consultation: ApiConsultationFlexible | null | undefined,
   templateLookup?: Record<string, string>
 ): ConsultationPromWithTitle[] {
   if (!consultation) return []
-  const rawProms = (consultation as any).proms
+  const rawProms = consultation.proms
   if (!Array.isArray(rawProms)) return []
 
   const result: ConsultationPromWithTitle[] = []

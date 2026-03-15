@@ -1,8 +1,12 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import type { FindAllCodes200ResponseResponseObjectInnerConsultationIdPromsInner as FormFromApi } from '@/api'
-import type { GetAllPatientCases200ResponseResponseObjectInner as PatientCaseFromApi } from '@/api'
-import type { GetAllPatientCases200ResponseResponseObjectInnerSurgeriesInner as SurgeryFromApi } from '@/api'
-import type { Form, PatientCase, Surgery } from '@/types'
+import type {
+  ApiConsultationForm as FormFromApi,
+  ApiPatientCaseWithDetails as PatientCaseFromApi,
+  ApiPatientCaseSurgery as SurgeryFromApi,
+  Form,
+  PatientCase,
+  Surgery,
+} from '@/types'
 
 // Helper to extract ID from potentially populated object or string
 const extractId = (val: any): string | null => {
