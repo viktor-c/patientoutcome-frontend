@@ -4,7 +4,7 @@ import { useI18n } from 'vue-i18n'
 import { useForm } from '../../composables/useForm'
 import { calculateScore } from './scoring'
 import { translations } from './translations'
-import type { FormComponentProps, FormComponentEvents, FormSubmissionData } from '../../types'
+import type { FormComponentProps, FormComponentEvents, FormSubmissionData, FormCommentContext } from '../../types'
 import type { Ref } from 'vue'
 import type { FormViewMode } from '../../composables/useFormViewMode'
 
@@ -152,6 +152,32 @@ watch(carouselModel, (newValue) => {
 // Inject view mode from PluginFormRenderer
 const viewMode = inject<Ref<FormViewMode>>('formViewMode', ref('standard'))
 const isCarouselMode = computed(() => viewMode.value === 'carousel')
+const formCommentContext = inject<FormCommentContext | null>('formCommentContext', null)
+const showCommentDialog = ref(false)
+const commentDraft = ref('')
+
+const currentQuestionKey = computed(() => currentQuestion.value?.key ?? null)
+const currentQuestionLabel = computed(() => currentQuestion.value?.title ?? null)
+
+function openCommentDialog() {
+  if (props.readonly || !formCommentContext) return
+  commentDraft.value = ''
+  showCommentDialog.value = true
+}
+
+function saveComment() {
+  const content = commentDraft.value.trim()
+  if (!content || !formCommentContext) return
+
+  formCommentContext.addComment({
+    questionKey: currentQuestionKey.value,
+    questionLabel: currentQuestionLabel.value,
+    content,
+  })
+
+  showCommentDialog.value = false
+  commentDraft.value = ''
+}
 </script>
 
 <template>
@@ -255,6 +281,16 @@ const isCarouselMode = computed(() => viewMode.value === 'carousel')
               </v-btn>
 
               <v-btn
+                     variant="tonal"
+                     color="warning"
+                     prepend-icon="mdi-comment-alert-outline"
+                     :disabled="readonly"
+                     @click="openCommentDialog">
+                {{ tGlobal('forms.comments.add') }}
+                <v-tooltip activator="parent" location="top">{{ tGlobal('forms.comments.hint') }}</v-tooltip>
+              </v-btn>
+
+              <v-btn
                      v-if="!isLastQuestion"
                      variant="elevated"
                      color="primary"
@@ -275,6 +311,34 @@ const isCarouselMode = computed(() => viewMode.value === 'carousel')
           </v-card>
         </v-window-item>
       </v-window>
+
+      <v-dialog v-model="showCommentDialog" max-width="560">
+        <v-card>
+          <v-card-title>{{ tGlobal('forms.comments.dialogTitle') }}</v-card-title>
+          <v-card-text>
+            <p class="text-body-2 mb-3">
+              <strong>{{ tGlobal('forms.comments.question') }}:</strong>
+              {{ currentQuestionKey || tGlobal('forms.comments.formLevel') }}
+            </p>
+            <v-textarea
+                        v-model="commentDraft"
+                        :label="tGlobal('forms.comments.content')"
+                        :hint="tGlobal('forms.comments.hint')"
+                        persistent-hint
+                        rows="4"
+                        maxlength="1000"
+                        counter
+                        auto-grow />
+          </v-card-text>
+          <v-card-actions>
+            <v-spacer />
+            <v-btn variant="text" @click="showCommentDialog = false">{{ tGlobal('buttons.cancel') }}</v-btn>
+            <v-btn color="primary" :disabled="commentDraft.trim().length === 0" @click="saveComment">
+              {{ tGlobal('buttons.save') }}
+            </v-btn>
+          </v-card-actions>
+        </v-card>
+      </v-dialog>
 
       <!-- Desktop Sidebar -->
       <v-card class="d-none d-md-block mt-4" elevation="1">

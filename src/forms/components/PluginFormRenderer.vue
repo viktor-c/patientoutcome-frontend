@@ -26,6 +26,7 @@ import { computed, onMounted, ref, markRaw, watch, provide } from 'vue'
 import { getFormPlugin } from '../registry'
 import type { FormSubmissionData, FormPlugin } from '../types'
 import { useFormViewMode } from '../composables/useFormViewMode'
+import type { FormAnswerComment } from '@/types/backend/scoring'
 import FormVersionHistory from '@/components/forms/FormVersionHistory.vue'
 import FormVersionDiff from '@/components/forms/FormVersionDiff.vue'
 import { useI18n } from 'vue-i18n'
@@ -105,6 +106,18 @@ const diffVersion2 = ref(0)
 const versionLoading = ref(false)
 const activeViewingVersion = ref<number | null>(props.viewingVersion)
 const historicalSubmissionData = ref<FormSubmissionData | null>(null)
+const formComments = ref<FormAnswerComment[]>([])
+
+type FormCommentDraft = {
+  questionKey?: string | null
+  questionLabel?: string | null
+  content: string
+}
+
+type FormCommentContext = {
+  comments: typeof formComments
+  addComment: (draft: FormCommentDraft) => void
+}
 
 // Computed flags
 const canViewVersions = computed(() =>
@@ -117,6 +130,88 @@ const isViewingOldVersion = computed(() =>
 
 const effectiveModelValue = computed(() => {
   return historicalSubmissionData.value || props.modelValue
+})
+
+const normalizeComments = (comments: unknown): FormAnswerComment[] => {
+  if (!Array.isArray(comments)) return []
+
+  return comments
+    .map((entry) => {
+      if (!entry || typeof entry !== 'object') return null
+      const candidate = entry as Record<string, unknown>
+      const content = typeof candidate.content === 'string' ? candidate.content.trim() : ''
+      if (!content) return null
+
+      const createdAt = candidate.createdAt instanceof Date
+        ? candidate.createdAt
+        : typeof candidate.createdAt === 'string'
+          ? candidate.createdAt
+          : new Date().toISOString()
+
+      return {
+        questionKey: typeof candidate.questionKey === 'string' ? candidate.questionKey : null,
+        questionLabel: typeof candidate.questionLabel === 'string' ? candidate.questionLabel : null,
+        content,
+        createdAt,
+        createdByUserId: typeof candidate.createdByUserId === 'string' ? candidate.createdByUserId : null,
+        createdByUsername: typeof candidate.createdByUsername === 'string' ? candidate.createdByUsername : null,
+        source: candidate.source === 'staff' ? 'staff' : 'patient',
+      } as FormAnswerComment
+    })
+    .filter((entry): entry is FormAnswerComment => entry !== null)
+}
+
+const hydrateCommentsFromModel = () => {
+  formComments.value = normalizeComments(effectiveModelValue.value?.comments)
+}
+
+const buildSubmissionWithComments = (value: FormSubmissionData): FormSubmissionData => {
+  return {
+    ...value,
+    comments: [...formComments.value],
+  }
+}
+
+const addComment = (draft: FormCommentDraft) => {
+  const content = draft.content.trim()
+  if (!content || props.readonly || isViewingOldVersion.value) return
+
+  const comment: FormAnswerComment = {
+    questionKey: draft.questionKey ?? null,
+    questionLabel: draft.questionLabel ?? null,
+    content,
+    createdAt: new Date().toISOString(),
+    createdByUserId: null,
+    createdByUsername: userStore.username || null,
+    source: userStore.isAuthenticated() && !userStore.isKioskUser() ? 'staff' : 'patient',
+  }
+
+  formComments.value = [...formComments.value, comment]
+
+  const baseValue: FormSubmissionData = effectiveModelValue.value
+    ? {
+      ...effectiveModelValue.value,
+      rawFormData: effectiveModelValue.value.rawFormData || formDataToPass.value,
+      fillStatus: effectiveModelValue.value.fillStatus || 'draft',
+      completedAt: effectiveModelValue.value.completedAt ?? null,
+      beginFill: effectiveModelValue.value.beginFill ?? null,
+    }
+    : {
+      rawFormData: formDataToPass.value,
+      subscales: undefined,
+      totalScore: null,
+      fillStatus: 'draft',
+      completedAt: null,
+      beginFill: initialBeginFill.value || null,
+      comments: [],
+    }
+
+  emit('update:modelValue', buildSubmissionWithComments(baseValue))
+}
+
+provide<FormCommentContext>('formCommentContext', {
+  comments: formComments,
+  addComment,
 })
 
 // Load the plugin without making it reactive (components shouldn't be reactive)
@@ -154,6 +249,10 @@ watch(effectiveModelValue, (newValue) => {
   initialBeginFill.value = new Date()
 }, { immediate: true })
 
+watch(effectiveModelValue, () => {
+  hydrateCommentsFromModel()
+}, { immediate: true, deep: true })
+
 // Error message if plugin not found
 const errorMessage = computed(() => {
   if (!pluginExists.value) {
@@ -167,7 +266,8 @@ function handleModelUpdate(value: FormSubmissionData) {
   // Preserve the initial beginFill timestamp
   emit('update:modelValue', {
     ...value,
-    beginFill: initialBeginFill.value || value.beginFill || new Date()
+    beginFill: initialBeginFill.value || value.beginFill || new Date(),
+    comments: [...formComments.value],
   })
 }
 

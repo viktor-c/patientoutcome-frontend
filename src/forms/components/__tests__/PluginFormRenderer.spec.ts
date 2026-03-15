@@ -20,6 +20,7 @@ vi.mock('@/forms/registry', () => ({
 
 vi.mock('@/stores/userStore', () => ({
   useUserStore: () => ({
+    username: '',
     hasRole: () => false,
     isAuthenticated: () => false,
     isKioskUser: () => false
@@ -253,7 +254,21 @@ describe('PluginFormRenderer.vue', () => {
     it('should emit update:modelValue when plugin component emits it', async () => {
       wrapper = mountComponent({
         templateId: 'test-plugin-id',
-        modelValue: {} as unknown as PatientFormData
+        modelValue: {
+          rawFormData: { test: { q1: null } },
+          fillStatus: 'draft',
+          beginFill: null,
+          completedAt: null,
+          comments: [
+            {
+              questionKey: 'q1',
+              questionLabel: 'Question 1',
+              content: 'Needs clarification',
+              createdAt: new Date().toISOString(),
+              source: 'patient',
+            },
+          ],
+        } as unknown as PatientFormData
       })
 
       const updateButton = wrapper.find('[data-testid="mock-form-component"] button')
@@ -263,7 +278,13 @@ describe('PluginFormRenderer.vue', () => {
       expect(wrapper.emitted('update:modelValue')?.[0]?.[0]).toEqual(
         expect.objectContaining({
           test: { q1: 1 },
-          beginFill: expect.any(Date)
+          beginFill: expect.any(Date),
+          comments: expect.arrayContaining([
+            expect.objectContaining({
+              questionKey: 'q1',
+              content: 'Needs clarification',
+            }),
+          ]),
         })
       )
     })
