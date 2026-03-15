@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, computed } from 'vue'
+import { ref, onMounted, computed, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import LanguageSelector from '@/components/LanguageSelector.vue'
@@ -47,6 +47,13 @@ const showReviewOption = ref(false) // Show review option after all forms are fi
 const isReviewMode = ref(false) // True when reviewing completed forms
 const isFinalized = ref(false) // True after code is deactivated
 const consultationAccessWindow = ref<ConsultationAccessWindow | null>(null)
+
+// Track when the current form was opened in this session so the backend can accumulate
+// only the *actual* time spent filling, not idle time between sessions.
+const sessionStartTime = ref<Date>(new Date())
+watch(currentFormIndex, () => {
+  sessionStartTime.value = new Date()
+})
 
 const notifierStore = useNotifierStore()
 
@@ -161,6 +168,10 @@ const submitForm = async () => {
       updateFormRequest: {
         code: externalCode ? externalCode : "", // Include code if available for authorization
         patientFormData: currentForm.patientFormData as never,
+        // Send session boundaries so the backend accumulates only this session's duration,
+        // never the idle time between separate fill sessions.
+        formStartTime: sessionStartTime.value.toISOString(),
+        formEndTime: new Date().toISOString(),
       }
     }
 
