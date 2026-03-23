@@ -607,15 +607,40 @@ function selectItem(item: IcdOpsEntry) {
   }
 }
 
+/**
+ * Returns true only for codes that represent a selectable terminal node.
+ *
+ * ICD-10: terminal codes contain a decimal point subdivision (e.g. M20.1, M20.10).
+ *         Three-character codes (e.g. M20) still have children → not terminal.
+ *
+ * OPS: terminal codes end with a letter after stripping formatting characters
+ *      (e.g. 5-788.1a → "57881a" ends with a letter).
+ *      Codes without a trailing letter (e.g. 5-788.1 → "57881") still have
+ *      sub-codes → not terminal.
+ */
+function isTerminalCode(code: string, type: 'icd' | 'ops'): boolean {
+  if (type === 'icd') {
+    return /\./.test(code)
+  }
+  // OPS: terminal codes always have exactly 6 meaningful characters
+  // (excluding hyphens, dots and spaces), e.g. 5-788.1a → "57881a" = 6 chars.
+  return code.replace(/[-. ]/g, '').length === 6
+}
+
 function onEnterKey(e: KeyboardEvent) {
   if (!searchInput.value || items.value.length === 0) return
   e.preventDefault()
   const typed = searchInput.value.trim().toUpperCase()
-  // Prefer an exact code match (any kind); selectItem will drill or select
-  // depending on the item's kind and current search mode.
   const exactMatch = items.value.find((item) => item.code.toUpperCase() === typed)
-  // Fall back to first item in the list
   const target = exactMatch ?? items.value[0]
+
+  // Always drill if the target is not a terminal (selectable) code.
+  // This covers both exact matches (e.g. typing "5-787.1") and fuzzy matches
+  // (e.g. typing "5-7871" which resolves to the same non-terminal code).
+  if (!isTerminalCode(target.code, props.type)) {
+    searchInput.value = target.code
+    return
+  }
   selectItem(target)
 }
 
