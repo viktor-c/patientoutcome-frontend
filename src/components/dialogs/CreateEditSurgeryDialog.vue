@@ -760,9 +760,9 @@ defineExpose({
           </v-col>
         </v-row>
 
-        <!-- Diagnosis ICD-10 -->
+        <!-- Diagnosis ICD-10 and OPS Codes -->
         <v-row>
-          <v-col cols="12">
+          <v-col cols="12" md="6">
             <IcdOpsSearchField
                                type="icd"
                                :label="t('surgery.diagnosisICD10')"
@@ -772,17 +772,17 @@ defineExpose({
                                clearable
                                closable-chips />
           </v-col>
+          <v-col cols="12" md="6">
+            <IcdOpsSearchField
+                               type="ops"
+                               :label="t('surgery.oPSCodes')"
+                               v-model="form.oPSCodes"
+                               multiple
+                               chips
+                               clearable
+                               closable-chips />
+          </v-col>
         </v-row>
-
-        <!-- OPS Codes -->
-        <IcdOpsSearchField
-                           type="ops"
-                           :label="t('surgery.oPSCodes')"
-                           v-model="form.oPSCodes"
-                           multiple
-                           chips
-                           clearable
-                           closable-chips />
 
         <!-- Surgery Details -->
         <v-row>

@@ -135,7 +135,7 @@
               Klicken Sie einen Code an, um ihn auszuwählen
             </template>
             <template v-else-if="searchInput && searchMode === 'text-search'">
-              Suche in Bezeichnungen ({{ type === 'ops' ? 'nicht-numerisch' : 'Text' }})
+              Klicken Sie einen Code an, um die Unterkategorien anzuzeigen
             </template>
             <template v-else>
               {{ type === 'icd' ? 'Buchstabe = Code, Text = Beschreibung' : 'Ziffer = Code, Text = Beschreibung' }}
@@ -194,6 +194,9 @@
               {{ kindLabel(item.kind) }}
               <span v-if="searchMode === 'code-prefix' && isGroupNav" class="ml-1 text-grey">
                 · Klicken um die Auswahl einzugrenzen
+              </span>
+              <span v-else-if="searchMode === 'text-search'" class="ml-1 text-grey">
+                · Klicken für Unterkategorien
               </span>
               <span v-else-if="searchMode === 'code-prefix' && !isGroupNav" class="ml-1 text-grey">
                 · Klicken zum Auswählen
@@ -561,6 +564,14 @@ function selectItem(item: IcdOpsEntry) {
     return
   }
 
+  // In text-search mode: always drill into code navigation so the user
+  // can refine to terminal codes (e.g. clicking "5-787" shows its sub-codes).
+  // If the code turns out to be terminal (no children), it can then be selected.
+  if (searchMode.value === 'text-search') {
+    searchInput.value = item.code
+    return
+  }
+
   const value = props.returnObject ? item : item.code
 
   if (props.multiple) {
@@ -643,10 +654,12 @@ watch(searchError, (err) => {
 .icd-ops-trigger {
   border-radius: 4px;
   transition: background 0.15s;
+  background: rgba(var(--v-theme-on-surface), 0.04);
+  border-bottom: 1px solid rgba(var(--v-theme-on-surface), 0.12);
 }
 
 .icd-ops-trigger:hover {
-  background: rgba(var(--v-theme-on-surface), 0.04);
+  background: rgba(var(--v-theme-on-surface), 0.08);
 }
 
 .icd-ops-dialog-card {

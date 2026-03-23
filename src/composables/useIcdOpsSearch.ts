@@ -80,7 +80,7 @@ export function useIcdOpsSearch(
     kind = 'category',
     debounceMs = ENV_DEBOUNCE_MS,
     minChars = 1,
-    prefixLimit = 20,
+    prefixLimit = 100,
   } = options
 
   // ─── Reactive state ────────────────────────────────────
