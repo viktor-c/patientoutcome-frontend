@@ -114,7 +114,8 @@
                       density="compact"
                       variant="outlined"
                       hide-details
-                      @click:clear="clearSearch" />
+                      @click:clear="clearSearch"
+                      @keydown.enter="onEnterKey" />
 
         <!-- Mode indicator -->
         <div class="d-flex align-center mt-1 mb-1 ga-2">
@@ -564,6 +565,14 @@ function selectItem(item: IcdOpsEntry) {
     return
   }
 
+  // Non-terminal codes (chapter/block) always drill regardless of isGroupNav.
+  // This fixes ICD codes being selected instead of refined when the user clicks
+  // on a chapter or block entry.
+  if (item.kind === 'chapter' || item.kind === 'block') {
+    searchInput.value = item.code
+    return
+  }
+
   // In text-search mode: always drill into code navigation so the user
   // can refine to terminal codes (e.g. clicking "5-787" shows its sub-codes).
   // If the code turns out to be terminal (no children), it can then be selected.
@@ -596,6 +605,18 @@ function selectItem(item: IcdOpsEntry) {
     // Close dialog after single selection
     dialogOpen.value = false
   }
+}
+
+function onEnterKey(e: KeyboardEvent) {
+  if (!searchInput.value || items.value.length === 0) return
+  e.preventDefault()
+  const typed = searchInput.value.trim().toUpperCase()
+  // Prefer an exact code match (any kind); selectItem will drill or select
+  // depending on the item's kind and current search mode.
+  const exactMatch = items.value.find((item) => item.code.toUpperCase() === typed)
+  // Fall back to first item in the list
+  const target = exactMatch ?? items.value[0]
+  selectItem(target)
 }
 
 function onScroll(e: Event) {
