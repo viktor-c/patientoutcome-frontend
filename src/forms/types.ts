@@ -7,6 +7,8 @@
 
 import type { Component } from 'vue'
 import type { PatientFormData, FormQuestions, ScoringData } from '@/types/backend/scoring'
+import type { FormAnswerComment } from '@/types/backend/scoring'
+import type { Ref } from 'vue'
 
 /**
  * Base form data structure - flexible to accommodate different form types
@@ -76,6 +78,17 @@ export interface FormComponentEvents {
 
   /** Emitted when the user finishes filling the form (e.g. clicks Done in carousel) */
   'submit': []
+}
+
+export interface FormCommentDraft {
+  questionKey?: string | null
+  questionLabel?: string | null
+  content: string
+}
+
+export interface FormCommentContext {
+  comments: Ref<FormAnswerComment[]>
+  addComment: (draft: FormCommentDraft) => void
 }
 
 /**

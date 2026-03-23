@@ -981,10 +981,7 @@ onMounted(async () => {
                             </template>
                           </v-text-field>
                         </v-col>
-                      </v-row>
-
-                      <v-row>
-                        <v-col cols="6">
+                        <v-col>
                           <v-select
                                     v-model="patientData.sex"
                                     :label="t('forms.sex')"
@@ -994,7 +991,7 @@ onMounted(async () => {
                                     density="compact"
                                     clearable></v-select>
                         </v-col>
-                        <v-col cols="6">
+                        <v-col>
                           <v-select
                                     v-model="patientData.department"
                                     :label="t('forms.department')"

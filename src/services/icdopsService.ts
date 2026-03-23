@@ -337,7 +337,7 @@ export async function getOpsStatus(): Promise<IcdOpsStatusResponse['responseObje
  * Short prefixes (1-2 chars) return one entry per next-level group.
  * Longer prefixes return all matching entries sorted broadest-first.
  */
-export async function searchIcdPrefix(prefix: string, limit = 20): Promise<IcdOpsPrefixResponse> {
+export async function searchIcdPrefix(prefix: string, limit = 100): Promise<IcdOpsPrefixResponse> {
   return fetchPrefixFromApi('icd', prefix, limit)
 }
 
@@ -345,7 +345,7 @@ export async function searchIcdPrefix(prefix: string, limit = 20): Promise<IcdOp
  * Fetch OPS hierarchical navigation results for a code prefix.
  * The hyphen is inserted automatically server-side: "52" → "5-2".
  */
-export async function searchOpsPrefix(prefix: string, limit = 20): Promise<IcdOpsPrefixResponse> {
+export async function searchOpsPrefix(prefix: string, limit = 100): Promise<IcdOpsPrefixResponse> {
   return fetchPrefixFromApi('ops', prefix, limit)
 }
 

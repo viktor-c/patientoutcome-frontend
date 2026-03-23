@@ -114,7 +114,8 @@
                       density="compact"
                       variant="outlined"
                       hide-details
-                      @click:clear="clearSearch" />
+                      @click:clear="clearSearch"
+                      @keydown.enter="onEnterKey" />
 
         <!-- Mode indicator -->
         <div class="d-flex align-center mt-1 mb-1 ga-2">
@@ -135,7 +136,7 @@
               Klicken Sie einen Code an, um ihn auszuwählen
             </template>
             <template v-else-if="searchInput && searchMode === 'text-search'">
-              Suche in Bezeichnungen ({{ type === 'ops' ? 'nicht-numerisch' : 'Text' }})
+              Klicken Sie einen Code an, um die Unterkategorien anzuzeigen
             </template>
             <template v-else>
               {{ type === 'icd' ? 'Buchstabe = Code, Text = Beschreibung' : 'Ziffer = Code, Text = Beschreibung' }}
@@ -194,6 +195,9 @@
               {{ kindLabel(item.kind) }}
               <span v-if="searchMode === 'code-prefix' && isGroupNav" class="ml-1 text-grey">
                 · Klicken um die Auswahl einzugrenzen
+              </span>
+              <span v-else-if="searchMode === 'text-search'" class="ml-1 text-grey">
+                · Klicken für Unterkategorien
               </span>
               <span v-else-if="searchMode === 'code-prefix' && !isGroupNav" class="ml-1 text-grey">
                 · Klicken zum Auswählen
@@ -561,6 +565,22 @@ function selectItem(item: IcdOpsEntry) {
     return
   }
 
+  // Non-terminal codes (chapter/block) always drill regardless of isGroupNav.
+  // This fixes ICD codes being selected instead of refined when the user clicks
+  // on a chapter or block entry.
+  if (item.kind === 'chapter' || item.kind === 'block') {
+    searchInput.value = item.code
+    return
+  }
+
+  // In text-search mode: always drill into code navigation so the user
+  // can refine to terminal codes (e.g. clicking "5-787" shows its sub-codes).
+  // If the code turns out to be terminal (no children), it can then be selected.
+  if (searchMode.value === 'text-search') {
+    searchInput.value = item.code
+    return
+  }
+
   const value = props.returnObject ? item : item.code
 
   if (props.multiple) {
@@ -585,6 +605,43 @@ function selectItem(item: IcdOpsEntry) {
     // Close dialog after single selection
     dialogOpen.value = false
   }
+}
+
+/**
+ * Returns true only for codes that represent a selectable terminal node.
+ *
+ * ICD-10: terminal codes contain a decimal point subdivision (e.g. M20.1, M20.10).
+ *         Three-character codes (e.g. M20) still have children → not terminal.
+ *
+ * OPS: terminal codes end with a letter after stripping formatting characters
+ *      (e.g. 5-788.1a → "57881a" ends with a letter).
+ *      Codes without a trailing letter (e.g. 5-788.1 → "57881") still have
+ *      sub-codes → not terminal.
+ */
+function isTerminalCode(code: string, type: 'icd' | 'ops'): boolean {
+  if (type === 'icd') {
+    return /\./.test(code)
+  }
+  // OPS: terminal codes always have exactly 6 meaningful characters
+  // (excluding hyphens, dots and spaces), e.g. 5-788.1a → "57881a" = 6 chars.
+  return code.replace(/[-. ]/g, '').length === 6
+}
+
+function onEnterKey(e: KeyboardEvent) {
+  if (!searchInput.value || items.value.length === 0) return
+  e.preventDefault()
+  const typed = searchInput.value.trim().toUpperCase()
+  const exactMatch = items.value.find((item) => item.code.toUpperCase() === typed)
+  const target = exactMatch ?? items.value[0]
+
+  // Always drill if the target is not a terminal (selectable) code.
+  // This covers both exact matches (e.g. typing "5-787.1") and fuzzy matches
+  // (e.g. typing "5-7871" which resolves to the same non-terminal code).
+  if (!isTerminalCode(target.code, props.type)) {
+    searchInput.value = target.code
+    return
+  }
+  selectItem(target)
 }
 
 function onScroll(e: Event) {
@@ -643,10 +700,12 @@ watch(searchError, (err) => {
 .icd-ops-trigger {
   border-radius: 4px;
   transition: background 0.15s;
+  background: rgba(var(--v-theme-on-surface), 0.04);
+  border-bottom: 1px solid rgba(var(--v-theme-on-surface), 0.12);
 }
 
 .icd-ops-trigger:hover {
-  background: rgba(var(--v-theme-on-surface), 0.04);
+  background: rgba(var(--v-theme-on-surface), 0.08);
 }
 
 .icd-ops-dialog-card {

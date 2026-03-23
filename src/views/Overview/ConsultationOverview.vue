@@ -20,6 +20,7 @@ import ScoreScale from '@/components/ScoreScale.vue'
 import { useUserStore, useFormTemplateStore } from '@/stores'
 import { generateScaleInfo } from '@/utils/scaleInfo'
 import { getAccessLevelColor } from '@/services/formVersionService'
+import type { FormAnswerComment } from '@/types/backend/scoring'
 
 const componentName = 'ConsultationOverview.vue'
 const { t } = useI18n()
@@ -62,6 +63,34 @@ const safeFormatDate = (date: string | null | undefined, format: string = 'DD.MM
   if (!date) return t('common.notAvailable')
   return formatLocalizedCustomDate(date, format)
 }
+
+const getFormComments = (form: ApiConsultationForm): FormAnswerComment[] => {
+  const comments = (form.patientFormData as Record<string, unknown> | null | undefined)?.comments
+  if (!Array.isArray(comments)) return []
+
+  return comments
+    .map((entry) => {
+      if (!entry || typeof entry !== 'object') return null
+      const candidate = entry as Record<string, unknown>
+      const content = typeof candidate.content === 'string' ? candidate.content.trim() : ''
+      if (!content) return null
+
+      return {
+        questionKey: typeof candidate.questionKey === 'string' ? candidate.questionKey : null,
+        questionLabel: typeof candidate.questionLabel === 'string' ? candidate.questionLabel : null,
+        content,
+        createdAt: typeof candidate.createdAt === 'string'
+          ? candidate.createdAt
+          : new Date().toISOString(),
+        createdByUserId: typeof candidate.createdByUserId === 'string' ? candidate.createdByUserId : null,
+        createdByUsername: typeof candidate.createdByUsername === 'string' ? candidate.createdByUsername : null,
+        source: candidate.source === 'staff' ? 'staff' : 'patient',
+      } as FormAnswerComment
+    })
+    .filter((entry): entry is FormAnswerComment => entry !== null)
+}
+
+const getFormCommentCount = (form: ApiConsultationForm): number => getFormComments(form).length
 
 // Computed properties
 // Note: Using type assertion for patientCaseId because API returns populated object despite type definition saying string
@@ -931,6 +960,51 @@ const assignedConsultationAccessWindow = computed(() => {
                           variant="tonal">
                     {{ getFormAccessLevel(form) }}
                   </v-chip>
+                  <v-menu v-if="getFormCommentCount(form) > 0" open-on-hover location="bottom">
+                    <template #activator="{ props }">
+                      <v-chip
+                              v-bind="props"
+                              color="warning"
+                              size="small"
+                              class="mb-2 ml-2"
+                              variant="tonal"
+                              prepend-icon="mdi-alert-circle-outline">
+                        {{ getFormCommentCount(form) }}
+                      </v-chip>
+                    </template>
+                    <v-card min-width="360" max-width="520">
+                      <v-card-title class="text-subtitle-2">{{ t('consultationOverview.comments') }}</v-card-title>
+                      <v-card-text>
+                        <v-expansion-panels variant="accordion">
+                          <v-expansion-panel
+                                             v-for="(comment, commentIndex) in getFormComments(form)"
+                                             :key="`${normalizeFormId(form.id)}-comment-${commentIndex}`">
+                            <v-expansion-panel-title>
+                              <div class="d-flex align-center ga-2">
+                                <v-tooltip v-if="comment.questionLabel" location="top">
+                                  <template #activator="{ props: tooltipProps }">
+                                    <span v-bind="tooltipProps" class="text-caption font-weight-bold">
+                                      {{ comment.questionKey || t('forms.comments.formLevel') }}
+                                    </span>
+                                  </template>
+                                  <span>{{ comment.questionLabel }}</span>
+                                </v-tooltip>
+                                <span v-else class="text-caption font-weight-bold">
+                                  {{ comment.questionKey || t('forms.comments.formLevel') }}
+                                </span>
+                                <span class="text-caption text-medium-emphasis">
+                                  {{ safeFormatDate(String(comment.createdAt), 'DD.MM.YYYY HH:mm') }}
+                                </span>
+                              </div>
+                            </v-expansion-panel-title>
+                            <v-expansion-panel-text>
+                              <div class="text-body-2">{{ comment.content }}</div>
+                            </v-expansion-panel-text>
+                          </v-expansion-panel>
+                        </v-expansion-panels>
+                      </v-card-text>
+                    </v-card>
+                  </v-menu>
                 </v-card-title>
                 <v-card-text>
 

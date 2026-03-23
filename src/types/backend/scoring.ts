@@ -31,6 +31,16 @@ export interface SubscaleScore {
   isComplete: boolean;
 }
 
+export interface FormAnswerComment {
+  questionKey?: string | null;
+  questionLabel?: string | null;
+  content: string;
+  createdAt: Date | string;
+  createdByUserId?: string | null;
+  createdByUsername?: string | null;
+  source: 'patient' | 'staff';
+}
+
 /**
  * Main scoring data structure used for all forms
  * This is a subset of PatientFormData focused on scoring information
@@ -56,4 +66,5 @@ export interface PatientFormData {
   fillStatus: 'draft' | 'incomplete' | 'complete';
   completedAt: Date | string | null;
   beginFill: Date | string | null;
+  comments?: FormAnswerComment[];
 }

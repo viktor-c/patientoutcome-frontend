@@ -6,6 +6,7 @@ import { useDateFormat } from '@/composables/useDateFormat'
 import PluginFormRenderer from '@/forms/components/PluginFormRenderer.vue'
 import { type Form, type ScoringData } from '@/types'
 import { type FormSubmissionData } from '@/forms/types'
+import type { FormAnswerComment } from '@/types/backend/scoring'
 import { useNotifierStore } from '@/stores/notifierStore'
 import FormProgressCard from '@/components/FormProgressCard.vue'
 
@@ -40,6 +41,10 @@ const formData = ref<unknown>({})
 const originalFormData = ref<unknown>({})
 const formScoring = ref<ScoringData | null>(null)
 const formCompletionStatus = ref<'draft' | 'incomplete' | 'complete'>("draft")
+const reviewComments = ref<FormAnswerComment[]>([])
+const originalComments = ref<FormAnswerComment[]>([])
+const newCommentQuestionKey = ref('')
+const newCommentContent = ref('')
 const loading = ref(true)
 const saving = ref(false)
 
@@ -118,7 +123,51 @@ const formDuration = computed(() => {
 
 const hasChanges = computed(() => {
   return JSON.stringify(formData.value) !== JSON.stringify(originalFormData.value)
+    || JSON.stringify(reviewComments.value) !== JSON.stringify(originalComments.value)
 })
+
+const normalizeComments = (comments: unknown): FormAnswerComment[] => {
+  if (!Array.isArray(comments)) return []
+  return comments
+    .map((entry) => {
+      if (!entry || typeof entry !== 'object') return null
+      const candidate = entry as Record<string, unknown>
+      const content = typeof candidate.content === 'string' ? candidate.content.trim() : ''
+      if (!content) return null
+
+      return {
+        questionKey: typeof candidate.questionKey === 'string' ? candidate.questionKey : null,
+        questionLabel: typeof candidate.questionLabel === 'string' ? candidate.questionLabel : null,
+        content,
+        createdAt: typeof candidate.createdAt === 'string' ? candidate.createdAt : new Date().toISOString(),
+        createdByUserId: typeof candidate.createdByUserId === 'string' ? candidate.createdByUserId : null,
+        createdByUsername: typeof candidate.createdByUsername === 'string' ? candidate.createdByUsername : null,
+        source: candidate.source === 'staff' ? 'staff' : 'patient',
+      } as FormAnswerComment
+    })
+    .filter((entry): entry is FormAnswerComment => entry !== null)
+}
+
+const addReviewComment = () => {
+  const content = newCommentContent.value.trim()
+  if (!content) return
+
+  reviewComments.value = [
+    ...reviewComments.value,
+    {
+      questionKey: newCommentQuestionKey.value.trim() || null,
+      questionLabel: null,
+      content,
+      createdAt: new Date().toISOString(),
+      createdByUserId: null,
+      createdByUsername: null,
+      source: 'staff',
+    },
+  ]
+
+  newCommentQuestionKey.value = ''
+  newCommentContent.value = ''
+}
 
 const rendererLocale = computed(() => String(locale.value || 'en'))
 const pluginRendererKey = computed(() => `${templateId.value}-${rendererLocale.value}`)
@@ -159,6 +208,8 @@ onMounted(async () => {
       // FIX: Unwrap any incorrectly nested data structure
       // Check if formData has a 'body' wrapper (from old corrupted data)
       originalFormData.value = formReponseData.patientFormData?.rawFormData || {}
+      reviewComments.value = normalizeComments(formReponseData.patientFormData?.comments)
+      originalComments.value = JSON.parse(JSON.stringify(reviewComments.value))
       formCompletionStatus.value = formReponseData.patientFormData?.fillStatus ? formReponseData.patientFormData.fillStatus : "draft"
       form.value = formReponseData as unknown as Form
     }
@@ -193,11 +244,29 @@ const saveChanges = async () => {
 
   saving.value = true
   try {
+    const existingPatientFormData = (form.value?.patientFormData || null) as FormSubmissionData | null
+    const candidateFormData = formData.value as FormSubmissionData
+    const hasRawFormData = Boolean(candidateFormData && typeof candidateFormData === 'object' && 'rawFormData' in candidateFormData)
+    const payloadPatientFormData: FormSubmissionData = hasRawFormData
+      ? {
+        ...candidateFormData,
+        comments: [...reviewComments.value],
+      }
+      : {
+        ...(existingPatientFormData || {
+          rawFormData: originalFormData.value as Record<string, Record<string, string | number | null>>,
+          fillStatus: formCompletionStatus.value,
+          completedAt: null,
+          beginFill: null,
+        }),
+        comments: [...reviewComments.value],
+      }
+
     // Prepare update payload with PatientFormData structure
     const updatePayload: Parameters<typeof formApi.updateForm>[0] = {
       formId,
       updateFormRequest: {
-        patientFormData: formData.value as never
+        patientFormData: payloadPatientFormData as never
       }
     }
     logger.debug('=== ReviewFormAnswers FRONTEND: Data being sent to API ===')
@@ -208,6 +277,7 @@ const saveChanges = async () => {
 
     // Update original data after successful save
     originalFormData.value = JSON.parse(JSON.stringify(formData.value))
+    originalComments.value = JSON.parse(JSON.stringify(reviewComments.value))
     notifierStore.notify(t('reviewForm.saveSuccess'), 'success')
 
     navigateToConsultationOverview()
@@ -385,6 +455,51 @@ const goBack = () => {
                             :scoring="formScoring"
                             :title="t('forms.subscales.overallProgress')"
                             :showSubmitButton="false" />
+        </v-card-text>
+
+        <v-divider />
+
+        <v-card-text class="px-4 py-4">
+          <h3 class="text-subtitle-1 mb-3">{{ t('reviewForm.comments') }}</h3>
+
+          <v-expansion-panels v-if="reviewComments.length > 0" variant="accordion" class="mb-4">
+            <v-expansion-panel v-for="(comment, index) in reviewComments" :key="`review-comment-${index}`">
+              <v-expansion-panel-title>
+                <div class="d-flex align-center ga-2">
+                  <span class="text-caption font-weight-bold">{{ comment.questionKey || t('forms.comments.formLevel') }}</span>
+                  <span class="text-caption text-medium-emphasis">{{ formatLocalizedCustomDate(String(comment.createdAt), 'DD.MM.YYYY HH:mm') }}</span>
+                </div>
+              </v-expansion-panel-title>
+              <v-expansion-panel-text>
+                <div class="text-body-2">{{ comment.content }}</div>
+              </v-expansion-panel-text>
+            </v-expansion-panel>
+          </v-expansion-panels>
+          <p v-else class="text-body-2 text-medium-emphasis mb-4">{{ t('reviewForm.noComments') }}</p>
+
+          <v-row>
+            <v-col cols="12" md="4">
+              <v-text-field
+                            v-model="newCommentQuestionKey"
+                            :label="t('reviewForm.commentQuestionKey')"
+                            :placeholder="t('reviewForm.commentQuestionPlaceholder')"
+                            density="comfortable"
+                            variant="outlined" />
+            </v-col>
+            <v-col cols="12" md="8">
+              <v-textarea
+                          v-model="newCommentContent"
+                          :label="t('reviewForm.commentContent')"
+                          rows="2"
+                          auto-grow
+                          variant="outlined" />
+            </v-col>
+          </v-row>
+          <div class="d-flex justify-end">
+            <v-btn color="primary" variant="tonal" :disabled="newCommentContent.trim().length === 0" @click="addReviewComment">
+              {{ t('reviewForm.addComment') }}
+            </v-btn>
+          </div>
         </v-card-text>
 
         <!-- Action buttons -->
