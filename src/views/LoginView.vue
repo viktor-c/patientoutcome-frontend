@@ -149,7 +149,8 @@ const login = async () => {
         </v-alert>
         <v-form @submit.prevent="login">
           <v-text-field v-model="username" :label="t('login.username')" outlined dense required
-                        autocomplete="username" autofocus></v-text-field>
+                        autocomplete="username" autofocus
+                        data-testid="login-username"></v-text-field>
           <v-text-field
                         v-model="password"
                         :label="t('login.password')"
@@ -157,7 +158,8 @@ const login = async () => {
                         outlined
                         dense
                         required
-                        autocomplete="current-password">
+                        autocomplete="current-password"
+                        data-testid="login-password">
             <template #append-inner>
               <v-icon
                       style="cursor: pointer"
@@ -178,7 +180,8 @@ const login = async () => {
                        :loading="isLoading"
                        color="primary"
                        type="submit"
-                       :disabled="!canSubmit">
+                       :disabled="!canSubmit"
+                       data-testid="login-submit">
                   {{ t('login.loginButton') }}
                 </v-btn>
               </template>
@@ -191,7 +194,8 @@ const login = async () => {
                      :class="{ active: canSubmit }"
                      :loading="isLoading"
                      color="primary"
-                     type="submit">
+                     type="submit"
+                     data-testid="login-submit">
                 {{ t('login.loginButton') }}
               </v-btn>
             </template>

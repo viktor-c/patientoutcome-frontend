@@ -958,7 +958,7 @@ onMounted(async () => {
                           <v-text-field
                                         v-model="patientData.externalPatientId![index]"
                                         :label="t('forms.patient.externalId') + (index > 0 ? ' ' + (index + 1) : '')"
-
+                                        :data-testid="index === 0 ? 'patient-external-id' : `patient-external-id-${index + 1}`"
                                         :persistent-hint="index === 0"
                                         density="compact">
                             <template #append-inner>
@@ -989,6 +989,7 @@ onMounted(async () => {
                                     item-value="value"
                                     item-title="label"
                                     density="compact"
+                                    data-testid="patient-sex"
                                     clearable></v-select>
                         </v-col>
                         <v-col>
@@ -1002,6 +1003,7 @@ onMounted(async () => {
                                     :hint="isDepartmentDropdownDisabled ? t('forms.departmentAutoAssignedHint') : t('forms.selectDepartmentHint')"
                                     persistent-hint
                                     variant="outlined"
+                                    data-testid="patient-department"
                                     density="compact"></v-select>
                         </v-col>
                       </v-row>
@@ -1129,12 +1131,14 @@ onMounted(async () => {
                                        v-if="createdPatient"
                                        :url="getPatientUrl()"
                                        :label="t('creationFlow.patientUrl')"
+                                       data-testid="result-patient-url"
                                        class="mb-4" />
 
                     <QRCodeLinkDisplay
                                        v-if="createdPatient"
                                        :url="getCaseUrl()"
                                        :label="t('creationFlow.caseUrl')"
+                                       data-testid="result-case-url"
                                        class="mb-4" />
 
                     <!-- QR Code Link (using new component) -->
@@ -1143,13 +1147,15 @@ onMounted(async () => {
                                        :url="getQRCodeUrl()"
                                        :label="t('creationFlow.patientFlowQrUrl')"
                                        :access-window="firstConsultationAccessWindow"
+                                       data-testid="result-flow-url"
                                        class="mb-4" />
 
                     <!-- First Consultation Link (using new component) -->
                     <QRCodeLinkDisplay
                                        v-if="firstConsultation"
                                        :url="getFirstConsultationUrl()"
-                                       :label="t('creationFlow.firstConsultationUrl')" />
+                                       :label="t('creationFlow.firstConsultationUrl')"
+                                       data-testid="result-consultation-url" />
                   </v-card-text>
                 </v-card>
               </v-stepper-window-item>

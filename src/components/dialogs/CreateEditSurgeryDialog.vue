@@ -672,6 +672,7 @@ defineExpose({
                       return-object
                       clearable
                       variant="underlined"
+                      data-testid="surgery-blueprint"
                       @update:model-value="(blueprint) => blueprint && applyBlueprint(blueprint)">
         <template v-slot:item="{ props, item }">
           <v-list-item v-bind="props" :title="item.raw.title" :subtitle="item.raw.description">
@@ -687,7 +688,8 @@ defineExpose({
                           v-model="form.externalId"
                           :label="t('surgery.externalId')"
                           outlined
-                          dense></v-text-field>
+                          dense
+                          data-testid="surgery-external-id"></v-text-field>
           </v-col>
           <v-col cols="12" md="6">
             <v-text-field
@@ -695,7 +697,8 @@ defineExpose({
                           :label="t('surgery.therapy')"
                           outlined
                           dense
-                          required></v-text-field>
+                          required
+                          data-testid="surgery-therapy"></v-text-field>
           </v-col>
         </v-row>
 
@@ -712,7 +715,8 @@ defineExpose({
                           :hint="t('forms.hints.required') + ' (Time fixed to 11:00 UTC internally)'"
                           persistent-hint
                           :error="hasError('surgeryDate')"
-                          :error-messages="hasError('surgeryDate') ? [getError('surgeryDate')] : []">
+                          :error-messages="hasError('surgeryDate') ? [getError('surgeryDate')] : []"
+                          data-testid="surgery-date">
               <template #append-inner>
                 <v-btn
                        icon="mdi-calendar"
@@ -756,7 +760,8 @@ defineExpose({
                       :hint="t('forms.hints.required')"
                       persistent-hint
                       :error="hasError('side')"
-                      :error-messages="hasError('side') ? [getError('side')] : []"></v-select>
+                      :error-messages="hasError('side') ? [getError('side')] : []"
+                      data-testid="surgery-side"></v-select>
           </v-col>
         </v-row>
 
@@ -838,7 +843,8 @@ defineExpose({
                             chips
                             closable-chips
                             outlined
-                            dense></v-autocomplete>
+                            dense
+                            data-testid="surgery-surgeons"></v-autocomplete>
           </v-col>
           <v-col cols="12" md="3" lg="3">
             <v-text-field
