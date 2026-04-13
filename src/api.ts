@@ -134,6 +134,21 @@ export async function getActiveCodeForCase(caseId: string) {
   return await res.json();
 }
 
+export async function renewCode(code: string) {
+  const base = apiConfig.basePath ?? '';
+  const url = `${base.replace(/\/$/, '')}/form-access-code/renew/${encodeURIComponent(code)}`;
+  const res = await fetch(url, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    credentials: 'include',
+  });
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`Failed to renew code: ${res.status} ${res.statusText}: ${text}`);
+  }
+  return await res.json();
+}
+
 /**
  * Lightweight session health probe.  Calls `GET /user/session` and returns:
  * - `{ authenticated: true, username, expiresAt }` when the session is active

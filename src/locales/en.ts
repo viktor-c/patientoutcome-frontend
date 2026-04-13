@@ -1028,6 +1028,12 @@ export default {
     codeAssignError: 'Failed to assign code',
     codeRevoked: 'Code revoked successfully',
     codeRevokeError: 'Failed to revoke code',
+    renewCode: 'Renew code validity',
+    codeRenewBtn: 'Renew',
+    codeExpiresOn: 'Expires: {date}',
+    codeExpiresSoon: 'Expires soon',
+    codeRenewed: 'Code validity renewed successfully',
+    codeRenewError: 'Failed to renew code validity',
     createNewCode: 'Create new code',
     codeCreatedAndAssigned: 'New code created and assigned successfully',
     codeCreateError: 'Failed to create new code',
@@ -1446,7 +1452,9 @@ export default {
       or: 'or',
       contactUs: 'CONTACT US',
     },
-    version: 'Version 0.2.0',
+    version: 'Version {version}',
+    frontendBuild: 'Frontend: v{version} ({build})',
+    backendBuild: 'Backend: v{version} ({build})',
 
     links: {
       title: 'Source Code & Resources',
