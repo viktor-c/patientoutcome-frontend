@@ -427,7 +427,6 @@ loadDefaultBlueprints()
                     return-object
                     clearable
                     variant="underlined"
-                    data-testid="case-blueprint"
                     @update:model-value="(blueprint) => blueprint && applyBlueprint(blueprint)">
       <template v-slot:item="{ props, item }">
         <v-list-item v-bind="props" :title="item.raw.title" :subtitle="item.raw.description">
@@ -439,13 +438,11 @@ loadDefaultBlueprints()
       <!-- Full width fields -->
       <v-text-field
                     v-model="formCase.externalId"
-                    :label="t('forms.externalPatientCaseId')"
-                    data-testid="case-external-id"></v-text-field>
+                    :label="t('forms.externalPatientCaseId')"></v-text-field>
 
       <v-textarea
                   v-model="formCase.medicalHistory"
                   :label="t('forms.patientCase.caseDescription')"
-                  data-testid="case-description"
                   rows="3"></v-textarea>
 
       <!-- Diagnosis fields -->
