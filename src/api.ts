@@ -178,3 +178,22 @@ export async function checkSessionRaw(): Promise<
     return null; // network unavailable – don't force logout
   }
 }
+
+export interface BackendBuildInfo {
+  appVersion: string;
+  buildRef: string;
+  builtAt: string | null;
+  startedAt: string;
+}
+
+export async function getBackendBuildInfoRaw(): Promise<BackendBuildInfo | null> {
+  try {
+    const base = (apiConfig.basePath ?? '').replace(/\/$/, '');
+    const res = await fetch(`${base}/health-check/build-info`, { credentials: 'include' });
+    if (!res.ok) return null;
+    const json = await res.json() as { responseObject?: BackendBuildInfo };
+    return json?.responseObject ?? null;
+  } catch {
+    return null;
+  }
+}
