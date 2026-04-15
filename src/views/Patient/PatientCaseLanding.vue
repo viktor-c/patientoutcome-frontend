@@ -11,6 +11,7 @@ import {
   type Consultation,
   type Patient,
   type Surgery,
+  type Note,
   ResponseError,
 } from '@/api'
 import { patientCaseApi, consultationApi, surgeryApi } from '@/api'
@@ -19,6 +20,7 @@ import CreateEditConsultationDialog from '@/components/dialogs/CreateEditConsult
 import CreateBatchConsultationsDialog from '@/components/dialogs/CreateBatchConsultationsDialog.vue'
 import CreateEditSurgeryDialog from '@/components/dialogs/CreateEditSurgeryDialog.vue'
 import CascadeDeleteDialog from '@/components/dialogs/CascadeDeleteDialog.vue'
+import NotesEditor from '@/components/forms/NotesEditor.vue'
 
 const { t } = useI18n()
 const route = useRoute()
@@ -34,6 +36,8 @@ const patientCase = ref<GetPatientCaseById200Response['responseObject'] | null>(
 const patient = ref<Patient | null>(null)
 const consultations = ref<Consultation[]>([])
 const surgeries = ref<Surgery[]>([])
+const caseNotes = ref<Note[]>([])
+const savingCaseNotes = ref(false)
 const loading = ref(true)
 const error = ref<string | null>(null)
 
@@ -154,11 +158,19 @@ const loadCaseData = async () => {
     const surgeriesResponse = await surgeryApi.getSurgeriesByPatientCaseId({ patientCaseId: caseId })
     surgeries.value = surgeriesResponse.responseObject || []
 
+    // Load case notes
+    if (patientCase.value?.notes) {
+      caseNotes.value = Array.isArray(patientCase.value.notes) ? patientCase.value.notes : []
+    } else {
+      caseNotes.value = []
+    }
+
     console.log('Case data loaded:', {
       case: patientCase.value,
       patient: patient.value,
       consultations: consultations.value,
-      surgeries: surgeries.value
+      surgeries: surgeries.value,
+      notes: caseNotes.value
     })
 
   } catch (err: unknown) {
@@ -193,6 +205,44 @@ const loadCaseData = async () => {
   } finally {
     loading.value = false
   }
+}
+
+// Case notes management
+const saveCaseNotes = async (updatedNotes: Note[]) => {
+  if (!patientCase.value?.id || !patient.value?.id) {
+    return
+  }
+
+  savingCaseNotes.value = true
+  try {
+    // Update the case with new notes
+    const response = await patientCaseApi.updatePatientCaseById(
+      {
+        patientId: patient.value.id,
+        caseId: patientCase.value.id,
+      },
+      {
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ notes: updatedNotes }),
+      }
+    )
+
+    if (response.success) {
+      caseNotes.value = updatedNotes
+      notifierStore.notify(t('patientCaseLanding.notesSaved'), 'success')
+      logger.info('Case notes saved successfully', { caseId: patientCase.value.id })
+    }
+  } catch (err: unknown) {
+    logger.error('Failed to save case notes', err)
+    notifierStore.notify(t('patientCaseLanding.notesSaveFailed'), 'error')
+  } finally {
+    savingCaseNotes.value = false
+  }
+}
+
+const handleCaseNotesUpdated = async (updatedNotes: Note[]) => {
+  caseNotes.value = updatedNotes
+  await saveCaseNotes(updatedNotes)
 }
 
 // Navigation functions
@@ -667,6 +717,21 @@ onMounted(() => {
               </v-btn>
             </v-col>
           </v-row>
+        </v-card-text>
+      </v-card>
+
+      <!-- Case Notes -->
+      <v-card class="mb-6">
+        <v-card-title class="d-flex align-center gap-2">
+          <v-icon>mdi-note-multiple</v-icon>
+          {{ t('patientCaseLanding.caseNotes') }}
+        </v-card-title>
+        <v-card-text>
+          <NotesEditor
+                      :notes="caseNotes"
+                      @update:notes="handleCaseNotesUpdated"
+                      :title="'patientCaseLanding.caseNotes'"
+                      :add-button-text="'patientCaseLanding.addCaseNote'" />
         </v-card-text>
       </v-card>
 

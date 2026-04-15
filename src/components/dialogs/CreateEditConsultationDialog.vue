@@ -586,13 +586,14 @@ defineExpose({
                         outlined
                         dense
                         data-testid="consultation-access-code">
-              <template #append-inner v-if="!isEditMode">
+              <template #append-inner>
                 <v-icon
                         :class="{ 'text-success': !generatingCode, 'text-disabled': generatingCode }"
                         :style="{ cursor: generatingCode ? 'not-allowed' : 'pointer' }"
                         @mousedown.stop.prevent
                         @click.stop.prevent="!generatingCode && generateNewCode()"
-                        :disabled="generatingCode">
+                        :disabled="generatingCode"
+                        :title="t('consultation.generateCode')">
                   {{ generatingCode ? 'mdi-loading' : 'mdi-plus' }}
                 </v-icon>
               </template>
