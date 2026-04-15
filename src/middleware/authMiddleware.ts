@@ -1,6 +1,7 @@
 import type { Middleware, ResponseContext } from '@/api/runtime'
 import { useUserStore } from '@/stores/userStore'
 import router from '@/router'
+import { savePostLoginRedirect } from '@/utils/postLoginRedirect'
 
 // Flag to prevent multiple simultaneous logout attempts
 let isLoggingOut = false
@@ -34,8 +35,19 @@ export const authMiddleware: Middleware = {
         // Clear user session locally (don't call API to avoid infinite loop)
         userStore.clearSession()
 
+        const currentPath = router.currentRoute.value.fullPath
+        if (currentPath && !currentPath.startsWith('/login')) {
+          savePostLoginRedirect(currentPath)
+        }
+
         // Redirect to login page
-        await router.push({ name: 'Login', query: { reason: 'session-expired' } })
+        await router.push({
+          name: 'Login',
+          query: {
+            reason: 'session-expired',
+            ...(currentPath && !currentPath.startsWith('/login') ? { redirect: currentPath } : {}),
+          },
+        })
       } catch (error) {
         console.error('Error during logout redirect:', error)
       } finally {

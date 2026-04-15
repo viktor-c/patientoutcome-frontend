@@ -6,6 +6,7 @@ import { ResponseError } from '@/api'
 import { useNotifierStore } from '@/stores/notifierStore'
 import { useI18n } from 'vue-i18n'
 import { userApi, setupApi } from '@/api'
+import { clearPostLoginRedirect, getPostLoginRedirect } from '@/utils/postLoginRedirect'
 
 const { t } = useI18n()
 
@@ -95,11 +96,14 @@ const login = async () => {
 
       // Redirect based on user role
       if (userStore.isKioskUser()) {
+        clearPostLoginRedirect()
         router.push('/kiosk')
       } else {
         const redirect = router.currentRoute.value.query.redirect as string | undefined
-        if (redirect) {
-          router.push(redirect)
+        const target = redirect ?? getPostLoginRedirect()
+        clearPostLoginRedirect()
+        if (target) {
+          router.push(target)
         } else {
           router.push('/dashboard')
         }

@@ -13,6 +13,11 @@ vi.mock('@/stores/userStore', () => ({
 vi.mock('@/router', () => ({
   default: {
     push: vi.fn().mockResolvedValue(undefined),
+    currentRoute: {
+      value: {
+        fullPath: '/patients/42/forms?version=latest',
+      },
+    },
   },
 }))
 
@@ -76,7 +81,13 @@ describe('authMiddleware', () => {
         // Expected to throw
       }
 
-      expect(router.push).toHaveBeenCalled()
+      expect(router.push).toHaveBeenCalledWith({
+        name: 'Login',
+        query: {
+          reason: 'session-expired',
+          redirect: '/patients/42/forms?version=latest',
+        },
+      })
     })
   })
 
