@@ -462,7 +462,8 @@ defineExpose({
                   :error-messages="errors.reasonForConsultation ? [errors.reasonForConsultation] : []"
                   multiple
                   outlined
-                  dense></v-select>
+                  dense
+                  data-testid="consultation-reason"></v-select>
         <v-row class="my-2">
           <v-col cols="8">
             <VueDatePicker
@@ -535,7 +536,8 @@ defineExpose({
                         item-title="title"
                         :label="t('consultation.formTemplate')"
                         outlined
-                        dense>
+                        dense
+                        data-testid="consultation-form-templates">
           <!-- Custom chip display with access level -->
           <template #chip="{ item, props: chipProps }">
             <v-chip
@@ -569,7 +571,8 @@ defineExpose({
                         :label="t('consultation.visitedBy')"
                         multiple
                         outlined
-                        dense></v-autocomplete>
+                        dense
+                        data-testid="consultation-visited-by"></v-autocomplete>
 
         <!-- Form Access Code Section -->
         <v-row>
@@ -581,14 +584,16 @@ defineExpose({
                         item-title="code"
                         :label="t('consultation.form-access-code')"
                         outlined
-                        dense>
-              <template #append-inner v-if="!isEditMode">
+                        dense
+                        data-testid="consultation-access-code">
+              <template #append-inner>
                 <v-icon
                         :class="{ 'text-success': !generatingCode, 'text-disabled': generatingCode }"
                         :style="{ cursor: generatingCode ? 'not-allowed' : 'pointer' }"
                         @mousedown.stop.prevent
                         @click.stop.prevent="!generatingCode && generateNewCode()"
-                        :disabled="generatingCode">
+                        :disabled="generatingCode"
+                        :title="t('consultation.generateCode')">
                   {{ generatingCode ? 'mdi-loading' : 'mdi-plus' }}
                 </v-icon>
               </template>

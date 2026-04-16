@@ -116,6 +116,7 @@ function deleteNote(index: number) {
                           rows="2"
                           variant="outlined"
                           density="compact"
+                          data-testid="note-textarea"
                           autofocus></v-textarea>
             </v-row>
             <v-row>
@@ -123,7 +124,8 @@ function deleteNote(index: number) {
                 <v-btn
                        color="success"
                        @click="saveNote(index)"
-                       size="small">
+                       size="small"
+                       data-testid="note-save-btn">
                   <v-icon>mdi-check</v-icon>
                 </v-btn>
               </v-col>
@@ -159,7 +161,8 @@ function deleteNote(index: number) {
              v-if="editingNoteIndex === null"
              color="primary"
              @click="addNote"
-             class="mt-2">
+             class="mt-2"
+             data-testid="note-add-btn">
         {{ t(addButtonText) }}
       </v-btn>
     </v-card-text>

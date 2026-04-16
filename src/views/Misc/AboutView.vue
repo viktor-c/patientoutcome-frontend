@@ -206,6 +206,8 @@
         <v-divider class="my-4"></v-divider>
         <div class="text-center text-caption text-grey">
           <p class="mb-1">{{ t('about.version', { version: appVersion }) }}</p>
+          <p class="mb-1">{{ t('about.frontendBuild', { version: appVersion, build: frontendBuildRef }) }}</p>
+          <p class="mb-1">{{ t('about.backendBuild', { version: backendVersion, build: backendBuildRef }) }}</p>
           <p class="mb-0">{{ t('footer.copyright', { year: currentYear }) }}</p>
         </div>
       </v-card-text>
@@ -221,13 +223,26 @@
 </template>
 
 <script setup lang="ts">
+import { onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import packageJson from '../../../package.json'
+import { getBuildInfo } from '@/services/buildInfoService'
 
 const { t } = useI18n()
 
 const currentYear = new Date().getFullYear()
 const appVersion = packageJson.version
+const frontendBuildRef = ref('unknown')
+const backendVersion = ref('unknown')
+const backendBuildRef = ref('unknown')
+
+onMounted(() => {
+  getBuildInfo().then((info) => {
+    frontendBuildRef.value = info.frontendBuildRef
+    backendVersion.value = info.backendVersion
+    backendBuildRef.value = info.backendBuildRef
+  })
+})
 </script>
 
 <style scoped>

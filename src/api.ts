@@ -134,6 +134,21 @@ export async function getActiveCodeForCase(caseId: string) {
   return await res.json();
 }
 
+export async function renewCode(code: string) {
+  const base = apiConfig.basePath ?? '';
+  const url = `${base.replace(/\/$/, '')}/form-access-code/renew/${encodeURIComponent(code)}`;
+  const res = await fetch(url, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    credentials: 'include',
+  });
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`Failed to renew code: ${res.status} ${res.statusText}: ${text}`);
+  }
+  return await res.json();
+}
+
 /**
  * Lightweight session health probe.  Calls `GET /user/session` and returns:
  * - `{ authenticated: true, username, expiresAt }` when the session is active
@@ -161,5 +176,24 @@ export async function checkSessionRaw(): Promise<
     return { authenticated: false };
   } catch {
     return null; // network unavailable – don't force logout
+  }
+}
+
+export interface BackendBuildInfo {
+  appVersion: string;
+  buildRef: string;
+  builtAt: string | null;
+  startedAt: string;
+}
+
+export async function getBackendBuildInfoRaw(): Promise<BackendBuildInfo | null> {
+  try {
+    const base = (apiConfig.basePath ?? '').replace(/\/$/, '');
+    const res = await fetch(`${base}/health-check/build-info`, { credentials: 'include' });
+    if (!res.ok) return null;
+    const json = await res.json() as { responseObject?: BackendBuildInfo };
+    return json?.responseObject ?? null;
+  } catch {
+    return null;
   }
 }

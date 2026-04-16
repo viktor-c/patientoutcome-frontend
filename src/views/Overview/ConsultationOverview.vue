@@ -11,7 +11,7 @@ import {
   type UserNoPassword
 } from '@/api'
 import type { ApiConsultation, ApiConsultationForm } from '@/types'
-import { consultationApi, userApi, kioskApi, codeApi, formApi, activateCodeForCase } from '@/api'
+import { consultationApi, userApi, kioskApi, codeApi, formApi, activateCodeForCase, renewCode } from '@/api'
 import CreateEditConsultationDialog from '@/components/dialogs/CreateEditConsultationDialog.vue'
 import CascadeDeleteDialog from '@/components/dialogs/CascadeDeleteDialog.vue'
 import QRCodeDisplay from '@/components/QRCodeDisplay.vue'
@@ -515,6 +515,12 @@ const assignedCode = computed(() => {
   return code?.code || null
 })
 
+const assignedCodeExpiresOn = computed(() => {
+  const code = consultation.value?.formAccessCode as PopulatedCode | undefined
+  if (!code || typeof code === 'string') return null
+  return code.expiresOn || null
+})
+
 // Get available (unassigned) codes
 const availableCodesForSelection = computed(() => {
   // If there's an assigned code, filter it out from available codes
@@ -642,6 +648,37 @@ const revokeCode = async () => {
     }
     console.error(`${componentName}: Failed to revoke code:`, errorMessage)
     notifierStore.notify(t('consultationOverview.codeRevokeError'), 'error')
+  } finally {
+    assigningCode.value = false
+  }
+}
+
+const renewAssignedCode = async () => {
+  const codeVal = consultation.value?.formAccessCode as unknown
+  const codeStr = typeof codeVal === 'string'
+    ? codeVal
+    : (codeVal && typeof codeVal === 'object')
+      ? ((codeVal as Record<string, unknown>)['code'] as string | undefined) ?? null
+      : null
+
+  if (!codeStr) {
+    notifierStore.notify(t('consultationOverview.codeRenewError'), 'error')
+    return
+  }
+
+  try {
+    assigningCode.value = true
+    await renewCode(codeStr)
+    notifierStore.notify(t('consultationOverview.codeRenewed'), 'success')
+    const resp = await consultationApi.getConsultationById({ consultationId })
+    consultation.value = resp.responseObject || null
+  } catch (error: unknown) {
+    let errorMessage = 'An unexpected error occurred'
+    if (error instanceof Error) {
+      errorMessage = error.message
+    }
+    console.error(`${componentName}: Failed to renew code:`, errorMessage)
+    notifierStore.notify(t('consultationOverview.codeRenewError'), 'error')
   } finally {
     assigningCode.value = false
   }
@@ -797,6 +834,14 @@ const assignedConsultationAccessWindow = computed(() => {
     consultationAccessDaysBefore: userStore.consultationAccessDaysBefore,
     consultationAccessDaysAfter: userStore.consultationAccessDaysAfter,
   })
+})
+
+// Code expiry helper – true when code expires within the next 48 hours
+const isCodeExpiringSoon = computed(() => {
+  if (!assignedCodeExpiresOn.value) return false
+  const expires = new Date(assignedCodeExpiresOn.value).getTime()
+  const now = Date.now()
+  return expires - now < 48 * 60 * 60 * 1000
 })
 </script>
 
@@ -1273,8 +1318,20 @@ const assignedConsultationAccessWindow = computed(() => {
                   {{ assignedCode }}
                 </v-list-item-title>
                 <v-list-item-subtitle>
-                  <div class="text-caption">
-                    {{ t('consultationOverview.codeStatus') }}: {{ t('consultationOverview.active') }}
+                  <div class="text-caption d-flex align-center flex-wrap gap-2">
+                    <span>{{ t('consultationOverview.codeStatus') }}: {{ t('consultationOverview.active') }}</span>
+                    <v-chip
+                      v-if="assignedCodeExpiresOn"
+                      size="x-small"
+                      :color="isCodeExpiringSoon ? 'warning' : 'default'"
+                      variant="tonal"
+                    >
+                      <v-icon start size="x-small">mdi-clock-outline</v-icon>
+                      {{ t('consultationOverview.codeExpiresOn', { date: safeFormatDate(assignedCodeExpiresOn) }) }}
+                    </v-chip>
+                    <v-chip v-if="isCodeExpiringSoon && assignedCodeExpiresOn" size="x-small" color="warning" variant="flat">
+                      {{ t('consultationOverview.codeExpiresSoon') }}
+                    </v-chip>
                   </div>
                 </v-list-item-subtitle>
                 <template #append>
@@ -1282,7 +1339,20 @@ const assignedConsultationAccessWindow = computed(() => {
                     <QRCodeDisplay
                                    v-if="patientFlowUrl"
                                    :url="patientFlowUrl"
-                                   :access-window="assignedConsultationAccessWindow" />
+                          :access-window="assignedConsultationAccessWindow"
+                          :expires-on="assignedCodeExpiresOn || undefined" />
+                    <v-btn
+                      :color="isCodeExpiringSoon ? 'warning' : 'primary'"
+                      variant="tonal"
+                      size="small"
+                      @click="renewAssignedCode"
+                      :disabled="assigningCode"
+                      :loading="assigningCode"
+                      :title="t('consultationOverview.renewCode')"
+                    >
+                      <v-icon start>mdi-refresh</v-icon>
+                      {{ t('consultationOverview.codeRenewBtn') }}
+                    </v-btn>
                     <v-btn
                            color="error"
                            variant="tonal"
