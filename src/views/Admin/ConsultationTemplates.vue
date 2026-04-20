@@ -501,6 +501,7 @@ const saveTemplate = async () => {
           dateCreated: new Date().toISOString(),
         }] : [],
         visitedBy: [],
+        formAccessCode: 'new-access-code',
         formTemplates: selectedFormTemplates.value,
       },
       tags: ['consultation', 'template'],

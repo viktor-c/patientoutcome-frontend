@@ -136,12 +136,14 @@ const applyBlueprint = (blueprint: Blueprint) => {
     notes?: string[]
     visitedBy?: string[]
     formTemplates?: string[]
+    formAccessCode?: string | null
   }
 
   interface BlueprintContent {
     consultations?: ConsultationTemplate[]
     consultation?: ConsultationTemplate
     formTemplates?: string[]
+    formAccessCode?: string | null
   }
 
   const content = blueprint.content as BlueprintContent
@@ -172,6 +174,15 @@ const applyBlueprint = (blueprint: Blueprint) => {
     return formTemplateIds
   }
 
+  const normalizeFormAccessCode = (formAccessCode: unknown): string | undefined => {
+    if (typeof formAccessCode !== 'string') {
+      return undefined
+    }
+
+    const trimmedCode = formAccessCode.trim()
+    return trimmedCode.length > 0 ? trimmedCode : undefined
+  }
+
   // Handle different blueprint content structures
   if (Array.isArray(content.consultations)) {
     // Multiple consultations in array
@@ -187,7 +198,7 @@ const applyBlueprint = (blueprint: Blueprint) => {
         notes: convertNotes(consultation.notes),
         images: [],
         visitedBy: [],
-        formAccessCode: undefined,
+        formAccessCode: normalizeFormAccessCode(consultation.formAccessCode ?? content.formAccessCode),
         formTemplates: convertFormTemplateIds(consultation.formTemplates),
       })
     })
@@ -205,7 +216,7 @@ const applyBlueprint = (blueprint: Blueprint) => {
       notes: convertNotes(consultation.notes),
       images: [],
       visitedBy: [],
-      formAccessCode: undefined,
+      formAccessCode: normalizeFormAccessCode(consultation.formAccessCode ?? content.formAccessCode),
       formTemplates: convertFormTemplateIds(consultation.formTemplates),
     })
   } else {
@@ -221,7 +232,7 @@ const applyBlueprint = (blueprint: Blueprint) => {
       notes: [],
       images: [],
       visitedBy: [],
-      formAccessCode: undefined,
+      formAccessCode: normalizeFormAccessCode(content.formAccessCode),
       formTemplates: convertFormTemplateIds(content.formTemplates || []),
     })
   }
