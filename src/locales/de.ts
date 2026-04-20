@@ -1182,6 +1182,7 @@ export default {
     viewSurgery: 'Operation anzeigen',
     surgeryDate: 'Operationsdatum',
     therapy: 'Therapie',
+    addCaseNote: 'Notiz hinzufügen',
   },
   testing: {
     title: 'Testing & Entwicklung',

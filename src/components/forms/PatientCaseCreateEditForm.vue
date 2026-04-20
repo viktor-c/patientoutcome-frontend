@@ -250,7 +250,9 @@ const applyBlueprint = (blueprint: Blueprint) => {
   // Emit blueprint applied event so parent can extract surgery blueprint info
   emit('blueprint-applied', blueprint)
 
-  notifierStore.notify(t('forms.blueprint.blueprintApplied'), 'success')
+  if (props.showButtons !== false) {
+    notifierStore.notify(t('forms.blueprint.blueprintApplied'), 'success')
+  }
 }
 
 // Load blueprints on component mount
@@ -297,8 +299,9 @@ const submit = async () => {
       if (response.responseObject) {
         emit('submit', response.responseObject)
       }
-      // show success message
-      notifierStore.notify(t('alerts.case.created'), 'success')
+      if (props.showButtons !== false) {
+        notifierStore.notify(t('alerts.case.created'), 'success')
+      }
     } else {
       if (!props.selectedCase || !props.selectedCase.id) return
       // Update the selected case with the new data
@@ -319,7 +322,9 @@ const submit = async () => {
         caseId: props.selectedCase.id
       })
       console.log('Case updated successfully:', response)
-      notifierStore.notify(t('alerts.case.updated'), 'success')
+      if (props.showButtons !== false) {
+        notifierStore.notify(t('alerts.case.updated'), 'success')
+      }
       // Emit the updated case
       if (response.responseObject) {
         emit('submit', response.responseObject)
@@ -378,8 +383,9 @@ const submitAndNextStep = async () => {
       if (response.responseObject) {
         emit('next-step', response.responseObject)
       }
-      // show success message
-      notifierStore.notify(t('alerts.case.created'), 'success')
+      if (props.showButtons !== false) {
+        notifierStore.notify(t('alerts.case.created'), 'success')
+      }
     } catch (error: unknown) {
       let errorMessage = 'An unexpected error occurred'
       if (error instanceof ResponseError) {

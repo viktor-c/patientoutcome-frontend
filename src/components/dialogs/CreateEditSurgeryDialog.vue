@@ -42,6 +42,8 @@ const notifierStore = useNotifierStore()
 const { formatLocalizedCustomDate } = useDateFormat()
 const { validateForm, clearAllErrors, clearFieldError, hasError, getError, resetFormState } = useFormValidation()
 
+type SurgeryWithOpsAlias = Surgery & { OPSCodes?: string[] }
+
 
 const isEditMode = ref(!!(props.surgery && props.surgery.id))
 
@@ -52,6 +54,13 @@ watch(() => props.surgery, (newSurgery) => {
     // Update form with surgery data
     form.value = { ...newSurgery }
     form.value.patientCase = props.patientCaseId
+
+    const normalizedOpsCodes = newSurgery.oPSCodes ?? (newSurgery as SurgeryWithOpsAlias).OPSCodes
+    if (Array.isArray(normalizedOpsCodes)) {
+      form.value.oPSCodes = [...normalizedOpsCodes]
+    } else if (normalizedOpsCodes) {
+      form.value.oPSCodes = [normalizedOpsCodes]
+    }
 
     // Handle existing anaesthesia type data
     if (newSurgery.anaesthesiaType) {
@@ -373,10 +382,11 @@ const applyBlueprint = (blueprint: Blueprint) => {
     form.value.therapy = content.therapy
   }
 
-  if (content.oPSCodes) {
-    form.value.oPSCodes = Array.isArray(content.oPSCodes)
-      ? [...content.oPSCodes]
-      : [content.oPSCodes]
+  const blueprintOpsCodes = content.oPSCodes ?? content.OPSCodes
+  if (blueprintOpsCodes) {
+    form.value.oPSCodes = Array.isArray(blueprintOpsCodes)
+      ? [...blueprintOpsCodes]
+      : [blueprintOpsCodes]
   }
 
   if (content.side) {
@@ -429,7 +439,9 @@ const applyBlueprint = (blueprint: Blueprint) => {
   }
 
   selectedBlueprint.value = blueprint
-  notifierStore.notify(t('forms.blueprint.blueprintApplied'), 'success')
+  if (props.showButtons !== false) {
+    notifierStore.notify(t('forms.blueprint.blueprintApplied'), 'success')
+  }
 }
 
 // Watch blueprint search query and fetch blueprints
@@ -471,6 +483,13 @@ onMounted(async () => {
   if (isEditMode.value && props.surgery) {
     form.value = { ...props.surgery }
     form.value.patientCase = props.patientCaseId
+
+    const normalizedOpsCodes = props.surgery.oPSCodes ?? (props.surgery as SurgeryWithOpsAlias).OPSCodes
+    if (Array.isArray(normalizedOpsCodes)) {
+      form.value.oPSCodes = [...normalizedOpsCodes]
+    } else if (normalizedOpsCodes) {
+      form.value.oPSCodes = [normalizedOpsCodes]
+    }
 
     // Ensure surgeryDate is in YYYY-MM-DD format for HTML date input
     if (props.surgery.surgeryDate) {
@@ -521,6 +540,8 @@ onMounted(async () => {
 })
 
 const saveSurgery = async () => {
+  let savedSurgery: Surgery | null = null
+
   try {
     // Mark form as submitted so all fields show validation errors
     formSubmitted.value = true
@@ -615,16 +636,20 @@ const saveSurgery = async () => {
         updateSurgeryByIdRequest: surgeryData,
       })
       console.log('Surgery updated successfully:', response)
-      notifierStore.notify(t('alerts.surgery.updated'), 'success')
+      if (props.showButtons !== false) {
+        notifierStore.notify(t('alerts.surgery.updated'), 'success')
+      }
     } else {
       response = await surgeryApi.createSurgery({
         createSurgerySchema: surgeryData,
       })
       console.log('Surgery created successfully:', response)
-      notifierStore.notify(t('alerts.surgery.created'), 'success')
+      if (props.showButtons !== false) {
+        notifierStore.notify(t('alerts.surgery.created'), 'success')
+      }
     }
 
-    emit('submit', response.responseObject)
+    savedSurgery = response.responseObject ?? null
   } catch (error: unknown) {
     let errorMessage = 'An unexpected error occurred'
     if (error instanceof ResponseError) {
@@ -632,7 +657,16 @@ const saveSurgery = async () => {
     }
     console.error('Error saving surgery:', errorMessage)
     notifierStore.notify(t('alerts.surgery.saveFailed'), 'error')
+    return
   }
+
+  if (!savedSurgery) {
+    console.error('Surgery saved but no response payload was returned')
+    notifierStore.notify(t('alerts.surgery.saveFailed'), 'error')
+    return
+  }
+
+  emit('submit', savedSurgery)
 }
 
 // Save surgery and move to next step

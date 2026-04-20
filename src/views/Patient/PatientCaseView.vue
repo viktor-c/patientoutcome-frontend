@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, watch } from 'vue'
+import { ref, onMounted, watch, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import {
@@ -51,6 +51,21 @@ const currentFlowStep = ref(1) // 1: Case, 2: Surgery, 3: Consultation Selection
 const createdCase = ref<ApiPatientCaseWithDetails | null>(null)
 const createdSurgery = ref<Surgery | null>(null)
 const createdConsultations = ref<Consultation[]>([])
+
+const caseDepartmentId = computed<string | undefined>(() => {
+  const depts = createdCase.value?.patient?.departments
+  if (!Array.isArray(depts) || depts.length === 0) return undefined
+
+  const first = depts[0] as unknown
+  if (typeof first === 'string' && first.length > 0) return first
+  if (first && typeof first === 'object') {
+    const record = first as Record<string, unknown>
+    if (typeof record.id === 'string' && record.id.length > 0) return record.id
+    if (typeof record._id === 'string' && record._id.length > 0) return record._id
+  }
+
+  return undefined
+})
 
 // Blueprint-related state
 const selectedConsultationBlueprints = ref<Blueprint[]>([])
@@ -540,6 +555,7 @@ onMounted(() => {
                                                   :surgery-date="createdSurgery?.surgeryDate || undefined"
                                                   :patient-id="patientId"
                                                   :case-id="createdCase.id!"
+                                                  :department-id="caseDepartmentId"
                                                   :pre-selected-blueprint-ids="surgeryBlueprintConsultations"
                                                   :showButtons="false"
                                                   @consultations-created="handleConsultationsCreatedInFlow"

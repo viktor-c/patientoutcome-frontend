@@ -103,7 +103,8 @@
       </v-card-title>
 
       <!-- Search bar -->
-      <v-card-text class="pa-3 pb-1 icd-ops-search-header" style="position: sticky; top: 0; z-index: 1; background: white">
+      <v-card-text class="pa-3 pb-1 icd-ops-search-header"
+                   style="position: sticky; top: 0; z-index: 1; background: white">
         <v-text-field
                       ref="searchRef"
                       v-model="searchInput"
@@ -193,7 +194,8 @@
             <v-list-item-title class="text-body-2">{{ item.label }}</v-list-item-title>
             <v-list-item-subtitle class="text-caption">
               {{ kindLabel(item.kind) }}
-              <span v-if="searchMode === 'code-prefix' && isGroupNav" class="ml-1 text-grey">
+              <span v-if="searchMode === 'code-prefix' && (isGroupNav || shouldDrillDeeper(item))"
+                    class="ml-1 text-grey">
                 · Klicken um die Auswahl einzugrenzen
               </span>
               <span v-else-if="searchMode === 'text-search'" class="ml-1 text-grey">
@@ -565,6 +567,14 @@ function selectItem(item: IcdOpsEntry) {
     return
   }
 
+  // Non-terminal codes in code-navigation mode should continue drilling down
+  // instead of being selected, even if the backend no longer marks them as a
+  // broad navigation group.
+  if (searchMode.value === 'code-prefix' && shouldDrillDeeper(item)) {
+    searchInput.value = item.code
+    return
+  }
+
   // Non-terminal codes (chapter/block) always drill regardless of isGroupNav.
   // This fixes ICD codes being selected instead of refined when the user clicks
   // on a chapter or block entry.
@@ -620,11 +630,20 @@ function selectItem(item: IcdOpsEntry) {
  */
 function isTerminalCode(code: string, type: 'icd' | 'ops'): boolean {
   if (type === 'icd') {
-    return /\./.test(code)
+    return /^[A-Za-z]\d{2}\.[A-Za-z0-9]+$/.test(code)
   }
-  // OPS: terminal codes always have exactly 6 meaningful characters
-  // (excluding hyphens, dots and spaces), e.g. 5-788.1a → "57881a" = 6 chars.
-  return code.replace(/[-. ]/g, '').length === 6
+  const suffix = code.split('.')[1] ?? ''
+  return suffix.length >= 2 || /[A-Za-z]/.test(suffix)
+}
+
+function hasVisibleChildren(code: string): boolean {
+  return items.value.some((item) => item.code !== code && item.code.startsWith(code))
+}
+
+function shouldDrillDeeper(item: IcdOpsEntry): boolean {
+  if (item.kind === 'chapter' || item.kind === 'block') return true
+  if (hasVisibleChildren(item.code)) return true
+  return !isTerminalCode(item.code, props.type)
 }
 
 function onEnterKey(e: KeyboardEvent) {

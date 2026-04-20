@@ -1181,6 +1181,7 @@ export default {
     viewSurgery: 'View Surgery',
     surgeryDate: 'Surgery Date',
     therapy: 'Therapy',
+    addCaseNote: 'Add Note',
   },
   testing: {
     title: 'Testing & Development',

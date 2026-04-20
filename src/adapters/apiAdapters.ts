@@ -72,7 +72,7 @@ export function mapApiSurgeries(apiSurgeries: SurgeryFromApi[] = []): Surgery[] 
     diagnosis: s.diagnosis,
     diagnosisICD10: s.diagnosisICD10,
     therapy: s.therapy,
-    OPSCodes: s.oPSCodes,
+    OPSCodes: (s as any).oPSCodes ?? (s as any).OPSCodes,
     side: s.side as 'left' | 'right' | 'none',
     surgeryDate: s.surgeryDate,
     surgeryTime: s.surgeryTime,

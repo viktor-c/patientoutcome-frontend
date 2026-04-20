@@ -20,6 +20,7 @@ const userToDelete = ref<ApiUserResponse | null>(null);
 const departments = ref<UserDepartment[]>([]);
 const showAddDialog = ref(false);
 const creatingUser = ref(false);
+const showAddUserPassword = ref(false);
 const addUserForm = ref({
   username: '',
   name: '',
@@ -128,6 +129,7 @@ const resetAddUserForm = () => {
     belongsToCenter: '',
     role: 'doctor',
   };
+  showAddUserPassword.value = false;
 };
 
 const openAddUserDialog = () => {
@@ -441,15 +443,26 @@ watch(showEditDialog, (isShown) => {
           <v-text-field
                         v-model="addUserForm.password"
                         :label="t('register.password')"
-                        type="password"
+                        :type="showAddUserPassword ? 'text' : 'password'"
                         class="mb-2"
                         variant="outlined"
-                        density="compact" />
+                        density="compact">
+            <template #append-inner>
+              <v-icon
+                      style="cursor: pointer"
+                      @mousedown.prevent="showAddUserPassword = true"
+                      @mouseup="showAddUserPassword = false"
+                      @mouseleave="showAddUserPassword = false">
+                {{ showAddUserPassword ? 'mdi-eye' : 'mdi-eye-off' }}
+              </v-icon>
+            </template>
+          </v-text-field>
           <v-text-field
                         v-model="addUserForm.confirmPassword"
                         :label="t('register.confirmPassword')"
-                        type="password"
+                        :type="showAddUserPassword ? 'text' : 'password'"
                         :error="addUserForm.password !== addUserForm.confirmPassword && addUserForm.confirmPassword.length > 0"
+                        :error-messages="addUserForm.password !== addUserForm.confirmPassword && addUserForm.confirmPassword.length > 0 ? t('register.passwordMismatch') : []"
                         class="mb-2"
                         variant="outlined"
                         density="compact" />

@@ -246,12 +246,27 @@ async function fetchFormTemplates() {
       })
       // Fall back to the cached shortlist
       await formTemplateStore.fetchIfNeeded()
+      if (formTemplateStore.templates.length === 0) {
+        // Retry once in case an earlier session-scoped fetch cached an empty shortlist.
+        await formTemplateStore.refresh()
+      }
     }
   } else {
     // No department filter – use the cached shortlist
     await formTemplateStore.fetchIfNeeded()
+    if (formTemplateStore.templates.length === 0) {
+      // Retry once in case the shortlist was loaded while session/department context was not ready.
+      await formTemplateStore.refresh()
+    }
   }
 }
+
+watch(
+  () => props.departmentId,
+  async () => {
+    await fetchFormTemplates()
+  },
+)
 
 async function fetchAvailableCodes() {
   try {

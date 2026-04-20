@@ -18,6 +18,12 @@ export const authMiddleware: Middleware = {
 
     // 401 = Not authenticated -> logout user
     if (response.status === 401) {
+      // If this is the login request itself, the user entered wrong credentials.
+      // Let the login component handle the error — do NOT treat it as session expiry.
+      if (context.url.includes('/user/login')) {
+        return response
+      }
+
       console.warn('401 Unauthorized: User is not logged in. Logging out.')
 
       // Prevent infinite loop by checking if we're already in the logout process

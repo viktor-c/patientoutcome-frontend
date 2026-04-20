@@ -27,6 +27,7 @@ const props = defineProps<{
   surgeryDate?: string
   patientId: string
   caseId: string
+  departmentId?: string
   preSelectedBlueprintIds?: string[]
   // Whether to show the form's internal buttons (default: true)
   showButtons?: boolean
@@ -207,7 +208,6 @@ const handleManualConsultationCreated = (consultation: Consultation) => {
   createdConsultations.value.push({ ...consultation, blueprintTitle: 'Manual' })
   showManualConsultationDialog.value = false
   emit('manual-consultation-dialog-state', false)
-  notifierStore.notify(t('alerts.consultation.created'), 'success')
 }
 
 /**
@@ -283,8 +283,10 @@ const createConsultationsFromBlueprints = async () => {
 
     createdConsultations.value.push(...newConsultations)
 
-    notifierStore.notify(t('alerts.consultation.batchCreated', { count: newConsultations.length }), 'success')
-    notifierStore.clearNotifications()
+    if (props.showButtons !== false) {
+      notifierStore.notify(t('alerts.consultation.batchCreated', { count: newConsultations.length }), 'success')
+      notifierStore.clearNotifications()
+    }
 
     // Emit consultations-created event for parent component
     emit('consultations-created', newConsultations)
@@ -537,7 +539,9 @@ const handlePreSelectedBlueprints = async () => {
 watch(creationComplete, (isComplete) => {
   if (isComplete) {
     if (createdConsultations.value.length > 0) {
-      notifierStore.notify(t('consultation.creationCompleteMessage', { count: createdConsultations.value.length }), 'success')
+      if (props.showButtons !== false) {
+        notifierStore.notify(t('consultation.creationCompleteMessage', { count: createdConsultations.value.length }), 'success')
+      }
     } else {
       notifierStore.notify(t('consultation.noConsultationsCreatedYet'), 'info')
     }
@@ -864,6 +868,7 @@ defineExpose({
       <CreateEditConsultationDialog
                                     :patient-id="props.patientId"
                                     :case-id="props.caseId"
+                                    :department-id="props.departmentId"
                                     @submit="handleManualConsultationCreated"
                                     @cancel="() => { showManualConsultationDialog = false; emit('manual-consultation-dialog-state', false) }" />
     </v-card-text>
