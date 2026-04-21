@@ -1,4 +1,4 @@
-import type { Middleware, ResponseContext } from '@/api/runtime'
+import type { Middleware, RequestContext, FetchParams, ResponseContext } from '@/api/runtime'
 import { useUserStore } from '@/stores/userStore'
 import router from '@/router'
 import { savePostLoginRedirect } from '@/utils/postLoginRedirect'
@@ -11,8 +11,20 @@ let isLoggingOut = false
  * - 401 Unauthorized: User is not logged in -> logout and redirect to login
  * - 403 Forbidden: User is logged in but lacks permission -> let component handle it
  * - 2xx / other: Updates the locally-tracked session expiry (rolling sessions).
+ *
+ * Also disables browser HTTP caching for all API requests via the `pre` hook so
+ * the client always receives fresh data from the server.
  */
 export const authMiddleware: Middleware = {
+  pre: async (context: RequestContext): Promise<FetchParams | void> => {
+    return {
+      url: context.url,
+      init: {
+        ...context.init,
+        cache: 'no-store',
+      },
+    }
+  },
   post: async (context: ResponseContext): Promise<Response | void> => {
     const response = context.response
 

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, computed } from 'vue'
+import { ref, onMounted, onUnmounted, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { ResponseError, type Consultation } from '@/api'
 import { useI18n } from 'vue-i18n'
@@ -232,6 +232,13 @@ const fetchConsultations = async () => {
   }
 }
 
+// Re-fetch when the tab becomes visible (e.g. clinician returns after patient filled a form)
+const onVisibilityChange = () => {
+  if (document.visibilityState === 'visible') {
+    fetchConsultations()
+  }
+}
+
 onMounted(async () => {
   try {
     await fetchConsultations()
@@ -239,6 +246,11 @@ onMounted(async () => {
   } catch (error) {
     console.error('Error during component mount:', error)
   }
+  document.addEventListener('visibilitychange', onVisibilityChange)
+})
+
+onUnmounted(() => {
+  document.removeEventListener('visibilitychange', onVisibilityChange)
 })
 </script>
 
