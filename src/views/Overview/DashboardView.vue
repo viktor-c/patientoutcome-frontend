@@ -193,6 +193,10 @@ const datePickerPlaceholder = computed(() => {
     : t('dashboard.selectDateRange')
 })
 
+// Determine if we should use pagination or scrolling based on item count
+const usePagination = computed(() => consultations.value.length > 50)
+const tableHeight = computed(() => usePagination.value ? undefined : '600px')
+
 const fetchConsultations = async () => {
   try {
     let start: string
@@ -292,7 +296,11 @@ onMounted(async () => {
                   hover
                   density="compact"
                   :sort-by="[{ key: 'dateAndTime' }]"
-                  :sort-desc="[true]">
+                  :sort-desc="[true]"
+                  :height="tableHeight"
+                  :fixed-header="!usePagination"
+                  :hide-default-footer="!usePagination"
+                  :items-per-page="usePagination ? 25 : -1">
       <template v-slot:[`item.data-table-expand`]="{ internalItem, isExpanded, toggleExpand }">
         <v-btn
                v-if="internalItem.raw.proms && internalItem.raw.proms.length > 0"
