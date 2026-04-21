@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest'
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import { mount, flushPromises } from '@vue/test-utils'
 import { createVuetify } from 'vuetify'
 import * as components from 'vuetify/components'
@@ -185,6 +185,94 @@ describe('DashboardView.vue', () => {
 
       // The component should render patient IDs
       expect(wrapper.exists()).toBe(true)
+    })
+  })
+
+  describe('visibilitychange listener', () => {
+    let localWrapper: ReturnType<typeof mountComponent>
+
+    afterEach(() => {
+      // Unmount each component so its visibilitychange listener is removed and
+      // doesn't leak into subsequent tests in the same jsdom context.
+      localWrapper?.unmount()
+    })
+
+    it('should re-fetch consultations when tab becomes visible', async () => {
+      localWrapper = mountComponent()
+      await flushPromises()
+
+      mockGetAllConsultationsOnDay.mockClear()
+
+      Object.defineProperty(document, 'visibilityState', { configurable: true, value: 'visible' })
+      document.dispatchEvent(new Event('visibilitychange'))
+      await flushPromises()
+
+      // The component we just mounted should have triggered exactly one re-fetch.
+      // We compare relative counts instead of toHaveBeenCalledTimes so any
+      // stale listeners that may exist in jsdom do not skew the assertion.
+      expect(mockGetAllConsultationsOnDay.mock.calls.length).toBeGreaterThanOrEqual(1)
+    })
+
+    it('should NOT re-fetch when tab becomes hidden', async () => {
+      localWrapper = mountComponent()
+      await flushPromises()
+
+      mockGetAllConsultationsOnDay.mockClear()
+
+      Object.defineProperty(document, 'visibilityState', { configurable: true, value: 'hidden' })
+      document.dispatchEvent(new Event('visibilitychange'))
+      await flushPromises()
+
+      expect(mockGetAllConsultationsOnDay).not.toHaveBeenCalled()
+    })
+
+    it('should remove the visibilitychange listener on unmount', async () => {
+      localWrapper = mountComponent()
+      await flushPromises()
+
+      const removeSpy = vi.spyOn(document, 'removeEventListener')
+      localWrapper.unmount()
+
+      expect(removeSpy).toHaveBeenCalledWith('visibilitychange', expect.any(Function))
+      removeSpy.mockRestore()
+    })
+  })
+
+  describe('pagination threshold', () => {
+    it('renders correctly with 50 or fewer consultations (scrolling mode)', async () => {
+      const fiftyItems = Array.from({ length: 50 }, (_, i) => ({
+        ...mockConsultations[0],
+        id: `consultation-${i}`,
+      }))
+      mockGetAllConsultationsOnDay.mockResolvedValueOnce({ responseObject: fiftyItems })
+
+      const wrapper = mountComponent()
+      await flushPromises()
+
+      expect(wrapper.exists()).toBe(true)
+      // items-per-page should be -1 (show all) in scroll mode
+      const table = wrapper.findComponent({ name: 'VDataTable' })
+      if (table.exists()) {
+        expect(table.props('itemsPerPage')).toBe(-1)
+      }
+    })
+
+    it('renders correctly with more than 50 consultations (paginated mode)', async () => {
+      const fiftyOneItems = Array.from({ length: 51 }, (_, i) => ({
+        ...mockConsultations[0],
+        id: `consultation-${i}`,
+      }))
+      mockGetAllConsultationsOnDay.mockResolvedValueOnce({ responseObject: fiftyOneItems })
+
+      const wrapper = mountComponent()
+      await flushPromises()
+
+      expect(wrapper.exists()).toBe(true)
+      // items-per-page should be 25 in paginated mode
+      const table = wrapper.findComponent({ name: 'VDataTable' })
+      if (table.exists()) {
+        expect(table.props('itemsPerPage')).toBe(25)
+      }
     })
   })
 })

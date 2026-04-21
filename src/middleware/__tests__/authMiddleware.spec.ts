@@ -1,12 +1,18 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { authMiddleware } from '@/middleware/authMiddleware'
-import type { ResponseContext } from '@/api/runtime'
+import type { ResponseContext, RequestContext } from '@/api/runtime'
 import router from '@/router'
 
 // Mock dependencies - factories run at mock time
+const mockClearSession = vi.fn()
+const mockUpdateLastActivity = vi.fn()
+const mockIsAuthenticated = vi.fn(() => true)
+
 vi.mock('@/stores/userStore', () => ({
   useUserStore: vi.fn(() => ({
-    clearSession: vi.fn(),
+    clearSession: mockClearSession,
+    updateLastActivity: mockUpdateLastActivity,
+    isAuthenticated: mockIsAuthenticated,
   })),
 }))
 
@@ -130,5 +136,85 @@ describe('authMiddleware', () => {
 
       expect(result).toBe(context.response)
     })
+  })
+
+  describe('updateLastActivity', () => {
+    it('should call updateLastActivity for authenticated users on success', async () => {
+      mockIsAuthenticated.mockReturnValue(true)
+      const context = createMockContext(200)
+      await authMiddleware.post!(context)
+
+      expect(mockUpdateLastActivity).toHaveBeenCalled()
+    })
+
+    it('should NOT call updateLastActivity when user is not authenticated', async () => {
+      mockIsAuthenticated.mockReturnValue(false)
+      const context = createMockContext(200)
+      await authMiddleware.post!(context)
+
+      expect(mockUpdateLastActivity).not.toHaveBeenCalled()
+    })
+  })
+
+  describe('401 on /user/login endpoint', () => {
+    it('should return the response directly without redirecting', async () => {
+      const loginContext = createMockContext(401)
+      // Override url to simulate login endpoint
+      const loginCtx: ResponseContext = {
+        ...loginContext,
+        url: 'http://api.example.com/user/login',
+      }
+      const result = await authMiddleware.post!(loginCtx)
+
+      expect(result).toBe(loginCtx.response)
+      expect(router.push).not.toHaveBeenCalled()
+    })
+  })
+})
+
+// ---------------------------------------------------------------------------
+// pre hook
+// ---------------------------------------------------------------------------
+describe('authMiddleware – pre hook', () => {
+  function createRequestContext(overrides?: Partial<RequestContext>): RequestContext {
+    return {
+      url: 'http://api.example.com/consultations',
+      init: {},
+      fetch: () => Promise.resolve(new Response()),
+      ...overrides,
+    }
+  }
+
+  it('sets cache to "no-store"', async () => {
+    const ctx = createRequestContext()
+    const result = await authMiddleware.pre!(ctx)
+    expect(result?.init?.cache).toBe('no-store')
+  })
+
+  it('preserves the original url', async () => {
+    const ctx = createRequestContext({ url: 'http://api.example.com/patients/123' })
+    const result = await authMiddleware.pre!(ctx)
+    expect(result?.url).toBe('http://api.example.com/patients/123')
+  })
+
+  it('preserves existing init properties (method, headers, credentials)', async () => {
+    const ctx = createRequestContext({
+      init: {
+        method: 'POST',
+        headers: { Authorization: 'Bearer token' },
+        credentials: 'include',
+      },
+    })
+    const result = await authMiddleware.pre!(ctx)
+    expect(result?.init?.method).toBe('POST')
+    expect((result?.init?.headers as Record<string, string>)?.Authorization).toBe('Bearer token')
+    expect(result?.init?.credentials).toBe('include')
+  })
+
+  it('overrides any pre-existing cache value', async () => {
+    // Callers should not be able to accidentally set cache: 'default'
+    const ctx = createRequestContext({ init: { cache: 'default' } })
+    const result = await authMiddleware.pre!(ctx)
+    expect(result?.init?.cache).toBe('no-store')
   })
 })
