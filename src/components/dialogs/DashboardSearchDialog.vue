@@ -87,6 +87,12 @@ const openPatientCase = (caseId: string | undefined) => {
   }
 }
 
+// Navigate to creation flow when search has no results
+const startCreationFlow = () => {
+  closeDialog()
+  router.push({ name: 'creation-flow' })
+}
+
 // Main search function
 const performSearch = async () => {
   const raw = String(searchQuery.value || '').trim()
@@ -238,9 +244,14 @@ defineExpose({ openDialog })
         </v-chip>
 
         <!-- No Results Message -->
-        <v-alert v-if="showNoResultsMessage" type="info" variant="tonal" class="mb-4">
+        <v-alert v-if="showNoResultsMessage" type="info" variant="tonal" class="mb-3">
           {{ t('dashboardSearch.noResults') }}
         </v-alert>
+        <div v-if="showNoResultsMessage" class="d-flex justify-center mb-4">
+          <v-btn color="primary" prepend-icon="mdi-plus-circle" variant="tonal" @click="startCreationFlow">
+            {{ t('dashboardSearch.startCreationFlow') }}
+          </v-btn>
+        </div>
 
         <!-- Patient Results -->
         <v-card v-if="searchResultsPatients.length > 0" variant="outlined" class="mb-4">

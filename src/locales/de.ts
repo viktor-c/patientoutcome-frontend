@@ -306,6 +306,7 @@ export default {
     casesFound: 'Patientenfälle ({count})',
     consultationsFound: 'Konsultationen ({count})',
     case: 'Fall',
+    startCreationFlow: 'Neuen Patienten / Fall anlegen',
   },
   flow: {
     greeting: 'Willkommen im Patientenportal',

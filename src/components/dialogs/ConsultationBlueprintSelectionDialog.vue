@@ -260,6 +260,32 @@ const createConsultationsFromBlueprints = async () => {
     })
 
     // Create all consultations
+        // Assign formAccessCode to at most one consultation.
+        // If any already-created consultation already has a code, strip codes from all blueprint entries.
+        // Otherwise give the code to: (1) the entry with timeDelta '0d', or (2) the one closest to now.
+        const manualConsultationHasCode = createdConsultations.value.some(c => !!c.formAccessCode)
+        const anyCode = consultationsToCreate.value.find(c => !!c.formAccessCode)?.formAccessCode
+        if (anyCode !== undefined) {
+          if (manualConsultationHasCode) {
+            consultationsToCreate.value = consultationsToCreate.value.map(c => ({ ...c, formAccessCode: undefined }))
+          } else {
+            const isZeroDelta = (td: string) => /^[+]?0[dD]$/.test(td.trim())
+            let designatedIndex = consultationsToCreate.value.findIndex(c => isZeroDelta(c.timeDelta))
+            if (designatedIndex === -1) {
+              const now = Date.now()
+              let minDiff = Infinity
+              consultationsToCreate.value.forEach((c, i) => {
+                const diff = Math.abs(new Date(c.calculatedDate).getTime() - now)
+                if (diff < minDiff) { minDiff = diff; designatedIndex = i }
+              })
+            }
+            consultationsToCreate.value = consultationsToCreate.value.map((c, i) => ({
+              ...c,
+              formAccessCode: i === designatedIndex ? anyCode : undefined,
+            }))
+          }
+        }
+
     const newConsultations: (Consultation & { blueprintTitle?: string })[] = []
     for (const consultationData of consultationsToCreate.value) {
       // Remove extra properties that are not part of CreateConsultation
