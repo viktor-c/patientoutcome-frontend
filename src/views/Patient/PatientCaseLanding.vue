@@ -21,12 +21,38 @@ import CreateBatchConsultationsDialog from '@/components/dialogs/CreateBatchCons
 import CreateEditSurgeryDialog from '@/components/dialogs/CreateEditSurgeryDialog.vue'
 import CascadeDeleteDialog from '@/components/dialogs/CascadeDeleteDialog.vue'
 import NotesEditor from '@/components/forms/NotesEditor.vue'
+import QRCodeDisplay from '@/components/QRCodeDisplay.vue'
+import { getConsultationAccessWindowFromConsultation } from '@/utils/consultationAccessWindow'
+import { getAccessInfo } from '@/utils/dashboardUtils'
+import { useUserStore } from '@/stores/userStore'
 
 const { t } = useI18n()
 const route = useRoute()
 const router = useRouter()
 const notifierStore = useNotifierStore()
+const userStore = useUserStore()
 const { formatLocalizedCustomDate, dateFormats } = useDateFormat()
+
+// Build the public patient flow URL for a consultation given its access code
+const buildConsultationFlowUrl = (consultation: Consultation): string | null => {
+  const access = getAccessInfo(consultation)
+  const code = access.code
+  if (!code) return null
+  const baseUrl = window.location.origin
+  return `${baseUrl}/flow/${code}`
+}
+
+const consultationAccessWindow = (consultation: Consultation) => {
+  return getConsultationAccessWindowFromConsultation(consultation, {
+    consultationAccessDaysBefore: userStore.consultationAccessDaysBefore,
+    consultationAccessDaysAfter: userStore.consultationAccessDaysAfter,
+  })
+}
+
+const consultationCodeLabel = (consultation: Consultation): string | null => {
+  const access = getAccessInfo(consultation)
+  return access.code || null
+}
 
 // Get caseId from route params
 const caseId = route.params.caseId as string
@@ -872,6 +898,20 @@ onMounted(() => {
               </v-list-item-subtitle>
 
               <template #append>
+                <template v-if="buildConsultationFlowUrl(consultation) && consultationCodeLabel(consultation)">
+                  <QRCodeDisplay
+                    :url="buildConsultationFlowUrl(consultation) || ''"
+                    :access-window="consultationAccessWindow(consultation)"
+                  >
+                    <template #activator="{ props }">
+                      <v-btn v-bind="props" variant="text" size="small" @click.stop :title="t('qrCode.showQRCode')">
+                        <v-icon start>mdi-qrcode</v-icon>
+                        {{ consultationCodeLabel(consultation) }}
+                      </v-btn>
+                    </template>
+                  </QRCodeDisplay>
+                </template>
+
                 <v-btn
                        v-if="canMoveConsultationToNow(consultation)"
                        icon="mdi-clock-edit-outline"
@@ -971,6 +1011,20 @@ onMounted(() => {
               </v-list-item-subtitle>
 
               <template #append>
+                <template v-if="buildConsultationFlowUrl(consultation) && consultationCodeLabel(consultation)">
+                  <QRCodeDisplay
+                    :url="buildConsultationFlowUrl(consultation) || ''"
+                    :access-window="consultationAccessWindow(consultation)"
+                  >
+                    <template #activator="{ props }">
+                      <v-btn v-bind="props" variant="text" size="small" @click.stop :title="t('qrCode.showQRCode')">
+                        <v-icon start>mdi-qrcode</v-icon>
+                        {{ consultationCodeLabel(consultation) }}
+                      </v-btn>
+                    </template>
+                  </QRCodeDisplay>
+                </template>
+
                 <v-btn
                        v-if="canMoveConsultationToNow(consultation)"
                        icon="mdi-clock-edit-outline"

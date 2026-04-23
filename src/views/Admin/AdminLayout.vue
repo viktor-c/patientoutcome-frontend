@@ -59,6 +59,11 @@ const adminMenuItems = [
     icon: 'mdi-delete-restore',
     route: 'admin-deleted-items'
   },
+  {
+    title: 'Form Access Codes',
+    icon: 'mdi-form-select',
+    route: 'admin-form-access-codes'
+  },
   // Add more admin items here in the future
 ];
 

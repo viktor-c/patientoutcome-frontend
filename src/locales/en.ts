@@ -1273,11 +1273,38 @@ export default {
     backupManagement: 'Backup Management',
     settingsManagement: 'Settings Management',
     deletedItemsManagement: 'Deleted Items Management',
+    formAccessCodesManagement: 'Form Access Codes Management',
     pluginFormDemo: 'Form Plugin System Demo',
     setup: 'Setup',
   },
 
   admin: {
+    formAccessCodes: {
+      title: 'Form Access Codes',
+      description: 'Manage form access codes and their consultation assignments.',
+      search: 'Search code or consultation',
+      table: {
+        code: 'Code',
+        activatedOn: 'Activated On',
+        expiresOn: 'Expires On',
+        consultation: 'Consultation',
+        actions: 'Actions',
+      },
+      openConsultation: 'Open Consultation',
+      extend: 'Extend code validity',
+      revoke: 'Revoke code',
+      delete: 'Delete code',
+      confirmDelete: 'Delete code "{code}" permanently?',
+      messages: {
+        extended: 'Code "{code}" was extended.',
+        revoked: 'Code "{code}" was revoked.',
+        deleted: 'Code "{code}" was deleted.',
+      },
+      errors: {
+        loadFailed: 'Failed to load form access codes.',
+        actionFailed: 'Failed to perform code action.',
+      },
+    },
     deletedItemsManagement: {
       title: 'Deleted Items Management',
       deletedPatients: 'Deleted Patients',

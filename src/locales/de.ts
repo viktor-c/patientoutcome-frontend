@@ -1272,6 +1272,7 @@ export default {
     backupManagement: 'Sicherungsverwaltung',
     settingsManagement: 'Einstellungsverwaltung',
     deletedItemsManagement: 'Verwaltung gelöschter Elemente',
+    formAccessCodesManagement: 'Verwaltung von Formularzugriffscodes',
     pluginFormDemo: 'Formular-Plugin-System-Demo',
     setup: 'Einrichtung',
     activityLog: 'Aktivitätsprotokoll',
@@ -1279,6 +1280,32 @@ export default {
   },
 
   admin: {
+    formAccessCodes: {
+      title: 'Formularzugriffscodes',
+      description: 'Verwalten Sie Formularzugriffscodes und ihre Konsultationszuordnungen.',
+      search: 'Code oder Konsultation suchen',
+      table: {
+        code: 'Code',
+        activatedOn: 'Aktiviert am',
+        expiresOn: 'Gültig bis',
+        consultation: 'Konsultation',
+        actions: 'Aktionen',
+      },
+      openConsultation: 'Konsultation öffnen',
+      extend: 'Code-Gültigkeit verlängern',
+      revoke: 'Code widerrufen',
+      delete: 'Code löschen',
+      confirmDelete: 'Code "{code}" dauerhaft löschen?',
+      messages: {
+        extended: 'Code "{code}" wurde verlängert.',
+        revoked: 'Code "{code}" wurde widerrufen.',
+        deleted: 'Code "{code}" wurde gelöscht.',
+      },
+      errors: {
+        loadFailed: 'Formularzugriffscodes konnten nicht geladen werden.',
+        actionFailed: 'Code-Aktion konnte nicht ausgeführt werden.',
+      },
+    },
     deletedItemsManagement: {
       title: 'Verwaltung gelöschter Elemente',
       deletedPatients: 'Gelöschte Patienten',

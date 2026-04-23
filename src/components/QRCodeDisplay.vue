@@ -1,16 +1,18 @@
 <template>
   <v-dialog v-model="dialogOpen" max-width="400">
     <template v-slot:activator="{ props }">
-      <v-btn
-        v-bind="props"
-        color="primary"
-        variant="text"
-        size="small"
-        :loading="loading"
-      >
-        <v-icon start>mdi-qrcode</v-icon>
-        {{ t('qrCode.showQRCode') }}
-      </v-btn>
+      <slot name="activator" :props="props">
+        <v-btn
+          v-bind="props"
+          color="primary"
+          variant="text"
+          size="small"
+          :loading="loading"
+        >
+          <v-icon start>mdi-qrcode</v-icon>
+          {{ t('qrCode.showQRCode') }}
+        </v-btn>
+      </slot>
     </template>
 
     <v-card>
