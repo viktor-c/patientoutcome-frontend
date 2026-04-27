@@ -12,6 +12,9 @@
     "test:e2e:chromium:serial": "playwright test --project=chromium --workers=1",
     "build-only": "vite build",
     "type-check": "vue-tsc --build",
+    "i18n:check": "node scripts/check-i18n.cjs",
+    "i18n:check:usage": "node scripts/check-i18n.cjs --check-usage",
+    "i18n:check:duplicates": "node scripts/check-i18n.cjs --check-duplicates",
     "lint": "eslint . --fix",
     "format": "prettier --write src/",
     "regenerate-api": "rm -rf src/api && npx @openapitools/openapi-generator-cli generate -i http://localhost:40001/openapi/v1/swagger.json -g typescript-fetch -o src/api"
