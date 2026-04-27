@@ -183,7 +183,8 @@ describe('IcdOpsSearchField.vue', () => {
   })
 
   it('emits update:modelValue when item clicked (single mode)', async () => {
-    mockState.items.value = [{ code: 'A00', label: 'Cholera', kind: 'category' }]
+    mockState.searchMode.value = 'code-prefix'
+    mockState.items.value = [{ code: 'A00.0', label: 'Cholera due to Vibrio cholerae', kind: 'category' }]
     mockState.totalResults.value = 1
 
     const wrapper = mountComponent()
@@ -199,11 +200,12 @@ describe('IcdOpsSearchField.vue', () => {
 
     const emitted = wrapper.emitted('update:modelValue')
     expect(emitted).toBeTruthy()
-    expect(emitted![emitted!.length - 1][0]).toBe('A00')
+    expect(emitted![emitted!.length - 1][0]).toBe('A00.0')
   })
 
   it('returns full object when returnObject=true', async () => {
-    mockState.items.value = [{ code: 'A00', label: 'Cholera', kind: 'category' }]
+    mockState.searchMode.value = 'code-prefix'
+    mockState.items.value = [{ code: 'A00.0', label: 'Cholera due to Vibrio cholerae', kind: 'category' }]
 
     const wrapper = mountComponent({ returnObject: true })
     await wrapper.find('.icd-ops-trigger').trigger('click')
@@ -219,7 +221,7 @@ describe('IcdOpsSearchField.vue', () => {
     expect(emitted).toBeTruthy()
     const val = emitted![emitted!.length - 1][0]
     expect(typeof val).toBe('object')
-    expect((val as { code?: string }).code).toBe('A00')
+    expect((val as { code?: string }).code).toBe('A00.0')
   })
 
   it('shows search mode indicator in dialog', async () => {
@@ -406,9 +408,10 @@ describe('IcdOpsSearchField.vue', () => {
     })
 
     it('selects multiple items and emits array', async () => {
+      mockState.searchMode.value = 'code-prefix'
       mockState.items.value = [
-        { code: 'A00', label: 'Cholera', kind: 'category' },
-        { code: 'A01', label: 'Typhus', kind: 'category' },
+        { code: 'A00.0', label: 'Cholera due to Vibrio cholerae', kind: 'category' },
+        { code: 'A01.0', label: 'Typhoid fever', kind: 'category' },
       ]
 
       const wrapper = mountComponent({ multiple: true })

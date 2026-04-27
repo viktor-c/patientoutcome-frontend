@@ -15,6 +15,7 @@
       </v-card-title>
 
       <v-card-text>
+
         <!-- Reference Date Info -->
         <v-row v-if="statistics && ((statistics as any).surgeryDate || (statistics as any).caseCreatedAt)" class="mb-4">
           <v-col>
@@ -55,7 +56,6 @@
         <v-row class="mb-4">
           <v-col>
             <v-alert type="info" variant="tonal" density="compact">
-              <v-icon start>mdi-information-outline</v-icon>
               {{ t('statistics.normalizationNote') }}
             </v-alert>
           </v-col>
@@ -215,7 +215,7 @@ const notifierStore = useNotifierStore();
 const currentLocale = computed(() => locale.value === 'de' ? 'de-DE' : 'en-US');
 
 const caseId = computed(() => route.params.caseId as string);
-const timelineMode = ref<"realTime" | "fixedInterval">("realTime");
+const timelineMode = ref<"realTime" | "fixedInterval">("fixedInterval");
 const loading = ref(false);
 const error = ref<string | null>(null);
 const statistics = ref<StatisticsWithSurgeries | null>(null);
@@ -266,6 +266,31 @@ const toChartScore = (category: "aofas" | "efas" | "moxfq" | "vas", normalizedSc
 const formatScoreForTooltip = (value: number | null | undefined): string => {
   if (value == null || Number.isNaN(value)) return t('common.notAvailable');
   return Number.isInteger(value) ? String(value) : value.toFixed(2);
+};
+
+const getValidDate = (value: string | null | undefined): Date | null => {
+  if (!value) return null;
+
+  const parsed = new Date(value);
+  return Number.isNaN(parsed.getTime()) ? null : parsed;
+};
+
+const getConsultationDate = (consultation: StatisticsConsultation): Date | null => {
+  const consultationLevelDate = getValidDate(consultation.date ?? consultation.completedAt ?? null);
+  if (consultationLevelDate) return consultationLevelDate;
+
+  if (!consultation.proms || consultation.proms.length === 0) return null;
+
+  const scoredPromDates = (consultation.proms as ConsultationProm[])
+    .filter((prom) => prom.scoring && prom.scoring.totalScore != null)
+    .map((prom) => {
+      const completedAt = getValidDate((prom as PromWithTemplate).completedAt ?? null);
+      return completedAt ?? getValidDate(prom.createdAt);
+    })
+    .filter((date): date is Date => date !== null)
+    .sort((a, b) => a.getTime() - b.getTime());
+
+  return scoredPromDates[0] ?? null;
 };
 
 const getPointScoresByCategory = (point: RealTimePoint & Record<string, unknown>, category: "aofas" | "efas" | "moxfq" | "vas") => {
@@ -332,8 +357,14 @@ type PromWithTemplate = ConsultationProm & {
   formTemplateId?: string | null;
 };
 
+type StatisticsConsultation = CaseConsultation & {
+  date?: string | null;
+  completedAt?: string | null;
+  completionTimeSeconds?: number | null;
+};
+
 // Convert consultations returned by getCaseStatistics into the score-data shape
-const computeScoreDataFromConsultations = (consultations: CaseConsultation[] | undefined) => {
+const computeScoreDataFromConsultations = (consultations: StatisticsConsultation[] | undefined) => {
   if (!consultations || consultations.length === 0) return null;
 
   const realTime: RealTimePoint[] = [];
@@ -349,19 +380,12 @@ const computeScoreDataFromConsultations = (consultations: CaseConsultation[] | u
   
   // Add consultations
   consultations.forEach((consultation) => {
-    const firstPromWithScore = consultation.proms && consultation.proms.length > 0
-      ? (consultation.proms as ConsultationProm[]).find(
-        p => p.scoring && p.scoring.totalScore != null,
-      )
-      : null;
+    const consultationDate = getConsultationDate(consultation);
 
-    // Include only consultations with at least one scored form
-    if (!firstPromWithScore?.createdAt) {
+    // Include only consultations with at least one scored form and a valid date
+    if (!consultationDate) {
       return;
     }
-
-    const dateStr = firstPromWithScore.createdAt.toString();
-    const consultationDate = new Date(dateStr);
     
     mixedItems.push({
       type: 'consultation',
@@ -391,7 +415,7 @@ const computeScoreDataFromConsultations = (consultations: CaseConsultation[] | u
     if (item.type === 'surgery') {
       // For fixed interval, add a blank point for the surgery space
       (fixedInterval as unknown as Array<Record<string, unknown>>).push({
-        date: item.date.toString(),
+        date: item.date.toISOString(),
         dateIndex: fixedIntervalIdx++,
         aofasScore: null,
         efasScore: null,
@@ -403,7 +427,7 @@ const computeScoreDataFromConsultations = (consultations: CaseConsultation[] | u
     } else {
       // It's a consultation
       const consultation = item.data as CaseConsultation;
-      const dateStr = item.date.toString();
+      const dateStr = item.date.toISOString();
       dates.push(item.date);
       
       let aofasScore: number | null = null;
@@ -570,9 +594,25 @@ const chartData = computed<ChartData<"line"> | null>(() => {
   // For fixedInterval mode, we use simple labels
   const isRealTime = timelineMode.value === "realTime";
 
+  let consultationNumber = 0;
   const labels = isRealTime
     ? [] // Not used for time scale with {x, y} data
-    : data.map((_, index) => t('statistics.visit', { number: index + 1 }));
+    : data.map((point) => {
+      const p = point as RealTimePoint & Record<string, unknown>;
+      const dateStr = p.date as string | undefined;
+      const dateLabel = dateStr
+        ? new Date(dateStr).toLocaleDateString(currentLocale.value, { day: '2-digit', month: 'short', year: 'numeric' })
+        : '';
+      if (p.isSurgery) {
+        return dateLabel
+          ? [String(t('statistics.surgery')), dateLabel]
+          : String(t('statistics.surgery'));
+      }
+      consultationNumber++;
+      return dateLabel
+        ? [String(t('statistics.visit', { number: consultationNumber })), dateLabel]
+        : String(t('statistics.visit', { number: consultationNumber }));
+    });
 
   const datasets = [];
 
@@ -830,9 +870,15 @@ const chartOptions = computed(() => {
       || (stats?.caseCreatedAt ? new Date(stats.caseCreatedAt) : null)
       || new Date();
 
-    const xAxisStartDate = [firstScoredConsultationDate, earliestSurgeryDate]
-      .filter((value): value is Date => value !== null)
-      .sort((a, b) => a.getTime() - b.getTime())[0] ?? referenceDate;
+    // Start the x-axis at most 3 months before the first consultation.
+    // If the surgery is within that window it will be visible; otherwise it is
+    // annotated off-screen rather than forcing a year-long empty gap.
+    const threeMonthsBeforeFirst = firstScoredConsultationDate
+      ? new Date(firstScoredConsultationDate.getTime() - 90 * 24 * 60 * 60 * 1000)
+      : referenceDate;
+    const xAxisStartDate = (earliestSurgeryDate && earliestSurgeryDate >= threeMonthsBeforeFirst)
+      ? earliestSurgeryDate
+      : threeMonthsBeforeFirst;
 
     const isSurgeryReference = !!stats?.surgeryDate;
 
