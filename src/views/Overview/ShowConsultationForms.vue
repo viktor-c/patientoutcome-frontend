@@ -455,13 +455,27 @@ const isSmallScreen = computed(() => window.innerWidth < 1300)
 
 .language-selector-floating {
   position: fixed;
-  top: 00px;
+  top: 0;
   right: 15%;
   z-index: 10;
   background: white;
   border-radius: 4px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
   opacity: 0.8;
+}
+
+@media (max-width: 960px) {
+  .language-selector-floating {
+    position: static;
+    display: flex;
+    justify-content: flex-end;
+    padding: 8px 12px 0;
+    margin-bottom: 4px;
+    background: transparent;
+    box-shadow: none;
+    opacity: 1;
+    z-index: auto;
+  }
 }
 
 .small-container {
