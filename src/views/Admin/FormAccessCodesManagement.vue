@@ -326,7 +326,7 @@ onMounted(() => {
       <v-card-actions>
         <v-spacer />
         <v-btn variant="text" @click="showActivationStartDialog = false">{{ t('buttons.cancel') }}</v-btn>
-        <v-btn color="primary" @click="safeSaveActivationStart" :loading="selectedCodeForActivationStart && actionLoadingCode === selectedCodeForActivationStart.code">
+        <v-btn color="primary" @click="safeSaveActivationStart" :loading="!!selectedCodeForActivationStart && actionLoadingCode === selectedCodeForActivationStart.code">
           {{ t('buttons.save') }}
         </v-btn>
       </v-card-actions>
