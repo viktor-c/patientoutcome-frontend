@@ -2,19 +2,24 @@
 import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
-import { codeApi } from '@/api'
+import { codeApi, setCodeActivationStart } from '@/api'
 import { useNotifierStore } from '@/stores/notifierStore'
 import type { ApiCode } from '@/types'
 import { ResponseError } from '@/api'
+import { useDateFormat } from '@/composables/useDateFormat'
 
-const { t } = useI18n()
+const { t, locale } = useI18n()
 const router = useRouter()
 const notifierStore = useNotifierStore()
+const { formatLocalizedDate, dateFormats, getLocalizedDayjs } = useDateFormat()
 
 const loading = ref(false)
 const rows = ref<ApiCode[]>([])
 const actionLoadingCode = ref<string | null>(null)
 const search = ref('')
+const showActivationStartDialog = ref(false)
+const selectedCodeForActivationStart = ref<ApiCode | null>(null)
+const activationStartInput = ref<Date | null>(null)
 
 const headers = computed(() => [
   { title: t('admin.formAccessCodes.table.code'), key: 'code', sortable: true },
@@ -26,7 +31,13 @@ const headers = computed(() => [
 
 const formatDateTime = (value?: string) => {
   if (!value) return '-'
-  return new Date(value).toLocaleString()
+  return formatLocalizedDate(value, dateFormats.dateTime)
+}
+
+const toDateTimePickerValue = (value?: string) => {
+  if (!value) return null
+  const parsed = new Date(value)
+  return Number.isNaN(parsed.getTime()) ? null : parsed
 }
 
 const consultationIdForCode = (code: ApiCode): string | null => {
@@ -86,6 +97,30 @@ const revokeCode = async (code: ApiCode) => {
   })
 }
 
+const openSetActivationStartDialog = (code: ApiCode) => {
+  selectedCodeForActivationStart.value = code
+  activationStartInput.value = toDateTimePickerValue(code.activatedOn)
+  showActivationStartDialog.value = true
+}
+
+const saveActivationStart = async () => {
+  const code = selectedCodeForActivationStart.value
+  if (!code || !activationStartInput.value) {
+    notifierStore.notify(t('admin.formAccessCodes.errors.invalidActivationStart'), 'error')
+    return
+  }
+
+  const iso = activationStartInput.value.toISOString()
+  await withCodeAction(code.code, async () => {
+    await setCodeActivationStart(code.code, iso)
+    notifierStore.notify(t('admin.formAccessCodes.messages.activationStartUpdated', { code: code.code }), 'success')
+  })
+
+  showActivationStartDialog.value = false
+  selectedCodeForActivationStart.value = null
+  activationStartInput.value = null
+}
+
 const deleteCode = async (code: ApiCode) => {
   const confirmed = window.confirm(t('admin.formAccessCodes.confirmDelete', { code: code.code }))
   if (!confirmed) return
@@ -138,6 +173,14 @@ const safeRevokeCode = async (code: ApiCode) => {
 const safeDeleteCode = async (code: ApiCode) => {
   try {
     await deleteCode(code)
+  } catch (error: unknown) {
+    await handleActionError(error)
+  }
+}
+
+const safeSaveActivationStart = async () => {
+  try {
+    await saveActivationStart()
   } catch (error: unknown) {
     await handleActionError(error)
   }
@@ -211,6 +254,15 @@ onMounted(() => {
           <template #item.actions="{ item }">
             <div class="d-flex ga-1">
               <v-btn
+                icon="mdi-clock-start"
+                size="small"
+                variant="text"
+                color="secondary"
+                :loading="actionLoadingCode === item.code"
+                @click="openSetActivationStartDialog(item)"
+                :title="t('admin.formAccessCodes.setActivationStart')"
+              />
+              <v-btn
                 icon="mdi-calendar-clock"
                 size="small"
                 variant="text"
@@ -243,4 +295,41 @@ onMounted(() => {
       </v-card-text>
     </v-card>
   </v-container>
+
+  <v-dialog v-model="showActivationStartDialog" max-width="500">
+    <v-card>
+      <v-card-title>{{ t('admin.formAccessCodes.setActivationStartTitle') }}</v-card-title>
+      <v-card-text>
+        <div class="text-body-2 mb-3">
+          {{ t('admin.formAccessCodes.setActivationStartDescription', { code: selectedCodeForActivationStart?.code || '' }) }}
+        </div>
+        <v-text-field
+          :model-value="activationStartInput ? formatLocalizedDate(activationStartInput, dateFormats.dateTime) : ''"
+          :label="t('admin.formAccessCodes.table.activatedOn')"
+          variant="outlined"
+          readonly
+          hide-details="auto"
+          class="mb-3"
+        />
+        <VueDatePicker
+          v-model="activationStartInput"
+          :locale="locale"
+          week-num-name="Wo"
+          format="dd.MM.yyyy HH:mm"
+          week-numbers="iso"
+          :text-input="true"
+          :teleport-center="true"
+          :cancelText="t('buttons.cancelTimeDateText')"
+          :selectText="t('buttons.selectTimeDateText')"
+        />
+      </v-card-text>
+      <v-card-actions>
+        <v-spacer />
+        <v-btn variant="text" @click="showActivationStartDialog = false">{{ t('buttons.cancel') }}</v-btn>
+        <v-btn color="primary" @click="safeSaveActivationStart" :loading="selectedCodeForActivationStart && actionLoadingCode === selectedCodeForActivationStart.code">
+          {{ t('buttons.save') }}
+        </v-btn>
+      </v-card-actions>
+    </v-card>
+  </v-dialog>
 </template>

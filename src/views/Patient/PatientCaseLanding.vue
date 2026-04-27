@@ -904,7 +904,7 @@ onMounted(() => {
                     :access-window="consultationAccessWindow(consultation)"
                   >
                     <template #activator="{ props }">
-                      <v-btn v-bind="props" variant="text" size="small" @click.stop :title="t('qrCode.showQRCode')">
+                      <v-btn v-bind="props" variant="text" size="small" @click.stop :title="t('qrCode.showQRCode')" class="code-label-btn">
                         <v-icon start>mdi-qrcode</v-icon>
                         {{ consultationCodeLabel(consultation) }}
                       </v-btn>
@@ -1017,7 +1017,7 @@ onMounted(() => {
                     :access-window="consultationAccessWindow(consultation)"
                   >
                     <template #activator="{ props }">
-                      <v-btn v-bind="props" variant="text" size="small" @click.stop :title="t('qrCode.showQRCode')">
+                      <v-btn v-bind="props" variant="text" size="small" @click.stop :title="t('qrCode.showQRCode')" class="code-label-btn">
                         <v-icon start>mdi-qrcode</v-icon>
                         {{ consultationCodeLabel(consultation) }}
                       </v-btn>
@@ -1243,5 +1243,9 @@ onMounted(() => {
 .v-list-item {
   border-radius: 8px;
   margin-bottom: 4px;
+}
+
+.code-label-btn :deep(.v-btn__content) {
+  text-transform: none;
 }
 </style>

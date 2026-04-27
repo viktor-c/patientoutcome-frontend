@@ -149,6 +149,22 @@ export async function renewCode(code: string) {
   return await res.json();
 }
 
+export async function setCodeActivationStart(code: string, activatedOn: string) {
+  const base = apiConfig.basePath ?? '';
+  const url = `${base.replace(/\/$/, '')}/form-access-code/activation-start/${encodeURIComponent(code)}`;
+  const res = await fetch(url, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    credentials: 'include',
+    body: JSON.stringify({ activatedOn }),
+  });
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`Failed to set code activation start: ${res.status} ${res.statusText}: ${text}`);
+  }
+  return await res.json();
+}
+
 /**
  * Lightweight session health probe.  Calls `GET /user/session` and returns:
  * - `{ authenticated: true, username, expiresAt }` when the session is active
