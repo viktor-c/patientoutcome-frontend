@@ -8,11 +8,13 @@ interface Props {
   notes: Note[]
   title?: string
   addButtonText?: string
+  hideAddButton?: boolean
 }
 
 const props = withDefaults(defineProps<Props>(), {
   title: 'notes.title',
-  addButtonText: 'notes.addNote'
+  addButtonText: 'notes.addNote',
+  hideAddButton: false,
 })
 
 const emit = defineEmits<{
@@ -89,6 +91,10 @@ function deleteNote(index: number) {
   localNotes.value.splice(index, 1)
   emit('update:notes', localNotes.value)
 }
+
+defineExpose({
+  addNote,
+})
 </script>
 
 <template>
@@ -158,7 +164,7 @@ function deleteNote(index: number) {
       </v-list>
 
       <v-btn
-             v-if="editingNoteIndex === null"
+              v-if="!props.hideAddButton && editingNoteIndex === null"
              color="primary"
              @click="addNote"
              class="mt-2"

@@ -2,7 +2,7 @@
 import { ref } from 'vue'
 import PluginFormRenderer from '@/forms/components/PluginFormRenderer.vue'
 
-import { formtemplateApi } from '@/api'
+import { formtemplateApi, redeployFormTemplates } from '@/api'
 import type { ApiFormTemplate as FormTemplate, PatientFormData } from '@/types'
 import { getAccessLevelColor, getAccessLevelDescription } from '@/services/formVersionService'
 
@@ -14,8 +14,10 @@ const formData = ref<PatientFormData | null>(null)
 const selectedTemplate = ref<FormTemplate | null>(null)
 const loadingTemplate = ref(false)
 const savingAccessLevel = ref(false)
+const redeployingTemplates = ref(false)
 const editableAccessLevel = ref<'patient' | 'authenticated' | 'inactive'>('patient')
-const saveStatus = ref<{ type: 'success' | 'error' | 'info'; message: string } | null>(null)
+const templateActionStatus = ref<{ type: 'success' | 'error' | 'info'; message: string } | null>(null)
+const redeployStatus = ref<{ type: 'success' | 'error' | 'info'; message: string } | null>(null)
 
 const accessLevelOptions = [
   { title: 'Patient', value: 'patient' },
@@ -47,6 +49,23 @@ const loadTemplates = async () => {
   }
 }
 
+const runTemplateRedeploy = async () => {
+  try {
+    redeployingTemplates.value = true
+    redeployStatus.value = { type: 'info', message: 'Redeploying form templates and department mappings...' }
+
+    await redeployFormTemplates()
+    await loadTemplates()
+
+    redeployStatus.value = { type: 'success', message: 'Form templates redeployed successfully.' }
+  } catch (error) {
+    console.error('Failed to redeploy form templates:', error)
+    redeployStatus.value = { type: 'error', message: 'Failed to redeploy form templates. Ensure you are logged in as admin.' }
+  } finally {
+    redeployingTemplates.value = false
+  }
+}
+
 // Load template details
 const loadTemplateDetails = async (templateId: string) => {
   try {
@@ -71,7 +90,7 @@ const saveTemplateAccessLevel = async () => {
 
   try {
     savingAccessLevel.value = true
-    saveStatus.value = null
+    templateActionStatus.value = null
 
     await formtemplateApi.updateFormTemplate({
       templateId: selectedTemplateId.value,
@@ -93,10 +112,10 @@ const saveTemplateAccessLevel = async () => {
       availableTemplates.value[index].accessLevel = editableAccessLevel.value
     }
 
-    saveStatus.value = { type: 'success', message: 'Access level updated successfully.' }
+    templateActionStatus.value = { type: 'success', message: 'Access level updated successfully.' }
   } catch (error) {
     console.error('Failed to update access level:', error)
-    saveStatus.value = { type: 'error', message: 'Failed to update access level.' }
+    templateActionStatus.value = { type: 'error', message: 'Failed to update access level.' }
   } finally {
     savingAccessLevel.value = false
   }
@@ -157,6 +176,14 @@ const handleTemplateChange = () => {
         <v-card variant="outlined">
           <v-card-title>Select Template</v-card-title>
           <v-card-text>
+            <v-alert
+                     v-if="templateActionStatus"
+                     :type="templateActionStatus.type"
+                     variant="tonal"
+                     class="mb-3">
+              {{ templateActionStatus.message }}
+            </v-alert>
+
             <v-skeleton-loader
                                v-if="loading"
                                type="list-item-three-line@3"
@@ -190,21 +217,8 @@ const handleTemplateChange = () => {
                 </div>
               </template>
             </v-select>
-          </v-card-text>
-        </v-card>
-      </v-col>
 
-      <v-col cols="12" md="6">
-        <v-card variant="outlined">
-          <v-card-title>Actions</v-card-title>
-          <v-card-text>
-            <v-alert
-                     v-if="saveStatus"
-                     :type="saveStatus.type"
-                     variant="tonal"
-                     class="mb-3">
-              {{ saveStatus.message }}
-            </v-alert>
+            <v-divider class="my-4"></v-divider>
 
             <v-select
                       v-model="editableAccessLevel"
@@ -246,10 +260,12 @@ const handleTemplateChange = () => {
                    color="primary"
                    variant="outlined"
                    @click="resetForm"
-                   block>
+                   block
+                   class="mb-2">
               <v-icon left>mdi-refresh</v-icon>
               Reset Form
             </v-btn>
+
             <v-btn
                    color="secondary"
                    variant="outlined"
@@ -258,6 +274,37 @@ const handleTemplateChange = () => {
                    :disabled="!formData || !formData.rawFormData || Object.keys(formData.rawFormData).length === 0">
               <v-icon left>mdi-calculator</v-icon>
               Calculate Score
+            </v-btn>
+          </v-card-text>
+        </v-card>
+      </v-col>
+
+      <v-col cols="12" md="6">
+        <v-card variant="outlined">
+          <v-card-title>Redeploy Templates</v-card-title>
+          <v-card-text>
+            <v-alert
+                     v-if="redeployStatus"
+                     :type="redeployStatus.type"
+                     variant="tonal"
+                     class="mb-3">
+              {{ redeployStatus.message }}
+            </v-alert>
+
+            <div class="text-body-2 text-medium-emphasis mb-3">
+              Use this only when backend template or mapping changes must be applied to an existing deployment.
+            </div>
+
+            <v-btn
+                   color="warning"
+                   variant="outlined"
+                   @click="runTemplateRedeploy"
+                   :loading="redeployingTemplates"
+                   :disabled="redeployingTemplates"
+                   block
+                   class="mb-2">
+              <v-icon left>mdi-database-refresh</v-icon>
+              Redeploy Form Templates
             </v-btn>
           </v-card-text>
         </v-card>

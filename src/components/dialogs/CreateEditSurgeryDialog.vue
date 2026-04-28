@@ -252,6 +252,21 @@ const sideOptions = [
   { value: 'right', title: t('surgery.side.right') },
 ]
 
+const applyCaseDiagnosisIcd10Overrides = () => {
+  if (!props.patientCaseData) return
+
+  const mergedIcd10 = [
+    ...(props.patientCaseData.mainDiagnosisICD10 || []),
+    ...(props.patientCaseData.otherDiagnosisICD10 || []),
+  ]
+    .map((entry) => (entry || '').trim())
+    .filter((entry) => entry.length > 0)
+
+  if (mergedIcd10.length > 0) {
+    form.value.diagnosisICD10 = [...new Set(mergedIcd10)]
+  }
+}
+
 // Load available anaesthesia types (this could come from an API in the future)
 const loadAnaesthesiaTypes = () => {
   availableAnaesthesiaTypes.value = [
@@ -432,6 +447,9 @@ const applyBlueprint = (blueprint: Blueprint) => {
   form.value.surgeryDate = currentSurgeryDate
   timeOfDay.value = currentTimeOfDay
 
+  // Patient case ICD10 selections must override blueprint presets.
+  applyCaseDiagnosisIcd10Overrides()
+
   // Extract consultation blueprint IDs if present
   if (content.consultations && Array.isArray(content.consultations)) {
     console.log('Found consultation blueprint IDs in surgery blueprint:', content.consultations)
@@ -514,9 +532,7 @@ onMounted(async () => {
       if (props.patientCaseData.mainDiagnosis?.length) {
         form.value.diagnosis = [...props.patientCaseData.mainDiagnosis]
       }
-      if (props.patientCaseData.mainDiagnosisICD10?.length) {
-        form.value.diagnosisICD10 = [...props.patientCaseData.mainDiagnosisICD10]
-      }
+      applyCaseDiagnosisIcd10Overrides()
     }
     // Autoselect current user as surgeon if they are a doctor
     if (userStore.hasRole('doctor')) {
@@ -787,6 +803,8 @@ defineExpose({
                       outlined
                       dense
                       required
+                      class="operation-side-select"
+                      :base-color="hasError('side') ? 'error' : undefined"
                       :hint="t('forms.hints.required')"
                       persistent-hint
                       :error="hasError('side')"
@@ -940,5 +958,9 @@ defineExpose({
   border-color: rgb(var(--v-theme-primary));
   border-width: 2px;
   outline: none;
+}
+
+.operation-side-select :deep(.v-field--error) {
+  box-shadow: 0 0 0 2px rgba(var(--v-theme-error), 0.15);
 }
 </style>

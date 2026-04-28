@@ -105,6 +105,35 @@ export async function updateDepartmentConsultationAccessWindow(
   return await res.json();
 }
 
+/**
+ * Re-deploy form templates and department mappings on an already deployed backend.
+ * Requires an authenticated admin session and forceSeeding enabled by backend policy.
+ */
+export async function redeployFormTemplates() {
+  const base = apiConfig.basePath ?? '';
+  const normalizedBase = base.replace(/\/$/, '');
+  const forceSeedingQuery = '?forceSeeding=true';
+
+  const endpoints = [
+    `${normalizedBase}/seed/formTemplate${forceSeedingQuery}`,
+    `${normalizedBase}/seed/department-formtemplate-mappings${forceSeedingQuery}`,
+  ];
+
+  for (const url of endpoints) {
+    const res = await fetch(url, {
+      method: 'GET',
+      credentials: 'include',
+    });
+
+    if (!res.ok) {
+      const text = await res.text();
+      throw new Error(`Failed to redeploy form templates: ${res.status} ${res.statusText}: ${text}`);
+    }
+  }
+
+  return { success: true };
+}
+
 export async function activateCodeForCase(code: string, caseId: string) {
   const base = apiConfig.basePath ?? '';
   const url = `${base.replace(/\/$/, '')}/form-access-code/activate/${encodeURIComponent(code)}/case/${encodeURIComponent(caseId)}`;
@@ -161,6 +190,21 @@ export async function setCodeActivationStart(code: string, activatedOn: string) 
   if (!res.ok) {
     const text = await res.text();
     throw new Error(`Failed to set code activation start: ${res.status} ${res.statusText}: ${text}`);
+  }
+  return await res.json();
+}
+
+export async function resetConsultationFormsByCode(code: string) {
+  const base = apiConfig.basePath ?? '';
+  const url = `${base.replace(/\/$/, '')}/form-access-code/reset-consultation/${encodeURIComponent(code)}`;
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    credentials: 'include',
+  });
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`Failed to reset consultation forms: ${res.status} ${res.statusText}: ${text}`);
   }
   return await res.json();
 }

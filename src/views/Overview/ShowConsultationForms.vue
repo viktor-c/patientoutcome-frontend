@@ -9,6 +9,7 @@ import { useNotifierStore } from '@/stores/notifierStore'
 import { logger } from '@/services/logger'
 import { useConsultationFlow } from '@/composables/useConsultationFlow'
 import { getConsultationAccessWindowFromConsultation, type ConsultationAccessWindow } from '@/utils/consultationAccessWindow'
+import { formatDateTimeForLocale } from '@/utils/localeDateTime'
 
 import type { Form, PatientFormData } from '@/types/index'
 import type { FormSubmissionData } from '@/forms/types'
@@ -312,8 +313,8 @@ const isSmallScreen = computed(() => window.innerWidth < 1300)
       <v-icon start>mdi-calendar-clock</v-icon>
       <span>
         {{ t('qrCode.accessWindowRange', {
-          from: new Date(consultationAccessWindow.activeFrom).toLocaleString(),
-          until: new Date(consultationAccessWindow.activeUntil).toLocaleString()
+          from: formatDateTimeForLocale(consultationAccessWindow.activeFrom),
+          until: formatDateTimeForLocale(consultationAccessWindow.activeUntil)
         }) }}
       </span>
     </v-alert>

@@ -54,6 +54,13 @@ const consultationCodeLabel = (consultation: Consultation): string | null => {
   return access.code || null
 }
 
+const consultationCodeCreatedAt = (consultation: Consultation): string | null => {
+  const accessCode = consultation.formAccessCode as unknown
+  if (!accessCode || typeof accessCode !== 'object') return null
+  const activatedOn = (accessCode as Record<string, unknown>).activatedOn
+  return typeof activatedOn === 'string' ? activatedOn : null
+}
+
 // Get caseId from route params
 const caseId = route.params.caseId as string
 
@@ -66,6 +73,7 @@ const caseNotes = ref<Note[]>([])
 const savingCaseNotes = ref(false)
 const loading = ref(true)
 const error = ref<string | null>(null)
+const caseNotesEditorRef = ref<{ addNote: () => void } | null>(null)
 
 // Dialog states
 const showCreateConsultationDialog = ref(false)
@@ -269,6 +277,10 @@ const saveCaseNotes = async (updatedNotes: Note[]) => {
 const handleCaseNotesUpdated = async (updatedNotes: Note[]) => {
   caseNotes.value = updatedNotes
   await saveCaseNotes(updatedNotes)
+}
+
+const addCaseNote = () => {
+  caseNotesEditorRef.value?.addNote()
 }
 
 // Navigation functions
@@ -748,16 +760,28 @@ onMounted(() => {
 
       <!-- Case Notes -->
       <v-card class="mb-6">
-        <v-card-title class="d-flex align-center gap-2">
-          <v-icon>mdi-note-multiple</v-icon>
-          {{ t('patientCaseLanding.caseNotes') }}
+        <v-card-title class="d-flex align-center justify-space-between">
+          <div class="d-flex align-center gap-2">
+            <v-icon>mdi-note-multiple</v-icon>
+            {{ t('patientCaseLanding.caseNotes') }}
+          </div>
+          <v-btn
+                 color="primary"
+                 variant="text"
+                 size="small"
+                 icon="mdi-plus"
+                 @click="addCaseNote"
+                 :title="t('patientCaseLanding.addCaseNote')">
+          </v-btn>
         </v-card-title>
         <v-card-text>
           <NotesEditor
+                      ref="caseNotesEditorRef"
                       :notes="caseNotes"
                       @update:notes="handleCaseNotesUpdated"
                       :title="'patientCaseLanding.caseNotes'"
-                      :add-button-text="'patientCaseLanding.addCaseNote'" />
+                      :add-button-text="'patientCaseLanding.addCaseNote'"
+                      :hide-add-button="true" />
         </v-card-text>
       </v-card>
 
@@ -902,6 +926,8 @@ onMounted(() => {
                   <QRCodeDisplay
                     :url="buildConsultationFlowUrl(consultation) || ''"
                     :access-window="consultationAccessWindow(consultation)"
+                    :case-id="caseId"
+                    :code-created-at="consultationCodeCreatedAt(consultation) || undefined"
                   >
                     <template #activator="{ props }">
                       <v-btn v-bind="props" variant="text" size="small" @click.stop :title="t('qrCode.showQRCode')" class="code-label-btn">
@@ -1015,6 +1041,8 @@ onMounted(() => {
                   <QRCodeDisplay
                     :url="buildConsultationFlowUrl(consultation) || ''"
                     :access-window="consultationAccessWindow(consultation)"
+                    :case-id="caseId"
+                    :code-created-at="consultationCodeCreatedAt(consultation) || undefined"
                   >
                     <template #activator="{ props }">
                       <v-btn v-bind="props" variant="text" size="small" @click.stop :title="t('qrCode.showQRCode')" class="code-label-btn">

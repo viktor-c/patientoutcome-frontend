@@ -499,7 +499,7 @@ const fetchAvailableCodes = async () => {
 }
 
 // Get the currently assigned code (if any)
-type PopulatedCode = { code?: string; _id?: string; id?: string; expiresOn?: string } | string
+type PopulatedCode = { code?: string; _id?: string; id?: string; expiresOn?: string; activatedOn?: string } | string
 const assignedCode = computed(() => {
   if (!consultation.value?.formAccessCode) return null
 
@@ -519,6 +519,12 @@ const assignedCodeExpiresOn = computed(() => {
   const code = consultation.value?.formAccessCode as PopulatedCode | undefined
   if (!code || typeof code === 'string') return null
   return code.expiresOn || null
+})
+
+const assignedCodeCreatedAt = computed(() => {
+  const code = consultation.value?.formAccessCode as PopulatedCode | undefined
+  if (!code || typeof code === 'string') return null
+  return code.activatedOn || null
 })
 
 // Get available (unassigned) codes
@@ -1108,9 +1114,19 @@ const isCodeExpiringSoon = computed(() => {
 
       <!-- Notes -->
       <v-card class="mb-6">
-        <v-card-title>
-          <v-icon class="me-2">mdi-note-text</v-icon>
-          {{ t('consultationOverview.notes') }}
+        <v-card-title class="d-flex align-center justify-space-between">
+          <div class="d-flex align-center gap-2">
+            <v-icon class="me-2">mdi-note-text</v-icon>
+            {{ t('consultationOverview.notes') }}
+          </div>
+          <v-btn
+                 color="primary"
+                 variant="text"
+                 size="small"
+                 icon="mdi-plus"
+                 @click="addNote"
+                 :title="t('consultationOverview.addNote')">
+          </v-btn>
         </v-card-title>
         <v-card-text>
           <v-list v-if="consultation.notes?.length">
@@ -1165,15 +1181,6 @@ const isCodeExpiringSoon = computed(() => {
             </div>
           </v-list>
           <p v-else class="text-body-2 text-medium-emphasis">{{ t('consultationOverview.noNotes') }}</p>
-
-          <v-btn
-                 color="primary"
-                 variant="tonal"
-                 prepend-icon="mdi-plus"
-                 class="mt-4"
-                 @click="addNote">
-            {{ t('consultationOverview.addNote') }}
-          </v-btn>
         </v-card-text>
       </v-card>
 
@@ -1340,7 +1347,9 @@ const isCodeExpiringSoon = computed(() => {
                                    v-if="patientFlowUrl"
                                    :url="patientFlowUrl"
                           :access-window="assignedConsultationAccessWindow"
-                          :expires-on="assignedCodeExpiresOn || undefined" />
+                        :expires-on="assignedCodeExpiresOn || undefined"
+                        :case-id="caseRouteId || undefined"
+                        :code-created-at="assignedCodeCreatedAt || undefined" />
                     <v-btn
                       :color="isCodeExpiringSoon ? 'warning' : 'primary'"
                       variant="tonal"

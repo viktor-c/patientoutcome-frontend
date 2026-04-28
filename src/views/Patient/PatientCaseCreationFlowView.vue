@@ -827,6 +827,13 @@ const firstConsultationAccessWindow = computed(() => {
   })
 })
 
+const firstConsultationCodeCreatedAt = computed(() => {
+  const accessCode = firstConsultation.value?.formAccessCode as unknown
+  if (!accessCode || typeof accessCode !== 'object') return null
+  const activatedOn = (accessCode as Record<string, unknown>).activatedOn
+  return typeof activatedOn === 'string' ? activatedOn : null
+})
+
 // Generate First Consultation URL
 const getFirstConsultationUrl = () => {
   if (!firstConsultation.value?.id) return ''
@@ -1181,6 +1188,8 @@ onMounted(async () => {
                                        :url="getQRCodeUrl()"
                                        :label="t('creationFlow.patientFlowQrUrl')"
                                        :access-window="firstConsultationAccessWindow"
+                                       :case-id="createdCase?.id || undefined"
+                                       :code-created-at="firstConsultationCodeCreatedAt || undefined"
                                        data-testid="result-flow-url"
                                        class="mb-4" />
 

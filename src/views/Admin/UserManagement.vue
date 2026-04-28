@@ -6,6 +6,7 @@ import { useUserStore } from '@/stores/userStore';
 import type { ApiUpdateUserRequest as UpdateUserRequest, ApiUserResponse, ApiUserDepartment as UserDepartment } from '@/types';
 import EditUserDialog from '@/components/dialogs/EditUserDialog.vue';
 import { useI18n } from 'vue-i18n';
+import { formatDateForLocale } from '@/utils/localeDateTime';
 
 const { t } = useI18n();
 
@@ -276,7 +277,7 @@ const deleteUser = async () => {
 
 const formatDate = (date: Date | undefined) => {
   if (!date) return 'Never';
-  return new Date(date).toLocaleDateString();
+  return formatDateForLocale(date, 'Never');
 };
 
 const getDepartmentName = (departmentIds: string | string[]) => {
