@@ -579,6 +579,7 @@ export default {
     save: '@:common.save',
     retry: '@:common.retry',
     confirm: 'Bestätigen',
+    continue: 'Weiter',
   },
   qrCode: {
     showQRCode: 'QR-Code anzeigen',
