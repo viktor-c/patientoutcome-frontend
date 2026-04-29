@@ -203,10 +203,10 @@ function onChartClick(event: MouseEvent) {
         {{ xAxisLabel }}
       </text>
       <text
-        :x="14"
+        :x="paddingLeft / 2"
         :y="paddingTop + innerHeight / 2"
         text-anchor="middle"
-        transform="rotate(-90 14, 180)"
+        :transform="`rotate(-90 ${paddingLeft / 2} ${paddingTop + innerHeight / 2})`"
         class="axis-label"
       >
         {{ yAxisLabel }}

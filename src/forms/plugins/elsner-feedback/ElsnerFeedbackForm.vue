@@ -39,6 +39,13 @@ function syncFromModelValue() {
     localSection.value.currentWeek = userStore.postopWeek
   }
 
+  // Fallback for patient-facing flows: if no postop week could be determined
+  // from the session, default to week 1 so the patient sees a usable chart
+  // instead of a warning. Clinician/staff users keep the explicit warning.
+  if (localSection.value.currentWeek == null && !userStore.isAuthenticated()) {
+    localSection.value.currentWeek = 1
+  }
+
   if (localSection.value.selectedExpectation == null && localSection.value.currentWeek != null) {
     const existing = localPoints.value.find((point) => point.week === localSection.value.currentWeek)
     if (existing) {
