@@ -11,7 +11,7 @@ import {
   type UserNoPassword
 } from '@/api'
 import type { ApiConsultation, ApiConsultationForm } from '@/types'
-import { consultationApi, userApi, kioskApi, codeApi, formApi, activateCodeForCase, renewCode } from '@/api'
+import { consultationApi, userApi, kioskApi, codeApi, formApi, renewCode } from '@/api'
 import CreateEditConsultationDialog from '@/components/dialogs/CreateEditConsultationDialog.vue'
 import CascadeDeleteDialog from '@/components/dialogs/CascadeDeleteDialog.vue'
 import QRCodeDisplay from '@/components/QRCodeDisplay.vue'
@@ -568,11 +568,11 @@ const availableCodesForSelection = computed(() => {
 })
 
 const assignCode = async () => {
-  if (!selectedCode.value || !caseRouteId.value) return
+  if (!selectedCode.value || !consultation.value?.id) return
 
   try {
     assigningCode.value = true
-    await activateCodeForCase(selectedCode.value, caseRouteId.value)
+    await codeApi.activateCode({ code: selectedCode.value, consultationId: consultation.value.id })
     notifierStore.notify(t('consultationOverview.codeAssigned'), 'success')
     // Reset selected code first to prevent watch from re-triggering
     selectedCode.value = null
@@ -604,7 +604,7 @@ const CREATE_NEW_CODE = '__CREATE_NEW_CODE__'
 
 // Create a new code and assign it to the consultation
 const createAndAssignNewCode = async () => {
-  if (!caseRouteId.value) return
+  if (!consultation.value?.id) return
 
   try {
     assigningCode.value = true
@@ -616,7 +616,7 @@ const createAndAssignNewCode = async () => {
     }
     const newCode = newCodes[0].code
 
-    await activateCodeForCase(newCode, caseRouteId.value)
+    await codeApi.activateCode({ code: newCode, consultationId: consultation.value.id })
 
     notifierStore.notify(t('consultationOverview.codeCreatedAndAssigned'), 'success')
     // Reset selected code first to prevent watch from re-triggering
