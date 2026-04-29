@@ -3,6 +3,7 @@ import { computed, ref, watch } from 'vue'
 import { useUserStore } from '@/stores/userStore'
 import ElsnerFeedbackChart from '@/components/forms/ElsnerFeedbackChart.vue'
 import {
+  calculatePostoperativeWeekFromSurgeryDate,
   calculateScore,
   getInitialData,
   getSection,
@@ -37,6 +38,10 @@ function syncFromModelValue() {
 
   if (section.currentWeek == null && typeof userStore.postopWeek === 'number') {
     localSection.value.currentWeek = userStore.postopWeek
+  }
+
+  if (localSection.value.currentWeek == null && localSection.value.surgeryDate) {
+    localSection.value.currentWeek = calculatePostoperativeWeekFromSurgeryDate(localSection.value.surgeryDate)
   }
 
   // Fallback for patient-facing flows: if no postop week could be determined
@@ -141,6 +146,8 @@ watch(
       :show-trend-line="showTrendLine"
       :x-axis-label="t('elsnerFeedback.xAxis')"
       :y-axis-label="t('elsnerFeedback.yAxis')"
+      :better-area-label="t('elsnerFeedback.area.better')"
+      :worse-area-label="t('elsnerFeedback.area.worse')"
       @select-expectation="setExpectation"
     />
 

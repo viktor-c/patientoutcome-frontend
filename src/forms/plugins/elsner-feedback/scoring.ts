@@ -10,12 +10,33 @@ type ElsnerFeedbackSection = {
   currentWeek: number | null
   selectedExpectation: number | null
   pointsJson: string | null
+  surgeryDate: string | null
 }
 
 const DEFAULT_SECTION: ElsnerFeedbackSection = {
   currentWeek: null,
   selectedExpectation: null,
   pointsJson: null,
+  surgeryDate: null,
+}
+
+export function calculatePostoperativeWeekFromSurgeryDate(
+  surgeryDateValue: unknown,
+  referenceDate: Date = new Date()
+): number | null {
+  if (typeof surgeryDateValue !== 'string' || surgeryDateValue.trim().length === 0) {
+    return null
+  }
+
+  const surgeryDate = new Date(surgeryDateValue)
+  if (Number.isNaN(surgeryDate.getTime()) || Number.isNaN(referenceDate.getTime())) {
+    return null
+  }
+
+  const elapsedMs = referenceDate.getTime() - surgeryDate.getTime()
+  const elapsedWeeks = Math.floor(elapsedMs / (1000 * 60 * 60 * 24 * 7))
+
+  return Math.max(1, elapsedWeeks + 1)
 }
 
 function normalizeNumber(value: unknown): number | null {
@@ -56,12 +77,14 @@ export function getSection(data: FormData): ElsnerFeedbackSection {
   const currentWeek = normalizeNumber(rawSection.currentWeek)
   const selectedExpectation = normalizeNumber(rawSection.selectedExpectation)
   const pointsJson = typeof rawSection.pointsJson === 'string' ? rawSection.pointsJson : null
+  const surgeryDate = typeof rawSection.surgeryDate === 'string' ? rawSection.surgeryDate : null
 
   return {
     currentWeek: currentWeek == null ? null : Math.max(0, Math.round(currentWeek)),
     selectedExpectation:
       selectedExpectation == null ? null : Math.max(0, Math.min(140, Math.round(selectedExpectation))),
     pointsJson,
+    surgeryDate,
   }
 }
 
@@ -114,6 +137,7 @@ export function generateMockData(): FormData {
         { week: 6, expectation: 35 },
         { week: 8, expectation: 70 },
       ]),
+      surgeryDate: new Date(Date.now() - 7 * 7 * 24 * 60 * 60 * 1000).toISOString(),
     },
   }
 }

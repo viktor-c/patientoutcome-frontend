@@ -26,6 +26,7 @@ const plugin: FormPlugin = {
           currentWeek: { type: ['number', 'null'] },
           selectedExpectation: { type: ['number', 'null'], minimum: 0, maximum: 140 },
           pointsJson: { type: ['string', 'null'] },
+          surgeryDate: { type: ['string', 'null'] },
         },
       },
     },

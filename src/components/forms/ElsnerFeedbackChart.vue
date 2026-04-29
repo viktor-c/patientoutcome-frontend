@@ -14,6 +14,8 @@ interface Props {
   showTrendLine?: boolean
   xAxisLabel?: string
   yAxisLabel?: string
+  betterAreaLabel?: string
+  worseAreaLabel?: string
   title?: string
   xMax?: number
   yMax?: number
@@ -26,6 +28,8 @@ const props = withDefaults(defineProps<Props>(), {
   showTrendLine: false,
   xAxisLabel: 'Weeks postoperative',
   yAxisLabel: 'Patient expectation',
+  betterAreaLabel: 'better',
+  worseAreaLabel: 'worse',
   title: '',
   xMax: 12,
   yMax: 140,
@@ -98,6 +102,22 @@ const referenceLine = computed(() => {
   }
 })
 
+const betterAreaPath = computed(() => {
+  const xMin = paddingLeft
+  const xMax = paddingLeft + innerWidth.value
+  const yMin = paddingTop
+
+  return `M ${xMin} ${yMin} L ${xMax} ${yMin} L ${referenceLine.value.x2} ${referenceLine.value.y2} L ${referenceLine.value.x1} ${referenceLine.value.y1} Z`
+})
+
+const worseAreaPath = computed(() => {
+  const xMin = paddingLeft
+  const xMax = paddingLeft + innerWidth.value
+  const yMax = paddingTop + innerHeight.value
+
+  return `M ${xMin} ${yMax} L ${xMax} ${yMax} L ${referenceLine.value.x2} ${referenceLine.value.y2} L ${referenceLine.value.x1} ${referenceLine.value.y1} Z`
+})
+
 const selectedPoint = computed(() => {
   if (props.selectedWeek == null || props.selectedExpectation == null) return null
   return {
@@ -130,6 +150,9 @@ function onChartClick(event: MouseEvent) {
       role="img"
       @click="onChartClick"
     >
+      <path :d="betterAreaPath" class="better-area" />
+      <path :d="worseAreaPath" class="worse-area" />
+
       <line :x1="paddingLeft" :y1="paddingTop + innerHeight" :x2="paddingLeft + innerWidth" :y2="paddingTop + innerHeight" stroke="#546e7a" stroke-width="1.5" />
       <line :x1="paddingLeft" :y1="paddingTop" :x2="paddingLeft" :y2="paddingTop + innerHeight" stroke="#546e7a" stroke-width="1.5" />
 
@@ -168,6 +191,24 @@ function onChartClick(event: MouseEvent) {
         stroke="#e53935"
         stroke-width="2"
       />
+
+      <text
+        :x="paddingLeft + innerWidth * 0.22"
+        :y="paddingTop + innerHeight * 0.2"
+        text-anchor="middle"
+        class="area-label better-label"
+      >
+        {{ betterAreaLabel }}
+      </text>
+
+      <text
+        :x="paddingLeft + innerWidth * 0.78"
+        :y="paddingTop + innerHeight * 0.83"
+        text-anchor="middle"
+        class="area-label worse-label"
+      >
+        {{ worseAreaLabel }}
+      </text>
 
       <circle
         v-for="point in sortedPoints"
@@ -243,5 +284,27 @@ function onChartClick(event: MouseEvent) {
   fill: #263238;
   font-size: 12px;
   font-weight: 600;
+}
+
+.better-area {
+  fill: rgba(46, 125, 50, 0.12);
+}
+
+.worse-area {
+  fill: rgba(198, 40, 40, 0.1);
+}
+
+.area-label {
+  font-size: 13px;
+  font-weight: 600;
+  pointer-events: none;
+}
+
+.better-label {
+  fill: #2e7d32;
+}
+
+.worse-label {
+  fill: #c62828;
 }
 </style>

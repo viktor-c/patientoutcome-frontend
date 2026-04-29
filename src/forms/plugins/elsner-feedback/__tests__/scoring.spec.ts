@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { normalizePoints, serializePoints } from '../scoring'
+import { calculatePostoperativeWeekFromSurgeryDate, normalizePoints, serializePoints } from '../scoring'
 
 describe('elsner-feedback scoring helpers', () => {
   it('serializes and parses point arrays', () => {
@@ -33,5 +33,18 @@ describe('elsner-feedback scoring helpers', () => {
       { week: 0, expectation: 0 },
       { week: 4, expectation: 140 },
     ])
+  })
+
+  it('calculates postoperative week from surgery date', () => {
+    const week = calculatePostoperativeWeekFromSurgeryDate(
+      '2026-04-01T00:00:00.000Z',
+      new Date('2026-04-29T00:00:00.000Z')
+    )
+
+    expect(week).toBe(5)
+  })
+
+  it('returns null for invalid surgery dates', () => {
+    expect(calculatePostoperativeWeekFromSurgeryDate('not-a-date')).toBeNull()
   })
 })

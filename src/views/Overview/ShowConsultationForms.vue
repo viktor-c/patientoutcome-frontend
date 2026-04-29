@@ -14,6 +14,94 @@ import { formatDateTimeForLocale } from '@/utils/localeDateTime'
 import type { Form, PatientFormData } from '@/types/index'
 import type { FormSubmissionData } from '@/forms/types'
 
+const ELSNER_FEEDBACK_TEMPLATE_ID = '67b4e612d0feb4ad99ae2e8b'
+
+function getRelevantSurgeryDate(consultation: unknown): string | null {
+  if (!consultation || typeof consultation !== 'object') return null
+
+  const consultationRecord = consultation as Record<string, unknown>
+  const patientCase = consultationRecord.patientCaseId
+  if (!patientCase || typeof patientCase !== 'object') return null
+
+  const surgeries = (patientCase as Record<string, unknown>).surgeries
+  if (!Array.isArray(surgeries) || surgeries.length === 0) return null
+
+  const consultationTime = new Date(String(consultationRecord.dateAndTime ?? ''))
+  const consultationTimestamp = Number.isNaN(consultationTime.getTime()) ? null : consultationTime.getTime()
+
+  const datedSurgeries = surgeries
+    .map((surgery) => {
+      if (!surgery || typeof surgery !== 'object') return null
+      const surgeryDate = (surgery as Record<string, unknown>).surgeryDate
+      if (typeof surgeryDate !== 'string' || surgeryDate.length === 0) return null
+      const timestamp = new Date(surgeryDate).getTime()
+      if (Number.isNaN(timestamp)) return null
+      return { surgeryDate, timestamp }
+    })
+    .filter((entry): entry is { surgeryDate: string; timestamp: number } => entry !== null)
+    .sort((left, right) => left.timestamp - right.timestamp)
+
+  if (datedSurgeries.length === 0) return null
+
+  if (consultationTimestamp == null) {
+    return datedSurgeries[datedSurgeries.length - 1].surgeryDate
+  }
+
+  const mostRecentBeforeConsultation = [...datedSurgeries]
+    .reverse()
+    .find((entry) => entry.timestamp <= consultationTimestamp)
+
+  return mostRecentBeforeConsultation?.surgeryDate ?? datedSurgeries[datedSurgeries.length - 1].surgeryDate
+}
+
+function attachElsnerSurgeryDate(form: Form, surgeryDate: string | null): Form {
+  if (!surgeryDate || form.formTemplateId !== ELSNER_FEEDBACK_TEMPLATE_ID) {
+    return form
+  }
+
+  const existingRawFormData = form.patientFormData?.rawFormData as Record<string, unknown> | null | undefined
+  const existingSection =
+    existingRawFormData && typeof existingRawFormData.elsnerFeedback === 'object' && existingRawFormData.elsnerFeedback
+      ? (existingRawFormData.elsnerFeedback as Record<string, unknown>)
+      : null
+
+  if (existingSection?.surgeryDate === surgeryDate) {
+    return form
+  }
+
+  const patientFormData: PatientFormData = form.patientFormData
+    ? {
+        ...form.patientFormData,
+        rawFormData: {
+          ...(form.patientFormData.rawFormData || {}),
+          elsnerFeedback: {
+            ...(existingSection || {}),
+            surgeryDate,
+          },
+        },
+      }
+    : {
+        rawFormData: {
+          elsnerFeedback: {
+            currentWeek: null,
+            selectedExpectation: null,
+            pointsJson: null,
+            surgeryDate,
+          },
+        },
+        subscales: undefined,
+        totalScore: null,
+        fillStatus: 'draft',
+        completedAt: null,
+        beginFill: null,
+      }
+
+  return {
+    ...form,
+    patientFormData,
+  }
+}
+
 import { useWindowScroll, useWindowSize } from '@vueuse/core'
 const { height } = useWindowSize()
 const { y } = useWindowScroll()
@@ -71,11 +159,13 @@ onMounted(async () => {
     }
 
     consultationAccessWindow.value = getConsultationAccessWindowFromConsultation(consultationResponse.responseObject)
+    const surgeryDate = getRelevantSurgeryDate(consultationResponse.responseObject)
 
     // Use the shared consultation flow logic
     await processConsultation(consultationResponse.responseObject)
+    allForms.value = allForms.value.map((form) => attachElsnerSurgeryDate(form, surgeryDate))
     // Initialize the local forms list from the pending (incomplete) forms
-    forms.value = [...pendingForms.value]
+    forms.value = pendingForms.value.map((form) => attachElsnerSurgeryDate(form, surgeryDate))
 
     logger.debug(`Found ${completedForms.value.length} completed forms and ${forms.value.length} pending forms`)
 

@@ -10,6 +10,8 @@ export const translations: FormTranslations = {
     'elsnerFeedback.noWeek': 'Es konnte keine postoperative Woche ermittelt werden.',
     'elsnerFeedback.xAxis': 'Wochen postoperativ',
     'elsnerFeedback.yAxis': 'Patientenerwartung',
+    'elsnerFeedback.area.better': 'besser',
+    'elsnerFeedback.area.worse': 'schlechter',
   },
   en: {
     'elsnerFeedback.title.description': 'Subjective feedback after surgery',
@@ -20,5 +22,7 @@ export const translations: FormTranslations = {
     'elsnerFeedback.noWeek': 'No postoperative week is available.',
     'elsnerFeedback.xAxis': 'Weeks postoperative',
     'elsnerFeedback.yAxis': 'Patient expectation',
+    'elsnerFeedback.area.better': 'better',
+    'elsnerFeedback.area.worse': 'worse',
   },
 }
