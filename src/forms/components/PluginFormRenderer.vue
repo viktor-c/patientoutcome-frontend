@@ -24,7 +24,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, markRaw, watch, provide } from 'vue'
 import { getFormPlugin } from '../registry'
-import type { FormSubmissionData, FormPlugin } from '../types'
+import type { FormSubmissionData, FormPlugin, FormComponentContext } from '../types'
 import { useFormViewMode } from '../composables/useFormViewMode'
 import type { FormAnswerComment } from '@/types/backend/scoring'
 import FormVersionHistory from '@/components/forms/FormVersionHistory.vue'
@@ -57,6 +57,9 @@ interface Props {
 
   /** Viewing a specific historical version */
   viewingVersion?: number | null
+
+  /** Optional contextual data supplied by the host view */
+  context?: FormComponentContext
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -65,7 +68,8 @@ const props = withDefaults(defineProps<Props>(), {
   modelValue: null,
   showVersionControls: false,
   currentVersion: 1,
-  viewingVersion: null
+  viewingVersion: null,
+  context: undefined
 })
 
 interface Emits {
@@ -436,6 +440,7 @@ onMounted(() => {
                :model-value="formDataToPass"
                :readonly="readonly || isViewingOldVersion"
                :locale="locale"
+               :context="context"
                @update:model-value="handleModelUpdate"
                @submit="emit('submit')" />
 

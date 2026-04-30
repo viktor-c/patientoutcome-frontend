@@ -12,9 +12,7 @@ import { getConsultationAccessWindowFromConsultation, type ConsultationAccessWin
 import { formatDateTimeForLocale } from '@/utils/localeDateTime'
 
 import type { Form, PatientFormData } from '@/types/index'
-import type { FormSubmissionData } from '@/forms/types'
-
-const ELSNER_FEEDBACK_TEMPLATE_ID = '67b4e612d0feb4ad99ae2e8b'
+import type { FormSubmissionData, FormComponentContext } from '@/forms/types'
 
 function getRelevantSurgeryDate(consultation: unknown): string | null {
   if (!consultation || typeof consultation !== 'object') return null
@@ -54,54 +52,6 @@ function getRelevantSurgeryDate(consultation: unknown): string | null {
   return mostRecentBeforeConsultation?.surgeryDate ?? datedSurgeries[datedSurgeries.length - 1].surgeryDate
 }
 
-function attachElsnerSurgeryDate(form: Form, surgeryDate: string | null): Form {
-  if (!surgeryDate || form.formTemplateId !== ELSNER_FEEDBACK_TEMPLATE_ID) {
-    return form
-  }
-
-  const existingRawFormData = form.patientFormData?.rawFormData as Record<string, unknown> | null | undefined
-  const existingSection =
-    existingRawFormData && typeof existingRawFormData.elsnerFeedback === 'object' && existingRawFormData.elsnerFeedback
-      ? (existingRawFormData.elsnerFeedback as Record<string, unknown>)
-      : null
-
-  if (existingSection?.surgeryDate === surgeryDate) {
-    return form
-  }
-
-  const patientFormData: PatientFormData = form.patientFormData
-    ? {
-        ...form.patientFormData,
-        rawFormData: {
-          ...(form.patientFormData.rawFormData || {}),
-          elsnerFeedback: {
-            ...(existingSection || {}),
-            surgeryDate,
-          },
-        },
-      }
-    : {
-        rawFormData: {
-          elsnerFeedback: {
-            currentWeek: null,
-            selectedExpectation: null,
-            pointsJson: null,
-            surgeryDate,
-          },
-        },
-        subscales: undefined,
-        totalScore: null,
-        fillStatus: 'draft',
-        completedAt: null,
-        beginFill: null,
-      }
-
-  return {
-    ...form,
-    patientFormData,
-  }
-}
-
 import { useWindowScroll, useWindowSize } from '@vueuse/core'
 const { height } = useWindowSize()
 const { y } = useWindowScroll()
@@ -136,6 +86,12 @@ const showReviewOption = ref(false) // Show review option after all forms are fi
 const isReviewMode = ref(false) // True when reviewing completed forms
 const isFinalized = ref(false) // True after code is deactivated
 const consultationAccessWindow = ref<ConsultationAccessWindow | null>(null)
+const consultationSurgeryDate = ref<string | null>(null)
+
+const formContext = computed<FormComponentContext | undefined>(() => {
+  if (!consultationSurgeryDate.value) return undefined
+  return { surgeryDate: consultationSurgeryDate.value }
+})
 
 // Track when the current form was opened in this session so the backend can accumulate
 // only the *actual* time spent filling, not idle time between sessions.
@@ -159,13 +115,12 @@ onMounted(async () => {
     }
 
     consultationAccessWindow.value = getConsultationAccessWindowFromConsultation(consultationResponse.responseObject)
-    const surgeryDate = getRelevantSurgeryDate(consultationResponse.responseObject)
+    consultationSurgeryDate.value = getRelevantSurgeryDate(consultationResponse.responseObject)
 
     // Use the shared consultation flow logic
     await processConsultation(consultationResponse.responseObject)
-    allForms.value = allForms.value.map((form) => attachElsnerSurgeryDate(form, surgeryDate))
     // Initialize the local forms list from the pending (incomplete) forms
-    forms.value = pendingForms.value.map((form) => attachElsnerSurgeryDate(form, surgeryDate))
+    forms.value = [...pendingForms.value]
 
     logger.debug(`Found ${completedForms.value.length} completed forms and ${forms.value.length} pending forms`)
 
@@ -496,6 +451,7 @@ const isSmallScreen = computed(() => window.innerWidth < 1300)
                               :template-id="currentForm.formTemplateId || currentForm._id || ''"
                               :model-value="(currentForm.patientFormData as any) || {}"
                               :locale="locale"
+                              :context="formContext"
                               @update:model-value="(data) => processFormData(data, currentFormIndex)"
                               @submit="submitForm" />
 

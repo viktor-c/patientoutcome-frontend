@@ -36,6 +36,10 @@ function syncFromModelValue() {
   localSection.value = section
   localPoints.value = normalizePoints(section.pointsJson)
 
+  if (!localSection.value.surgeryDate && props.context?.surgeryDate) {
+    localSection.value.surgeryDate = props.context.surgeryDate
+  }
+
   if (section.currentWeek == null && typeof userStore.postopWeek === 'number') {
     localSection.value.currentWeek = userStore.postopWeek
   }
@@ -122,11 +126,10 @@ watch(
     <p class="hint mb-4">{{ t('elsnerFeedback.hint') }}</p>
 
     <v-alert
-      v-if="currentWeek == null"
-      type="warning"
-      variant="tonal"
-      class="mb-4"
-    >
+             v-if="currentWeek == null"
+             type="warning"
+             variant="tonal"
+             class="mb-4">
       {{ t('elsnerFeedback.noWeek') }}
     </v-alert>
 
@@ -139,30 +142,28 @@ watch(
     </div>
 
     <ElsnerFeedbackChart
-      :points="localPoints"
-      :selected-week="currentWeek"
-      :selected-expectation="selectedExpectation"
-      :interactive="!readonly"
-      :show-trend-line="showTrendLine"
-      :x-axis-label="t('elsnerFeedback.xAxis')"
-      :y-axis-label="t('elsnerFeedback.yAxis')"
-      :better-area-label="t('elsnerFeedback.area.better')"
-      :worse-area-label="t('elsnerFeedback.area.worse')"
-      @select-expectation="setExpectation"
-    />
+                         :points="localPoints"
+                         :selected-week="currentWeek"
+                         :selected-expectation="selectedExpectation"
+                         :interactive="!readonly"
+                         :show-trend-line="showTrendLine"
+                         :x-axis-label="t('elsnerFeedback.xAxis')"
+                         :y-axis-label="t('elsnerFeedback.yAxis')"
+                         :better-area-label="t('elsnerFeedback.area.better')"
+                         :worse-area-label="t('elsnerFeedback.area.worse')"
+                         @select-expectation="setExpectation" />
 
     <v-slider
-      v-if="!readonly"
-      class="mt-4"
-      :model-value="selectedExpectation ?? 0"
-      :min="0"
-      :max="140"
-      :step="1"
-      thumb-label="always"
-      color="red"
-      :disabled="currentWeek == null"
-      @update:model-value="(value) => setExpectation(Number(value))"
-    />
+              v-if="!readonly"
+              class="mt-4"
+              :model-value="selectedExpectation ?? 0"
+              :min="0"
+              :max="140"
+              :step="1"
+              thumb-label="always"
+              color="red"
+              :disabled="currentWeek == null"
+              @update:model-value="(value) => setExpectation(Number(value))" />
   </div>
 </template>
 
