@@ -40,7 +40,7 @@ const emit = defineEmits(['submit', 'cancel', 'consultation-blueprints'])
 const { t } = useI18n()
 const notifierStore = useNotifierStore()
 const { formatLocalizedCustomDate } = useDateFormat()
-const { validateForm, clearAllErrors, clearFieldError, hasError, getError, resetFormState } = useFormValidation()
+const { validateForm, clearAllErrors, clearFieldError, hasError, getError, getErrorForce, touchField, resetFormState } = useFormValidation()
 
 type SurgeryWithOpsAlias = Surgery & { OPSCodes?: string[] }
 
@@ -252,6 +252,23 @@ const sideOptions = [
   { value: 'right', title: t('surgery.side.right') },
 ]
 
+const normalizeSideValue = (value: unknown): SurgerySideEnum => {
+  if (Array.isArray(value)) {
+    const firstValid = value.find((entry) => entry === 'left' || entry === 'right' || entry === 'none')
+    return (firstValid as SurgerySideEnum | undefined) ?? 'none'
+  }
+
+  if (value === 'left' || value === 'right' || value === 'none') {
+    return value
+  }
+
+  return 'none'
+}
+
+const updateSideValue = (value: unknown) => {
+  form.value.side = normalizeSideValue(value)
+}
+
 const applyCaseDiagnosisIcd10Overrides = () => {
   if (!props.patientCaseData) return
 
@@ -405,7 +422,7 @@ const applyBlueprint = (blueprint: Blueprint) => {
   }
 
   if (content.side) {
-    form.value.side = content.side as SurgerySideEnum
+    form.value.side = normalizeSideValue(content.side)
   }
 
   if (content.surgeryTime) {
@@ -476,7 +493,13 @@ watch(
 
 // Clear field errors when values change
 watch(() => form.value.side, (newVal) => {
-  if (newVal && newVal !== 'none') {
+  const normalizedValue = normalizeSideValue(newVal)
+  if (normalizedValue !== newVal) {
+    form.value.side = normalizedValue
+    return
+  }
+
+  if (normalizedValue !== 'none') {
     clearFieldError('side')
   }
 })
@@ -562,6 +585,11 @@ const saveSurgery = async () => {
     // Mark form as submitted so all fields show validation errors
     formSubmitted.value = true
 
+    const normalizedSide = normalizeSideValue(form.value.side)
+    if (normalizedSide !== form.value.side) {
+      form.value.side = normalizedSide
+    }
+
     // Clear previous errors
     clearAllErrors()
 
@@ -574,9 +602,11 @@ const saveSurgery = async () => {
         (v: unknown) => (v ? true : 'Surgery date is required'),
       ],
       side: [
-        (v: unknown) => (v && v !== 'none' ? true : 'Side selection is required'),
+        (v: unknown) => (normalizeSideValue(v) !== 'none' ? true : 'Side selection is required'),
       ],
     }
+
+    Object.keys(validationRules).forEach((fieldName) => touchField(fieldName))
 
     if (!validateForm(form.value, validationRules)) {
       notifierStore.notify(t('alerts.validation.failed'), 'error')
@@ -629,7 +659,7 @@ const saveSurgery = async () => {
       diagnosisICD10: form.value.diagnosisICD10,
       therapy: form.value.therapy,
       oPSCodes: form.value.oPSCodes,
-      side: form.value.side,
+      side: normalizedSide,
       surgeryDate: surgeryDateAndTimeString,
       surgeryTime: form.value.surgeryTime,
       tourniquet: form.value.tourniquet,
@@ -795,7 +825,8 @@ defineExpose({
           </v-col>
           <v-col cols="12" md="6">
             <v-select
-                      v-model="form.side"
+                      :model-value="normalizeSideValue(form.side)"
+                      @update:modelValue="updateSideValue"
                       :items="sideOptions"
                       item-value="value"
                       item-title="title"
@@ -803,12 +834,13 @@ defineExpose({
                       outlined
                       dense
                       required
-                      class="operation-side-select"
+                      :class="{ 'operation-side-select': hasError('side') }"
                       :base-color="hasError('side') ? 'error' : undefined"
+                      :color="hasError('side') ? 'error' : undefined"
                       :hint="t('forms.hints.required')"
                       persistent-hint
                       :error="hasError('side')"
-                      :error-messages="hasError('side') ? [getError('side')] : []"></v-select>
+                      :error-messages="hasError('side') ? [formSubmitted ? getErrorForce('side') : getError('side')] : []"></v-select>
           </v-col>
         </v-row>
 
@@ -960,7 +992,16 @@ defineExpose({
   outline: none;
 }
 
-.operation-side-select :deep(.v-field--error) {
-  box-shadow: 0 0 0 2px rgba(var(--v-theme-error), 0.15);
+.operation-side-select :deep(.v-field) {
+  box-shadow: 0 0 0 2px rgba(var(--v-theme-error), 0.18);
+  border-radius: 4px;
+}
+
+.operation-side-select :deep(.v-field__outline) {
+  --v-field-border-opacity: 1;
+}
+
+.operation-side-select :deep(.v-label) {
+  color: rgb(var(--v-theme-error));
 }
 </style>
