@@ -1081,6 +1081,10 @@ export default {
     formArchived: 'Formular erfolgreich archiviert',
     formArchiveError: 'Fehler beim Archivieren des Formulars',
     archiveFormTooltip: 'Dieses Formular archivieren (Arzt-Rolle erforderlich)',
+    feedbackTrend: 'Feedback-Verlauf',
+    openFeedbackChart: 'Grafik oeffnen',
+    feedbackXAxis: 'Wochen postoperativ',
+    feedbackYAxis: 'Patientenerwartung',
   },
   kiosk: {
     title: 'Kiosk - Patientenformulare',

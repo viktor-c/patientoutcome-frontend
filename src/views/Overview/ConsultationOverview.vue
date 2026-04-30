@@ -11,16 +11,21 @@ import {
   type UserNoPassword
 } from '@/api'
 import type { ApiConsultation, ApiConsultationForm } from '@/types'
-import { consultationApi, userApi, kioskApi, codeApi, formApi, activateCodeForCase, renewCode } from '@/api'
+import { consultationApi, userApi, kioskApi, codeApi, formApi, renewCode } from '@/api'
 import CreateEditConsultationDialog from '@/components/dialogs/CreateEditConsultationDialog.vue'
 import CascadeDeleteDialog from '@/components/dialogs/CascadeDeleteDialog.vue'
 import QRCodeDisplay from '@/components/QRCodeDisplay.vue'
+import ElsnerFeedbackChart, { type ElsnerPoint } from '@/components/forms/ElsnerFeedbackChart.vue'
 import { getConsultationAccessWindowFromConsultation } from '@/utils/consultationAccessWindow'
 import ScoreScale from '@/components/ScoreScale.vue'
 import { useUserStore, useFormTemplateStore } from '@/stores'
 import { generateScaleInfo } from '@/utils/scaleInfo'
 import { getAccessLevelColor } from '@/services/formVersionService'
 import type { FormAnswerComment } from '@/types/backend/scoring'
+import {
+  isElsnerFeedbackTemplateId,
+  parseElsnerFeedbackPoints,
+} from './elsnerFeedbackUtils'
 
 const componentName = 'ConsultationOverview.vue'
 const { t } = useI18n()
@@ -58,6 +63,10 @@ const archiveFormTitle = ref<string>('')
 const archiveFormReason = ref<string>('')
 const archivingForm = ref(false)
 
+const elsnerFeedbackDialog = ref(false)
+const elsnerFeedbackDialogTitle = ref('')
+const elsnerFeedbackDialogPoints = ref<ElsnerPoint[]>([])
+
 // Helper function to safely format dates
 const safeFormatDate = (date: string | null | undefined, format: string = 'DD.MM.YYYY HH:mm'): string => {
   if (!date) return t('common.notAvailable')
@@ -91,6 +100,22 @@ const getFormComments = (form: ApiConsultationForm): FormAnswerComment[] => {
 }
 
 const getFormCommentCount = (form: ApiConsultationForm): number => getFormComments(form).length
+
+const isElsnerFeedbackForm = (form: ApiConsultationForm): boolean => {
+  return isElsnerFeedbackTemplateId(form.formTemplateId)
+}
+
+const getElsnerFeedbackPoints = (form: ApiConsultationForm): ElsnerPoint[] => {
+  return parseElsnerFeedbackPoints(form.patientFormData?.rawFormData)
+}
+
+const openElsnerFeedbackDialog = (form: ApiConsultationForm) => {
+  elsnerFeedbackDialogPoints.value = getElsnerFeedbackPoints(form)
+  elsnerFeedbackDialogTitle.value = form.title || t('forms.consultation.untitledForm')
+  elsnerFeedbackDialog.value = true
+}
+
+const showElsnerTrendLine = computed(() => userStore.isAuthenticated() && !userStore.isKioskUser())
 
 // Computed properties
 // Note: Using type assertion for patientCaseId because API returns populated object despite type definition saying string
@@ -543,11 +568,11 @@ const availableCodesForSelection = computed(() => {
 })
 
 const assignCode = async () => {
-  if (!selectedCode.value || !caseRouteId.value) return
+  if (!selectedCode.value || !consultation.value?.id) return
 
   try {
     assigningCode.value = true
-    await activateCodeForCase(selectedCode.value, caseRouteId.value)
+    await codeApi.activateCode({ code: selectedCode.value, consultationId: consultation.value.id })
     notifierStore.notify(t('consultationOverview.codeAssigned'), 'success')
     // Reset selected code first to prevent watch from re-triggering
     selectedCode.value = null
@@ -579,7 +604,7 @@ const CREATE_NEW_CODE = '__CREATE_NEW_CODE__'
 
 // Create a new code and assign it to the consultation
 const createAndAssignNewCode = async () => {
-  if (!caseRouteId.value) return
+  if (!consultation.value?.id) return
 
   try {
     assigningCode.value = true
@@ -591,7 +616,7 @@ const createAndAssignNewCode = async () => {
     }
     const newCode = newCodes[0].code
 
-    await activateCodeForCase(newCode, caseRouteId.value)
+    await codeApi.activateCode({ code: newCode, consultationId: consultation.value.id })
 
     notifierStore.notify(t('consultationOverview.codeCreatedAndAssigned'), 'success')
     // Reset selected code first to prevent watch from re-triggering
@@ -704,7 +729,7 @@ const initiateArchiveForm = (formId: string | null | undefined, formTitle: strin
   archiveFormDialog.value = true
 }
 
-const normalizeFormId = (id: unknown): string => {
+function normalizeFormId(id: unknown): string {
   return id == null ? '' : String(id)
 }
 
@@ -1060,10 +1085,22 @@ const isCodeExpiringSoon = computed(() => {
                 <v-card-text>
 
                   <p class="text-body-2 mb-2">
-                    <strong>{{ t('consultationOverview.score') }}:</strong> {{ getFormScore(form) }}
+                    <template v-if="isElsnerFeedbackForm(form)">
+                      <strong>{{ t('consultationOverview.feedbackTrend') }}:</strong>
+                      <v-btn
+                             variant="text"
+                             size="small"
+                             class="px-1"
+                             @click="openElsnerFeedbackDialog(form)">
+                        {{ t('consultationOverview.openFeedbackChart') }}
+                      </v-btn>
+                    </template>
+                    <template v-else>
+                      <strong>{{ t('consultationOverview.score') }}:</strong> {{ getFormScore(form) }}
+                    </template>
                   </p>
                   <!-- Visual scale representation -->
-                  <div v-if="form.patientFormData?.totalScore && form.formTemplateId" class="mb-3">
+                  <div v-if="!isElsnerFeedbackForm(form) && form.patientFormData?.totalScore && form.formTemplateId" class="mb-3">
                     <ScoreScale :scale-info="generateScaleInfo(form.patientFormData.totalScore, form.formTemplateId)" />
                   </div>
                   <p class="text-body-2 mb-2" v-if="getFormStartTime(form)">
@@ -1486,11 +1523,22 @@ const isCodeExpiringSoon = computed(() => {
                                   {{ getFormAccessLevel(form) }}
                                 </v-chip>
                                 <span class="text-caption">
-                                  {{ t('consultationOverview.score') }}: {{ getFormScore(form) }}
+                                  <template v-if="isElsnerFeedbackForm(form)">
+                                    <v-btn
+                                           variant="text"
+                                           size="x-small"
+                                           class="px-1"
+                                           @click.stop="openElsnerFeedbackDialog(form)">
+                                      {{ t('consultationOverview.openFeedbackChart') }}
+                                    </v-btn>
+                                  </template>
+                                  <template v-else>
+                                    {{ t('consultationOverview.score') }}: {{ getFormScore(form) }}
+                                  </template>
                                 </span>
                               </div>
                               <!-- Visual scale representation -->
-                              <div v-if="form.patientFormData?.totalScore && form.formTemplateId" class="mt-2">
+                              <div v-if="!isElsnerFeedbackForm(form) && form.patientFormData?.totalScore && form.formTemplateId" class="mt-2">
                                 <ScoreScale :scale-info="generateScaleInfo(form.patientFormData.totalScore, form.formTemplateId)"
                                             :height="6" />
                               </div>
@@ -1542,6 +1590,24 @@ const isCodeExpiringSoon = computed(() => {
                          :loading="deletingConsultation"
                          @cancel="cancelDelete"
                          @confirm="deleteConsultation" />
+
+    <v-dialog v-model="elsnerFeedbackDialog" max-width="900">
+      <v-card>
+        <v-card-title>{{ elsnerFeedbackDialogTitle }}</v-card-title>
+        <v-card-text>
+          <ElsnerFeedbackChart
+                               :points="elsnerFeedbackDialogPoints"
+                               :show-trend-line="showElsnerTrendLine"
+                               :interactive="false"
+                               :x-axis-label="t('consultationOverview.feedbackXAxis')"
+                               :y-axis-label="t('consultationOverview.feedbackYAxis')" />
+        </v-card-text>
+        <v-card-actions>
+          <v-spacer></v-spacer>
+          <v-btn variant="text" @click="elsnerFeedbackDialog = false">{{ t('common.close') }}</v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
 
     <!-- Archive Form Confirmation Dialog -->
     <v-dialog v-model="archiveFormDialog" max-width="600">

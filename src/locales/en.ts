@@ -1078,6 +1078,10 @@ export default {
     formArchived: 'Form archived successfully',
     formArchiveError: 'Failed to archive form',
     archiveFormTooltip: 'Archive this form',
+    feedbackTrend: 'Feedback trend',
+    openFeedbackChart: 'Open chart',
+    feedbackXAxis: 'Weeks postoperative',
+    feedbackYAxis: 'Patient expectation',
   },
   kiosk: {
     title: 'Kiosk - Patient Forms',

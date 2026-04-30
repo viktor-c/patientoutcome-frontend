@@ -4,7 +4,7 @@ import { createVuetify } from 'vuetify'
 import * as components from 'vuetify/components'
 import * as directives from 'vuetify/directives'
 import PluginFormRenderer from '@/forms/components/PluginFormRenderer.vue'
-import type { FormPlugin, FormData } from '@/forms/types'
+import type { FormPlugin, FormData, FormComponentContext } from '@/forms/types'
 import type { PatientFormData } from '@/types'
 import type { ScoringData } from '@/types/backend/scoring'
 import { h } from 'vue'
@@ -36,7 +36,8 @@ const MockFormComponent: Component = {
       required: true
     },
     readonly: Boolean,
-    locale: String
+    locale: String,
+    context: Object
   },
   emits: ['update:modelValue'],
   setup(props, { emit }) {
@@ -110,6 +111,7 @@ describe('PluginFormRenderer.vue', () => {
     modelValue: PatientFormData | null
     readonly?: boolean
     locale?: string
+    context?: FormComponentContext
   }) => {
     return mount(PluginFormRenderer, {
       props,
@@ -243,6 +245,21 @@ describe('PluginFormRenderer.vue', () => {
 
       const mockForm = wrapper.findComponent(MockFormComponent)
       expect(mockForm.props('locale')).toBe('en')
+    })
+
+    it('should pass context prop to plugin component', () => {
+      const context: FormComponentContext = {
+        surgeryDate: '2026-04-01T10:00:00.000Z'
+      }
+
+      wrapper = mountComponent({
+        templateId: 'test-plugin-id',
+        modelValue: {} as unknown as PatientFormData,
+        context
+      })
+
+      const mockForm = wrapper.findComponent(MockFormComponent)
+      expect(mockForm.props('context')).toEqual(context)
     })
   })
 

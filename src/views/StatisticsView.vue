@@ -80,6 +80,36 @@
               <Line :data="chartData" :options="chartOptions" />
             </div>
           </v-col>
+          <v-col v-if="elsnerAggregatedPoints.length > 0" cols="12" md="4" lg="6">
+            <v-card variant="outlined" class="elsner-chart-card">
+              <v-card-title class="text-subtitle-1 font-weight-medium">
+                {{ elsnerChartTitle }}
+              </v-card-title>
+              <v-card-text class="elsner-chart-card-body">
+                <ElsnerFeedbackChart
+                  :points="elsnerAggregatedPoints"
+                  :show-trend-line="true"
+                  :interactive="false"
+                  :x-axis-label="elsnerXAxisLabel"
+                  :y-axis-label="elsnerYAxisLabel"
+                  :better-area-label="elsnerBetterLabel"
+                  :worse-area-label="elsnerWorseLabel"
+                  :x-max="elsnerXMax"
+                  :y-max="140"
+                />
+                <div class="d-flex flex-wrap gap-2 mt-2">
+                  <v-chip color="primary" variant="tonal" size="small">
+                    <v-icon start>mdi-dots-grid</v-icon>
+                    {{ elsnerPointCountLabel }}: {{ elsnerPointCount }}
+                  </v-chip>
+                  <v-chip v-if="elsnerLatestWeek != null" color="primary" variant="tonal" size="small">
+                    <v-icon start>mdi-calendar-clock</v-icon>
+                    {{ elsnerLatestWeekLabel }}: {{ elsnerLatestWeek }}
+                  </v-chip>
+                </div>
+              </v-card-text>
+            </v-card>
+          </v-col>
         </v-row>
 
         <!-- No Data State -->
@@ -175,6 +205,7 @@ import zoomPlugin from "chartjs-plugin-zoom";
 import annotationPlugin, { type AnnotationOptions } from "chartjs-plugin-annotation";
 import { useNotifierStore } from "@/stores/notifierStore";
 import { statisticsApi } from '@/api'
+import ElsnerFeedbackChart from '@/components/forms/ElsnerFeedbackChart.vue'
 import type {
   GetCaseStatistics200ResponseResponseObject as CaseStats,
   GetScoreData200ResponseResponseObject as ScoreData,
@@ -188,6 +219,11 @@ type StatisticsWithSurgeries = CaseStats & {
   surgeries?: Array<{ surgeryDate: string; therapy?: string | null }>;
   surgeryDate?: string;
   caseCreatedAt?: string;
+};
+
+type ElsnerPoint = {
+  week: number;
+  expectation: number;
 };
 
 // Register Chart.js components
@@ -248,6 +284,8 @@ const TEMPLATE_ID_TO_CATEGORY: Record<string, "aofas" | "efas" | "moxfq" | "vas"
   '67b4e612d0feb4ad99ae2e85': 'moxfq',
   '67b4e612d0feb4ad99ae2e86': 'vas', // VAS template ID
 };
+
+const ELSNER_FEEDBACK_TEMPLATE_ID = '67b4e612d0feb4ad99ae2e8b';
 
 const INVERTED_CATEGORIES: Record<"aofas" | "efas" | "moxfq" | "vas", boolean> = {
   aofas: false,
@@ -362,6 +400,100 @@ type StatisticsConsultation = CaseConsultation & {
   completedAt?: string | null;
   completionTimeSeconds?: number | null;
 };
+
+const parseElsnerPoints = (pointsJson: unknown): ElsnerPoint[] => {
+  if (typeof pointsJson !== 'string' || pointsJson.trim().length === 0) return [];
+
+  try {
+    const parsed = JSON.parse(pointsJson);
+    if (!Array.isArray(parsed)) return [];
+
+    return parsed
+      .map((entry) => {
+        if (!entry || typeof entry !== 'object') return null;
+        const candidate = entry as Record<string, unknown>;
+        const week = Number(candidate.week);
+        const expectation = Number(candidate.expectation);
+        if (!Number.isFinite(week) || !Number.isFinite(expectation)) return null;
+
+        return {
+          week: Math.max(0, Math.round(week)),
+          expectation: Math.max(0, Math.min(140, Math.round(expectation))),
+        };
+      })
+      .filter((point): point is ElsnerPoint => point !== null);
+  } catch {
+    return [];
+  }
+};
+
+const getElsnerPointsFromProm = (prom: PromWithTemplate): ElsnerPoint[] => {
+  const scoringRawFormData = (prom.scoring?.rawFormData as Record<string, unknown> | null | undefined) ?? null;
+  const elsnerSection =
+    scoringRawFormData && typeof scoringRawFormData.elsnerFeedback === 'object'
+      ? (scoringRawFormData.elsnerFeedback as Record<string, unknown>)
+      : null;
+
+  if (!elsnerSection) return [];
+
+  const pointsFromJson = parseElsnerPoints(elsnerSection.pointsJson);
+  if (pointsFromJson.length > 0) return pointsFromJson;
+
+  const week = Number(elsnerSection.currentWeek);
+  const expectation = Number(elsnerSection.selectedExpectation);
+  if (!Number.isFinite(week) || !Number.isFinite(expectation)) return [];
+
+  return [{
+    week: Math.max(0, Math.round(week)),
+    expectation: Math.max(0, Math.min(140, Math.round(expectation))),
+  }];
+};
+
+const elsnerAggregatedPoints = computed<ElsnerPoint[]>(() => {
+  const consultations = (statistics.value?.consultations as StatisticsConsultation[] | undefined) ?? [];
+  if (consultations.length === 0) return [];
+
+  const allPoints: ElsnerPoint[] = [];
+
+  for (const consultation of consultations) {
+    if (!consultation.proms || !Array.isArray(consultation.proms)) continue;
+
+    for (const promRaw of consultation.proms as ConsultationProm[]) {
+      const prom = promRaw as PromWithTemplate;
+      if (!prom.formTemplateId || String(prom.formTemplateId) !== ELSNER_FEEDBACK_TEMPLATE_ID) continue;
+
+      allPoints.push(...getElsnerPointsFromProm(prom));
+    }
+  }
+
+  const uniquePoints = new Map<string, ElsnerPoint>();
+  allPoints.forEach((point) => {
+    uniquePoints.set(`${point.week}-${point.expectation}`, point);
+  });
+
+  return [...uniquePoints.values()].sort((left, right) => {
+    if (left.week !== right.week) return left.week - right.week;
+    return left.expectation - right.expectation;
+  });
+});
+
+const elsnerXMax = computed(() => {
+  const maxWeek = elsnerAggregatedPoints.value.reduce((max, point) => Math.max(max, point.week), 0);
+  return Math.max(12, maxWeek);
+});
+
+const elsnerChartTitle = computed(() => (locale.value === 'de' ? 'Elsner Feedback Verlauf' : 'Elsner Feedback Trend'));
+const elsnerXAxisLabel = computed(() => (locale.value === 'de' ? 'Wochen postoperativ' : 'Weeks postoperative'));
+const elsnerYAxisLabel = computed(() => (locale.value === 'de' ? 'Patientenerwartung' : 'Patient expectation'));
+const elsnerBetterLabel = computed(() => (locale.value === 'de' ? 'besser' : 'better'));
+const elsnerWorseLabel = computed(() => (locale.value === 'de' ? 'schlechter' : 'worse'));
+const elsnerPointCount = computed(() => elsnerAggregatedPoints.value.length);
+const elsnerLatestWeek = computed(() => {
+  if (elsnerAggregatedPoints.value.length === 0) return null;
+  return elsnerAggregatedPoints.value.reduce((max, point) => Math.max(max, point.week), 0);
+});
+const elsnerPointCountLabel = computed(() => (locale.value === 'de' ? 'Punkte' : 'Points'));
+const elsnerLatestWeekLabel = computed(() => (locale.value === 'de' ? 'Letzte Woche' : 'Latest week'));
 
 // Convert consultations returned by getCaseStatistics into the score-data shape
 const computeScoreDataFromConsultations = (consultations: StatisticsConsultation[] | undefined) => {
@@ -1030,6 +1162,14 @@ onMounted(async () => {
   min-height: 300px;
   height: 50vh;
   max-height: 500px;
+}
+
+.elsner-chart-card {
+  height: 100%;
+}
+
+.elsner-chart-card-body {
+  padding-top: 0;
 }
 
 @media (max-width: 600px) {

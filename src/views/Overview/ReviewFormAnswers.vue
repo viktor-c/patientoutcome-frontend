@@ -5,7 +5,7 @@ import { useI18n } from 'vue-i18n'
 import { useDateFormat } from '@/composables/useDateFormat'
 import PluginFormRenderer from '@/forms/components/PluginFormRenderer.vue'
 import { type Form, type ScoringData } from '@/types'
-import { type FormSubmissionData } from '@/forms/types'
+import { type FormSubmissionData, type FormComponentContext } from '@/forms/types'
 import type { FormAnswerComment } from '@/types/backend/scoring'
 import { useNotifierStore } from '@/stores/notifierStore'
 import FormProgressCard from '@/components/FormProgressCard.vue'
@@ -34,6 +34,44 @@ const getIdFromUnknown = (value: unknown): string => {
 }
 
 const getFormRecord = () => (form.value || {}) as Record<string, unknown>
+
+const getRelevantSurgeryDate = (caseValue: unknown, consultationValue: unknown): string | null => {
+  if (!caseValue || typeof caseValue !== 'object') return null
+
+  const surgeries = (caseValue as Record<string, unknown>).surgeries
+  if (!Array.isArray(surgeries) || surgeries.length === 0) return null
+
+  const consultationDateAndTime =
+    consultationValue && typeof consultationValue === 'object'
+      ? (consultationValue as Record<string, unknown>).dateAndTime
+      : null
+  const consultationTime = new Date(String(consultationDateAndTime ?? ''))
+  const consultationTimestamp = Number.isNaN(consultationTime.getTime()) ? null : consultationTime.getTime()
+
+  const datedSurgeries = surgeries
+    .map((surgery) => {
+      if (!surgery || typeof surgery !== 'object') return null
+      const surgeryDate = (surgery as Record<string, unknown>).surgeryDate
+      if (typeof surgeryDate !== 'string' || surgeryDate.length === 0) return null
+      const timestamp = new Date(surgeryDate).getTime()
+      if (Number.isNaN(timestamp)) return null
+      return { surgeryDate, timestamp }
+    })
+    .filter((entry): entry is { surgeryDate: string; timestamp: number } => entry !== null)
+    .sort((left, right) => left.timestamp - right.timestamp)
+
+  if (datedSurgeries.length === 0) return null
+
+  if (consultationTimestamp == null) {
+    return datedSurgeries[datedSurgeries.length - 1].surgeryDate
+  }
+
+  const mostRecentBeforeConsultation = [...datedSurgeries]
+    .reverse()
+    .find((entry) => entry.timestamp <= consultationTimestamp)
+
+  return mostRecentBeforeConsultation?.surgeryDate ?? datedSurgeries[datedSurgeries.length - 1].surgeryDate
+}
 
 // State
 const form = ref<Form | null>(null)
@@ -95,6 +133,15 @@ const formStartTime = computed(() => {
   return formatLocalizedCustomDate(startTime, 'DD.MM.YYYY HH:mm:ss')
 })
 
+const formContext = computed<FormComponentContext | undefined>(() => {
+  const surgeryDate = getRelevantSurgeryDate(form.value?.caseId, form.value?.consultationId)
+  if (!surgeryDate) return undefined
+
+  return {
+    surgeryDate,
+  }
+})
+
 const formDuration = computed(() => {
   // Try to use completionTimeSeconds first
   const seconds = Number(getFormRecord().completionTimeSeconds || 0)
@@ -103,19 +150,19 @@ const formDuration = computed(() => {
     const secs = Math.floor(seconds % 60)
     return `${minutes}:${String(secs).padStart(2, '0')} min`
   }
-  
+
   // Calculate from start and end times if completionTimeSeconds is not available
   const startTime = form.value?.patientFormData?.beginFill || (getFormRecord().formStartTime as string | undefined)
   const endTime = form.value?.patientFormData?.completedAt
-  
+
   if (!startTime || !endTime) return t('common.notAvailable')
-  
+
   const start = new Date(startTime).getTime()
   const end = new Date(endTime).getTime()
   const durationSeconds = Math.floor((end - start) / 1000)
-  
+
   if (durationSeconds <= 0) return t('common.notAvailable')
-  
+
   const minutes = Math.floor(durationSeconds / 60)
   const secs = Math.floor(durationSeconds % 60)
   return `${minutes}:${String(secs).padStart(2, '0')} min`
@@ -406,7 +453,8 @@ const goBack = () => {
                   <v-list-item-subtitle>{{ formStartTime }}</v-list-item-subtitle>
                 </v-list-item>
 
-                <v-list-item v-if="(form.patientFormData?.beginFill || (form as any)?.formStartTime) && (form.patientFormData?.completedAt || (form as any)?.completionTimeSeconds)">
+                <v-list-item
+                             v-if="(form.patientFormData?.beginFill || (form as any)?.formStartTime) && (form.patientFormData?.completedAt || (form as any)?.completionTimeSeconds)">
                   <template #prepend>
                     <v-icon>mdi-timer</v-icon>
                   </template>
@@ -445,6 +493,7 @@ const goBack = () => {
                               :show-version-controls="true"
                               :current-version="(form as any)?.currentVersion || 1"
                               :locale="rendererLocale"
+                              :context="formContext"
                               :model-value="form?.patientFormData ?? null"
                               @update:model-value="handleFormDataChange" />
         </v-card-text>
@@ -466,8 +515,11 @@ const goBack = () => {
             <v-expansion-panel v-for="(comment, index) in reviewComments" :key="`review-comment-${index}`">
               <v-expansion-panel-title>
                 <div class="d-flex align-center ga-2">
-                  <span class="text-caption font-weight-bold">{{ comment.questionKey || t('forms.comments.formLevel') }}</span>
-                  <span class="text-caption text-medium-emphasis">{{ formatLocalizedCustomDate(String(comment.createdAt), 'DD.MM.YYYY HH:mm') }}</span>
+                  <span class="text-caption font-weight-bold">{{ comment.questionKey || t('forms.comments.formLevel')
+                    }}</span>
+                  <span class="text-caption text-medium-emphasis">{{
+                    formatLocalizedCustomDate(String(comment.createdAt),
+                    'DD.MM.YYYY HH:mm') }}</span>
                 </div>
               </v-expansion-panel-title>
               <v-expansion-panel-text>
@@ -496,7 +548,8 @@ const goBack = () => {
             </v-col>
           </v-row>
           <div class="d-flex justify-end">
-            <v-btn color="primary" variant="tonal" :disabled="newCommentContent.trim().length === 0" @click="addReviewComment">
+            <v-btn color="primary" variant="tonal" :disabled="newCommentContent.trim().length === 0"
+                   @click="addReviewComment">
               {{ t('reviewForm.addComment') }}
             </v-btn>
           </div>

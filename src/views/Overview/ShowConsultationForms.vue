@@ -12,7 +12,45 @@ import { getConsultationAccessWindowFromConsultation, type ConsultationAccessWin
 import { formatDateTimeForLocale } from '@/utils/localeDateTime'
 
 import type { Form, PatientFormData } from '@/types/index'
-import type { FormSubmissionData } from '@/forms/types'
+import type { FormSubmissionData, FormComponentContext } from '@/forms/types'
+
+function getRelevantSurgeryDate(consultation: unknown): string | null {
+  if (!consultation || typeof consultation !== 'object') return null
+
+  const consultationRecord = consultation as Record<string, unknown>
+  const patientCase = consultationRecord.patientCaseId
+  if (!patientCase || typeof patientCase !== 'object') return null
+
+  const surgeries = (patientCase as Record<string, unknown>).surgeries
+  if (!Array.isArray(surgeries) || surgeries.length === 0) return null
+
+  const consultationTime = new Date(String(consultationRecord.dateAndTime ?? ''))
+  const consultationTimestamp = Number.isNaN(consultationTime.getTime()) ? null : consultationTime.getTime()
+
+  const datedSurgeries = surgeries
+    .map((surgery) => {
+      if (!surgery || typeof surgery !== 'object') return null
+      const surgeryDate = (surgery as Record<string, unknown>).surgeryDate
+      if (typeof surgeryDate !== 'string' || surgeryDate.length === 0) return null
+      const timestamp = new Date(surgeryDate).getTime()
+      if (Number.isNaN(timestamp)) return null
+      return { surgeryDate, timestamp }
+    })
+    .filter((entry): entry is { surgeryDate: string; timestamp: number } => entry !== null)
+    .sort((left, right) => left.timestamp - right.timestamp)
+
+  if (datedSurgeries.length === 0) return null
+
+  if (consultationTimestamp == null) {
+    return datedSurgeries[datedSurgeries.length - 1].surgeryDate
+  }
+
+  const mostRecentBeforeConsultation = [...datedSurgeries]
+    .reverse()
+    .find((entry) => entry.timestamp <= consultationTimestamp)
+
+  return mostRecentBeforeConsultation?.surgeryDate ?? datedSurgeries[datedSurgeries.length - 1].surgeryDate
+}
 
 import { useWindowScroll, useWindowSize } from '@vueuse/core'
 const { height } = useWindowSize()
@@ -48,6 +86,12 @@ const showReviewOption = ref(false) // Show review option after all forms are fi
 const isReviewMode = ref(false) // True when reviewing completed forms
 const isFinalized = ref(false) // True after code is deactivated
 const consultationAccessWindow = ref<ConsultationAccessWindow | null>(null)
+const consultationSurgeryDate = ref<string | null>(null)
+
+const formContext = computed<FormComponentContext | undefined>(() => {
+  if (!consultationSurgeryDate.value) return undefined
+  return { surgeryDate: consultationSurgeryDate.value }
+})
 
 // Track when the current form was opened in this session so the backend can accumulate
 // only the *actual* time spent filling, not idle time between sessions.
@@ -71,6 +115,7 @@ onMounted(async () => {
     }
 
     consultationAccessWindow.value = getConsultationAccessWindowFromConsultation(consultationResponse.responseObject)
+    consultationSurgeryDate.value = getRelevantSurgeryDate(consultationResponse.responseObject)
 
     // Use the shared consultation flow logic
     await processConsultation(consultationResponse.responseObject)
@@ -406,6 +451,7 @@ const isSmallScreen = computed(() => window.innerWidth < 1300)
                               :template-id="currentForm.formTemplateId || currentForm._id || ''"
                               :model-value="(currentForm.patientFormData as any) || {}"
                               :locale="locale"
+                              :context="formContext"
                               @update:model-value="(data) => processFormData(data, currentFormIndex)"
                               @submit="submitForm" />
 
