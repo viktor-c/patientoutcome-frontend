@@ -23,12 +23,12 @@
           <template v-if="multiple && Array.isArray(selectedValue) && selectedValue.length">
             <v-chip
                     v-for="(val, idx) in displayChips"
-                    :key="idx"
+                    :key="typeof val === 'object' ? `${val.code}-${idx}` : `${val}-${idx}`"
                     size="small"
                     color="primary"
                     :closable="closableChips && !disabled && !readonly"
                     @click.stop
-                    @click:close="removeItem(idx)">
+                    @click:close.stop="removeItemByValue(val)">
               <strong>{{ typeof val === 'object' ? val.code : val }}</strong>
               <span v-if="typeof val === 'object'" class="ml-1 text-truncate" style="max-width: 160px">
                 – {{ val.label }}
@@ -323,7 +323,7 @@
                            variant="text"
                            size="x-small"
                            color="grey"
-                           @click.stop="removeItem(idx)">
+                           @click.stop="removeItemByValue(val)">
                       <v-icon size="14">mdi-close</v-icon>
                     </v-btn>
                   </template>
@@ -552,10 +552,16 @@ function clearSelection() {
   emit('update:modelValue', props.multiple ? [] : null)
 }
 
-function removeItem(idx: number) {
+function removeItemByValue(valueToRemove: IcdOpsEntry | string) {
   if (!Array.isArray(selectedValue.value)) return
   const arr = [...(selectedValue.value as (IcdOpsEntry | string)[])]
-  arr.splice(idx, 1)
+  const codeToRemove = typeof valueToRemove === 'object' ? valueToRemove.code : valueToRemove
+  const removeIndex = arr.findIndex((entry) => {
+    const entryCode = typeof entry === 'object' ? entry.code : entry
+    return entryCode === codeToRemove
+  })
+  if (removeIndex === -1) return
+  arr.splice(removeIndex, 1)
   selectedValue.value = arr
   emit('update:modelValue', arr)
 }

@@ -103,6 +103,97 @@ const form = ref<ConsultationFormState>({
   formAccessCode: null,
 })
 
+const isEditingConsultationDateInput = ref(false)
+const consultationDateInputDraft = ref('')
+
+const formatConsultationDateForInput = (rawDate: string | Date | null | undefined): string => {
+  if (!rawDate) return ''
+  const parsed = getLocalizedDayjs(rawDate)
+  if (!parsed.isValid()) return ''
+  return parsed.format('DD.MM.YYYY HH:mm')
+}
+
+const parseConsultationDateInput = (inputValue: string): string | null | undefined => {
+  const value = inputValue.trim()
+
+  if (!value) return null
+
+  // Accept DD.MM.YYYY HH:mm input.
+  const localizedMatch = value.match(/^(\d{1,2})\.(\d{1,2})\.(\d{4})\s+(\d{1,2}):(\d{2})$/)
+  if (localizedMatch) {
+    const [, day, month, year, hour, minute] = localizedMatch
+    const dayNum = Number(day)
+    const monthNum = Number(month)
+    const yearNum = Number(year)
+    const hourNum = Number(hour)
+    const minuteNum = Number(minute)
+
+    if (
+      dayNum >= 1 && dayNum <= 31
+      && monthNum >= 1 && monthNum <= 12
+      && hourNum >= 0 && hourNum <= 23
+      && minuteNum >= 0 && minuteNum <= 59
+    ) {
+      const isoLike = `${yearNum.toString().padStart(4, '0')}-${monthNum.toString().padStart(2, '0')}-${dayNum.toString().padStart(2, '0')}T${hourNum.toString().padStart(2, '0')}:${minuteNum.toString().padStart(2, '0')}:00`
+      const parsed = getLocalizedDayjs(isoLike)
+      if (parsed.isValid()) {
+        return parsed.toISOString()
+      }
+    }
+
+    return undefined
+  }
+
+  // Accept YYYY-MM-DD HH:mm input.
+  const isoDateTimeMatch = value.match(/^(\d{4})-(\d{2})-(\d{2})\s+(\d{2}):(\d{2})$/)
+  if (isoDateTimeMatch) {
+    const [, year, month, day, hour, minute] = isoDateTimeMatch
+    const parsed = getLocalizedDayjs(`${year}-${month}-${day}T${hour}:${minute}:00`)
+    if (parsed.isValid()) {
+      return parsed.toISOString()
+    }
+    return undefined
+  }
+
+  // Accept ISO datetime input.
+  if (value.includes('T')) {
+    const parsed = getLocalizedDayjs(value)
+    if (parsed.isValid()) {
+      return parsed.toISOString()
+    }
+  }
+
+  return undefined
+}
+
+const commitConsultationDateInput = () => {
+  const parsed = parseConsultationDateInput(consultationDateInputDraft.value)
+  if (parsed === undefined) {
+    return
+  }
+  form.value.dateAndTime = parsed
+}
+
+const handleConsultationDateInputFocus = () => {
+  isEditingConsultationDateInput.value = true
+}
+
+const handleConsultationDateInputBlur = () => {
+  commitConsultationDateInput()
+  isEditingConsultationDateInput.value = false
+  consultationDateInputDraft.value = formatConsultationDateForInput(form.value.dateAndTime)
+}
+
+watch(
+  () => form.value.dateAndTime,
+  (newDate) => {
+    if (!isEditingConsultationDateInput.value) {
+      consultationDateInputDraft.value = formatConsultationDateForInput(newDate)
+    }
+  },
+  { immediate: true }
+)
+
 // helper used when a consultation object needs to be applied to form state
 function populateFormFromConsultation(cons: ApiConsultationFlexible) {
   form.value = { ...cons }
@@ -298,6 +389,9 @@ onMounted(async () => {
 
 const saveConsultation = async () => {
   try {
+    // Commit any in-progress manual date input before validation/submission.
+    commitConsultationDateInput()
+
     // Mark form as submitted so all fields show validation errors
     formSubmitted.value = true
 
@@ -481,6 +575,17 @@ defineExpose({
                   data-testid="consultation-reason"></v-select>
         <v-row class="my-2">
           <v-col cols="8">
+            <v-text-field
+                          v-model="consultationDateInputDraft"
+                          :label="t('consultation.dateAndTime')"
+                          :placeholder="t('forms.hints.dateFormat') + ' HH:mm'"
+                          :hint="t('forms.hints.required')"
+                          persistent-hint
+                          @focus="handleConsultationDateInputFocus"
+                          @blur="handleConsultationDateInputBlur"
+                          class="mb-2"
+                          :error="!!errors.dateAndTime"
+                          :error-messages="errors.dateAndTime ? [errors.dateAndTime] : []" />
             <VueDatePicker
                            v-model="form.dateAndTime"
                            :class="{ 'error-border': errors.dateAndTime }"
@@ -488,7 +593,7 @@ defineExpose({
                            week-num-name="Wo"
                            format="dd.MM.yyyy HH:mm"
                            week-numbers="iso"
-                           :text-input="true"
+                           :text-input="false"
                            :teleport-center="true"
                            :cancelText="t('buttons.cancelTimeDateText')"
                            :selectText="t('buttons.selectTimeDateText')" />

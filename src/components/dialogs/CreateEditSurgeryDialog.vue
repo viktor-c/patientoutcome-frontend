@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, watch, computed, onUnmounted } from 'vue'
+import { ref, onMounted, watch, onUnmounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useDateFormat } from '@/composables/useDateFormat'
 import { useFormValidation } from '@/composables/useFormValidation'
@@ -129,51 +129,79 @@ onMounted(() => {
   })
 })
 
-const displaySurgeryDate = computed<string>({
-  get: () => {
-    const raw = form.value.surgeryDate
-    if (!raw) return ''
-    // Display date in localized format (e.g., DD.MM.YYYY or MM/DD/YYYY depending on locale)
-    return formatLocalizedCustomDate(raw, 'DD.MM.YYYY')
-  },
-  set: (val: string) => {
-    // Allow manual date input via text field
-    if (!val) {
-      form.value.surgeryDate = null
-      return
-    }
+const isEditingSurgeryDateInput = ref(false)
+const surgeryDateInputDraft = ref('')
 
-    // Try to parse YYYY-MM-DD format (standard input format)
-    const isoDateMatch = val.match(/^(\d{4}-\d{2}-\d{2})$/)
-    if (isoDateMatch) {
-      // Set date with 11:00 time for timezone consistency
-      const utcDateTime = dayjs.utc(`${isoDateMatch[1]} 11:00`, 'YYYY-MM-DD HH:mm')
-      if (utcDateTime.isValid()) {
-        form.value.surgeryDate = utcDateTime.toISOString()
-      }
-      return
-    }
+const formatSurgeryDateForInput = (rawDate: string | null | undefined): string => {
+  if (!rawDate) return ''
+  return formatLocalizedCustomDate(rawDate, 'DD.MM.YYYY')
+}
 
-    // Try to parse localized format (DD.MM.YYYY)
-    const localizedDateMatch = val.match(/^(\d{1,2})\.(\d{1,2})\.(\d{4})$/)
-    if (localizedDateMatch) {
-      const [, day, month, year] = localizedDateMatch
-      const utcDateTime = dayjs.utc(`${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')} 11:00`, 'YYYY-MM-DD HH:mm')
-      if (utcDateTime.isValid()) {
-        form.value.surgeryDate = utcDateTime.toISOString()
-      }
-      return
-    }
+const parseSurgeryDateInput = (inputValue: string): string | null | undefined => {
+  const value = inputValue.trim()
 
-    // If the incoming value looks like an ISO datetime, use it directly
-    if (val.includes('T')) {
-      form.value.surgeryDate = val
-      return
-    }
+  if (!value) return null
 
-    // Otherwise, we can't reliably parse the input -> leave unchanged
+  // Accept YYYY-MM-DD input
+  const isoDateMatch = value.match(/^(\d{4}-\d{2}-\d{2})$/)
+  if (isoDateMatch) {
+    const utcDateTime = dayjs.utc(`${isoDateMatch[1]} 11:00`, 'YYYY-MM-DD HH:mm')
+    if (utcDateTime.isValid()) {
+      return utcDateTime.toISOString()
+    }
+    return undefined
   }
-})
+
+  // Accept localized DD.MM.YYYY input
+  const localizedDateMatch = value.match(/^(\d{1,2})\.(\d{1,2})\.(\d{4})$/)
+  if (localizedDateMatch) {
+    const [, day, month, year] = localizedDateMatch
+    const utcDateTime = dayjs.utc(`${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')} 11:00`, 'YYYY-MM-DD HH:mm')
+    if (utcDateTime.isValid()) {
+      return utcDateTime.toISOString()
+    }
+    return undefined
+  }
+
+  // Accept full ISO datetime input
+  if (value.includes('T')) {
+    const parsedDate = dayjs(value)
+    if (parsedDate.isValid()) {
+      return parsedDate.toISOString()
+    }
+  }
+
+  // Undefined means invalid/incomplete input that should not overwrite the model.
+  return undefined
+}
+
+const commitSurgeryDateInput = () => {
+  const parsed = parseSurgeryDateInput(surgeryDateInputDraft.value)
+  if (parsed === undefined) {
+    return
+  }
+  form.value.surgeryDate = parsed
+}
+
+watch(
+  () => form.value.surgeryDate,
+  (newDate) => {
+    if (!isEditingSurgeryDateInput.value) {
+      surgeryDateInputDraft.value = formatSurgeryDateForInput(newDate)
+    }
+  },
+  { immediate: true }
+)
+
+const handleSurgeryDateInputFocus = () => {
+  isEditingSurgeryDateInput.value = true
+}
+
+const handleSurgeryDateInputBlur = () => {
+  commitSurgeryDateInput()
+  isEditingSurgeryDateInput.value = false
+  surgeryDateInputDraft.value = formatSurgeryDateForInput(form.value.surgeryDate)
+}
 
 function openDateDialog() {
   // Initialize tempDate and tempTime from the current surgeryDate
@@ -582,6 +610,9 @@ const saveSurgery = async () => {
   let savedSurgery: Surgery | null = null
 
   try {
+    // Commit any in-progress manual date text before validation/submission.
+    commitSurgeryDateInput()
+
     // Mark form as submitted so all fields show validation errors
     formSubmitted.value = true
 
@@ -784,7 +815,7 @@ defineExpose({
           <v-col cols="12" md="6">
             <!-- Text field for surgery date with manual input support -->
             <v-text-field
-                          v-model="displaySurgeryDate"
+                          v-model="surgeryDateInputDraft"
                           :label="t('surgery.surgeryDate')"
                           :placeholder="t('forms.hints.dateFormat')"
                           outlined
@@ -792,7 +823,9 @@ defineExpose({
                           :hint="t('forms.hints.required') + ' (Time fixed to 11:00 UTC internally)'"
                           persistent-hint
                           :error="hasError('surgeryDate')"
-                          :error-messages="hasError('surgeryDate') ? [getError('surgeryDate')] : []">
+                          :error-messages="hasError('surgeryDate') ? [getError('surgeryDate')] : []"
+                          @focus="handleSurgeryDateInputFocus"
+                          @blur="handleSurgeryDateInputBlur">
               <template #append-inner>
                 <v-btn
                        icon="mdi-calendar"
