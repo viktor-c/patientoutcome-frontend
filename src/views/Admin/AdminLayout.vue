@@ -98,24 +98,28 @@ const currentRouteName = computed(() => route.name as string | undefined);
 
         <v-divider class="mb-2" />
 
-        <v-list-item
-                     v-for="item in adminMenuItems"
-                     :key="item.route"
-                     :value="item.route"
-                     @click="navigateTo(item.route)"
-                     :class="{ 'v-item--active': currentRouteName === item.route }"
-                     ripple>
-          <v-tooltip :open-on-hover="true" v-if="rail">
-            <template #activator="{ props: tooltipProps }">
-              <v-icon v-bind="tooltipProps">{{ item.icon }}</v-icon>
-            </template>
-            <span>{{ item.title }}</span>
-          </v-tooltip>
-          <template v-else>
-            <v-icon>{{ item.icon }}</v-icon>
+        <v-tooltip
+                    v-for="item in adminMenuItems"
+                    :key="item.route"
+                    :text="item.title"
+                    :disabled="!rail"
+                    location="end">
+          <template #activator="{ props: tooltipProps }">
+            <v-list-item
+                         v-bind="tooltipProps"
+                         :value="item.route"
+                         @click="navigateTo(item.route)"
+                         :class="{ 'v-item--active': currentRouteName === item.route }"
+                         ripple>
+              <template #prepend>
+                <v-icon>{{ item.icon }}</v-icon>
+              </template>
+              <template #title>
+                <span v-if="!rail">{{ item.title }}</span>
+              </template>
+            </v-list-item>
           </template>
-          <v-list-item-title v-if="!rail">{{ item.title }}</v-list-item-title>
-        </v-list-item>
+        </v-tooltip>
       </v-list>
 
       <!-- Right side collapse/expand stripe -->
