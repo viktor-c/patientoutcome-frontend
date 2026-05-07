@@ -224,6 +224,7 @@ type StatisticsWithSurgeries = CaseStats & {
 type ElsnerPoint = {
   week: number;
   expectation: number;
+  date?: string;
 };
 
 // Register Chart.js components
@@ -458,17 +459,26 @@ const elsnerAggregatedPoints = computed<ElsnerPoint[]>(() => {
   for (const consultation of consultations) {
     if (!consultation.proms || !Array.isArray(consultation.proms)) continue;
 
+    const consultationDate = getConsultationDate(consultation as StatisticsConsultation);
+
     for (const promRaw of consultation.proms as ConsultationProm[]) {
       const prom = promRaw as PromWithTemplate;
       if (!prom.formTemplateId || String(prom.formTemplateId) !== ELSNER_FEEDBACK_TEMPLATE_ID) continue;
 
-      allPoints.push(...getElsnerPointsFromProm(prom));
+      const points = getElsnerPointsFromProm(prom);
+      if (consultationDate) {
+        points.forEach((p) => { p.date = consultationDate.toISOString(); });
+      }
+      allPoints.push(...points);
     }
   }
 
   const uniquePoints = new Map<string, ElsnerPoint>();
   allPoints.forEach((point) => {
-    uniquePoints.set(`${point.week}-${point.expectation}`, point);
+    const key = `${point.week}-${point.expectation}`;
+    if (!uniquePoints.has(key)) {
+      uniquePoints.set(key, point);
+    }
   });
 
   return [...uniquePoints.values()].sort((left, right) => {
@@ -479,7 +489,7 @@ const elsnerAggregatedPoints = computed<ElsnerPoint[]>(() => {
 
 const elsnerXMax = computed(() => {
   const maxWeek = elsnerAggregatedPoints.value.reduce((max, point) => Math.max(max, point.week), 0);
-  return Math.max(12, maxWeek);
+  return Math.max(12, maxWeek) + 2;
 });
 
 const elsnerChartTitle = computed(() => (locale.value === 'de' ? 'Elsner Feedback Verlauf' : 'Elsner Feedback Trend'));

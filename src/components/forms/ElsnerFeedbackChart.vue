@@ -1,9 +1,10 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { ref, computed } from 'vue'
 
 export interface ElsnerPoint {
   week: number
   expectation: number
+  date?: string
 }
 
 interface Props {
@@ -138,6 +139,44 @@ function onChartClick(event: MouseEvent) {
   const expectation = Math.round(Math.max(0, Math.min(1, normalized)) * effectiveYMax.value)
   emit('select-expectation', expectation)
 }
+
+// Tooltip
+const TOOLTIP_W = 170
+const TOOLTIP_H = 46
+
+const hoveredPoint = ref<ElsnerPoint | null>(null)
+
+function onPointMouseEnter(point: ElsnerPoint) {
+  hoveredPoint.value = point
+}
+
+function onPointMouseLeave() {
+  hoveredPoint.value = null
+}
+
+const tooltipTransform = computed(() => {
+  if (!hoveredPoint.value) return ''
+  const x = toCanvasX(hoveredPoint.value.week)
+  const y = toCanvasY(hoveredPoint.value.expectation)
+  let tx = x - TOOLTIP_W / 2
+  let ty = y - TOOLTIP_H - 12
+  tx = Math.max(paddingLeft, Math.min(width - paddingRight - TOOLTIP_W, tx))
+  if (ty < paddingTop) ty = y + 12
+  return `translate(${tx}, ${ty})`
+})
+
+const tooltipDateText = computed(() => {
+  const p = hoveredPoint.value
+  if (!p) return ''
+  if (p.date) return new Date(p.date).toLocaleDateString()
+  return `${props.xAxisLabel}: ${p.week}`
+})
+
+const tooltipScoreText = computed(() => {
+  const p = hoveredPoint.value
+  if (!p) return ''
+  return `${props.yAxisLabel}: ${p.expectation}`
+})
 </script>
 
 <template>
@@ -149,6 +188,7 @@ function onChartClick(event: MouseEvent) {
       :viewBox="`0 0 ${width} ${height}`"
       role="img"
       @click="onChartClick"
+      @mouseleave="onPointMouseLeave"
     >
       <path :d="betterAreaPath" class="better-area" />
       <path :d="worseAreaPath" class="worse-area" />
@@ -217,6 +257,9 @@ function onChartClick(event: MouseEvent) {
         :cy="toCanvasY(point.expectation)"
         r="3.5"
         fill="#e53935"
+        class="data-point"
+        @mouseenter="onPointMouseEnter(point)"
+        @mouseleave="onPointMouseLeave"
       />
 
       <circle
@@ -252,6 +295,16 @@ function onChartClick(event: MouseEvent) {
       >
         {{ yAxisLabel }}
       </text>
+
+      <!-- Hover tooltip -->
+      <g v-if="hoveredPoint" :transform="tooltipTransform" style="pointer-events: none;">
+        <rect x="0" y="0" :width="TOOLTIP_W" :height="TOOLTIP_H" rx="4" ry="4"
+          fill="white" stroke="#546e7a" stroke-width="1"
+          style="filter: drop-shadow(0 2px 4px rgba(0,0,0,0.18));"
+        />
+        <text x="8" y="17" class="tooltip-line">{{ tooltipDateText }}</text>
+        <text x="8" y="35" class="tooltip-line tooltip-score-line">{{ tooltipScoreText }}</text>
+      </g>
     </svg>
   </div>
 </template>
@@ -306,5 +359,18 @@ function onChartClick(event: MouseEvent) {
 
 .worse-label {
   fill: #c62828;
+}
+
+.data-point {
+  cursor: pointer;
+}
+
+.tooltip-line {
+  fill: #263238;
+  font-size: 12px;
+}
+
+.tooltip-score-line {
+  font-weight: 600;
 }
 </style>
