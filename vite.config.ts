@@ -7,9 +7,8 @@ import vuetify from 'vite-plugin-vuetify'
 
 // https://vite.dev/config/
 export default defineConfig(({ mode }) => {
-  // load .env files and provide VITE_API_URL (or fallback) safely in Node context
+  // load .env files
   const env = loadEnv(mode, process.cwd())
-  const apiTarget = env.VITE_API_TARGET || 'http://localhost:40001'
   // Allowed hosts for dev server (comma-separated). Example: VITE_ALLOWED_HOSTS=localhost,prom.example.com
   const allowedHosts = (env.VITE_ALLOWED_HOSTS || 'localhost')
     .split(',')
@@ -19,7 +18,6 @@ export default defineConfig(({ mode }) => {
   // Optional HMR host (useful when proxying through Traefik)
   const hmrHost = env.VITE_HMR_HOST || undefined
 
-  console.debug("VITE_API_TARGET:", apiTarget)
   console.debug("VITE_ALLOWED_HOSTS:", allowedHosts)
 
   return {

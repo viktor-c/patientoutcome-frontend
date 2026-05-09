@@ -1,11 +1,11 @@
 import { Configuration, UserApi, FormApi, PatientApi, PatientCaseApi, ConsultationApi, CodeApi, FormtemplateApi, KioskApi, SurgeryApi, BlueprintApi, StatisticsApi, FeedbackApi, UserDepartmentApi, BackupApi, SettingsApi, SetupApi } from '@/api/';
 import { authMiddleware } from '@/middleware/authMiddleware';
+import { resolveApiBaseUrl } from '@/utils/apiBaseUrl';
 
-// Create a new configuration with a custom basePath and auth middleware
-// In dev, prefer the local proxy path (`/api`) so requests are same-origin and cookies work
-const defaultBase = import.meta.env.DEV
-  ? (import.meta.env.VITE_API_URL || '/api')
-  : (import.meta.env.VITE_API_URL || 'https://prom.example.com');
+// Create a new configuration with the explicit API basePath and auth middleware.
+// The basePath is resolved from runtime config (window.__APP_CONFIG__.VITE_API_URL)
+// or build-time env (VITE_API_URL) without automatic host fallback.
+const defaultBase = resolveApiBaseUrl(import.meta.env.VITE_API_URL);
 
 /** The configured API base path – used by composables that need raw fetch calls. */
 export const apiBasePath = defaultBase;

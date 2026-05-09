@@ -163,9 +163,11 @@ import { useI18n } from 'vue-i18n'
 import { useNotifierStore } from '@/stores/notifierStore'
 import { userDepartmentApi } from '@/api.ts'
 import type { UserDepartment } from '@/api'
+import { resolveApiBaseUrl } from '@/utils/apiBaseUrl'
 
 const { t } = useI18n()
 const notifierStore = useNotifierStore()
+const apiBaseUrl = resolveApiBaseUrl(import.meta.env.VITE_API_URL)
 
 const formRef = ref()
 const loading = ref(false)
@@ -289,7 +291,7 @@ async function createBatch() {
         : form.value.expiryValue,
     }
 
-    const response = await fetch(`${import.meta.env.VITE_API_URL}/user/batch-registration-codes`, {
+    const response = await fetch(`${apiBaseUrl}/user/batch-registration-codes`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

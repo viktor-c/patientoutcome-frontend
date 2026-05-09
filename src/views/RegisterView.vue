@@ -94,11 +94,13 @@ import { ResponseError } from '@/api'
 import { userApi } from '@/api'
 import type { RegisterUserRequest } from '@/api'
 import { useNotifierStore } from '@/stores/notifierStore'
+import { resolveApiBaseUrl } from '@/utils/apiBaseUrl'
 
 const { t } = useI18n()
 const router = useRouter()
 const route = useRoute()
 const notifierStore = useNotifierStore()
+const apiBaseUrl = resolveApiBaseUrl(import.meta.env.VITE_API_URL)
 
 const username = ref('')
 const password = ref('')
@@ -156,7 +158,7 @@ async function checkUsername() {
   
   try {
     const response = await fetch(
-      `${import.meta.env.VITE_API_URL}/user/check-username/${username.value}`,
+      `${apiBaseUrl}/user/check-username/${username.value}`,
       {
         credentials: 'include'
       }

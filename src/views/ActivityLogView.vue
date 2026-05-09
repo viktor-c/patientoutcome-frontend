@@ -120,6 +120,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted, nextTick, watch } from 'vue'
 import { useNotifierStore } from '@/stores/notifierStore'
+import { resolveApiBaseUrl } from '@/utils/apiBaseUrl'
 
 interface ActivityLog {
   timestamp: string
@@ -198,9 +199,7 @@ function formatTime(timestamp: string): string {
 }
 
 function connectToEventStream() {
-  // If running in production, force the promo API URL
-  // BUG in production env meta.env.VITE_API_BASE_URL is undefined
-  const baseURL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:40001'
+  const baseURL = resolveApiBaseUrl(import.meta.env.VITE_API_URL)
   console.debug('Connecting to SSE at', `${baseURL}/activitylog/stream`)
   eventSource = new EventSource(`${baseURL}/activitylog/stream`, {
     withCredentials: true
