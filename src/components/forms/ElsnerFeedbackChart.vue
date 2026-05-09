@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 
 export interface ElsnerPoint {
   week: number
@@ -39,6 +40,9 @@ const props = withDefaults(defineProps<Props>(), {
 const emit = defineEmits<{
   (e: 'select-expectation', value: number): void
 }>()
+
+const { locale } = useI18n()
+const currentLocale = computed(() => locale.value === 'de' ? 'de-DE' : 'en-US')
 
 const width = 720
 const height = 360
@@ -168,7 +172,12 @@ const tooltipTransform = computed(() => {
 const tooltipDateText = computed(() => {
   const p = hoveredPoint.value
   if (!p) return ''
-  if (p.date) return new Date(p.date).toLocaleDateString()
+  if (p.date) {
+    return new Date(p.date).toLocaleString(currentLocale.value, {
+      dateStyle: 'medium',
+      timeStyle: 'short',
+    })
+  }
   return `${props.xAxisLabel}: ${p.week}`
 })
 

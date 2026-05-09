@@ -1048,9 +1048,11 @@ const chartOptions = computed(() => {
                 const timeSince = calculateTimeSinceReference(date, referenceDate);
                 const afterText = t('statistics.after');
                 const referenceText = isSurgeryReference ? t('statistics.surgery') : t('statistics.caseCreation');
-                return `${date.toLocaleDateString(currentLocale.value)} (${timeSince} ${afterText} ${referenceText})`;
+                return `${date.toLocaleDateString(currentLocale.value)} ${date.toLocaleTimeString(currentLocale.value, { hour: '2-digit', minute: '2-digit' })} (${timeSince} ${afterText} ${referenceText})`;
               }
-              return date ? date.toLocaleDateString(currentLocale.value) : '';
+              return date
+                ? `${date.toLocaleDateString(currentLocale.value)} ${date.toLocaleTimeString(currentLocale.value, { hour: '2-digit', minute: '2-digit' })}`
+                : '';
             },
             label: (context: TooltipItem<"line">) => {
               const point = realTimeData[context.dataIndex] as RealTimePoint & Record<string, unknown>;
