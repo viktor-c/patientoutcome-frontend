@@ -107,6 +107,11 @@ function setExpectation(expectation: number) {
 
 const currentWeek = computed(() => localSection.value.currentWeek)
 const selectedExpectation = computed(() => localSection.value.selectedExpectation)
+const chartXMax = computed(() => {
+  const maxWeekInPoints = localPoints.value.reduce((max, point) => Math.max(max, point.week), 0)
+  const baseline = Math.max(currentWeek.value ?? 0, maxWeekInPoints, 12)
+  return baseline + 4
+})
 const showTrendLine = computed(() =>
   shouldShowElsnerTrendLine(userStore.isAuthenticated(), userStore.isKioskUser())
 )
@@ -151,6 +156,7 @@ watch(
                          :y-axis-label="t('elsnerFeedback.yAxis')"
                          :better-area-label="t('elsnerFeedback.area.better')"
                          :worse-area-label="t('elsnerFeedback.area.worse')"
+                         :x-max="chartXMax"
                          @select-expectation="setExpectation" />
 
     <v-slider
