@@ -789,10 +789,33 @@ const getFormStatusColor = (status: string | undefined): string => {
   if (!status) return 'grey'
   switch (status) {
     case 'completed': return 'success'
+    case 'complete': return 'success'
     case 'incomplete': return 'warning'
     case 'draft': return 'info'
     default: return 'grey'
   }
+}
+
+const getFormDisplayStatus = (form: ApiConsultationForm): string => {
+  const reportedStatus = form.patientFormData?.fillStatus
+  if (reportedStatus && reportedStatus !== 'draft') {
+    return reportedStatus
+  }
+
+  if (!isElsnerFeedbackForm(form)) {
+    return reportedStatus || 'draft'
+  }
+
+  const rawFormData = form.patientFormData?.rawFormData as Record<string, unknown> | undefined
+  const elsnerFeedback = rawFormData?.elsnerFeedback as Record<string, unknown> | undefined
+  const hasWeek = typeof elsnerFeedback?.currentWeek === 'number'
+  const hasExpectation = typeof elsnerFeedback?.selectedExpectation === 'number'
+
+  if (hasWeek && hasExpectation) {
+    return 'complete'
+  }
+
+  return reportedStatus || 'draft'
 }
 
 const getFormAccessLevel = (form: ApiConsultationForm): string => {
@@ -1024,10 +1047,10 @@ const isCodeExpiringSoon = computed(() => {
                 <v-card-title class="text-subtitle-1">
                   {{ form.title || t('forms.consultation.untitledForm') }}
                   <v-chip
-                          :color="getFormStatusColor(form.patientFormData?.fillStatus)"
+                          :color="getFormStatusColor(getFormDisplayStatus(form))"
                           size="small"
                           class="mb-2">
-                    {{ form.patientFormData?.fillStatus }}
+                    {{ getFormDisplayStatus(form) }}
                   </v-chip>
                   <v-chip
                           :color="getAccessLevelColor(getFormAccessLevel(form))"
@@ -1512,9 +1535,9 @@ const isCodeExpiringSoon = computed(() => {
                               </p>
                               <div class="d-flex align-center gap-2 mb-2">
                                 <v-chip
-                                        :color="getFormStatusColor(form.patientFormData?.fillStatus)"
+                                        :color="getFormStatusColor(getFormDisplayStatus(form))"
                                         size="x-small">
-                                  {{ form.patientFormData?.fillStatus }}
+                                  {{ getFormDisplayStatus(form) }}
                                 </v-chip>
                                 <v-chip
                                         :color="getAccessLevelColor(getFormAccessLevel(form))"
