@@ -88,7 +88,17 @@ const isSelected = (blueprint: Blueprint): boolean => {
 }
 
 const calculateBlueprintDate = (timeDelta?: string): dayjs.Dayjs => {
-  if (!props.surgeryDate || !timeDelta) {
+  if (!timeDelta) {
+    return dayjs()
+  }
+
+  // Handle special case: "now" returns current date
+  if (timeDelta.toLowerCase() === 'now') {
+    return dayjs()
+  }
+
+  // If no surgery date, return current date
+  if (!props.surgeryDate) {
     return dayjs()
   }
 
@@ -464,11 +474,16 @@ const processBlueprint = async (blueprint: Blueprint): Promise<Array<CreateConsu
 // Parse timeDelta and calculate actual date
 /**
  * @description Parses the timeDelta string and calculates the actual consultation date.
- * @param {string} timeDelta - The time delta string (e.g., "7d", "2w").
+ * @param {string} timeDelta - The time delta string (e.g., "7d", "2w", "now").
  * @param {dayjs.Dayjs} referenceDate - The reference date to calculate from.
  * @returns {dayjs.Dayjs} The calculated date.
  */
 const calculateConsultationDate = (timeDelta: string, referenceDate: dayjs.Dayjs): dayjs.Dayjs => {
+  // Handle special case: "now" returns current date
+  if (timeDelta.toLowerCase() === 'now') {
+    return dayjs()
+  }
+
   // Parse timeDelta format like "7d", "2w", "1m", "0d", etc. (case insensitive)
   const match = timeDelta.match(/^([+-]?\d+)([dwmy])$/i)
   if (!match) {
@@ -762,7 +777,7 @@ defineExpose({
                             color="info"
                             variant="outlined"
                             class="mr-2">
-                      {{ blueprint.timeDelta }}
+                      {{ formatLocalizedCustomDate(calculateBlueprintDate(blueprint.timeDelta).toDate(), dateFormats.shortDate) }}
                     </v-chip>
                     <div v-if="blueprint.tags && blueprint.tags.length > 0">
                       <v-chip
@@ -805,7 +820,7 @@ defineExpose({
                     {{ blueprint.title }}
                   </v-list-item-title>
                   <v-list-item-subtitle>
-                    {{ blueprint.timeDelta }}
+                    {{ formatLocalizedCustomDate(calculateBlueprintDate(blueprint.timeDelta).toDate(), dateFormats.longDate) }}
                   </v-list-item-subtitle>
                 </div>
 
