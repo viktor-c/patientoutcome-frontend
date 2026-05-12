@@ -24,9 +24,15 @@ function renderStartupError(message: string, details?: string) {
         <h1 style="margin:0 0 8px 0;font-size:24px;">API backend is not reachable</h1>
         <p style="margin:0 0 12px 0;line-height:1.5;">${message}</p>
         ${details ? `<p style="margin:0;color:#6b7280;line-height:1.5;">${details}</p>` : ''}
+        <p style="margin:16px 0 0 0;color:#6b7280;line-height:1.5;">Redirecting to the dashboard in 5 seconds.</p>
       </section>
     </main>
   `
+
+  const baseUrl = import.meta.env.BASE_URL.endsWith('/') ? import.meta.env.BASE_URL : `${import.meta.env.BASE_URL}/`
+  window.setTimeout(() => {
+    window.location.assign(`${baseUrl}dashboard`)
+  }, 5000)
 }
 
 async function ensureApiReachable(apiBaseUrl: string): Promise<boolean> {
