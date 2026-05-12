@@ -805,12 +805,13 @@ defineExpose({
 
           <!-- Right panel: Selected blueprints -->
           <v-col cols="5">
-            <h3>{{ t('consultation.selectedBlueprints') }}</h3>
-            <v-chip class="mb-4" color="primary">
-              {{ selectedBlueprints.length }} {{ t('consultation.selected') }}
-            </v-chip>
+            <div class="selected-blueprints-sticky">
+              <h3>{{ t('consultation.selectedBlueprints') }}</h3>
+              <v-chip class="mb-4" color="primary">
+                {{ selectedBlueprints.length }} {{ t('consultation.selected') }}
+              </v-chip>
 
-            <v-list v-if="selectedBlueprints.length > 0" class="selected-list">
+              <v-list v-if="selectedBlueprints.length > 0" class="selected-list">
               <v-list-item
                            v-for="blueprint in sortedSelectedBlueprints"
                            :key="blueprint.id || blueprint.title"
@@ -833,25 +834,26 @@ defineExpose({
                          @click="removeBlueprint(blueprint)" />
                 </template>
               </v-list-item>
-            </v-list>
+              </v-list>
 
-            <!-- Empty selected state -->
-            <v-card v-else outlined class="text-center pa-4">
-              <v-icon size="48" color="grey">mdi-calendar-plus</v-icon>
-              <h4 class="mt-2">{{ t('consultation.noSelectedBlueprints') }}</h4>
-              <p class="text-grey">{{ t('consultation.selectFromLeft') }}</p>
-            </v-card>
+              <!-- Empty selected state -->
+              <v-card v-else outlined class="text-center pa-4">
+                <v-icon size="48" color="grey">mdi-calendar-plus</v-icon>
+                <h4 class="mt-2">{{ t('consultation.noSelectedBlueprints') }}</h4>
+                <p class="text-grey">{{ t('consultation.selectFromLeft') }}</p>
+              </v-card>
 
-            <!-- Surgery date reference -->
-            <v-card v-if="surgeryDate" outlined class="mt-4">
-              <v-card-text>
-                <h4>{{ t('consultation.referenceDate') }}</h4>
-                <p class="text-body-2">{{ formatLocalizedCustomDate(surgeryDate, dateFormats.longDate) }}</p>
-                <p class="text-caption text-grey">
-                  {{ t('consultation.consultationTimesCalculated') }}
-                </p>
-              </v-card-text>
-            </v-card>
+              <!-- Surgery date reference -->
+              <v-card v-if="surgeryDate" outlined class="mt-4">
+                <v-card-text>
+                  <h4>{{ t('consultation.referenceDate') }}</h4>
+                  <p class="text-body-2">{{ formatLocalizedCustomDate(surgeryDate, dateFormats.longDate) }}</p>
+                  <p class="text-caption text-grey">
+                    {{ t('consultation.consultationTimesCalculated') }}
+                  </p>
+                </v-card-text>
+              </v-card>
+            </div>
           </v-col>
         </v-row>
       </div>
@@ -929,13 +931,23 @@ defineExpose({
 
 <style scoped>
 .blueprint-list {
-  max-height: 400px;
-  overflow-y: auto;
+  overflow: visible;
 }
 
 .selected-list {
-  max-height: 300px;
-  overflow-y: auto;
+  overflow: visible;
+}
+
+.selected-blueprints-sticky {
+  position: sticky;
+  top: calc(var(--v-layout-top, 0px) + 12px);
+}
+
+@media (max-width: 959px) {
+  .selected-blueprints-sticky {
+    position: static;
+    top: auto;
+  }
 }
 
 .blueprint-item {
