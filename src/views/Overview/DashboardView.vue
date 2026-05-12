@@ -200,7 +200,7 @@ onUnmounted(() => {
       <v-col cols="12" sm="6" md="4">
         <DashboardSearchDialog />
       </v-col>
-      <v-col cols="12" sm="6" md="4" class="d-flex justify-end">
+      <v-col cols="12" sm="6" md="4" class="d-flex justify-end creation-flow-col">
         <v-tooltip location="bottom" :text="t('buttons.startCreationFlow')">
           <template #activator="{ props }">
             <v-btn
@@ -333,15 +333,23 @@ onUnmounted(() => {
 </template>
 
 <style scoped>
+.creation-flow-col {
+  position: relative;
+  z-index: 4;
+  overflow: visible;
+}
+
 .creation-flow-btn {
+  position: relative;
+  z-index: 4;
   box-shadow: 0 0 8px 2px rgba(var(--v-theme-primary), 0.35),
-              0 2px 6px rgba(0, 0, 0, 0.2);
+    0 2px 6px rgba(0, 0, 0, 0.2);
   transition: box-shadow 0.25s ease, transform 0.2s ease;
 }
 
 .creation-flow-btn:hover {
   box-shadow: 0 0 18px 6px rgba(var(--v-theme-primary), 0.65),
-              0 4px 12px rgba(0, 0, 0, 0.25);
+    0 4px 12px rgba(0, 0, 0, 0.25);
   transform: scale(1.07);
 }
 </style>
