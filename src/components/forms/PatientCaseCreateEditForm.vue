@@ -21,7 +21,7 @@ import { useNotifierStore } from '@/stores/notifierStore'
 const notifierStore = useNotifierStore()
 
 const { t } = useI18n()
-const { validateForm, clearAllErrors, resetFormState } = useFormValidation()
+const { validateForm, clearAllErrors, resetFormState, errors, getErrorForce, touchField } = useFormValidation()
 
 // Props
 const props = defineProps<{
@@ -95,6 +95,10 @@ const extractLabels = (entries: (IcdOpsEntry | string)[]): string[] => {
 // Watch ICD10 entries and sync codes to formCase
 watch(mainDiagnosisICD10Entries, (entries) => {
   formCase.value.mainDiagnosisICD10 = extractCodes(entries)
+  // Clear validation error when field becomes valid (has entries)
+  if (entries.length > 0) {
+    clearAllErrors()
+  }
 }, { deep: true })
 
 watch(otherDiagnosisICD10Entries, (entries) => {
@@ -286,6 +290,8 @@ const submit = async () => {
     }
 
     if (!validateForm(formCase.value, validationRules)) {
+      // Touch all fields so errors are displayed
+      touchField('mainDiagnosis')
       notifierStore.notify(t('alerts.validation.failed'), 'error')
       return
     }
@@ -371,6 +377,8 @@ const submitAndNextStep = async () => {
       }
 
       if (!validateForm(formCase.value, validationRules)) {
+        // Touch all fields so errors are displayed
+        touchField('mainDiagnosis')
         notifierStore.notify(t('alerts.validation.failed'), 'error')
         return
       }
@@ -401,6 +409,7 @@ const submitAndNextStep = async () => {
 defineExpose({
   submit,
   submitAndNextStep,
+  formSubmitted,
   resetFormState: () => {
     clearAllErrors()
     resetFormState()
@@ -458,6 +467,7 @@ loadDefaultBlueprints()
                              type="icd"
                              :label="t('forms.patientCase.mainDiagnosis')"
                              v-model="mainDiagnosisICD10Entries"
+                             :field-error="formSubmitted ? getErrorForce('mainDiagnosis') : ''"
                              return-object
                              multiple
                              chips

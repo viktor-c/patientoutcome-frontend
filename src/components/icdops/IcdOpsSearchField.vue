@@ -8,7 +8,7 @@
     <v-input
              :hint="hintText"
              :persistent-hint="persistentHint"
-             :error-messages="fieldError ? [fieldError] : []"
+             :error-messages="computedFieldError ? [computedFieldError] : []"
              :disabled="disabled"
              :density="density"
              :variant="variant"
@@ -391,6 +391,8 @@ export interface IcdOpsSearchFieldProps {
   minChars?: number
   /** Debounce delay in ms (defaults to VITE_ICD_OPS_DEBOUNCE_MS env var) */
   debounceMs?: number
+  /** Error message to display */
+  fieldError?: string | null
 }
 
 const props = withDefaults(defineProps<IcdOpsSearchFieldProps>(), {
@@ -411,6 +413,7 @@ const props = withDefaults(defineProps<IcdOpsSearchFieldProps>(), {
   persistentHint: false,
   minChars: 1,
   debounceMs: undefined,
+  fieldError: null,
 })
 
 const emit = defineEmits<{
@@ -448,7 +451,7 @@ const {
 const dialogOpen = ref(false)
 const searchInput = ref('')
 const searchRef = ref<InstanceType<typeof VTextField> | null>(null)
-const fieldError = ref<string | null>(null)
+const internalSearchError = ref<string | null>(null)
 
 // Initialize selected value
 type SingleValue = IcdOpsEntry | string | null
@@ -490,6 +493,11 @@ const hintText = computed(() => {
 const searchPlaceholder = computed(() => {
   if (props.type === 'icd') return 'Code oder Bezeichnung eingeben…'
   return 'Code (Ziffern) oder Bezeichnung eingeben…'
+})
+
+// Combine prop error with internal search error (prop error takes precedence)
+const computedFieldError = computed(() => {
+  return props.fieldError || internalSearchError.value
 })
 
 // ──────────────────────────────────────────────────────────────
@@ -713,7 +721,7 @@ watch(
 
 // Propagate composable error to field
 watch(searchError, (err) => {
-  fieldError.value = err
+  internalSearchError.value = err
 })
 </script>
 
