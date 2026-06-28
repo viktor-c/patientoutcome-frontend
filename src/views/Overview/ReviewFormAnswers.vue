@@ -83,6 +83,8 @@ const reviewComments = ref<FormAnswerComment[]>([])
 const originalComments = ref<FormAnswerComment[]>([])
 const newCommentQuestionKey = ref('')
 const newCommentContent = ref('')
+const showRawData = ref(false)
+const selectedKeys = ref<Set<string>>(new Set())
 const loading = ref(true)
 const saving = ref(false)
 
@@ -376,6 +378,92 @@ const goBack = () => {
     navigateToConsultationOverview()
   }
 }
+
+const getCaseId = (): string => {
+  if (!form.value?.caseId) return 'unknown'
+  const caseId = form.value.caseId
+  if (typeof caseId === 'string') return caseId
+  if (caseId && typeof caseId === 'object') {
+    const idObj = caseId as Record<string, unknown>
+    return String(idObj._id || idObj.id || 'unknown')
+  }
+  return String(caseId)
+}
+
+const getPatientFormDataKeys = (): string[] => {
+  if (!form.value?.patientFormData) return []
+  return Object.keys(form.value.patientFormData as Record<string, unknown>)
+}
+
+// Helper functions for file operations
+const downloadData = (data: unknown, filename: string) => {
+  const dataStr = JSON.stringify(data, null, 2)
+  const blob = new Blob([dataStr], { type: 'application/json' })
+  const url = URL.createObjectURL(blob)
+  const link = document.createElement('a')
+  link.href = url
+  link.download = filename
+  document.body.appendChild(link)
+  link.click()
+  document.body.removeChild(link)
+  URL.revokeObjectURL(url)
+  notifierStore.notify(t('reviewForm.downloadSuccess'), 'success')
+}
+
+const copyDataToClipboard = async (data: unknown) => {
+  try {
+    const dataStr = JSON.stringify(data, null, 2)
+    await navigator.clipboard.writeText(dataStr)
+    notifierStore.notify(t('reviewForm.copiedToClipboard'), 'success')
+  } catch (error) {
+    logger.error('Failed to copy to clipboard:', error)
+    notifierStore.notify(t('reviewForm.copyError'), 'error')
+  }
+}
+
+const downloadIndividualItem = (key: string) => {
+  const data = (form.value?.patientFormData as Record<string, unknown>)?.[key]
+  downloadData(data, `case-${getCaseId()}-form-${formId}-${key}.json`)
+}
+
+const copyIndividualItem = async (key: string) => {
+  const data = (form.value?.patientFormData as Record<string, unknown>)?.[key]
+  await copyDataToClipboard(data)
+}
+
+const downloadAllItems = () => {
+  downloadData(form.value?.patientFormData || {}, `case-${getCaseId()}-form-${formId}-complete.json`)
+}
+
+const copyAllItems = async () => {
+  await copyDataToClipboard(form.value?.patientFormData || {})
+}
+
+const toggleSelection = (key: string) => {
+  if (selectedKeys.value.has(key)) {
+    selectedKeys.value.delete(key)
+  } else {
+    selectedKeys.value.add(key)
+  }
+}
+
+const downloadSelectedItems = () => {
+  if (selectedKeys.value.size === 0) return
+  const selectedData: Record<string, unknown> = {}
+  selectedKeys.value.forEach((key) => {
+    selectedData[key] = (form.value?.patientFormData as Record<string, unknown>)?.[key]
+  })
+  downloadData(selectedData, `case-${getCaseId()}-form-${formId}-selected.json`)
+}
+
+const copySelectedItems = async () => {
+  if (selectedKeys.value.size === 0) return
+  const selectedData: Record<string, unknown> = {}
+  selectedKeys.value.forEach((key) => {
+    selectedData[key] = (form.value?.patientFormData as Record<string, unknown>)?.[key]
+  })
+  await copyDataToClipboard(selectedData)
+}
 </script>
 
 <template>
@@ -554,6 +642,99 @@ const goBack = () => {
             </v-btn>
           </div>
         </v-card-text>
+        <v-divider />
+        <!-- Raw form data viewer -->
+        <v-card-text class="px-4 py-4">
+          <div class="d-flex align-center justify-space-between mb-4">
+            <h3 class="text-subtitle-1">{{ t('reviewForm.rawData') }}</h3>
+            <div class="d-flex gap-2">
+              <v-btn
+                v-if="getPatientFormDataKeys().length > 0"
+                size="small"
+                variant="tonal"
+                prepend-icon="mdi-download-multiple"
+                @click="downloadAllItems">
+                {{ t('buttons.downloadAll') }}
+              </v-btn>
+              <v-btn
+                v-if="getPatientFormDataKeys().length > 0"
+                size="small"
+                variant="tonal"
+                prepend-icon="mdi-content-copy"
+                @click="copyAllItems">
+                {{ t('buttons.copyAll') }}
+              </v-btn>
+              <v-btn
+                v-if="selectedKeys.size > 0"
+                size="small"
+                variant="tonal"
+                color="success"
+                prepend-icon="mdi-download"
+                @click="downloadSelectedItems">
+                {{ t('buttons.downloadSelected') }}
+              </v-btn>
+              <v-btn
+                v-if="selectedKeys.size > 0"
+                size="small"
+                variant="tonal"
+                color="success"
+                prepend-icon="mdi-content-copy"
+                @click="copySelectedItems">
+                {{ t('buttons.copySelected') }}
+              </v-btn>
+              <v-btn
+                variant="tonal"
+                size="small"
+                @click="showRawData = !showRawData"
+                :prepend-icon="showRawData ? 'mdi-chevron-up' : 'mdi-chevron-down'">
+                {{ showRawData ? t('buttons.hide') : t('buttons.show') }}
+              </v-btn>
+            </div>
+          </div>
+
+          <v-expand-transition>
+            <div v-if="showRawData">
+              <div v-if="getPatientFormDataKeys().length > 0" class="mb-4">
+                <div v-for="key in getPatientFormDataKeys()" :key="key" class="mb-3">
+                  <v-card variant="outlined" class="bg-surface" :class="{ 'border-success': selectedKeys.has(key) }" style="border-width: 2px;">
+                    <v-card-title class="text-subtitle-2 d-flex align-center justify-space-between">
+                      <div class="d-flex align-center gap-2 flex-grow-1">
+                        <v-checkbox
+                          size="small"
+                          :model-value="selectedKeys.has(key)"
+                          @update:model-value="toggleSelection(key)"
+                          hide-details />
+                        <span>{{ key }}</span>
+                      </div>
+                      <div class="d-flex gap-1">
+                        <v-btn
+                          size="x-small"
+                          icon="mdi-content-copy"
+                          variant="text"
+                          @click="copyIndividualItem(key)"
+                          :title="t('buttons.copy')" />
+                        <v-btn
+                          size="x-small"
+                          icon="mdi-download"
+                          variant="text"
+                          @click="downloadIndividualItem(key)"
+                          :title="t('buttons.download')" />
+                      </div>
+                    </v-card-title>
+                    <v-card-text class="font-monospace text-caption" style="overflow-x: auto;">
+                      <pre>{{ JSON.stringify((form?.patientFormData as any)?.[key], null, 2) }}</pre>
+                    </v-card-text>
+                  </v-card>
+                </div>
+              </div>
+              <div v-else class="text-center text-medium-emphasis py-4">
+                {{ t('reviewForm.noRawData') }}
+              </div>
+            </div>
+          </v-expand-transition>
+        </v-card-text>
+
+        <v-divider />
 
         <!-- Action buttons -->
         <v-card-actions class="px-4 pb-4">
