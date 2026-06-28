@@ -895,7 +895,9 @@ const isCodeExpiringSoon = computed(() => {
   if (!assignedCodeExpiresOn.value) return false
   const expires = new Date(assignedCodeExpiresOn.value).getTime()
   const now = Date.now()
-  return expires - now < 48 * 60 * 60 * 1000
+  const timeDifference = expires - now
+  // Check if the code expires within the next 48 hours, but has not yet expired.
+  return timeDifference > 0 && timeDifference < 48 * 60 * 60 * 1000
 })
 </script>
 
