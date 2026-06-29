@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, computed, watch } from 'vue'
+import { ref, onMounted, onUnmounted, computed, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { useDateFormat } from '@/composables/useDateFormat'
@@ -43,6 +43,8 @@ const consultationId = route.params.consultationId as string
 const consultation = ref<ApiConsultation | null>(null)
 const previousConsultations = ref<ApiConsultation[]>([])
 const loading = ref(true)
+const isNotFound = ref(false)
+const redirectCountdown = ref(5)
 const deleteDialog = ref(false)
 const deletingConsultation = ref(false)
 const showEditDialog = ref(false)
@@ -66,6 +68,35 @@ const archivingForm = ref(false)
 const elsnerFeedbackDialog = ref(false)
 const elsnerFeedbackDialogTitle = ref('')
 const elsnerFeedbackDialogPoints = ref<ElsnerPoint[]>([])
+let redirectInterval: ReturnType<typeof setInterval> | null = null
+let redirectTimeout: ReturnType<typeof setTimeout> | null = null
+
+const clearRedirectTimers = () => {
+  if (redirectInterval) {
+    clearInterval(redirectInterval)
+    redirectInterval = null
+  }
+  if (redirectTimeout) {
+    clearTimeout(redirectTimeout)
+    redirectTimeout = null
+  }
+}
+
+const startDashboardRedirectCountdown = () => {
+  clearRedirectTimers()
+  redirectCountdown.value = 5
+
+  redirectInterval = setInterval(() => {
+    if (redirectCountdown.value > 0) {
+      redirectCountdown.value -= 1
+    }
+  }, 1000)
+
+  redirectTimeout = setTimeout(() => {
+    clearRedirectTimers()
+    router.replace({ name: 'dashboard' })
+  }, 5000)
+}
 
 // Helper function to safely format dates
 const safeFormatDate = (date: string | null | undefined, format: string = 'DD.MM.YYYY HH:mm'): string => {
@@ -162,6 +193,12 @@ onMounted(async () => {
     const consultationResponse = await consultationApi.getConsultationById({ consultationId })
     consultation.value = consultationResponse.responseObject || null
 
+    if (!consultation.value) {
+      isNotFound.value = true
+      startDashboardRedirectCountdown()
+      return
+    }
+
     // ensure any proms with only template IDs get a human title for both
     // overview display and for the edit dialog later
     if (consultation.value && consultation.value.proms && Array.isArray(consultation.value.proms)) {
@@ -194,12 +231,21 @@ onMounted(async () => {
     let errorMessage = 'An unexpected error occurred'
     if (error instanceof ResponseError) {
       errorMessage = (await error.response.json()).message
+      if (error.response.status === 404) {
+        isNotFound.value = true
+        startDashboardRedirectCountdown()
+        return
+      }
     }
     console.error(`${componentName}: Failed to load consultation:`, errorMessage)
     notifierStore.notify(t('consultationOverview.loadError'), 'error')
   } finally {
     loading.value = false
   }
+})
+
+onUnmounted(() => {
+  clearRedirectTimers()
 })
 
 // Navigation functions
@@ -913,7 +959,22 @@ const isCodeExpiringSoon = computed(() => {
     <div v-else-if="!consultation" class="text-center py-8">
       <v-icon color="error" size="64">mdi-alert-circle</v-icon>
       <h2 class="mt-4">{{ t('consultationOverview.notFound') }}</h2>
-      <v-btn @click="goBack" class="mt-4">{{ t('notFound.goBack') }}</v-btn>
+      <v-alert
+               v-if="isNotFound"
+               type="warning"
+               variant="tonal"
+               class="mt-4 mx-auto"
+               max-width="560">
+        {{ t('consultationOverview.redirectHint', { seconds: redirectCountdown }) }}
+      </v-alert>
+      <v-btn
+             v-if="isNotFound"
+             class="mt-4"
+             color="primary"
+             @click="router.replace({ name: 'dashboard' })">
+        {{ t('dashboard.title') }}
+      </v-btn>
+      <v-btn v-else @click="goBack" class="mt-4">{{ t('notFound.goBack') }}</v-btn>
     </div>
 
     <!-- Main content -->

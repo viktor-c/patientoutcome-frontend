@@ -14,6 +14,7 @@ import type { ApiCode as Code } from '@/types'
 import { useNotifierStore } from '@/stores/notifierStore'
 import CreateEditConsultationDialog from '@/components/dialogs/CreateEditConsultationDialog.vue'
 import NotesEditor from '@/components/forms/NotesEditor.vue'
+import NotFoundErrorPage from '@/components/NotFoundErrorPage.vue'
 
 const { t, locale } = useI18n()
 const route = useRoute()
@@ -22,6 +23,9 @@ const notifierStore = useNotifierStore()
 const consultationStore = useConsultationStore()
 const formTemplateStore = useFormTemplateStore()
 const { getLocalizedDayjs } = useDateFormat()
+const loading = ref(true)
+const viewLoadError = ref(false)
+const viewLoadErrorMessage = ref('')
 
 // Determine if this is an edit or add operation
 const isEditMode = ref(!!route.params.consultationId && route.params.consultationId !== 'new')
@@ -163,41 +167,89 @@ async function fetchAvailableCodes() {
   }
 }
 
+const initializeView = async () => {
+  try {
+    loading.value = true
+    viewLoadError.value = false
+    viewLoadErrorMessage.value = ''
+
+    if (!patientId || !caseId) {
+      throw new Error(t('patientCaseLanding.invalidParams'))
+    }
+
+    await fetchUsers()
+    await formTemplateStore.fetchIfNeeded()
+    await fetchAvailableCodes()
+
+    if (isEditMode.value) {
+      form.value.patientCaseId = caseId
+      form.value.id = route.params.consultationId as string
+
+      let sourceConsultation = consultationStore.consultation as Consultation | null
+      if (!sourceConsultation && form.value.id) {
+        const consultationResponse = await consultationApi.getConsultationById({ consultationId: form.value.id })
+        sourceConsultation = (consultationResponse.responseObject as unknown as Consultation) || null
+      }
+
+      if (!sourceConsultation) {
+        throw new Error(t('consultationOverview.notFound'))
+      }
+
+      consultation.value = sourceConsultation
+      form.value.visitedBy = sourceConsultation.visitedBy || []
+      form.value.reasonForConsultation = sourceConsultation.reasonForConsultation || []
+      form.value.notes = sourceConsultation.notes || []
+      form.value.dateAndTime = getLocalizedDayjs(sourceConsultation.dateAndTime || new Date()).toISOString()
+
+      if (sourceConsultation.proms?.length) {
+        selectedFormTemplates.value = sourceConsultation.proms.map((prom) => {
+          const result = formTemplates.value.find((template: FormTemplateShortList) => template.id === (prom as Record<string, unknown>).formTemplateId)
+          return result?.id
+        }).filter((id): id is string => Boolean(id))
+      } else {
+        form.value.proms = []
+      }
+      form.value.proms = selectedFormTemplates.value
+      form.value.images = sourceConsultation.images || []
+
+      if (sourceConsultation.formAccessCode) {
+        const foundCode = codes.value.find((code) => code.code === sourceConsultation?.formAccessCode)
+        selectedCode.value = foundCode || null
+        form.value.formAccessCode = String(sourceConsultation.formAccessCode)
+      }
+    }
+
+    if (!isEditMode.value) {
+      consultationStore.clearConsultation()
+    }
+  } catch (error: unknown) {
+    let errorMessage = t('consultationOverview.loadError')
+    if (error instanceof ResponseError) {
+      if (error.response.status === 404) {
+        errorMessage = t('consultationOverview.notFound')
+      } else {
+        const parsed = await error.response.clone().json().catch(() => null)
+        errorMessage = parsed?.message || errorMessage
+      }
+    } else if (error instanceof Error) {
+      errorMessage = error.message
+    }
+
+    viewLoadError.value = true
+    viewLoadErrorMessage.value = errorMessage
+    console.error('Error loading consultation view:', errorMessage)
+  } finally {
+    loading.value = false
+  }
+}
+
+const retryLoad = async () => {
+  await initializeView()
+}
+
 // Fetch users, form templates, and codes on component mount
 onMounted(async () => {
-  await fetchUsers()
-  await formTemplateStore.fetchIfNeeded()
-  await fetchAvailableCodes()
-
-  if (isEditMode.value) {
-    form.value.patientCaseId = caseId
-    form.value.id = route.params.consultationId as string
-    form.value.visitedBy = consultationStore.consultation?.visitedBy || []
-    form.value.reasonForConsultation = consultationStore.consultation?.reasonForConsultation || []
-    form.value.notes = consultationStore.consultation?.notes || []
-    form.value.dateAndTime = getLocalizedDayjs(consultationStore.consultation?.dateAndTime || new Date()).toISOString()
-    if (consultationStore.consultation?.proms?.length) {
-      // Map proms to corresponding objects from formTemplates; otherwise we cannot show the selected form templates
-      selectedFormTemplates.value = consultationStore.consultation.proms.map((prom) => {
-        const result = formTemplates.value.find((template: FormTemplateShortList) => template.id === (prom as Record<string, unknown>).formTemplateId) //|| prom
-        return result?.id
-      }).filter((id): id is string => Boolean(id)) // Filter out undefined values
-    } else {
-      form.value.proms = []
-    }
-    form.value.proms = selectedFormTemplates.value
-    form.value.images = consultationStore.consultation?.images || []
-
-    if (consultationStore.consultation?.formAccessCode) {
-      //get code by id from formAccessCode using API
-      const foundCode = codes.value.find((code) => code.code === consultationStore.consultation?.formAccessCode)
-      selectedCode.value = foundCode || null
-      form.value.formAccessCode = String(consultationStore.consultation.formAccessCode)
-    }
-  }
-  if (!isEditMode.value) {
-    consultationStore.clearConsultation()
-  }
+  await initializeView()
 })
 
 const showConsultationDialog = ref(false)
@@ -257,10 +309,23 @@ async function generateNewCode() {
 
 <template>
   <v-container class="add-consultation-view">
-    <v-card>
-      <v-card-title>{{ isEditMode ? t('consultation.edit') : t('consultation.add') }}</v-card-title>
-      <v-card-text>
-        <v-form @submit.prevent="saveConsultation">
+    <div v-if="loading" class="text-center py-8">
+      <v-progress-circular indeterminate color="primary" size="56"></v-progress-circular>
+      <p class="mt-4">{{ t('consultationOverview.loading') }}</p>
+    </div>
+
+    <NotFoundErrorPage
+                      v-else-if="viewLoadError"
+                      :title="t('consultationOverview.notFound')"
+                      :message="viewLoadErrorMessage"
+                      :button-text="t('buttons.retry')"
+                      @retry="retryLoad" />
+
+    <template v-else>
+      <v-card>
+        <v-card-title>{{ isEditMode ? t('consultation.edit') : t('consultation.add') }}</v-card-title>
+        <v-card-text>
+          <v-form @submit.prevent="saveConsultation">
           <!-- Reason for Consultation -->
           <v-select
                     v-model="form.reasonForConsultation"
@@ -339,21 +404,22 @@ async function generateNewCode() {
           <v-btn color="secondary" @click="router.push(`/cases/patient/${patientId}`)">
             {{ t('buttons.cancel') }}
           </v-btn>
-        </v-form>
-      </v-card-text>
-    </v-card>
+          </v-form>
+        </v-card-text>
+      </v-card>
 
-    <CreateEditConsultationDialog
-                                  :show="showConsultationDialog"
-                                  :patientId="patientId"
-                                  :caseId="caseId"
-                                  :consultation="dialogConsultation"
-                                  @submit="handleDialogSubmit"
-                                  @cancel="handleDialogCancel" />
-    <!-- Add a button to open dialog for demonstration -->
-    <v-btn color="primary" @click="openConsultationDialog()">
-      {{ t('buttons.consultation') }}
-    </v-btn>
+      <CreateEditConsultationDialog
+                                    :show="showConsultationDialog"
+                                    :patientId="patientId"
+                                    :caseId="caseId"
+                                    :consultation="dialogConsultation"
+                                    @submit="handleDialogSubmit"
+                                    @cancel="handleDialogCancel" />
+      <!-- Add a button to open dialog for demonstration -->
+      <v-btn color="primary" @click="openConsultationDialog()">
+        {{ t('buttons.consultation') }}
+      </v-btn>
+    </template>
   </v-container>
 </template>
 

@@ -1,5 +1,6 @@
 import { Configuration, UserApi, FormApi, PatientApi, PatientCaseApi, ConsultationApi, CodeApi, FormtemplateApi, KioskApi, SurgeryApi, BlueprintApi, StatisticsApi, FeedbackApi, UserDepartmentApi, BackupApi, SettingsApi, SetupApi } from '@/api/';
 import { authMiddleware } from '@/middleware/authMiddleware';
+import { notFoundMiddleware } from '@/middleware/notFoundMiddleware';
 import { resolveApiBaseUrl } from '@/utils/apiBaseUrl';
 
 // Create a new configuration with the explicit API basePath and auth middleware.
@@ -15,7 +16,7 @@ const fileName = "src/api.ts";
 const apiConfig = new Configuration({
   basePath: defaultBase,
   credentials: "include",
-  middleware: [authMiddleware]
+  middleware: [authMiddleware, notFoundMiddleware]
 });
 console.debug(fileName + " API Base Path:", apiConfig.basePath);
 console.debug(fileName + " API Config:", apiConfig);

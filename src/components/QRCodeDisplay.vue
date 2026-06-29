@@ -3,12 +3,11 @@
     <template v-slot:activator="{ props }">
       <slot name="activator" :props="props">
         <v-btn
-          v-bind="props"
-          color="primary"
-          variant="text"
-          size="small"
-          :loading="loading"
-        >
+               v-bind="props"
+               color="primary"
+               variant="text"
+               size="small"
+               :loading="loading">
           <v-icon start>mdi-qrcode</v-icon>
           {{ t('qrCode.showQRCode') }}
         </v-btn>
@@ -32,20 +31,18 @@
           <div class="mt-4">
             <p class="text-body-2 text-medium-emphasis mb-2">{{ t('qrCode.instruction') }}</p>
             <v-text-field
-              :model-value="url"
-              readonly
-              density="compact"
-              variant="outlined"
-              hide-details
-              class="mb-2"
-            >
+                          :model-value="url"
+                          readonly
+                          density="compact"
+                          variant="outlined"
+                          hide-details
+                          class="mb-2">
               <template v-slot:append-inner>
                 <v-btn
-                  icon
-                  size="small"
-                  variant="text"
-                  @click="copyUrl"
-                >
+                       icon
+                       size="small"
+                       variant="text"
+                       @click="copyUrl">
                   <v-icon>mdi-content-copy</v-icon>
                 </v-btn>
               </template>
@@ -73,12 +70,11 @@
 
       <v-card-actions>
         <v-btn
-          color="secondary"
-          variant="outlined"
-          @click="downloadPDF"
-          :loading="generatingPDF"
-          :disabled="!qrCodeDataUrl"
-        >
+               color="secondary"
+               variant="outlined"
+               @click="downloadPDF"
+               :loading="generatingPDF"
+               :disabled="!qrCodeDataUrl">
           <v-icon start>mdi-download</v-icon>
           {{ t('qrCode.downloadPDF') }}
         </v-btn>
@@ -143,7 +139,7 @@ const generateQRCode = async () => {
   loading.value = true
   try {
     const QRCode = await import('qrcode')
-    qrCodeDataUrl.value = await QRCode.toDataURL(props.url, { 
+    qrCodeDataUrl.value = await QRCode.toDataURL(props.url, {
       width: props.size,
       margin: 2,
       color: {
@@ -174,7 +170,7 @@ const downloadPDF = async () => {
   try {
     // Dynamic import to reduce bundle size
     const { jsPDF } = await import('jspdf')
-    
+
     // Create PDF document (DIN A5 size - half of A4)
     const doc = new jsPDF({
       orientation: 'portrait',
@@ -185,41 +181,41 @@ const downloadPDF = async () => {
     // Page dimensions
     const pageWidth = doc.internal.pageSize.getWidth()
     const pageHeight = doc.internal.pageSize.getHeight()
-    
+
     // Title
     doc.setFontSize(16)
     doc.setFont('helvetica', 'bold')
     const title = props.title || t('qrCode.pdfTitle')
     doc.text(title, pageWidth / 2, 15, { align: 'center' })
-    
+
     // Subtitle
     if (props.subtitle) {
       doc.setFontSize(10)
       doc.setFont('helvetica', 'normal')
       doc.text(props.subtitle, pageWidth / 2, 23, { align: 'center' })
     }
-    
+
     // Instructions
     doc.setFontSize(11)
     doc.setFont('helvetica', 'bold')
     doc.text(t('qrCode.pdfInstructions'), pageWidth / 2, 32, { align: 'center' })
-    
+
     // QR Code - centered and sized for A5
     const qrSize = 35 // mm (reduced for A5 page size)
     const qrX = (pageWidth - qrSize) / 2
     const qrY = 42
     doc.addImage(qrCodeDataUrl.value, 'PNG', qrX, qrY, qrSize, qrSize)
-    
+
     // URL below QR code
     doc.setFontSize(9)
     doc.setFont('helvetica', 'normal')
     const urlY = qrY + qrSize + 8
-    
+
     // Split URL if too long
     const maxWidth = pageWidth - 15
     const urlLines = doc.splitTextToSize(props.url, maxWidth)
     doc.text(urlLines, pageWidth / 2, urlY, { align: 'center' })
-    
+
     // Expiry date (if set)
     let nextLineY = urlY + (urlLines.length * 4) + 4
     if (props.expiresOn) {
@@ -242,7 +238,7 @@ const downloadPDF = async () => {
       doc.setTextColor(0, 0, 0)
       nextLineY += 5
     }
-    
+
     // Footer with generation time, code creation time and optional case ID.
     doc.setFontSize(7)
     doc.setTextColor(100, 100, 100)
@@ -251,7 +247,7 @@ const downloadPDF = async () => {
     const caseInfo = props.caseId ? ` | Case ID: ${props.caseId}` : ''
     const footerText = `${t('qrCode.pdfGenerated')}: ${generatedAt} | ${t('common.createdAt')}: ${codeCreatedAt}${caseInfo}`
     doc.text(footerText, pageWidth / 2, pageHeight - 8, { align: 'center' })
-    
+
     // Additional instructions at bottom
     doc.setFontSize(8)
     doc.setTextColor(0, 0, 0)
@@ -266,11 +262,11 @@ const downloadPDF = async () => {
         instructionY += 5
       }
     })
-    
+
     // Save PDF
     const filename = `patient-qr-code-${new Date().getTime()}.pdf`
     doc.save(filename)
-    
+
     notifierStore.notify(t('qrCode.pdfDownloaded'), 'success')
   } catch (error) {
     logger.error('Failed to generate PDF:', error)
@@ -282,16 +278,13 @@ const downloadPDF = async () => {
 </script>
 
 <style scoped>
-.qr-container {
-  padding: 16px 0;
-}
+.qr-container {}
 
 .qr-image {
-  max-width: 100%;
+  width: 8rem;
   height: auto;
   border: 2px solid #e0e0e0;
   border-radius: 8px;
-  padding: 8px;
   background: white;
 }
 </style>

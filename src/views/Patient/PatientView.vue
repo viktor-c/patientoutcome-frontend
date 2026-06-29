@@ -4,6 +4,7 @@ import { useRouter } from 'vue-router'
 // Importing necessary for i18n
 import { useI18n } from 'vue-i18n'
 import { ResponseError, type Patient } from '@/api' // Adjust the path if necessary
+import NotFoundErrorPage from '@/components/NotFoundErrorPage.vue'
 
 // Importing the notifier store for notifications
 import { useNotifierStore } from '@/stores/notifierStore'
@@ -26,6 +27,8 @@ const newPatient = ref({
 })
 
 const showExternalIdWarning = ref(false)
+const viewLoadError = ref(false)
+const viewLoadErrorMessage = ref('')
 
 // Data for searching patients
 const searchQuery = ref('')
@@ -119,6 +122,7 @@ const createPatient = async () => {
 // Function to list all patients with pagination
 const getAllPatients = async () => {
   try {
+    viewLoadError.value = false
     const response = await patientApi.getPatients({
       page: String(currentPage.value),
       limit: String(itemsPerPage.value)
@@ -143,6 +147,8 @@ const getAllPatients = async () => {
     if (error instanceof ResponseError) {
       errorMessage = (await error.response.json()).message
     }
+    viewLoadError.value = true
+    viewLoadErrorMessage.value = errorMessage
     console.error('Error listing patients:', errorMessage)
     notifierStore.notify(t('alerts.patient.searchFailed'), 'error')
   }
@@ -153,9 +159,11 @@ const searchPatient = async () => {
   if (searchQuery.value.length < SEARCH_QUERY_MINIMUM_LENGTH) {
     console.debug(`Search query must have at least ${SEARCH_QUERY_MINIMUM_LENGTH} characters`)
     searchResult.value = null
+    viewLoadError.value = false
     return
   }
   try {
+    viewLoadError.value = false
     const response = await patientApi.getPatientByExternalId({ id: searchQuery.value })
     if (response.responseObject == undefined) {
       console.debug('no Patient by external id found')
@@ -168,6 +176,8 @@ const searchPatient = async () => {
     if (error instanceof ResponseError) {
       errorMessage = (await error.response.json()).message
     }
+    viewLoadError.value = true
+    viewLoadErrorMessage.value = errorMessage
     searchResult.value = null
     console.error('Error searching for patient:', errorMessage)
     notifierStore.notify(t('alerts.patient.searchFailed'), 'error')
@@ -176,11 +186,27 @@ const searchPatient = async () => {
 
 // Watcher to refresh the list of patients when the "listPatients" tab is selected
 watch(activeTab, (newTab) => {
+  viewLoadError.value = false
+  viewLoadErrorMessage.value = ''
   if (newTab === 'listPatients') {
     currentPage.value = 1 // Reset to first page when switching tabs
     getAllPatients()
   }
 })
+
+const retryLoad = async () => {
+  viewLoadError.value = false
+  viewLoadErrorMessage.value = ''
+
+  if (activeTab.value === 'listPatients') {
+    await getAllPatients()
+    return
+  }
+
+  if (activeTab.value === 'searchPatient') {
+    await searchPatient()
+  }
+}
 
 // Function to handle page changes
 const handlePageChange = (page: number) => {
@@ -231,7 +257,14 @@ const softDeleteSelectedPatients = async () => {
 
 <template>
   <v-container class="w-100">
-    <v-card>
+    <NotFoundErrorPage
+                      v-if="viewLoadError"
+                      :title="t('common.errorLoadingData')"
+                      :message="viewLoadErrorMessage"
+                      :button-text="t('buttons.retry')"
+                      @retry="retryLoad" />
+
+    <v-card v-else>
       <v-tabs v-model="activeTab" bg-color="primary">
         <v-tab :value="'createPatient'">{{ t('tabs.createPatient') }}</v-tab>
         <v-tab :value="'searchPatient'">{{ t('tabs.searchPatient') }}</v-tab>

@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, computed } from 'vue'
-import { useRouter } from 'vue-router'
+import { ref, onMounted, onUnmounted, computed, watch } from 'vue'
+import { useRouter, useRoute } from 'vue-router'
 import { ResponseError, type Consultation } from '@/api'
 import { useI18n } from 'vue-i18n'
 import { useDateFormat } from '@/composables/useDateFormat'
@@ -21,11 +21,20 @@ import { patientCaseApi } from '@/api'
 import { useUserStore } from '@/stores/userStore'
 const userStore = useUserStore()
 
+const formCompletionFilter = ref<'all' | 'incomplete' | 'complete'>('all')
+
 const selectedDate = ref([new Date().setDate(new Date().getDate() - Number(userStore.daysBeforeConsultations || 7)), new Date().setDate(new Date().getDate() + 7)]) // Default to today and 1 week in the future
 
 const { t, locale } = useI18n()
 const router = useRouter()
+const route = useRoute()
 const { formatLocalizedCustomDate } = useDateFormat()
+
+watch(() => route.query.refresh, (newVal) => {
+  if (newVal) {
+    fetchConsultations()
+  }
+})
 
 // Helper function to safely format dates
 const safeFormatDate = (date: string | null | undefined, format: string = 'DD.MM.YYYY'): string => {
@@ -45,6 +54,18 @@ const desktopHeaders = [
   { title: t('dashboard.forms'), value: 'forms', align: 'end' as const, sortable: false, key: 'data-table-expand' },
   { title: t('dashboard.actions'), key: 'actions', align: 'end' as const, sortable: false },
 ]
+
+const formCompletionFilterIcons = {
+  all: 'mdi-filter-variant',
+  incomplete: 'mdi-filter-variant-minus',
+  complete: 'mdi-filter-variant-check',
+}
+
+const formCompletionFilterTooltips = {
+  all: 'Show all consultations',
+  incomplete: 'Show only consultations with incomplete forms',
+  complete: 'Show only consultations with complete forms',
+}
 
 const mobileHeaders = [
   { title: t('forms.patient.externalId'), value: 'patientExternalIds', align: 'start' as const },
@@ -67,6 +88,12 @@ const openConsultation = (id: string | null | undefined) => {
   if (id) {
     router.push({ name: 'consultationoverview', params: { consultationId: id } })
   }
+}
+
+const cycleFormCompletionFilter = () => {
+  const states: ('all' | 'incomplete' | 'complete')[] = ['all', 'incomplete', 'complete']
+  const currentIndex = states.indexOf(formCompletionFilter.value)
+  formCompletionFilter.value = states[(currentIndex + 1) % states.length]
 }
 
 // Navigate to creation flow to start a new patient/case/consultation
@@ -111,8 +138,28 @@ const datePickerPlaceholder = computed(() => {
     : t('dashboard.selectDateRange')
 })
 
+const filteredConsultations = computed(() => {
+  if (formCompletionFilter.value === 'all') {
+    return consultations.value
+  }
+  return consultations.value.filter(consultation => {
+    const proms = consultation.proms || []
+    if (proms.length === 0) {
+      return formCompletionFilter.value === 'complete' // Treat as complete if no forms
+    }
+    const allComplete = proms.every(form => form.patientFormData?.fillStatus === 'complete')
+    if (formCompletionFilter.value === 'complete') {
+      return allComplete
+    }
+    if (formCompletionFilter.value === 'incomplete') {
+      return !allComplete
+    }
+    return true
+  })
+})
+
 // Determine if we should use pagination or scrolling based on item count
-const usePagination = computed(() => consultations.value.length > 50)
+const usePagination = computed(() => filteredConsultations.value.length > 50)
 const tableHeight = computed(() => usePagination.value ? undefined : '600px')
 
 const fetchConsultations = async () => {
@@ -219,7 +266,7 @@ onUnmounted(() => {
 
     <!-- data table -->
     <v-data-table
-                  :items="consultations"
+                  :items="filteredConsultations"
                   :headers="headers"
                   @click:row="onRowClick"
                   show-expand
@@ -231,6 +278,17 @@ onUnmounted(() => {
                   :fixed-header="!usePagination"
                   :hide-default-footer="!usePagination"
                   :items-per-page="usePagination ? 25 : -1">
+      <template v-slot:header.data-table-expand="{ column }">
+        <v-tooltip location="top">
+          <template v-slot:activator="{ props }">
+            <div v-bind="props" @click="cycleFormCompletionFilter" class="d-flex align-center cursor-pointer">
+              <span>{{ column.title }}</span>
+              <v-icon right small class="ms-1">{{ formCompletionFilterIcons[formCompletionFilter] }}</v-icon>
+            </div>
+          </template>
+          <span>{{ formCompletionFilterTooltips[formCompletionFilter] }}</span>
+        </v-tooltip>
+      </template>
       <template v-slot:[`item.data-table-expand`]="{ internalItem, isExpanded, toggleExpand }">
         <v-btn
                v-if="internalItem.raw.proms && internalItem.raw.proms.length > 0"
@@ -351,5 +409,9 @@ onUnmounted(() => {
   box-shadow: 0 0 18px 6px rgba(var(--v-theme-primary), 0.65),
     0 4px 12px rgba(0, 0, 0, 0.25);
   transform: scale(1.07);
+}
+
+.cursor-pointer {
+  cursor: pointer;
 }
 </style>

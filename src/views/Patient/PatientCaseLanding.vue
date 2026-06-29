@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, computed } from 'vue'
+import { ref, onMounted, onUnmounted, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { useDateFormat } from '@/composables/useDateFormat'
@@ -73,7 +73,38 @@ const caseNotes = ref<Note[]>([])
 const savingCaseNotes = ref(false)
 const loading = ref(true)
 const error = ref<string | null>(null)
+const isNotFound = ref(false)
+const redirectCountdown = ref(5)
 const caseNotesEditorRef = ref<{ addNote: () => void } | null>(null)
+let redirectInterval: ReturnType<typeof setInterval> | null = null
+let redirectTimeout: ReturnType<typeof setTimeout> | null = null
+
+const clearRedirectTimers = () => {
+  if (redirectInterval) {
+    clearInterval(redirectInterval)
+    redirectInterval = null
+  }
+  if (redirectTimeout) {
+    clearTimeout(redirectTimeout)
+    redirectTimeout = null
+  }
+}
+
+const startDashboardRedirectCountdown = () => {
+  clearRedirectTimers()
+  redirectCountdown.value = 5
+
+  redirectInterval = setInterval(() => {
+    if (redirectCountdown.value > 0) {
+      redirectCountdown.value -= 1
+    }
+  }, 1000)
+
+  redirectTimeout = setTimeout(() => {
+    clearRedirectTimers()
+    router.replace({ name: 'dashboard' })
+  }, 5000)
+}
 
 // Dialog states
 const showCreateConsultationDialog = ref(false)
@@ -161,6 +192,8 @@ const futureConsultations = computed(() => {
 const loadCaseData = async () => {
   if (!caseId) {
     error.value = t('patientCaseLanding.invalidParams')
+    isNotFound.value = true
+    startDashboardRedirectCountdown()
     loading.value = false
     return
   }
@@ -168,10 +201,18 @@ const loadCaseData = async () => {
   try {
     loading.value = true
     error.value = null
+    isNotFound.value = false
 
     // Load case details using only caseId
     const caseResponse = await patientCaseApi.getPatientCaseById({ caseId })
     patientCase.value = caseResponse.responseObject || null
+
+    if (!patientCase.value) {
+      error.value = t('patientCaseLanding.notFound')
+      isNotFound.value = true
+      startDashboardRedirectCountdown()
+      return
+    }
 
     // Extract patientId from case information
     if (patientCase.value?.patient) {
@@ -228,6 +269,13 @@ const loadCaseData = async () => {
         errorMessage = errorData.message || errorMessage
       } catch {
         errorMessage = `HTTP ${err.response.status}: ${err.response.statusText || 'Request failed'}`
+      }
+
+      if (err.response.status === 404) {
+        error.value = errorMessage
+        isNotFound.value = true
+        startDashboardRedirectCountdown()
+        return
       }
     } else if (err instanceof Error) {
       errorMessage = err.message
@@ -641,6 +689,10 @@ const cancelCascadeDelete = () => {
 onMounted(() => {
   loadCaseData()
 })
+
+onUnmounted(() => {
+  clearRedirectTimers()
+})
 </script>
 
 <template>
@@ -656,7 +708,22 @@ onMounted(() => {
       <v-icon color="error" size="64">mdi-alert-circle</v-icon>
       <h2 class="mt-4">{{ t('patientCaseLanding.errorTitle') }}</h2>
       <p class="text-grey">{{ error }}</p>
-      <v-btn @click="loadCaseData" class="mt-4" color="primary">
+      <v-alert
+               v-if="isNotFound"
+               type="warning"
+               variant="tonal"
+               class="mt-4 mx-auto"
+               max-width="560">
+        {{ t('patientCaseLanding.redirectHint', { seconds: redirectCountdown }) }}
+      </v-alert>
+      <v-btn
+             v-if="isNotFound"
+             class="mt-4"
+             color="primary"
+             @click="router.replace({ name: 'dashboard' })">
+        {{ t('dashboard.title') }}
+      </v-btn>
+      <v-btn v-else @click="loadCaseData" class="mt-4" color="primary">
         {{ t('buttons.retry') }}
       </v-btn>
     </div>

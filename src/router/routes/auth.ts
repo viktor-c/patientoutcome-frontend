@@ -4,6 +4,7 @@ import LogoutView from '@/views/LogoutView.vue'
 import SetupView from '@/views/SetupView.vue'
 import TechPresentation from '@/gffc-presentation/TechPresentation.vue'
 import NotFound from '@/views/Misc/NotFound.vue'
+import EntityNotFound from '@/views/Misc/EntityNotFound.vue'
 
 export const authRoutes: RouteRecordRaw[] = [
   { path: '/', name: 'Login', component: LoginView, meta: { titleKey: 'pageTitles.login' } },
@@ -12,6 +13,7 @@ export const authRoutes: RouteRecordRaw[] = [
   { path: '/logout', name: 'logout', component: LogoutView, meta: { titleKey: 'pageTitles.logout' } },
   { path: '/about', name: 'about', component: () => import('@/views/Misc/AboutView.vue'), meta: { titleKey: 'pageTitles.about' } },
   { path: '/feedback', name: 'feedback', component: () => import('@/views/FeedbackView.vue'), meta: { titleKey: 'pageTitles.feedback' } },
+  { path: '/entity-not-found', name: 'EntityNotFound', component: EntityNotFound, meta: { titleKey: 'pageTitles.notFound' } },
   { path: '/presentation', name: 'presentation', component: TechPresentation, meta: { titleKey: 'pageTitles.presentation' } },
   { path: '/:pathMatch(.*)*', name: 'NotFound', component: NotFound, meta: { titleKey: 'pageTitles.notFound' } },
 ]

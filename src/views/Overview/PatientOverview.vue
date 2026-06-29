@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, onUnmounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { useDateFormat } from '@/composables/useDateFormat'
@@ -32,6 +32,8 @@ const patientId = route.params.patientId as string
 const patient = ref<Patient | null>(null)
 const cases = ref<PatientCaseWithDetails[]>([])
 const loading = ref(true)
+const isNotFound = ref(false)
+const redirectCountdown = ref(5)
 const expandedCases = ref<string[]>([])
 // Incremented after every refreshCases() so PatientCaseCard keys always change,
 // forcing ConsultationCard to remount and refetch even if the case data itself
@@ -60,6 +62,35 @@ const deleteDialogConfig = ref<{
 const deleteContext = ref<'patient' | 'case' | null>(null)
 
 const selectedCaseForDelete = ref<string | null>(null)
+let redirectInterval: ReturnType<typeof setInterval> | null = null
+let redirectTimeout: ReturnType<typeof setTimeout> | null = null
+
+const clearRedirectTimers = () => {
+  if (redirectInterval) {
+    clearInterval(redirectInterval)
+    redirectInterval = null
+  }
+  if (redirectTimeout) {
+    clearTimeout(redirectTimeout)
+    redirectTimeout = null
+  }
+}
+
+const startDashboardRedirectCountdown = () => {
+  clearRedirectTimers()
+  redirectCountdown.value = 5
+
+  redirectInterval = setInterval(() => {
+    if (redirectCountdown.value > 0) {
+      redirectCountdown.value -= 1
+    }
+  }, 1000)
+
+  redirectTimeout = setTimeout(() => {
+    clearRedirectTimers()
+    router.replace({ name: 'dashboard' })
+  }, 5000)
+}
 
 // Helper function to safely format dates
 const safeFormatDate = (date: unknown, format: string = 'DD.MM.YYYY HH:mm'): string => {
@@ -84,6 +115,12 @@ onMounted(async () => {
     const patientResponse = await patientApi.getPatientById({ id: patientId })
     patient.value = patientResponse.responseObject || null
 
+    if (!patient.value) {
+      isNotFound.value = true
+      startDashboardRedirectCountdown()
+      return
+    }
+
     // Fetch patient cases
     const casesResponse = await patientCaseApi.getAllPatientCases({ patientId })
     cases.value = casesResponse.responseObject || []
@@ -95,12 +132,21 @@ onMounted(async () => {
     let errorMessage = 'An unexpected error occurred'
     if (error instanceof ResponseError) {
       errorMessage = (await error.response.json()).message
+      if (error.response.status === 404) {
+        isNotFound.value = true
+        startDashboardRedirectCountdown()
+        return
+      }
     }
     console.error(`${componentName}: Failed to load patient data:`, errorMessage)
     notifierStore.notify(t('patientOverview.loadError'), 'error')
   } finally {
     loading.value = false
   }
+})
+
+onUnmounted(() => {
+  clearRedirectTimers()
 })
 
 // Navigation helpers
@@ -323,7 +369,8 @@ const executeDeletePatient = async (selectedOptions: Record<string, boolean>) =>
     showCascadeDeleteDialog.value = false
     deleteContext.value = null
     deleteDialogConfig.value = null
-    goBack()
+    // Instead of just going back, navigate to the dashboard and force a refresh
+    router.push({ name: 'dashboard', query: { refresh: Date.now() } })
   } catch (error: unknown) {
     let errorMessage = 'An unexpected error occurred'
     if (error instanceof ResponseError) {
@@ -436,7 +483,22 @@ const confirmCascadeDelete = async (selectedOptions: Record<string, boolean>) =>
     <div v-else-if="!patient" class="text-center py-8">
       <v-icon color="error" size="64">mdi-alert-circle</v-icon>
       <h2 class="mt-4">{{ t('patientOverview.patientNotFound') }}</h2>
-      <v-btn @click="goBack" class="mt-4">{{ t('common.goBack') }}</v-btn>
+      <v-alert
+               v-if="isNotFound"
+               type="warning"
+               variant="tonal"
+               class="mt-4 mx-auto"
+               max-width="560">
+        {{ t('patientOverview.redirectHint', { seconds: redirectCountdown }) }}
+      </v-alert>
+      <v-btn
+             v-if="isNotFound"
+             class="mt-4"
+             color="primary"
+             @click="router.replace({ name: 'dashboard' })">
+        {{ t('dashboard.title') }}
+      </v-btn>
+      <v-btn v-else @click="goBack" class="mt-4">{{ t('common.goBack') }}</v-btn>
     </div>
 
     <!-- Main content -->
