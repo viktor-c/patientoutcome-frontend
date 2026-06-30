@@ -49,7 +49,7 @@
             <div class="captcha-question">
               <v-icon class="mr-2">mdi-shield-check-outline</v-icon>
               <span v-if="captchaLoading" class="text-body-1">{{ t('feedback.captchaLoading') }}</span>
-              <span v-else class="text-body-1">{{ captchaQuestion }} = ?</span>
+              <div v-else v-html="captchaSvg" class="captcha-svg"></div>
             </div>
             <v-btn 
               icon
@@ -67,10 +67,8 @@
             :label="t('feedback.captchaLabel')"
             :rules="captchaRules"
             variant="outlined"
-            type="number"
             class="mt-3"
             density="compact"
-            hide-spin-buttons
             :disabled="captchaLoading || !captchaId"
           />
         </v-card>
@@ -143,7 +141,7 @@ const form = reactive({
 
 // Server-side captcha state
 const captchaId = ref('')
-const captchaQuestion = ref('')
+const captchaSvg = ref('')
 
 const fetchCaptcha = async () => {
   captchaLoading.value = true
@@ -153,22 +151,20 @@ const fetchCaptcha = async () => {
     const response = await feedbackApi.getCaptcha()
     console.debug('Captcha response:', response)
 
-    // The responseObject directly contains captchaId and question
-    // Cast to any to handle the schema mismatch between OpenAPI spec and actual response
-    const captchaData = response.responseObject as unknown as { captchaId?: string; question?: string } | undefined
+    const captchaData = response.responseObject as unknown as { captchaId?: string; captchaSvg?: string } | undefined
     
     if (response.success && captchaData?.captchaId) {
       captchaId.value = captchaData.captchaId
-      captchaQuestion.value = captchaData.question ?? ''
+      captchaSvg.value = captchaData.captchaSvg ?? ''
     } else {
       console.error('Failed to fetch captcha:', response.message)
       captchaId.value = ''
-      captchaQuestion.value = t('feedback.captchaError')
+      captchaSvg.value = `<p>${t('feedback.captchaError')}</p>`
     }
   } catch (error) {
     console.error('Captcha fetch error:', error)
     captchaId.value = ''
-    captchaQuestion.value = t('feedback.captchaError')
+    captchaSvg.value = `<p>${t('feedback.captchaError')}</p>`
   } finally {
     captchaLoading.value = false
   }

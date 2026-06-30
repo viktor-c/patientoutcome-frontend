@@ -106,6 +106,23 @@ watch(otherDiagnosisICD10Entries, (entries) => {
 }, { deep: true })
 
 
+// Watch for changes in formCase's ICD10 codes and update the entry refs
+// This is crucial for blueprint application to reflect in the UI
+watch(() => formCase.value.mainDiagnosisICD10, (newCodes) => {
+  // Avoid loops by checking if the codes are already in sync
+  if (JSON.stringify(newCodes) !== JSON.stringify(extractCodes(mainDiagnosisICD10Entries.value))) {
+    mainDiagnosisICD10Entries.value = newCodes || []
+  }
+}, { deep: true })
+
+watch(() => formCase.value.otherDiagnosisICD10, (newCodes) => {
+  // Avoid loops by checking if the codes are already in sync
+  if (JSON.stringify(newCodes) !== JSON.stringify(extractCodes(otherDiagnosisICD10Entries.value))) {
+    otherDiagnosisICD10Entries.value = newCodes || []
+  }
+}, { deep: true })
+
+
 // Initialize form data on mount or when props change
 watch(
   () => props.modelValue,

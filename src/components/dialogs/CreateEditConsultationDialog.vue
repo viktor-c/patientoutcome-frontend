@@ -508,38 +508,46 @@ const saveConsultation = async () => {
 }
 
 async function generateNewCode() {
-  if (generatingCode.value) return
+  if (generatingCode.value) return;
 
   try {
-    generatingCode.value = true
-    logger.info('Generating new code')
+    generatingCode.value = true;
+    logger.info("Generating new code");
 
-    // Generate a single new code
-    const response = await codeApi.addCodes({ numberOfCodes: 1 })
+    // Commit any pending date changes before generating the code
+    commitConsultationDateInput();
+
+    // Generate a single new code, passing the consultation date
+    const response = await codeApi.addCodes({
+      addCodesRequest: {
+        numberOfCodes: 1,
+        consultationDate: form.value.dateAndTime || undefined,
+      },
+    });
 
     if (response.responseObject && response.responseObject.length > 0) {
-      const newCode = response.responseObject[0]
-      logger.info('New code generated successfully', { codeId: newCode.id, code: newCode.code })
+      const newCode = response.responseObject[0];
+      logger.info("New code generated successfully", { codeId: newCode.id, code: newCode.code });
 
       // Add the new code to the codes list
-      codes.value.unshift(newCode) // Add at the beginning for easy selection
+      codes.value.unshift(newCode); // Add at the beginning for easy selection
 
       // Select the new code
-      selectedCode.value = newCode
+      selectedCode.value = newCode;
 
-      notifierStore.notify(t('alerts.code.generated'), 'success')
+      notifierStore.notify(t("alerts.code.generated"), "success");
     } else {
-      throw new Error('No code returned from API')
+      throw new Error("No code returned from API");
     }
   } catch (error: unknown) {
-    let errorMessage = 'An unexpected error occurred'
+    let errorMessage = "An unexpected error occurred";
     if (error instanceof ResponseError) {
-      errorMessage = (await error.response.json()).message
+      errorMessage = (await error.response.json()).message;
     }
-    logger.error('Error generating new code', { errorMessage })
-    notifierStore.notify(t('alerts.code.generateFailed'), 'error')
+    logger.error("Error generating new code", { errorMessage });
+    notifierStore.notify(t("alerts.code.generateFailed"), "error");
   } finally {
-    generatingCode.value = false
+    generatingCode.value = false;
   }
 }
 
