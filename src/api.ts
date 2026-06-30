@@ -210,6 +210,64 @@ export async function resetConsultationFormsByCode(code: string) {
   return await res.json();
 }
 
+export async function archiveCode(code: string) {
+  const base = apiConfig.basePath ?? '';
+  const url = `${base.replace(/\/$/, '')}/form-access-code/${encodeURIComponent(code)}/archive`;
+  const res = await fetch(url, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    credentials: 'include',
+  });
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`Failed to archive code: ${res.status} ${res.statusText}: ${text}`);
+  }
+  return await res.json();
+}
+
+export async function restoreCode(code: string) {
+  const base = apiConfig.basePath ?? '';
+  const url = `${base.replace(/\/$/, '')}/form-access-code/${encodeURIComponent(code)}/restore`;
+  const res = await fetch(url, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    credentials: 'include',
+  });
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`Failed to restore code: ${res.status} ${res.statusText}: ${text}`);
+  }
+  return await res.json();
+}
+
+export async function getCodeAccessLogs(code: string) {
+  const base = apiConfig.basePath ?? '';
+  const url = `${base.replace(/\/$/, '')}/form-access-code/${encodeURIComponent(code)}/access-logs`;
+  const res = await fetch(url, {
+    method: 'GET',
+    credentials: 'include',
+  });
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`Failed to get code access logs: ${res.status} ${res.statusText}: ${text}`);
+  }
+  return await res.json();
+}
+
+export async function getCodeAccessStatistics(code: string) {
+  const base = apiConfig.basePath ?? '';
+  const url = `${base.replace(/\/$/, '')}/form-access-code/${encodeURIComponent(code)}/statistics`;
+  const res = await fetch(url, {
+    method: 'GET',
+    credentials: 'include',
+  });
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`Failed to get code access statistics: ${res.status} ${res.statusText}: ${text}`);
+  }
+  return await res.json();
+}
+
 /**
  * Lightweight session health probe.  Calls `GET /user/session` and returns:
  * - `{ authenticated: true, username, expiresAt }` when the session is active
