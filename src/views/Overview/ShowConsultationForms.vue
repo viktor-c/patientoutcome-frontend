@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, computed, watch } from 'vue'
+import { ref, onMounted, computed, watch, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import LanguageSelector from '@/components/LanguageSelector.vue'
@@ -8,6 +8,7 @@ import { ResponseError } from '@/api'
 import { useNotifierStore } from '@/stores/notifierStore'
 import { logger } from '@/services/logger'
 import { useConsultationFlow } from '@/composables/useConsultationFlow'
+import { useCodeAccessLogging } from '@/composables/useCodeAccessLogging'
 import { getConsultationAccessWindowFromConsultation, type ConsultationAccessWindow } from '@/utils/consultationAccessWindow'
 import { formatDateTimeForLocale } from '@/utils/localeDateTime'
 
@@ -62,6 +63,7 @@ const { height: containerHeight } = useElementSize(el)
 
 const { t, locale } = useI18n()
 const { allForms, completedForms, pendingForms, processConsultation } = useConsultationFlow()
+const { initializeAccessLog, trackFormOpened, trackFormCompleted, endAccessSession } = useCodeAccessLogging()
 
 // Define props for the component
 const { consultationId, externalCode } = defineProps<{ consultationId?: string; externalCode?: string }>()
@@ -98,6 +100,13 @@ const formContext = computed<FormComponentContext | undefined>(() => {
 const sessionStartTime = ref<Date>(new Date())
 watch(currentFormIndex, () => {
   sessionStartTime.value = new Date()
+  // Track form opening for access logging
+  if (externalCode && currentFormIndex.value < forms.value.length) {
+    const currentForm = forms.value[currentFormIndex.value]
+    if (currentForm._id) {
+      trackFormOpened(currentForm._id)
+    }
+  }
 })
 
 const notifierStore = useNotifierStore()
@@ -116,6 +125,31 @@ onMounted(async () => {
 
     consultationAccessWindow.value = getConsultationAccessWindowFromConsultation(consultationResponse.responseObject)
     consultationSurgeryDate.value = getRelevantSurgeryDate(consultationResponse.responseObject)
+
+    // Initialize access logging if using an external code
+    if (externalCode) {
+      const consultation = consultationResponse.responseObject as unknown as Record<string, unknown>
+      const patientCaseId = consultation.patientCaseId as unknown
+      const patientCaseIdStr = patientCaseId && typeof patientCaseId === 'string' ? patientCaseId : 
+        (patientCaseId && typeof patientCaseId === 'object' && (patientCaseId as Record<string, unknown>)._id ? 
+        (patientCaseId as Record<string, unknown>)._id : 
+        (patientCaseId && typeof patientCaseId === 'object' && (patientCaseId as Record<string, unknown>).id ? 
+        (patientCaseId as Record<string, unknown>).id : ''))
+      const consultationIdStr = consultation._id as string || ''
+      
+      if (patientCaseIdStr && consultationIdStr) {
+        initializeAccessLog({
+          code: externalCode,
+          patientCaseId: patientCaseIdStr,
+          consultationId: consultationIdStr,
+        })
+        logger.debug('Code access logging initialized', {
+          code: externalCode,
+          patientCaseId: patientCaseIdStr,
+          consultationId: consultationIdStr,
+        })
+      }
+    }
 
     // Use the shared consultation flow logic
     await processConsultation(consultationResponse.responseObject)
@@ -146,6 +180,12 @@ onMounted(async () => {
       notifierStore.notify(t('flow.noFormsAvailable'), 'error')
     }
   }
+})
+
+// Clean up access session tracking on component unmount
+onUnmounted(() => {
+  // If the session is still active (user didn't complete), end it
+  endAccessSession()
 })
 
 // Handle form data changes - receives FormSubmissionData from plugin
@@ -226,6 +266,11 @@ const submitForm = async () => {
     await formApi.updateForm(updatePayload)
     logger.info(`Form ${currentForm._id} saved successfully`)
     notifierStore.notify(t('alerts.form.saved'), 'success')
+
+    // Track form completion for access logging if using external code
+    if (externalCode && currentForm._id) {
+      trackFormCompleted(currentForm._id)
+    }
   } catch (error: unknown) {
     logger.error(`Failed to save form ${currentForm._id}:`, error)
     let errorMessage = t('alerts.form.submitFailed')
@@ -290,6 +335,8 @@ const finalizeAndClose = async () => {
     if (externalCode) {
       await codeApi.deactivateCode({ code: externalCode })
       logger.debug(`Code ${externalCode} deactivated successfully`)
+      // End access session tracking
+      endAccessSession()
     }
     isFinalized.value = true
     showSuccessMessage.value = true
@@ -298,6 +345,9 @@ const finalizeAndClose = async () => {
   } catch (error) {
     logger.error('Error deactivating code:', error)
     // Still show success even if deactivation fails - forms are saved
+    if (externalCode) {
+      endAccessSession()
+    }
     showSuccessMessage.value = true
     showReviewOption.value = false
     startCountdown()
