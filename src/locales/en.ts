@@ -1639,4 +1639,11 @@ export default {
     unsavedChanges: 'You have unsaved changes. Don\'t forget to save!',
     noData: 'Unable to load settings data',
   },
+  notifications: {
+    title: 'Push Notifications',
+    enabled: 'Push notifications enabled',
+    activeDescription: 'You will receive push notifications for form updates and consultation reminders.',
+    disabled: 'Push notifications disabled',
+    inactiveDescription: 'Enable push notifications to stay informed about important updates.',
+  },
 }

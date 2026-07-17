@@ -10,20 +10,10 @@
  * configuration if needed.
  */
 
-/// <reference lib="webworker" />
-
-declare const self: ServiceWorkerGlobalScope;
-
-self.addEventListener("push", (event: PushEvent) => {
+self.addEventListener("push", (event) => {
   if (!event.data) return;
 
-  let payload: {
-    title?: string;
-    body?: string;
-    url?: string;
-    tag?: string;
-    icon?: string;
-  } = {};
+  let payload = {};
 
   try {
     payload = event.data.json();
@@ -31,23 +21,23 @@ self.addEventListener("push", (event: PushEvent) => {
     payload = { title: "Patient Outcome", body: event.data.text() };
   }
 
-  const title = payload.title ?? "Patient Outcome";
-  const options: NotificationOptions = {
-    body: payload.body ?? "",
-    tag: payload.tag ?? "patientoutcome",
-    icon: payload.icon ?? "/favicon.ico",
+  const title = payload.title || "Patient Outcome";
+  const options = {
+    body: payload.body || "",
+    tag: payload.tag || "patientoutcome",
+    icon: payload.icon || "/favicon.ico",
     badge: "/favicon.ico",
-    data: { url: payload.url ?? "/" },
+    data: { url: payload.url || "/" },
     requireInteraction: false,
   };
 
   event.waitUntil(self.registration.showNotification(title, options));
 });
 
-self.addEventListener("notificationclick", (event: NotificationEvent) => {
+self.addEventListener("notificationclick", (event) => {
   event.notification.close();
 
-  const url: string = event.notification.data?.url ?? "/";
+  const url = event.notification.data?.url || "/";
 
   event.waitUntil(
     self.clients
@@ -56,7 +46,7 @@ self.addEventListener("notificationclick", (event: NotificationEvent) => {
         // Focus an existing tab that matches the URL if possible
         for (const client of clientList) {
           if (client.url === url && "focus" in client) {
-            return (client as WindowClient).focus();
+            return client.focus();
           }
         }
         // Otherwise open a new tab

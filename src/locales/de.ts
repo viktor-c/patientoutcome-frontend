@@ -1642,4 +1642,11 @@ export default {
     unsavedChanges: 'Sie haben ungespeicherte Änderungen. Vergessen Sie nicht zu speichern!',
     noData: 'Einstellungsdaten konnten nicht geladen werden',
   },
+  notifications: {
+    title: 'Push-Benachrichtigungen',
+    enabled: 'Push-Benachrichtigungen aktiviert',
+    activeDescription: 'Sie erhalten Push-Benachrichtigungen für Formularaktualisierungen und Konsultationserinnerungen.',
+    disabled: 'Push-Benachrichtigungen deaktiviert',
+    inactiveDescription: 'Aktivieren Sie Push-Benachrichtigungen, um über wichtige Updates informiert zu bleiben.',
+  },
 }
