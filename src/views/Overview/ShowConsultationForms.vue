@@ -4,6 +4,7 @@ import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import LanguageSelector from '@/components/LanguageSelector.vue'
 import PluginFormRenderer from '@/forms/components/PluginFormRenderer.vue'
+import NotificationPreferences from '@/components/NotificationPreferences.vue'
 import { ResponseError } from '@/api'
 import { useNotifierStore } from '@/stores/notifierStore'
 import { logger } from '@/services/logger'
@@ -417,6 +418,13 @@ const isSmallScreen = computed(() => window.innerWidth < 1300)
       <v-progress-linear color="green" :model-value="formFillProgress" :height="8"></v-progress-linear>
     </v-container> -->
     <v-container>
+      <!-- Notification Preferences (patient case-code flow) -->
+      <v-card v-if="externalCode" class="mb-4">
+        <v-card-text>
+          <NotificationPreferences :case-access-token="externalCode" />
+        </v-card-text>
+      </v-card>
+
       <transition name="slide-down">
         <v-card v-if="errorMessage">
           <v-card-text class="error">{{ errorMessage }}</v-card-text>
