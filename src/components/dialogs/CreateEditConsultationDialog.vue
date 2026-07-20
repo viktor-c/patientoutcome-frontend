@@ -463,6 +463,7 @@ defineExpose({
                   multiple
                   outlined
                   dense
+                  :menu-props="{ closeOnContentClick: true }"
                   data-testid="consultation-reason"></v-select>
         <v-row class="my-2">
           <v-col cols="8">
@@ -569,9 +570,10 @@ defineExpose({
                         item-value="id"
                         item-title="name"
                         :label="t('consultation.visitedBy')"
-                        multiple
                         outlined
                         dense
+                        multiple
+                        :menu-props="{ closeOnContentClick: true }"
                         data-testid="consultation-visited-by"></v-autocomplete>
 
         <!-- Form Access Code Section -->

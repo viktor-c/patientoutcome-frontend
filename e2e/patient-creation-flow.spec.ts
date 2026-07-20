@@ -130,6 +130,19 @@ async function pickIcdOpsCode(page: Page, fieldLabelText: string, code: string) 
   await dialog.waitFor({ state: 'hidden', timeout: 8_000 })
 }
 
+/**
+ * Pause execution at named checkpoints when recording new steps.
+ *
+ * Usage:
+ *   PW_RECORD_CHECKPOINT=manual-consultation-visited-by npm run test:e2e:chromium:serial -- --headed --debug e2e/patient-creation-flow.spec.ts
+ */
+async function pauseAtCheckpoint(page: Page, checkpoint: string) {
+  if (process.env.PW_RECORD_CHECKPOINT === checkpoint) {
+    // eslint-disable-next-line playwright/no-page-pause
+    await page.pause()
+  }
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Test suite
 // ─────────────────────────────────────────────────────────────────────────────
@@ -368,6 +381,7 @@ test.describe('Patient / Case / Surgery / Consultation creation flow', () => {
       const vbOverlay = page.locator('.v-overlay__content .v-list').last()
       await vbOverlay.waitFor({ state: 'visible', timeout: 6_000 })
       await vbOverlay.getByText('Emma Wilson').click()
+      await vbOverlay.getByText('Emma Wilson').click()
       await vbOverlay.waitFor({ state: 'hidden', timeout: 3_000 }).catch(() => {})
 
       // Generate a new access code via the mdi-plus icon inside the combobox
@@ -383,10 +397,13 @@ test.describe('Patient / Case / Surgery / Consultation creation flow', () => {
       await dialog.waitFor({ state: 'hidden', timeout: 2_000 })
     })
 
+    // Optional recording checkpoint around line ~385 for extending the flow.
+    await pauseAtCheckpoint(page, 'manual-consultation-visited-by')
+
     // ── Step 4 → 5: advance to URL summary ───────────────────────────────────
     await test.step('3i-1 – Advance to step 5 (URL summary)', async () => {
       await page.getByRole('button', { name: 'Weiter' }).click()
-      await expect(page.getByText('Direkte Zugriffs-URLs')).toBeVisible({ timeout: 20_000 })
+      await expect(page.getByText('Direkte Zugriffs-URLs')).toBeVisible({ timeout: 2_000 })
     })
 
     await test.step('3i-2 – Open consultation URL in a new tab and verify', async () => {
@@ -398,9 +415,9 @@ test.describe('Patient / Case / Surgery / Consultation creation flow', () => {
         consultationUrlCard.locator('button[title="Öffnen"], .mdi-open-in-new').first().click(),
       ])
 
-      await newPage.waitForLoadState('domcontentloaded', { timeout: 15_000 })
+      await newPage.waitForLoadState('domcontentloaded', { timeout: 2_000 })
       await expect(newPage).toHaveURL(/consultation-overview|\/flow\//)
-      await expect(newPage.locator('body')).not.toContainText('404', { timeout: 5_000 })
+      await expect(newPage.locator('body')).not.toContainText('404', { timeout: 2_000 })
       await newPage.close()
     })
 
@@ -411,5 +428,6 @@ test.describe('Patient / Case / Surgery / Consultation creation flow', () => {
       await expect(page.getByRole('heading', { name: /dashboard/i })).toBeVisible()
     })
   })
+
 })
 
