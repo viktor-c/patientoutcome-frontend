@@ -195,6 +195,22 @@ export async function setCodeActivationStart(code: string, activatedOn: string) 
   return await res.json();
 }
 
+export async function updateCodeValidity(code: string, activatedOn: string, expiresOn: string) {
+  const base = apiConfig.basePath ?? '';
+  const url = `${base.replace(/\/$/, '')}/form-access-code/validity/${encodeURIComponent(code)}`;
+  const res = await fetch(url, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    credentials: 'include',
+    body: JSON.stringify({ activatedOn, expiresOn }),
+  });
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`Failed to update code validity: ${res.status} ${res.statusText}: ${text}`);
+  }
+  return await res.json();
+}
+
 export async function resetConsultationFormsByCode(code: string) {
   const base = apiConfig.basePath ?? '';
   const url = `${base.replace(/\/$/, '')}/form-access-code/reset-consultation/${encodeURIComponent(code)}`;

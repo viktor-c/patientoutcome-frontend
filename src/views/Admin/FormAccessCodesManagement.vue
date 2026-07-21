@@ -2,11 +2,12 @@
 import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
-import { codeApi, consultationApi, patientCaseApi, resetConsultationFormsByCode, setCodeActivationStart } from '@/api'
+import { codeApi, consultationApi, patientCaseApi, resetConsultationFormsByCode, setCodeActivationStart, updateCodeValidity } from '@/api'
 import { useNotifierStore } from '@/stores/notifierStore'
 import type { ApiCode } from '@/types'
 import { ResponseError } from '@/api'
 import { useDateFormat } from '@/composables/useDateFormat'
+import EditCodeTimeWindow from '@/components/dialogs/EditCodeTimeWindow.vue'
 
 const { t, locale } = useI18n()
 const router = useRouter()
@@ -31,6 +32,8 @@ const searchingAssignConsultation = ref(false)
 const showResetDialogStep1 = ref(false)
 const showResetDialogStep2 = ref(false)
 const selectedCodeForReset = ref<ApiCode | null>(null)
+const showEditTimeWindow = ref(false)
+const selectedCodeForEdit = ref<ApiCode | null>(null)
 
 const headers = computed(() => [
   { title: t('admin.formAccessCodes.table.code'), key: 'code', sortable: true },
@@ -104,6 +107,20 @@ const extendCode = async (code: ApiCode) => {
     await codeApi.renewCode({ code: code.code })
     notifierStore.notify(t('admin.formAccessCodes.messages.extended', { code: code.code }), 'success')
   })
+}
+
+const openEditTimeWindow = (code: ApiCode) => {
+  selectedCodeForEdit.value = code
+  showEditTimeWindow.value = true
+}
+
+const saveCodeTimeWindow = async (data: { code: string; activatedOn: string; expiresOn: string }) => {
+  await withCodeAction(data.code, async () => {
+    await updateCodeValidity(data.code, data.activatedOn, data.expiresOn)
+    notifierStore.notify(t('admin.formAccessCodes.messages.validityUpdated', { code: data.code }), 'success')
+  })
+  showEditTimeWindow.value = false
+  selectedCodeForEdit.value = null
 }
 
 const revokeCode = async (code: ApiCode) => {
@@ -459,7 +476,7 @@ onMounted(() => {
                 variant="text"
                 color="primary"
                 :loading="actionLoadingCode === item.code"
-                @click="safeExtendCode(item)"
+                @click="openEditTimeWindow(item)"
                 :title="t('admin.formAccessCodes.extend')"
               />
               <v-btn
@@ -487,6 +504,8 @@ onMounted(() => {
       </v-card-text>
     </v-card>
   </v-container>
+
+  <EditCodeTimeWindow v-model="showEditTimeWindow" :code="selectedCodeForEdit" @save="saveCodeTimeWindow" />
 
   <v-dialog v-model="showActivationStartDialog" max-width="500">
     <v-card>

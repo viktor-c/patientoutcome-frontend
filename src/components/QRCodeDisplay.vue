@@ -7,9 +7,9 @@
                color="primary"
                variant="text"
                size="small"
-               :loading="loading">
+               :loading="loading"
+               :title="t('qrCode.showQRCode')">
           <v-icon start>mdi-qrcode</v-icon>
-          {{ t('qrCode.showQRCode') }}
         </v-btn>
       </slot>
     </template>
@@ -57,7 +57,7 @@
             </v-chip>
             <v-chip v-if="props.expiresOn" size="small" color="warning" variant="tonal" class="ml-2">
               <v-icon start size="small">mdi-clock-alert-outline</v-icon>
-              {{ t('qrCode.expiresAt', { date: formatDateTimeForLocale(props.expiresOn) }) }}
+              {{ t('qrCode.expiresAt', { date: formatDateForLocale(props.expiresOn) }) }}
             </v-chip>
           </div>
         </div>
@@ -93,7 +93,7 @@ import { useI18n } from 'vue-i18n'
 import { useNotifierStore } from '@/stores/notifierStore'
 import { logger } from '@/services/logger'
 import type { ConsultationAccessWindow } from '@/utils/consultationAccessWindow'
-import { formatDateTimeForLocale } from '@/utils/localeDateTime'
+import { formatDateForLocale } from '@/utils/localeDateTime'
 
 const { t } = useI18n()
 const notifierStore = useNotifierStore()
@@ -123,8 +123,8 @@ const qrCodeDataUrl = ref<string | null>(null)
 const getAccessWindowLabel = () => {
   if (!props.accessWindow) return ''
   return t('qrCode.accessWindowRange', {
-    from: formatDateTimeForLocale(props.accessWindow.activeFrom),
-    until: formatDateTimeForLocale(props.accessWindow.activeUntil),
+    from: formatDateForLocale(props.accessWindow.activeFrom),
+    until: formatDateForLocale(props.accessWindow.activeUntil),
   })
 }
 
@@ -222,7 +222,7 @@ const downloadPDF = async () => {
       doc.setFontSize(8)
       doc.setTextColor(180, 100, 0)
       doc.text(
-        t('qrCode.expiresAt', { date: formatDateTimeForLocale(props.expiresOn) }),
+        t('qrCode.expiresAt', { date: formatDateForLocale(props.expiresOn) }),
         pageWidth / 2,
         nextLineY,
         { align: 'center' }
@@ -242,8 +242,8 @@ const downloadPDF = async () => {
     // Footer with generation time, code creation time and optional case ID.
     doc.setFontSize(7)
     doc.setTextColor(100, 100, 100)
-    const generatedAt = formatDateTimeForLocale(new Date())
-    const codeCreatedAt = formatDateTimeForLocale(props.codeCreatedAt)
+    const generatedAt = formatDateForLocale(new Date())
+    const codeCreatedAt = formatDateForLocale(props.codeCreatedAt)
     const caseInfo = props.caseId ? ` | Case ID: ${props.caseId}` : ''
     const footerText = `${t('qrCode.pdfGenerated')}: ${generatedAt} | ${t('common.createdAt')}: ${codeCreatedAt}${caseInfo}`
     doc.text(footerText, pageWidth / 2, pageHeight - 8, { align: 'center' })

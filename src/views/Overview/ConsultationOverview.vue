@@ -11,10 +11,11 @@ import {
   type UserNoPassword
 } from '@/api'
 import type { ApiConsultation, ApiConsultationForm } from '@/types'
-import { consultationApi, userApi, kioskApi, codeApi, formApi, renewCode } from '@/api'
+import { consultationApi, userApi, kioskApi, codeApi, formApi, renewCode, updateCodeValidity, setCodeActivationStart } from '@/api'
 import CreateEditConsultationDialog from '@/components/dialogs/CreateEditConsultationDialog.vue'
 import CascadeDeleteDialog from '@/components/dialogs/CascadeDeleteDialog.vue'
 import QRCodeDisplay from '@/components/QRCodeDisplay.vue'
+import EditCodeTimeWindow from '@/components/dialogs/EditCodeTimeWindow.vue'
 import ElsnerFeedbackChart, { type ElsnerPoint } from '@/components/forms/ElsnerFeedbackChart.vue'
 import { getConsultationAccessWindowFromConsultation } from '@/utils/consultationAccessWindow'
 import ScoreScale from '@/components/ScoreScale.vue'
@@ -57,6 +58,8 @@ type CodeItem = { _id?: string | null; id?: string | null; code: string; isCreat
 const availableCodes = ref<CodeItem[]>([])
 const selectedCode = ref<string | null>(null)
 const assigningCode = ref(false)
+const showEditCodeTimeWindow = ref(false)
+const selectedCodeForEdit = ref<any>(null)
 
 // Archive form state
 const archiveFormDialog = ref(false)
@@ -655,7 +658,7 @@ const createAndAssignNewCode = async () => {
   try {
     assigningCode.value = true
     // Create a new code
-    const response = await codeApi.addCodes({ numberOfCodes: 1 })
+    const response = await codeApi.addCodes({ addCodesRequest: { numberOfCodes: 1 } })
     const newCodes = response.responseObject || []
     if (newCodes.length === 0) {
       throw new Error('Failed to create new code')
@@ -759,6 +762,40 @@ const renewAssignedCode = async () => {
   } finally {
     assigningCode.value = false
   }
+}
+
+const openEditCodeTimeWindow = () => {
+  const codeVal = consultation.value?.formAccessCode as unknown
+  if (codeVal && typeof codeVal === 'object') {
+    selectedCodeForEdit.value = codeVal
+    showEditCodeTimeWindow.value = true
+  }
+}
+
+const saveCodeTimeWindow = async (data: { code: string; activatedOn: string; expiresOn: string }) => {
+  try {
+    assigningCode.value = true
+    await updateCodeValidity(data.code, data.activatedOn, data.expiresOn)
+    notifierStore.notify(t('consultationOverview.codeValidityUpdated'), 'success')
+    const resp = await consultationApi.getConsultationById({ consultationId })
+    consultation.value = resp.responseObject || null
+  } catch (error: unknown) {
+    let errorMessage = 'An unexpected error occurred'
+    if (error instanceof Error) {
+      errorMessage = error.message
+    }
+    console.error(`${componentName}: Failed to update code validity:`, errorMessage)
+    notifierStore.notify(t('consultationOverview.codeValidityUpdateError'), 'error')
+  } finally {
+    assigningCode.value = false
+    showEditCodeTimeWindow.value = false
+  }
+}
+
+const openSetActivationStartDialog = () => {
+  // For simplicity, we'll just open the edit time window dialog
+  // which allows setting both start and end dates
+  openEditCodeTimeWindow()
 }
 
 // Archive form functions
@@ -1465,7 +1502,7 @@ const isCodeExpiringSoon = computed(() => {
                   </div>
                 </v-list-item-subtitle>
                 <template #append>
-                  <div class="d-flex gap-2 align-center">
+                  <div class="d-flex gap-2 align-center flex-wrap">
                     <QRCodeDisplay
                                    v-if="patientFlowUrl"
                                    :url="patientFlowUrl"
@@ -1473,6 +1510,30 @@ const isCodeExpiringSoon = computed(() => {
                         :expires-on="assignedCodeExpiresOn || undefined"
                         :case-id="caseRouteId || undefined"
                         :code-created-at="assignedCodeCreatedAt || undefined" />
+                    <v-btn
+                      color="secondary"
+                      variant="tonal"
+                      size="small"
+                      @click="openSetActivationStartDialog"
+                      :disabled="assigningCode"
+                      :loading="assigningCode"
+                      :title="t('consultationOverview.setActivationStart')"
+                    >
+                      <v-icon start>mdi-clock-start</v-icon>
+                      <!-- {{ t('consultationOverview.setActivationStartBtn') }} -->
+                    </v-btn>
+                    <v-btn
+                      color="primary"
+                      variant="tonal"
+                      size="small"
+                      @click="openEditCodeTimeWindow"
+                      :disabled="assigningCode"
+                      :loading="assigningCode"
+                      :title="t('consultationOverview.extendValidity')"
+                    >
+                      <v-icon start>mdi-calendar-clock</v-icon>
+                      <!-- {{ t('consultationOverview.extendBtn') }} -->
+                    </v-btn>
                     <v-btn
                       :color="isCodeExpiringSoon ? 'warning' : 'primary'"
                       variant="tonal"
@@ -1483,7 +1544,7 @@ const isCodeExpiringSoon = computed(() => {
                       :title="t('consultationOverview.renewCode')"
                     >
                       <v-icon start>mdi-refresh</v-icon>
-                      {{ t('consultationOverview.codeRenewBtn') }}
+                      <!-- {{ t('consultationOverview.codeRenewBtn') }} -->
                     </v-btn>
                     <v-btn
                            color="error"
@@ -1735,6 +1796,12 @@ const isCodeExpiringSoon = computed(() => {
         </v-card-actions>
       </v-card>
     </v-dialog>
+
+    <EditCodeTimeWindow
+      v-model="showEditCodeTimeWindow"
+      :code="selectedCodeForEdit"
+      @save="saveCodeTimeWindow"
+    />
   </v-container>
 </template>
 
