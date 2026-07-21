@@ -87,6 +87,16 @@ describe('IcdOpsSearchField.vue', () => {
     return wrapper
   }
 
+  async function openDialogAndGetSearchInput(wrapper: ReturnType<typeof mountComponent>) {
+    await wrapper.find('.icd-ops-trigger').trigger('click')
+    await nextTick()
+    await nextTick()
+
+    const input = document.body.querySelector('.icd-ops-search-header input') as HTMLInputElement | null
+    expect(input).not.toBeNull()
+    return input!
+  }
+
   it('renders without crashing', () => {
     const wrapper = mountComponent()
     expect(wrapper.exists()).toBe(true)
@@ -173,7 +183,8 @@ describe('IcdOpsSearchField.vue', () => {
   })
 
   it('emits update:modelValue when item clicked (single mode)', async () => {
-    mockState.items.value = [{ code: 'A00', label: 'Cholera', kind: 'category' }]
+    mockState.searchMode.value = 'code-prefix'
+    mockState.items.value = [{ code: 'A00.0', label: 'Cholera due to Vibrio cholerae', kind: 'category' }]
     mockState.totalResults.value = 1
 
     const wrapper = mountComponent()
@@ -189,11 +200,12 @@ describe('IcdOpsSearchField.vue', () => {
 
     const emitted = wrapper.emitted('update:modelValue')
     expect(emitted).toBeTruthy()
-    expect(emitted![emitted!.length - 1][0]).toBe('A00')
+    expect(emitted![emitted!.length - 1][0]).toBe('A00.0')
   })
 
   it('returns full object when returnObject=true', async () => {
-    mockState.items.value = [{ code: 'A00', label: 'Cholera', kind: 'category' }]
+    mockState.searchMode.value = 'code-prefix'
+    mockState.items.value = [{ code: 'A00.0', label: 'Cholera due to Vibrio cholerae', kind: 'category' }]
 
     const wrapper = mountComponent({ returnObject: true })
     await wrapper.find('.icd-ops-trigger').trigger('click')
@@ -209,7 +221,7 @@ describe('IcdOpsSearchField.vue', () => {
     expect(emitted).toBeTruthy()
     const val = emitted![emitted!.length - 1][0]
     expect(typeof val).toBe('object')
-    expect((val as { code?: string }).code).toBe('A00')
+    expect((val as { code?: string }).code).toBe('A00.0')
   })
 
   it('shows search mode indicator in dialog', async () => {
@@ -252,6 +264,102 @@ describe('IcdOpsSearchField.vue', () => {
     expect(wrapper.emitted('update:modelValue')).toBeFalsy()
     // The composable query should be updated to drill down
     expect(mockState.query.value).toBe('M20')
+  })
+
+  it('drills down for incomplete OPS category codes instead of selecting them', async () => {
+    mockState.searchMode.value = 'code-prefix'
+    mockState.isGroupNav.value = false
+    mockState.items.value = [
+      { code: '5-788.0', label: 'Draht', kind: 'category' },
+      { code: '5-788.00', label: 'Draht – Klavikula', kind: 'category' },
+      { code: '5-788.01', label: 'Draht – Humerus proximal', kind: 'category' },
+    ]
+    mockState.totalResults.value = 3
+
+    const wrapper = mountComponent({ type: 'ops' })
+    await wrapper.find('.icd-ops-trigger').trigger('click')
+    await nextTick()
+    await nextTick()
+
+    const listItem = document.body.querySelector('.v-list-item')
+    expect(listItem).not.toBeNull()
+    listItem!.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+    await nextTick()
+
+    expect(wrapper.emitted('update:modelValue')).toBeFalsy()
+    expect(mockState.query.value).toBe('5-788.0')
+  })
+
+  it('drills down for ICD category codes ending with a dot instead of selecting them', async () => {
+    mockState.searchMode.value = 'code-prefix'
+    mockState.isGroupNav.value = false
+    mockState.items.value = [
+      { code: 'M20.', label: 'Deformitäten der Zehen', kind: 'category' },
+      { code: 'M20.1', label: 'Hallux valgus', kind: 'category' },
+      { code: 'M20.2', label: 'Hallux rigidus', kind: 'category' },
+    ]
+    mockState.totalResults.value = 3
+
+    const wrapper = mountComponent({ type: 'icd' })
+    await wrapper.find('.icd-ops-trigger').trigger('click')
+    await nextTick()
+    await nextTick()
+
+    const listItem = document.body.querySelector('.v-list-item')
+    expect(listItem).not.toBeNull()
+    listItem!.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+    await nextTick()
+
+    expect(wrapper.emitted('update:modelValue')).toBeFalsy()
+    expect(mockState.query.value).toBe('M20.')
+  })
+
+  it('pressing Enter on an incomplete OPS category code drills down instead of selecting', async () => {
+    mockState.searchMode.value = 'code-prefix'
+    mockState.isGroupNav.value = false
+    mockState.items.value = [
+      { code: '5-788.0', label: 'Draht', kind: 'category' },
+      { code: '5-788.00', label: 'Draht – Klavikula', kind: 'category' },
+      { code: '5-788.01', label: 'Draht – Humerus proximal', kind: 'category' },
+    ]
+    mockState.totalResults.value = 3
+
+    const wrapper = mountComponent({ type: 'ops' })
+    const input = await openDialogAndGetSearchInput(wrapper)
+
+    input.value = '57880'
+    input.dispatchEvent(new Event('input', { bubbles: true }))
+    await nextTick()
+
+    input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true }))
+    await nextTick()
+
+    expect(wrapper.emitted('update:modelValue')).toBeFalsy()
+    expect(mockState.query.value).toBe('5-788.0')
+  })
+
+  it('pressing Enter on an incomplete ICD category code drills down instead of selecting', async () => {
+    mockState.searchMode.value = 'code-prefix'
+    mockState.isGroupNav.value = false
+    mockState.items.value = [
+      { code: 'M20.', label: 'Deformitäten der Zehen', kind: 'category' },
+      { code: 'M20.1', label: 'Hallux valgus', kind: 'category' },
+      { code: 'M20.2', label: 'Hallux rigidus', kind: 'category' },
+    ]
+    mockState.totalResults.value = 3
+
+    const wrapper = mountComponent({ type: 'icd' })
+    const input = await openDialogAndGetSearchInput(wrapper)
+
+    input.value = 'M20.'
+    input.dispatchEvent(new Event('input', { bubbles: true }))
+    await nextTick()
+
+    input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true }))
+    await nextTick()
+
+    expect(wrapper.emitted('update:modelValue')).toBeFalsy()
+    expect(mockState.query.value).toBe('M20.')
   })
 
   it('replaces search text with parent context code when context banner is clicked', async () => {
@@ -300,9 +408,10 @@ describe('IcdOpsSearchField.vue', () => {
     })
 
     it('selects multiple items and emits array', async () => {
+      mockState.searchMode.value = 'code-prefix'
       mockState.items.value = [
-        { code: 'A00', label: 'Cholera', kind: 'category' },
-        { code: 'A01', label: 'Typhus', kind: 'category' },
+        { code: 'A00.0', label: 'Cholera due to Vibrio cholerae', kind: 'category' },
+        { code: 'A01.0', label: 'Typhoid fever', kind: 'category' },
       ]
 
       const wrapper = mountComponent({ multiple: true })

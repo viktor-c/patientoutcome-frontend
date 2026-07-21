@@ -4,7 +4,7 @@
 FROM node:24-slim AS base
 ENV PNPM_HOME="/pnpm"
 ENV PATH="$PNPM_HOME:$PATH"
-RUN corepack enable && corepack prepare pnpm@latest --activate
+RUN npm install -g pnpm@9
 
 # Dependencies stage
 FROM base AS deps
@@ -12,6 +12,7 @@ WORKDIR /app
 
 # Copy only dependency-related files
 COPY package.json ./
+COPY pnpm-workspace.yaml ./
 
 # Install all dependencies (including dev dependencies for build)
 RUN --mount=type=cache,id=pnpm,target=/pnpm/store pnpm install --no-frozen-lockfile
@@ -23,8 +24,12 @@ WORKDIR /app
 # Accept build arguments
 ARG VITE_API_URL
 ARG VITE_LOG_LEVEL=info
+ARG VITE_APP_VERSION=unknown
+ARG VITE_BUILD_REF=unknown
 ENV VITE_API_URL=${VITE_API_URL}
 ENV VITE_LOG_LEVEL=${VITE_LOG_LEVEL}
+ENV VITE_APP_VERSION=${VITE_APP_VERSION}
+ENV VITE_BUILD_REF=${VITE_BUILD_REF}
 
 # Copy dependencies from deps stage
 COPY --from=deps /app/node_modules /app/node_modules
@@ -42,6 +47,10 @@ FROM nginx:alpine AS production
 
 # Copy custom nginx configuration
 COPY nginx.conf /etc/nginx/nginx.conf
+
+# Generate runtime-config.js from container env on startup.
+COPY docker-entrypoint.d/40-runtime-config.sh /docker-entrypoint.d/40-runtime-config.sh
+RUN chmod +x /docker-entrypoint.d/40-runtime-config.sh
 
 # Copy built application from build stage
 COPY --from=build /app/dist /usr/share/nginx/html

@@ -8,7 +8,7 @@
     <v-input
              :hint="hintText"
              :persistent-hint="persistentHint"
-             :error-messages="fieldError ? [fieldError] : []"
+             :error-messages="computedFieldError ? [computedFieldError] : []"
              :disabled="disabled"
              :density="density"
              :variant="variant"
@@ -23,12 +23,12 @@
           <template v-if="multiple && Array.isArray(selectedValue) && selectedValue.length">
             <v-chip
                     v-for="(val, idx) in displayChips"
-                    :key="idx"
+                    :key="typeof val === 'object' ? `${val.code}-${idx}` : `${val}-${idx}`"
                     size="small"
                     color="primary"
                     :closable="closableChips && !disabled && !readonly"
                     @click.stop
-                    @click:close="removeItem(idx)">
+                    @click:close.stop="removeItemByValue(val)">
               <strong>{{ typeof val === 'object' ? val.code : val }}</strong>
               <span v-if="typeof val === 'object'" class="ml-1 text-truncate" style="max-width: 160px">
                 – {{ val.label }}
@@ -103,7 +103,8 @@
       </v-card-title>
 
       <!-- Search bar -->
-      <v-card-text class="pa-3 pb-1 icd-ops-search-header" style="position: sticky; top: 0; z-index: 1; background: white">
+      <v-card-text class="pa-3 pb-1 icd-ops-search-header"
+                   style="position: sticky; top: 0; z-index: 1; background: white">
         <v-text-field
                       ref="searchRef"
                       v-model="searchInput"
@@ -193,7 +194,8 @@
             <v-list-item-title class="text-body-2">{{ item.label }}</v-list-item-title>
             <v-list-item-subtitle class="text-caption">
               {{ kindLabel(item.kind) }}
-              <span v-if="searchMode === 'code-prefix' && isGroupNav" class="ml-1 text-grey">
+              <span v-if="searchMode === 'code-prefix' && (isGroupNav || shouldDrillDeeper(item))"
+                    class="ml-1 text-grey">
                 · Klicken um die Auswahl einzugrenzen
               </span>
               <span v-else-if="searchMode === 'text-search'" class="ml-1 text-grey">
@@ -321,7 +323,7 @@
                            variant="text"
                            size="x-small"
                            color="grey"
-                           @click.stop="removeItem(idx)">
+                           @click.stop="removeItemByValue(val)">
                       <v-icon size="14">mdi-close</v-icon>
                     </v-btn>
                   </template>
@@ -389,6 +391,8 @@ export interface IcdOpsSearchFieldProps {
   minChars?: number
   /** Debounce delay in ms (defaults to VITE_ICD_OPS_DEBOUNCE_MS env var) */
   debounceMs?: number
+  /** Error message to display */
+  fieldError?: string | null
 }
 
 const props = withDefaults(defineProps<IcdOpsSearchFieldProps>(), {
@@ -409,6 +413,7 @@ const props = withDefaults(defineProps<IcdOpsSearchFieldProps>(), {
   persistentHint: false,
   minChars: 1,
   debounceMs: undefined,
+  fieldError: null,
 })
 
 const emit = defineEmits<{
@@ -446,7 +451,7 @@ const {
 const dialogOpen = ref(false)
 const searchInput = ref('')
 const searchRef = ref<InstanceType<typeof VTextField> | null>(null)
-const fieldError = ref<string | null>(null)
+const internalSearchError = ref<string | null>(null)
 
 // Initialize selected value
 type SingleValue = IcdOpsEntry | string | null
@@ -488,6 +493,11 @@ const hintText = computed(() => {
 const searchPlaceholder = computed(() => {
   if (props.type === 'icd') return 'Code oder Bezeichnung eingeben…'
   return 'Code (Ziffern) oder Bezeichnung eingeben…'
+})
+
+// Combine prop error with internal search error (prop error takes precedence)
+const computedFieldError = computed(() => {
+  return props.fieldError || internalSearchError.value
 })
 
 // ──────────────────────────────────────────────────────────────
@@ -550,10 +560,16 @@ function clearSelection() {
   emit('update:modelValue', props.multiple ? [] : null)
 }
 
-function removeItem(idx: number) {
+function removeItemByValue(valueToRemove: IcdOpsEntry | string) {
   if (!Array.isArray(selectedValue.value)) return
   const arr = [...(selectedValue.value as (IcdOpsEntry | string)[])]
-  arr.splice(idx, 1)
+  const codeToRemove = typeof valueToRemove === 'object' ? valueToRemove.code : valueToRemove
+  const removeIndex = arr.findIndex((entry) => {
+    const entryCode = typeof entry === 'object' ? entry.code : entry
+    return entryCode === codeToRemove
+  })
+  if (removeIndex === -1) return
+  arr.splice(removeIndex, 1)
   selectedValue.value = arr
   emit('update:modelValue', arr)
 }
@@ -561,6 +577,14 @@ function removeItem(idx: number) {
 function selectItem(item: IcdOpsEntry) {
   // In code-prefix mode with group navigation: drill down instead of selecting
   if (searchMode.value === 'code-prefix' && isGroupNav.value) {
+    searchInput.value = item.code
+    return
+  }
+
+  // Non-terminal codes in code-navigation mode should continue drilling down
+  // instead of being selected, even if the backend no longer marks them as a
+  // broad navigation group.
+  if (searchMode.value === 'code-prefix' && shouldDrillDeeper(item)) {
     searchInput.value = item.code
     return
   }
@@ -620,11 +644,20 @@ function selectItem(item: IcdOpsEntry) {
  */
 function isTerminalCode(code: string, type: 'icd' | 'ops'): boolean {
   if (type === 'icd') {
-    return /\./.test(code)
+    return /^[A-Za-z]\d{2}\.[A-Za-z0-9]+$/.test(code)
   }
-  // OPS: terminal codes always have exactly 6 meaningful characters
-  // (excluding hyphens, dots and spaces), e.g. 5-788.1a → "57881a" = 6 chars.
-  return code.replace(/[-. ]/g, '').length === 6
+  const suffix = code.split('.')[1] ?? ''
+  return suffix.length >= 2 || /[A-Za-z]/.test(suffix)
+}
+
+function hasVisibleChildren(code: string): boolean {
+  return items.value.some((item) => item.code !== code && item.code.startsWith(code))
+}
+
+function shouldDrillDeeper(item: IcdOpsEntry): boolean {
+  if (item.kind === 'chapter' || item.kind === 'block') return true
+  if (hasVisibleChildren(item.code)) return true
+  return !isTerminalCode(item.code, props.type)
 }
 
 function onEnterKey(e: KeyboardEvent) {
@@ -688,7 +721,7 @@ watch(
 
 // Propagate composable error to field
 watch(searchError, (err) => {
-  fieldError.value = err
+  internalSearchError.value = err
 })
 </script>
 

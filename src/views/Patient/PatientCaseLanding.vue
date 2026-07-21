@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, computed } from 'vue'
+import { ref, onMounted, onUnmounted, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { useDateFormat } from '@/composables/useDateFormat'
@@ -11,6 +11,7 @@ import {
   type Consultation,
   type Patient,
   type Surgery,
+  type Note,
   ResponseError,
 } from '@/api'
 import { patientCaseApi, consultationApi, surgeryApi } from '@/api'
@@ -19,12 +20,46 @@ import CreateEditConsultationDialog from '@/components/dialogs/CreateEditConsult
 import CreateBatchConsultationsDialog from '@/components/dialogs/CreateBatchConsultationsDialog.vue'
 import CreateEditSurgeryDialog from '@/components/dialogs/CreateEditSurgeryDialog.vue'
 import CascadeDeleteDialog from '@/components/dialogs/CascadeDeleteDialog.vue'
+import NotesEditor from '@/components/forms/NotesEditor.vue'
+import QRCodeDisplay from '@/components/QRCodeDisplay.vue'
+import { getConsultationAccessWindowFromConsultation } from '@/utils/consultationAccessWindow'
+import { getAccessInfo } from '@/utils/dashboardUtils'
+import { useUserStore } from '@/stores/userStore'
 
 const { t } = useI18n()
 const route = useRoute()
 const router = useRouter()
 const notifierStore = useNotifierStore()
+const userStore = useUserStore()
 const { formatLocalizedCustomDate, dateFormats } = useDateFormat()
+
+// Build the public patient flow URL for a consultation given its access code
+const buildConsultationFlowUrl = (consultation: Consultation): string | null => {
+  const access = getAccessInfo(consultation)
+  const code = access.code
+  if (!code) return null
+  const baseUrl = window.location.origin
+  return `${baseUrl}/flow/${code}`
+}
+
+const consultationAccessWindow = (consultation: Consultation) => {
+  return getConsultationAccessWindowFromConsultation(consultation, {
+    consultationAccessDaysBefore: userStore.consultationAccessDaysBefore,
+    consultationAccessDaysAfter: userStore.consultationAccessDaysAfter,
+  })
+}
+
+const consultationCodeLabel = (consultation: Consultation): string | null => {
+  const access = getAccessInfo(consultation)
+  return access.code || null
+}
+
+const consultationCodeCreatedAt = (consultation: Consultation): string | null => {
+  const accessCode = consultation.formAccessCode as unknown
+  if (!accessCode || typeof accessCode !== 'object') return null
+  const activatedOn = (accessCode as Record<string, unknown>).activatedOn
+  return typeof activatedOn === 'string' ? activatedOn : null
+}
 
 // Get caseId from route params
 const caseId = route.params.caseId as string
@@ -34,8 +69,42 @@ const patientCase = ref<GetPatientCaseById200Response['responseObject'] | null>(
 const patient = ref<Patient | null>(null)
 const consultations = ref<Consultation[]>([])
 const surgeries = ref<Surgery[]>([])
+const caseNotes = ref<Note[]>([])
+const savingCaseNotes = ref(false)
 const loading = ref(true)
 const error = ref<string | null>(null)
+const isNotFound = ref(false)
+const redirectCountdown = ref(5)
+const caseNotesEditorRef = ref<{ addNote: () => void } | null>(null)
+let redirectInterval: ReturnType<typeof setInterval> | null = null
+let redirectTimeout: ReturnType<typeof setTimeout> | null = null
+
+const clearRedirectTimers = () => {
+  if (redirectInterval) {
+    clearInterval(redirectInterval)
+    redirectInterval = null
+  }
+  if (redirectTimeout) {
+    clearTimeout(redirectTimeout)
+    redirectTimeout = null
+  }
+}
+
+const startDashboardRedirectCountdown = () => {
+  clearRedirectTimers()
+  redirectCountdown.value = 5
+
+  redirectInterval = setInterval(() => {
+    if (redirectCountdown.value > 0) {
+      redirectCountdown.value -= 1
+    }
+  }, 1000)
+
+  redirectTimeout = setTimeout(() => {
+    clearRedirectTimers()
+    router.replace({ name: 'dashboard' })
+  }, 5000)
+}
 
 // Dialog states
 const showCreateConsultationDialog = ref(false)
@@ -123,6 +192,8 @@ const futureConsultations = computed(() => {
 const loadCaseData = async () => {
   if (!caseId) {
     error.value = t('patientCaseLanding.invalidParams')
+    isNotFound.value = true
+    startDashboardRedirectCountdown()
     loading.value = false
     return
   }
@@ -130,10 +201,18 @@ const loadCaseData = async () => {
   try {
     loading.value = true
     error.value = null
+    isNotFound.value = false
 
     // Load case details using only caseId
     const caseResponse = await patientCaseApi.getPatientCaseById({ caseId })
     patientCase.value = caseResponse.responseObject || null
+
+    if (!patientCase.value) {
+      error.value = t('patientCaseLanding.notFound')
+      isNotFound.value = true
+      startDashboardRedirectCountdown()
+      return
+    }
 
     // Extract patientId from case information
     if (patientCase.value?.patient) {
@@ -154,11 +233,19 @@ const loadCaseData = async () => {
     const surgeriesResponse = await surgeryApi.getSurgeriesByPatientCaseId({ patientCaseId: caseId })
     surgeries.value = surgeriesResponse.responseObject || []
 
+    // Load case notes
+    if (patientCase.value?.notes) {
+      caseNotes.value = Array.isArray(patientCase.value.notes) ? patientCase.value.notes : []
+    } else {
+      caseNotes.value = []
+    }
+
     console.log('Case data loaded:', {
       case: patientCase.value,
       patient: patient.value,
       consultations: consultations.value,
-      surgeries: surgeries.value
+      surgeries: surgeries.value,
+      notes: caseNotes.value
     })
 
   } catch (err: unknown) {
@@ -183,6 +270,13 @@ const loadCaseData = async () => {
       } catch {
         errorMessage = `HTTP ${err.response.status}: ${err.response.statusText || 'Request failed'}`
       }
+
+      if (err.response.status === 404) {
+        error.value = errorMessage
+        isNotFound.value = true
+        startDashboardRedirectCountdown()
+        return
+      }
     } else if (err instanceof Error) {
       errorMessage = err.message
     }
@@ -193,6 +287,48 @@ const loadCaseData = async () => {
   } finally {
     loading.value = false
   }
+}
+
+// Case notes management
+const saveCaseNotes = async (updatedNotes: Note[]) => {
+  if (!patientCase.value?.id || !patient.value?.id) {
+    return
+  }
+
+  savingCaseNotes.value = true
+  try {
+    // Update the case with new notes
+    const response = await patientCaseApi.updatePatientCaseById(
+      {
+        patientId: patient.value.id,
+        caseId: patientCase.value.id,
+      },
+      {
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ notes: updatedNotes }),
+      }
+    )
+
+    if (response.success) {
+      caseNotes.value = updatedNotes
+      notifierStore.notify(t('patientCaseLanding.notesSaved'), 'success')
+      logger.info('Case notes saved successfully', { caseId: patientCase.value.id })
+    }
+  } catch (err: unknown) {
+    logger.error('Failed to save case notes', err)
+    notifierStore.notify(t('patientCaseLanding.notesSaveFailed'), 'error')
+  } finally {
+    savingCaseNotes.value = false
+  }
+}
+
+const handleCaseNotesUpdated = async (updatedNotes: Note[]) => {
+  caseNotes.value = updatedNotes
+  await saveCaseNotes(updatedNotes)
+}
+
+const addCaseNote = () => {
+  caseNotesEditorRef.value?.addNote()
 }
 
 // Navigation functions
@@ -553,6 +689,10 @@ const cancelCascadeDelete = () => {
 onMounted(() => {
   loadCaseData()
 })
+
+onUnmounted(() => {
+  clearRedirectTimers()
+})
 </script>
 
 <template>
@@ -568,7 +708,22 @@ onMounted(() => {
       <v-icon color="error" size="64">mdi-alert-circle</v-icon>
       <h2 class="mt-4">{{ t('patientCaseLanding.errorTitle') }}</h2>
       <p class="text-grey">{{ error }}</p>
-      <v-btn @click="loadCaseData" class="mt-4" color="primary">
+      <v-alert
+               v-if="isNotFound"
+               type="warning"
+               variant="tonal"
+               class="mt-4 mx-auto"
+               max-width="560">
+        {{ t('patientCaseLanding.redirectHint', { seconds: redirectCountdown }) }}
+      </v-alert>
+      <v-btn
+             v-if="isNotFound"
+             class="mt-4"
+             color="primary"
+             @click="router.replace({ name: 'dashboard' })">
+        {{ t('dashboard.title') }}
+      </v-btn>
+      <v-btn v-else @click="loadCaseData" class="mt-4" color="primary">
         {{ t('buttons.retry') }}
       </v-btn>
     </div>
@@ -667,6 +822,33 @@ onMounted(() => {
               </v-btn>
             </v-col>
           </v-row>
+        </v-card-text>
+      </v-card>
+
+      <!-- Case Notes -->
+      <v-card class="mb-6">
+        <v-card-title class="d-flex align-center justify-space-between">
+          <div class="d-flex align-center gap-2">
+            <v-icon>mdi-note-multiple</v-icon>
+            {{ t('patientCaseLanding.caseNotes') }}
+          </div>
+          <v-btn
+                 color="primary"
+                 variant="text"
+                 size="small"
+                 icon="mdi-plus"
+                 @click="addCaseNote"
+                 :title="t('patientCaseLanding.addCaseNote')">
+          </v-btn>
+        </v-card-title>
+        <v-card-text>
+          <NotesEditor
+                      ref="caseNotesEditorRef"
+                      :notes="caseNotes"
+                      @update:notes="handleCaseNotesUpdated"
+                      :title="'patientCaseLanding.caseNotes'"
+                      :add-button-text="'patientCaseLanding.addCaseNote'"
+                      :hide-add-button="true" />
         </v-card-text>
       </v-card>
 
@@ -807,6 +989,22 @@ onMounted(() => {
               </v-list-item-subtitle>
 
               <template #append>
+                <template v-if="buildConsultationFlowUrl(consultation) && consultationCodeLabel(consultation)">
+                  <QRCodeDisplay
+                    :url="buildConsultationFlowUrl(consultation) || ''"
+                    :access-window="consultationAccessWindow(consultation)"
+                    :case-id="caseId"
+                    :code-created-at="consultationCodeCreatedAt(consultation) || undefined"
+                  >
+                    <template #activator="{ props }">
+                      <v-btn v-bind="props" variant="text" size="small" @click.stop :title="t('qrCode.showQRCode')" class="code-label-btn">
+                        <v-icon start>mdi-qrcode</v-icon>
+                        {{ consultationCodeLabel(consultation) }}
+                      </v-btn>
+                    </template>
+                  </QRCodeDisplay>
+                </template>
+
                 <v-btn
                        v-if="canMoveConsultationToNow(consultation)"
                        icon="mdi-clock-edit-outline"
@@ -853,7 +1051,24 @@ onMounted(() => {
             {{ t('patientCaseLanding.pastConsultations') }}
             <v-chip class="ml-2" color="success">{{ pastConsultations.length }}</v-chip>
           </div>
-          <!-- No buttons for past consultations - they are archived -->
+          <div v-if="!futureConsultations.length" class="d-flex gap-2">
+            <v-btn
+                   color="primary"
+                   variant="text"
+                   size="small"
+                   @click="openCreateConsultationDialog"
+                   prepend-icon="mdi-plus">
+              {{ t('patientCaseLanding.addSingleConsultation') }}
+            </v-btn>
+            <v-btn
+                   color="secondary"
+                   variant="text"
+                   size="small"
+                   @click="openBatchConsultationDialog"
+                   prepend-icon="mdi-calendar-multiple">
+              {{ t('patientCaseLanding.addFromBlueprint') }}
+            </v-btn>
+          </div>
         </v-card-title>
         <v-card-text>
           <v-list>
@@ -889,6 +1104,22 @@ onMounted(() => {
               </v-list-item-subtitle>
 
               <template #append>
+                <template v-if="buildConsultationFlowUrl(consultation) && consultationCodeLabel(consultation)">
+                  <QRCodeDisplay
+                    :url="buildConsultationFlowUrl(consultation) || ''"
+                    :access-window="consultationAccessWindow(consultation)"
+                    :case-id="caseId"
+                    :code-created-at="consultationCodeCreatedAt(consultation) || undefined"
+                  >
+                    <template #activator="{ props }">
+                      <v-btn v-bind="props" variant="text" size="small" @click.stop :title="t('qrCode.showQRCode')" class="code-label-btn">
+                        <v-icon start>mdi-qrcode</v-icon>
+                        {{ consultationCodeLabel(consultation) }}
+                      </v-btn>
+                    </template>
+                  </QRCodeDisplay>
+                </template>
+
                 <v-btn
                        v-if="canMoveConsultationToNow(consultation)"
                        icon="mdi-clock-edit-outline"
@@ -1107,5 +1338,9 @@ onMounted(() => {
 .v-list-item {
   border-radius: 8px;
   margin-bottom: 4px;
+}
+
+.code-label-btn :deep(.v-btn__content) {
+  text-transform: none;
 }
 </style>

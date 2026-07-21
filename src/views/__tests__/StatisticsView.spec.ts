@@ -68,6 +68,7 @@ describe('StatisticsView.vue', () => {
         caseCreatedAt: '2025-12-01T00:00:00.000Z',
         consultations: [
           {
+            date: '2026-01-01T10:00:00.000Z',
             proms: [
               {
                 title: 'MOXFQ',
@@ -98,6 +99,7 @@ describe('StatisticsView.vue', () => {
             ],
           },
           {
+            date: '2026-02-01T10:00:00.000Z',
             proms: [
               {
                 title: 'MOXFQ',
@@ -160,8 +162,13 @@ describe('StatisticsView.vue', () => {
     expect(moxfqDataset).toBeTruthy()
     expect(vasDataset).toBeTruthy()
 
-    const moxfqYValues = ((moxfqDataset?.data as Array<{ y: number | null }>) || []).map(point => point.y)
-    const vasYValues = ((vasDataset?.data as Array<{ y: number | null }>) || []).map(point => point.y)
+    const extractValues = (dataset: Record<string, unknown> | undefined) =>
+      (((dataset?.data as Array<number | { y: number | null } | null>) || []).map((point) =>
+        typeof point === 'number' || point === null ? point : point.y,
+      ))
+
+    const moxfqYValues = extractValues(moxfqDataset)
+    const vasYValues = extractValues(vasDataset)
 
     expect(moxfqYValues).toEqual([55, 88])
     expect(vasYValues).toEqual([20, 60])

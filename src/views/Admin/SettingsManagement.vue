@@ -4,6 +4,7 @@ import { useNotifierStore } from '@/stores/';
 import { useUserStore } from '@/stores/userStore';
 import { useI18n } from 'vue-i18n';
 import { settingsApi, userDepartmentApi, updateDepartmentConsultationAccessWindow } from '@/api';
+import NotificationPreferences from '@/components/NotificationPreferences.vue';
 import type { 
   GetSettings200ResponseResponseObject,
   GetSettings200ResponseResponseObjectSettingsValueFieldsValue 
@@ -511,6 +512,12 @@ const saveDepartmentConsultationAccessWindow = async () => {
         </v-expansion-panel-text>
       </v-expansion-panel>
         </v-expansion-panels>
+
+        <!-- Notification Preferences -->
+        <div class="mt-6">
+          <v-divider class="mb-4"></v-divider>
+          <NotificationPreferences />
+        </div>
 
         <v-alert v-if="!loading && !settings" type="error" class="mt-4">
           {{ t('settings.noData') }}

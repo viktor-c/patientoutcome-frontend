@@ -50,7 +50,7 @@ const backupHistoryHeaders = [
   { title: 'Collections', key: 'collections', sortable: false },
   { title: 'Status', key: 'status', sortable: true },
   { title: 'Restore Status', key: 'restoreStatus', sortable: true },
-  { title: 'Actions', key: 'actions', sortable: false },
+  { title: 'Actions', key: 'actions', sortable: false, width: '140px' },
 ];
 
 const formatBytes = (bytes: number) => {
@@ -252,40 +252,42 @@ const getRestoreStatusDisplay = (backup: ApiBackupHistoryEntry): string => {
           </v-tooltip>
         </template>
         <template v-slot:[`item.actions`]="{ item }">
-          <v-tooltip :text="t('backup.download')" location="top">
-            <template v-slot:activator="{ props }">
-              <v-btn
-                     v-bind="props"
-                     icon="mdi-download"
-                     size="small"
-                     variant="text"
-                     @click="downloadBackup(item)"
-                     :disabled="item.status !== 'completed'" />
-            </template>
-          </v-tooltip>
-          <v-tooltip :text="t('backup.restore')" location="top">
-            <template v-slot:activator="{ props }">
-              <v-btn
-                     v-bind="props"
-                     icon="mdi-database-import"
-                     size="small"
-                     variant="text"
-                     color="primary"
-                     @click="openRestoreDialog(item)"
-                     :disabled="item.status !== 'completed'" />
-            </template>
-          </v-tooltip>
-          <v-tooltip :text="t('backup.delete')" location="top">
-            <template v-slot:activator="{ props }">
-              <v-btn
-                     v-bind="props"
-                     icon="mdi-delete"
-                     size="small"
-                     variant="text"
-                     color="error"
-                     @click="openDeleteDialog(item)" />
-            </template>
-          </v-tooltip>
+          <div class="actions-cell">
+            <v-tooltip :text="t('backup.download')" location="top">
+              <template v-slot:activator="{ props }">
+                <v-btn
+                       v-bind="props"
+                       icon="mdi-download"
+                       size="small"
+                       variant="text"
+                       @click="downloadBackup(item)"
+                       :disabled="item.status !== 'completed'" />
+              </template>
+            </v-tooltip>
+            <v-tooltip :text="t('backup.restore')" location="top">
+              <template v-slot:activator="{ props }">
+                <v-btn
+                       v-bind="props"
+                       icon="mdi-database-import"
+                       size="small"
+                       variant="text"
+                       color="primary"
+                       @click="openRestoreDialog(item)"
+                       :disabled="item.status !== 'completed'" />
+              </template>
+            </v-tooltip>
+            <v-tooltip :text="t('backup.delete')" location="top">
+              <template v-slot:activator="{ props }">
+                <v-btn
+                       v-bind="props"
+                       icon="mdi-delete"
+                       size="small"
+                       variant="text"
+                       color="error"
+                       @click="openDeleteDialog(item)" />
+              </template>
+            </v-tooltip>
+          </div>
         </template>
       </v-data-table>
     </v-card-text>
@@ -366,5 +368,13 @@ const getRestoreStatusDisplay = (backup: ApiBackupHistoryEntry): string => {
 <style scoped>
 .v-data-table {
   font-size: 0.875rem;
+}
+
+.actions-cell {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: 2px;
+  white-space: nowrap;
 }
 </style>

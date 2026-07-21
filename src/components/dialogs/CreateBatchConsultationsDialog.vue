@@ -53,6 +53,15 @@ const consultationsToCreate = ref<Array<CreateConsultation & {
   timeDelta: string
 }>>([])
 
+const normalizeFormAccessCode = (formAccessCode: unknown): string | undefined => {
+  if (typeof formAccessCode !== 'string') {
+    return undefined
+  }
+
+  const trimmedCode = formAccessCode.trim()
+  return trimmedCode.length > 0 ? trimmedCode : undefined
+}
+
 // Supporting data
 const users = ref<UserNoPassword[]>([])
 const formTemplates = ref<FormTemplateShortList[]>([])
@@ -136,12 +145,14 @@ const applyBlueprint = (blueprint: Blueprint) => {
     notes?: string[]
     visitedBy?: string[]
     formTemplates?: string[]
+    formAccessCode?: string | null
   }
 
   interface BlueprintContent {
     consultations?: ConsultationTemplate[]
     consultation?: ConsultationTemplate
     formTemplates?: string[]
+    formAccessCode?: string | null
   }
 
   const content = blueprint.content as BlueprintContent
@@ -187,7 +198,7 @@ const applyBlueprint = (blueprint: Blueprint) => {
         notes: convertNotes(consultation.notes),
         images: [],
         visitedBy: [],
-        formAccessCode: undefined,
+        formAccessCode: normalizeFormAccessCode(consultation.formAccessCode ?? content.formAccessCode),
         formTemplates: convertFormTemplateIds(consultation.formTemplates),
       })
     })
@@ -205,7 +216,7 @@ const applyBlueprint = (blueprint: Blueprint) => {
       notes: convertNotes(consultation.notes),
       images: [],
       visitedBy: [],
-      formAccessCode: undefined,
+      formAccessCode: normalizeFormAccessCode(consultation.formAccessCode ?? content.formAccessCode),
       formTemplates: convertFormTemplateIds(consultation.formTemplates),
     })
   } else {
@@ -221,10 +232,12 @@ const applyBlueprint = (blueprint: Blueprint) => {
       notes: [],
       images: [],
       visitedBy: [],
-      formAccessCode: undefined,
+      formAccessCode: normalizeFormAccessCode(content.formAccessCode),
       formTemplates: convertFormTemplateIds(content.formTemplates || []),
     })
   }
+
+  enforceSingleFormAccessCodeAssignment()
 
   console.log('Consultations to create:', consultationsToCreate.value)
 }
@@ -256,7 +269,58 @@ const calculateConsultationDate = (timeDelta: string, referenceDate: dayjs.Dayjs
   }
 }
 
+const enforceSingleFormAccessCodeAssignment = () => {
+  const codedEntries = consultationsToCreate.value
+    .map((consultation, index) => ({
+      index,
+      code: normalizeFormAccessCode(consultation.formAccessCode),
+    }))
+    .filter(entry => !!entry.code)
+
+  if (codedEntries.length <= 1) {
+    return
+  }
+
+  const isZeroDelta = (timeDelta?: string) => {
+    if (!timeDelta) return false
+    return /^[+]?0[dD]$/.test(timeDelta.trim())
+  }
+
+  const preferredZeroDelta = codedEntries.find(entry =>
+    isZeroDelta(consultationsToCreate.value[entry.index]?.timeDelta)
+  )
+
+  let designatedIndex = preferredZeroDelta?.index
+
+  if (designatedIndex === undefined) {
+    const now = Date.now()
+    let minDiff = Number.POSITIVE_INFINITY
+
+    for (const entry of codedEntries) {
+      const consultation = consultationsToCreate.value[entry.index]
+      const consultationTime = new Date(consultation?.calculatedDate || consultation?.dateAndTime || '').getTime()
+      const diff = Number.isFinite(consultationTime) ? Math.abs(consultationTime - now) : Number.POSITIVE_INFINITY
+      if (diff < minDiff) {
+        minDiff = diff
+        designatedIndex = entry.index
+      }
+    }
+  }
+
+  if (designatedIndex === undefined) {
+    designatedIndex = codedEntries[0].index
+  }
+
+  const designatedCode = normalizeFormAccessCode(consultationsToCreate.value[designatedIndex]?.formAccessCode)
+
+  consultationsToCreate.value = consultationsToCreate.value.map((consultation, index) => ({
+    ...consultation,
+    formAccessCode: index === designatedIndex ? designatedCode : undefined,
+  }))
+}
+
 // Supporting data fetchers
+
 async function fetchUsers() {
   try {
     const response = await userApi.getUsers()
@@ -315,6 +379,8 @@ const createConsultations = async () => {
 
     creating.value = true
     const createdConsultations: Consultation[] = []
+
+    enforceSingleFormAccessCodeAssignment()
 
     // Create consultations sequentially to avoid rate limiting
     for (const consultationData of consultationsToCreate.value) {

@@ -228,7 +228,7 @@ describe('useIcdOpsSearch', () => {
       const { search, items, searchMode } = useIcdOpsSearch('icd')
       await search('M')
 
-      expect(mockSearchIcdPrefix).toHaveBeenCalledWith('M', 20)
+      expect(mockSearchIcdPrefix).toHaveBeenCalledWith('M', 100)
       expect(mockSearchIcd).not.toHaveBeenCalled()
       expect(searchMode.value).toBe('code-prefix')
       expect(items.value.length).toBe(5)
@@ -255,7 +255,7 @@ describe('useIcdOpsSearch', () => {
       const { search, items, searchMode } = useIcdOpsSearch('ops')
       await search('5')
 
-      expect(mockSearchOpsPrefix).toHaveBeenCalledWith('5', 20)
+      expect(mockSearchOpsPrefix).toHaveBeenCalledWith('5', 100)
       expect(mockSearchOps).not.toHaveBeenCalled()
       expect(searchMode.value).toBe('code-prefix')
       expect(items.value.length).toBe(5)
@@ -381,7 +381,7 @@ describe('useIcdOpsSearch', () => {
       await vi.runAllTimersAsync()
       await nextTick()
 
-      expect(mockSearchIcdPrefix).toHaveBeenCalledWith('M', 20)
+      expect(mockSearchIcdPrefix).toHaveBeenCalledWith('M', 100)
       expect(searchMode.value).toBe('code-prefix')
     })
 

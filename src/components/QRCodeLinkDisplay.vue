@@ -11,6 +11,8 @@ interface Props {
   label?: string
   hideUrl?: boolean
   accessWindow?: ConsultationAccessWindow | null
+  caseId?: string
+  codeCreatedAt?: string
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -53,7 +55,13 @@ const openUrl = () => {
                   class="mb-3">
       <template #append-inner>
         <!-- QR Code -->
-        <QRCodeDisplay :url="url" :size="180" :access-window="accessWindow" />
+        <QRCodeDisplay
+          :url="url"
+          :size="180"
+          :access-window="accessWindow"
+          :case-id="caseId"
+          :code-created-at="codeCreatedAt"
+        />
         <v-btn
                icon="mdi-content-copy"
                size="x-small"

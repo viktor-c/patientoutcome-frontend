@@ -1,17 +1,58 @@
 <script setup lang="ts">
-import { ref, onMounted, computed, watch } from 'vue'
+import { ref, onMounted, computed, watch, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import LanguageSelector from '@/components/LanguageSelector.vue'
 import PluginFormRenderer from '@/forms/components/PluginFormRenderer.vue'
+import NotificationPreferences from '@/components/NotificationPreferences.vue'
 import { ResponseError } from '@/api'
 import { useNotifierStore } from '@/stores/notifierStore'
 import { logger } from '@/services/logger'
 import { useConsultationFlow } from '@/composables/useConsultationFlow'
+import { useCodeAccessLogging } from '@/composables/useCodeAccessLogging'
 import { getConsultationAccessWindowFromConsultation, type ConsultationAccessWindow } from '@/utils/consultationAccessWindow'
+import { formatDateTimeForLocale } from '@/utils/localeDateTime'
 
 import type { Form, PatientFormData } from '@/types/index'
-import type { FormSubmissionData } from '@/forms/types'
+import type { FormSubmissionData, FormComponentContext } from '@/forms/types'
+
+function getRelevantSurgeryDate(consultation: unknown): string | null {
+  if (!consultation || typeof consultation !== 'object') return null
+
+  const consultationRecord = consultation as Record<string, unknown>
+  const patientCase = consultationRecord.patientCaseId
+  if (!patientCase || typeof patientCase !== 'object') return null
+
+  const surgeries = (patientCase as Record<string, unknown>).surgeries
+  if (!Array.isArray(surgeries) || surgeries.length === 0) return null
+
+  const consultationTime = new Date(String(consultationRecord.dateAndTime ?? ''))
+  const consultationTimestamp = Number.isNaN(consultationTime.getTime()) ? null : consultationTime.getTime()
+
+  const datedSurgeries = surgeries
+    .map((surgery) => {
+      if (!surgery || typeof surgery !== 'object') return null
+      const surgeryDate = (surgery as Record<string, unknown>).surgeryDate
+      if (typeof surgeryDate !== 'string' || surgeryDate.length === 0) return null
+      const timestamp = new Date(surgeryDate).getTime()
+      if (Number.isNaN(timestamp)) return null
+      return { surgeryDate, timestamp }
+    })
+    .filter((entry): entry is { surgeryDate: string; timestamp: number } => entry !== null)
+    .sort((left, right) => left.timestamp - right.timestamp)
+
+  if (datedSurgeries.length === 0) return null
+
+  if (consultationTimestamp == null) {
+    return datedSurgeries[datedSurgeries.length - 1].surgeryDate
+  }
+
+  const mostRecentBeforeConsultation = [...datedSurgeries]
+    .reverse()
+    .find((entry) => entry.timestamp <= consultationTimestamp)
+
+  return mostRecentBeforeConsultation?.surgeryDate ?? datedSurgeries[datedSurgeries.length - 1].surgeryDate
+}
 
 import { useWindowScroll, useWindowSize } from '@vueuse/core'
 const { height } = useWindowSize()
@@ -23,6 +64,7 @@ const { height: containerHeight } = useElementSize(el)
 
 const { t, locale } = useI18n()
 const { allForms, completedForms, pendingForms, processConsultation } = useConsultationFlow()
+const { initializeAccessLog, trackFormOpened, trackFormCompleted, endAccessSession } = useCodeAccessLogging()
 
 // Define props for the component
 const { consultationId, externalCode } = defineProps<{ consultationId?: string; externalCode?: string }>()
@@ -47,12 +89,25 @@ const showReviewOption = ref(false) // Show review option after all forms are fi
 const isReviewMode = ref(false) // True when reviewing completed forms
 const isFinalized = ref(false) // True after code is deactivated
 const consultationAccessWindow = ref<ConsultationAccessWindow | null>(null)
+const consultationSurgeryDate = ref<string | null>(null)
+
+const formContext = computed<FormComponentContext | undefined>(() => {
+  if (!consultationSurgeryDate.value) return undefined
+  return { surgeryDate: consultationSurgeryDate.value }
+})
 
 // Track when the current form was opened in this session so the backend can accumulate
 // only the *actual* time spent filling, not idle time between sessions.
 const sessionStartTime = ref<Date>(new Date())
 watch(currentFormIndex, () => {
   sessionStartTime.value = new Date()
+  // Track form opening for access logging
+  if (externalCode && currentFormIndex.value < forms.value.length) {
+    const currentForm = forms.value[currentFormIndex.value]
+    if (currentForm._id) {
+      trackFormOpened(currentForm._id)
+    }
+  }
 })
 
 const notifierStore = useNotifierStore()
@@ -70,6 +125,32 @@ onMounted(async () => {
     }
 
     consultationAccessWindow.value = getConsultationAccessWindowFromConsultation(consultationResponse.responseObject)
+    consultationSurgeryDate.value = getRelevantSurgeryDate(consultationResponse.responseObject)
+
+    // Initialize access logging if using an external code
+    if (externalCode) {
+      const consultation = consultationResponse.responseObject as unknown as Record<string, unknown>
+      const patientCaseId = consultation.patientCaseId as unknown
+      const patientCaseIdStr = patientCaseId && typeof patientCaseId === 'string' ? patientCaseId : 
+        (patientCaseId && typeof patientCaseId === 'object' && (patientCaseId as Record<string, unknown>)._id ? 
+        (patientCaseId as Record<string, unknown>)._id : 
+        (patientCaseId && typeof patientCaseId === 'object' && (patientCaseId as Record<string, unknown>).id ? 
+        (patientCaseId as Record<string, unknown>).id : ''))
+      const consultationIdStr = consultation._id as string || ''
+      
+      if (patientCaseIdStr && consultationIdStr) {
+        initializeAccessLog({
+          code: externalCode,
+          patientCaseId: patientCaseIdStr,
+          consultationId: consultationIdStr,
+        })
+        logger.debug('Code access logging initialized', {
+          code: externalCode,
+          patientCaseId: patientCaseIdStr,
+          consultationId: consultationIdStr,
+        })
+      }
+    }
 
     // Use the shared consultation flow logic
     await processConsultation(consultationResponse.responseObject)
@@ -100,6 +181,12 @@ onMounted(async () => {
       notifierStore.notify(t('flow.noFormsAvailable'), 'error')
     }
   }
+})
+
+// Clean up access session tracking on component unmount
+onUnmounted(() => {
+  // If the session is still active (user didn't complete), end it
+  endAccessSession()
 })
 
 // Handle form data changes - receives FormSubmissionData from plugin
@@ -180,6 +267,11 @@ const submitForm = async () => {
     await formApi.updateForm(updatePayload)
     logger.info(`Form ${currentForm._id} saved successfully`)
     notifierStore.notify(t('alerts.form.saved'), 'success')
+
+    // Track form completion for access logging if using external code
+    if (externalCode && currentForm._id) {
+      trackFormCompleted(currentForm._id)
+    }
   } catch (error: unknown) {
     logger.error(`Failed to save form ${currentForm._id}:`, error)
     let errorMessage = t('alerts.form.submitFailed')
@@ -244,6 +336,8 @@ const finalizeAndClose = async () => {
     if (externalCode) {
       await codeApi.deactivateCode({ code: externalCode })
       logger.debug(`Code ${externalCode} deactivated successfully`)
+      // End access session tracking
+      endAccessSession()
     }
     isFinalized.value = true
     showSuccessMessage.value = true
@@ -252,6 +346,9 @@ const finalizeAndClose = async () => {
   } catch (error) {
     logger.error('Error deactivating code:', error)
     // Still show success even if deactivation fails - forms are saved
+    if (externalCode) {
+      endAccessSession()
+    }
     showSuccessMessage.value = true
     showReviewOption.value = false
     startCountdown()
@@ -312,8 +409,8 @@ const isSmallScreen = computed(() => window.innerWidth < 1300)
       <v-icon start>mdi-calendar-clock</v-icon>
       <span>
         {{ t('qrCode.accessWindowRange', {
-          from: new Date(consultationAccessWindow.activeFrom).toLocaleString(),
-          until: new Date(consultationAccessWindow.activeUntil).toLocaleString()
+          from: formatDateTimeForLocale(consultationAccessWindow.activeFrom),
+          until: formatDateTimeForLocale(consultationAccessWindow.activeUntil)
         }) }}
       </span>
     </v-alert>
@@ -321,6 +418,13 @@ const isSmallScreen = computed(() => window.innerWidth < 1300)
       <v-progress-linear color="green" :model-value="formFillProgress" :height="8"></v-progress-linear>
     </v-container> -->
     <v-container>
+      <!-- Notification Preferences (patient case-code flow) -->
+      <v-card v-if="externalCode" class="mb-4">
+        <v-card-text>
+          <NotificationPreferences :case-access-token="externalCode" />
+        </v-card-text>
+      </v-card>
+
       <transition name="slide-down">
         <v-card v-if="errorMessage">
           <v-card-text class="error">{{ errorMessage }}</v-card-text>
@@ -405,6 +509,7 @@ const isSmallScreen = computed(() => window.innerWidth < 1300)
                               :template-id="currentForm.formTemplateId || currentForm._id || ''"
                               :model-value="(currentForm.patientFormData as any) || {}"
                               :locale="locale"
+                              :context="formContext"
                               @update:model-value="(data) => processFormData(data, currentFormIndex)"
                               @submit="submitForm" />
 
@@ -455,13 +560,27 @@ const isSmallScreen = computed(() => window.innerWidth < 1300)
 
 .language-selector-floating {
   position: fixed;
-  top: 00px;
+  top: 0;
   right: 15%;
   z-index: 10;
   background: white;
   border-radius: 4px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
   opacity: 0.8;
+}
+
+@media (max-width: 960px) {
+  .language-selector-floating {
+    position: static;
+    display: flex;
+    justify-content: flex-end;
+    padding: 8px 12px 0;
+    margin-bottom: 4px;
+    background: transparent;
+    box-shadow: none;
+    opacity: 1;
+    z-index: auto;
+  }
 }
 
 .small-container {

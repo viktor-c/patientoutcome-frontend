@@ -21,7 +21,7 @@ import { useNotifierStore } from '@/stores/notifierStore'
 const notifierStore = useNotifierStore()
 
 const { t } = useI18n()
-const { validateForm, clearAllErrors, resetFormState } = useFormValidation()
+const { validateForm, clearAllErrors, resetFormState, errors, getErrorForce, touchField } = useFormValidation()
 
 // Props
 const props = defineProps<{
@@ -95,10 +95,31 @@ const extractLabels = (entries: (IcdOpsEntry | string)[]): string[] => {
 // Watch ICD10 entries and sync codes to formCase
 watch(mainDiagnosisICD10Entries, (entries) => {
   formCase.value.mainDiagnosisICD10 = extractCodes(entries)
+  // Clear validation error when field becomes valid (has entries)
+  if (entries.length > 0) {
+    clearAllErrors()
+  }
 }, { deep: true })
 
 watch(otherDiagnosisICD10Entries, (entries) => {
   formCase.value.otherDiagnosisICD10 = extractCodes(entries)
+}, { deep: true })
+
+
+// Watch for changes in formCase's ICD10 codes and update the entry refs
+// This is crucial for blueprint application to reflect in the UI
+watch(() => formCase.value.mainDiagnosisICD10, (newCodes) => {
+  // Avoid loops by checking if the codes are already in sync
+  if (JSON.stringify(newCodes) !== JSON.stringify(extractCodes(mainDiagnosisICD10Entries.value))) {
+    mainDiagnosisICD10Entries.value = newCodes || []
+  }
+}, { deep: true })
+
+watch(() => formCase.value.otherDiagnosisICD10, (newCodes) => {
+  // Avoid loops by checking if the codes are already in sync
+  if (JSON.stringify(newCodes) !== JSON.stringify(extractCodes(otherDiagnosisICD10Entries.value))) {
+    otherDiagnosisICD10Entries.value = newCodes || []
+  }
 }, { deep: true })
 
 
@@ -250,7 +271,9 @@ const applyBlueprint = (blueprint: Blueprint) => {
   // Emit blueprint applied event so parent can extract surgery blueprint info
   emit('blueprint-applied', blueprint)
 
-  notifierStore.notify(t('forms.blueprint.blueprintApplied'), 'success')
+  if (props.showButtons !== false) {
+    notifierStore.notify(t('forms.blueprint.blueprintApplied'), 'success')
+  }
 }
 
 // Load blueprints on component mount
@@ -284,6 +307,8 @@ const submit = async () => {
     }
 
     if (!validateForm(formCase.value, validationRules)) {
+      // Touch all fields so errors are displayed
+      touchField('mainDiagnosis')
       notifierStore.notify(t('alerts.validation.failed'), 'error')
       return
     }
@@ -297,8 +322,9 @@ const submit = async () => {
       if (response.responseObject) {
         emit('submit', response.responseObject)
       }
-      // show success message
-      notifierStore.notify(t('alerts.case.created'), 'success')
+      if (props.showButtons !== false) {
+        notifierStore.notify(t('alerts.case.created'), 'success')
+      }
     } else {
       if (!props.selectedCase || !props.selectedCase.id) return
       // Update the selected case with the new data
@@ -319,7 +345,9 @@ const submit = async () => {
         caseId: props.selectedCase.id
       })
       console.log('Case updated successfully:', response)
-      notifierStore.notify(t('alerts.case.updated'), 'success')
+      if (props.showButtons !== false) {
+        notifierStore.notify(t('alerts.case.updated'), 'success')
+      }
       // Emit the updated case
       if (response.responseObject) {
         emit('submit', response.responseObject)
@@ -366,6 +394,8 @@ const submitAndNextStep = async () => {
       }
 
       if (!validateForm(formCase.value, validationRules)) {
+        // Touch all fields so errors are displayed
+        touchField('mainDiagnosis')
         notifierStore.notify(t('alerts.validation.failed'), 'error')
         return
       }
@@ -378,8 +408,9 @@ const submitAndNextStep = async () => {
       if (response.responseObject) {
         emit('next-step', response.responseObject)
       }
-      // show success message
-      notifierStore.notify(t('alerts.case.created'), 'success')
+      if (props.showButtons !== false) {
+        notifierStore.notify(t('alerts.case.created'), 'success')
+      }
     } catch (error: unknown) {
       let errorMessage = 'An unexpected error occurred'
       if (error instanceof ResponseError) {
@@ -395,6 +426,7 @@ const submitAndNextStep = async () => {
 defineExpose({
   submit,
   submitAndNextStep,
+  formSubmitted,
   resetFormState: () => {
     clearAllErrors()
     resetFormState()
@@ -452,6 +484,7 @@ loadDefaultBlueprints()
                              type="icd"
                              :label="t('forms.patientCase.mainDiagnosis')"
                              v-model="mainDiagnosisICD10Entries"
+                             :field-error="formSubmitted ? getErrorForce('mainDiagnosis') : ''"
                              return-object
                              multiple
                              chips

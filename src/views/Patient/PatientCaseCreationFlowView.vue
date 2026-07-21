@@ -227,6 +227,30 @@ const getFormAccessCodeValue = (accessCode: unknown): string | null => {
   return null
 }
 
+const caseDepartmentId = computed<string | undefined>(() => {
+  const depts = createdCase.value?.patient?.departments
+  if (Array.isArray(depts) && depts.length > 0) {
+    const first = depts[0] as unknown
+    if (typeof first === 'string' && first.length > 0) return first
+    if (isRecord(first)) {
+      const directId = first.id
+      if (typeof directId === 'string' && directId.length > 0) return directId
+      const nestedId = first._id
+      if (typeof nestedId === 'string' && nestedId.length > 0) return nestedId
+    }
+  }
+
+  if (typeof patientData.value.department === 'string' && patientData.value.department.length > 0) {
+    return patientData.value.department
+  }
+
+  if (typeof userStore.department === 'string' && userStore.department.length > 0) {
+    return userStore.department
+  }
+
+  return undefined
+})
+
 const getConsultationForms = (consultation: Consultation): ConsultationPromWithTitle[] => {
   if (!Array.isArray(consultation.proms)) return []
 
@@ -279,7 +303,11 @@ const caseForEditing = computed(() => {
 })
 
 // API functions
-const handleEnter = async () => {
+const handleEnter = async (event: KeyboardEvent) => {
+  // Don't advance the stepper when Enter is pressed inside a textarea (e.g. Fallbeschreibung)
+  if ((event.target as HTMLElement)?.tagName === 'TEXTAREA') return
+  // Prevent default form-submission behaviour for non-textarea elements
+  event.preventDefault()
   // ignore when dialogs open
   if (isManualConsultationDialogOpen.value || showManualConsultationDialogStep4.value) return
   // only respond if next button is shown and not disabled
@@ -497,8 +525,8 @@ const handleCancelDuplicateDialog = () => {
 
 // Handle case creation from embedded form
 const handleCaseSubmit = (caseData: ApiPatientCaseWithDetails) => {
-  createdCase.value = caseData
   const isUpdate = caseData.id === createdCase.value?.id
+  createdCase.value = caseData
   console.log(isUpdate ? 'Case updated:' : 'Case created:', caseData.id)
 
   // Only advance step if we're moving forward, not if we're saving before going back
@@ -550,6 +578,12 @@ const handleCaseCancel = () => {
 
 // Handle surgery dialog events
 const handleSurgerySubmit = async (surgery: Surgery) => {
+  if (!surgery?.id) {
+    console.error('handleSurgerySubmit called without a valid surgery payload', surgery)
+    notifierStore.notify(t('alerts.surgery.saveFailed'), 'error')
+    return
+  }
+
   const isUpdate = createdSurgery.value?.id === surgery.id
   createdSurgery.value = surgery
   console.log(isUpdate ? 'Surgery updated:' : 'Surgery created:', surgery.id)
@@ -680,7 +714,6 @@ const handleManualConsultationSubmitStep4 = async (consultation: Consultation) =
 
   showManualConsultationDialogStep4.value = false
   console.log('Manual consultation added to list:', consultation.id)
-  notifierStore.notify(t('alerts.consultation.created'), 'success')
 }
 
 
@@ -794,6 +827,13 @@ const firstConsultationAccessWindow = computed(() => {
   })
 })
 
+const firstConsultationCodeCreatedAt = computed(() => {
+  const accessCode = firstConsultation.value?.formAccessCode as unknown
+  if (!accessCode || typeof accessCode !== 'object') return null
+  const activatedOn = (accessCode as Record<string, unknown>).activatedOn
+  return typeof activatedOn === 'string' ? activatedOn : null
+})
+
 // Generate First Consultation URL
 const getFirstConsultationUrl = () => {
   if (!firstConsultation.value?.id) return ''
@@ -901,7 +941,7 @@ onMounted(async () => {
 </script>
 
 <template>
-  <v-container class="w-100" tabindex="0" @keydown.enter.prevent="handleEnter">
+  <v-container class="w-100" tabindex="0" @keydown.enter="handleEnter">
     <v-row justify="center">
       <v-col cols="12" sm="12" md="12" lg="10" xl="10">
         <v-card>
@@ -958,7 +998,7 @@ onMounted(async () => {
                           <v-text-field
                                         v-model="patientData.externalPatientId![index]"
                                         :label="t('forms.patient.externalId') + (index > 0 ? ' ' + (index + 1) : '')"
-
+                                        :data-testid="index === 0 ? 'patient-external-id' : `patient-external-id-${index + 1}`"
                                         :persistent-hint="index === 0"
                                         density="compact">
                             <template #append-inner>
@@ -989,6 +1029,7 @@ onMounted(async () => {
                                     item-value="value"
                                     item-title="label"
                                     density="compact"
+                                    data-testid="patient-sex"
                                     clearable></v-select>
                         </v-col>
                         <v-col>
@@ -1002,6 +1043,7 @@ onMounted(async () => {
                                     :hint="isDepartmentDropdownDisabled ? t('forms.departmentAutoAssignedHint') : t('forms.selectDepartmentHint')"
                                     persistent-hint
                                     variant="outlined"
+                                    data-testid="patient-department"
                                     density="compact"></v-select>
                         </v-col>
                       </v-row>
@@ -1110,6 +1152,7 @@ onMounted(async () => {
                                                       :surgery-date="createdSurgery?.surgeryDate || undefined"
                                                       :patient-id="createdCase.patient.id || ''"
                                                       :case-id="createdCase.id"
+                                                      :department-id="caseDepartmentId"
                                                       :pre-selected-blueprint-ids="surgeryBlueprintConsultations"
                                                       :showButtons="false"
                                                       @consultations-created="handleConsultationsSubmit"
@@ -1129,12 +1172,14 @@ onMounted(async () => {
                                        v-if="createdPatient"
                                        :url="getPatientUrl()"
                                        :label="t('creationFlow.patientUrl')"
+                                       data-testid="result-patient-url"
                                        class="mb-4" />
 
                     <QRCodeLinkDisplay
                                        v-if="createdPatient"
                                        :url="getCaseUrl()"
                                        :label="t('creationFlow.caseUrl')"
+                                       data-testid="result-case-url"
                                        class="mb-4" />
 
                     <!-- QR Code Link (using new component) -->
@@ -1143,13 +1188,17 @@ onMounted(async () => {
                                        :url="getQRCodeUrl()"
                                        :label="t('creationFlow.patientFlowQrUrl')"
                                        :access-window="firstConsultationAccessWindow"
+                                       :case-id="createdCase?.id || undefined"
+                                       :code-created-at="firstConsultationCodeCreatedAt || undefined"
+                                       data-testid="result-flow-url"
                                        class="mb-4" />
 
                     <!-- First Consultation Link (using new component) -->
                     <QRCodeLinkDisplay
                                        v-if="firstConsultation"
                                        :url="getFirstConsultationUrl()"
-                                       :label="t('creationFlow.firstConsultationUrl')" />
+                                       :label="t('creationFlow.firstConsultationUrl')"
+                                       data-testid="result-consultation-url" />
                   </v-card-text>
                 </v-card>
               </v-stepper-window-item>
@@ -1197,6 +1246,7 @@ onMounted(async () => {
                                               ref="manualConsultationFormRef"
                                               :patient-id="createdCase.patient.id || null"
                                               :case-id="createdCase.id"
+                                              :department-id="caseDepartmentId"
                                               @submit="handleManualConsultationSubmitStep4"
                                               @cancel="showManualConsultationDialogStep4 = false" />
               </v-card-text>

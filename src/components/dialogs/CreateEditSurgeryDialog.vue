@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, watch, computed, onUnmounted } from 'vue'
+import { ref, onMounted, watch, onUnmounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useDateFormat } from '@/composables/useDateFormat'
 import { useFormValidation } from '@/composables/useFormValidation'
@@ -40,7 +40,9 @@ const emit = defineEmits(['submit', 'cancel', 'consultation-blueprints'])
 const { t } = useI18n()
 const notifierStore = useNotifierStore()
 const { formatLocalizedCustomDate } = useDateFormat()
-const { validateForm, clearAllErrors, clearFieldError, hasError, getError, resetFormState } = useFormValidation()
+const { validateForm, clearAllErrors, clearFieldError, hasError, getError, getErrorForce, touchField, resetFormState } = useFormValidation()
+
+type SurgeryWithOpsAlias = Surgery & { OPSCodes?: string[] }
 
 
 const isEditMode = ref(!!(props.surgery && props.surgery.id))
@@ -52,6 +54,13 @@ watch(() => props.surgery, (newSurgery) => {
     // Update form with surgery data
     form.value = { ...newSurgery }
     form.value.patientCase = props.patientCaseId
+
+    const normalizedOpsCodes = newSurgery.oPSCodes ?? (newSurgery as SurgeryWithOpsAlias).OPSCodes
+    if (Array.isArray(normalizedOpsCodes)) {
+      form.value.oPSCodes = [...normalizedOpsCodes]
+    } else if (normalizedOpsCodes) {
+      form.value.oPSCodes = [normalizedOpsCodes]
+    }
 
     // Handle existing anaesthesia type data
     if (newSurgery.anaesthesiaType) {
@@ -120,51 +129,79 @@ onMounted(() => {
   })
 })
 
-const displaySurgeryDate = computed<string>({
-  get: () => {
-    const raw = form.value.surgeryDate
-    if (!raw) return ''
-    // Display date in localized format (e.g., DD.MM.YYYY or MM/DD/YYYY depending on locale)
-    return formatLocalizedCustomDate(raw, 'DD.MM.YYYY')
-  },
-  set: (val: string) => {
-    // Allow manual date input via text field
-    if (!val) {
-      form.value.surgeryDate = null
-      return
-    }
+const isEditingSurgeryDateInput = ref(false)
+const surgeryDateInputDraft = ref('')
 
-    // Try to parse YYYY-MM-DD format (standard input format)
-    const isoDateMatch = val.match(/^(\d{4}-\d{2}-\d{2})$/)
-    if (isoDateMatch) {
-      // Set date with 11:00 time for timezone consistency
-      const utcDateTime = dayjs.utc(`${isoDateMatch[1]} 11:00`, 'YYYY-MM-DD HH:mm')
-      if (utcDateTime.isValid()) {
-        form.value.surgeryDate = utcDateTime.toISOString()
-      }
-      return
-    }
+const formatSurgeryDateForInput = (rawDate: string | null | undefined): string => {
+  if (!rawDate) return ''
+  return formatLocalizedCustomDate(rawDate, 'DD.MM.YYYY')
+}
 
-    // Try to parse localized format (DD.MM.YYYY)
-    const localizedDateMatch = val.match(/^(\d{1,2})\.(\d{1,2})\.(\d{4})$/)
-    if (localizedDateMatch) {
-      const [, day, month, year] = localizedDateMatch
-      const utcDateTime = dayjs.utc(`${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')} 11:00`, 'YYYY-MM-DD HH:mm')
-      if (utcDateTime.isValid()) {
-        form.value.surgeryDate = utcDateTime.toISOString()
-      }
-      return
-    }
+const parseSurgeryDateInput = (inputValue: string): string | null | undefined => {
+  const value = inputValue.trim()
 
-    // If the incoming value looks like an ISO datetime, use it directly
-    if (val.includes('T')) {
-      form.value.surgeryDate = val
-      return
-    }
+  if (!value) return null
 
-    // Otherwise, we can't reliably parse the input -> leave unchanged
+  // Accept YYYY-MM-DD input
+  const isoDateMatch = value.match(/^(\d{4}-\d{2}-\d{2})$/)
+  if (isoDateMatch) {
+    const utcDateTime = dayjs.utc(`${isoDateMatch[1]} 11:00`, 'YYYY-MM-DD HH:mm')
+    if (utcDateTime.isValid()) {
+      return utcDateTime.toISOString()
+    }
+    return undefined
   }
-})
+
+  // Accept localized DD.MM.YYYY input
+  const localizedDateMatch = value.match(/^(\d{1,2})\.(\d{1,2})\.(\d{4})$/)
+  if (localizedDateMatch) {
+    const [, day, month, year] = localizedDateMatch
+    const utcDateTime = dayjs.utc(`${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')} 11:00`, 'YYYY-MM-DD HH:mm')
+    if (utcDateTime.isValid()) {
+      return utcDateTime.toISOString()
+    }
+    return undefined
+  }
+
+  // Accept full ISO datetime input
+  if (value.includes('T')) {
+    const parsedDate = dayjs(value)
+    if (parsedDate.isValid()) {
+      return parsedDate.toISOString()
+    }
+  }
+
+  // Undefined means invalid/incomplete input that should not overwrite the model.
+  return undefined
+}
+
+const commitSurgeryDateInput = () => {
+  const parsed = parseSurgeryDateInput(surgeryDateInputDraft.value)
+  if (parsed === undefined) {
+    return
+  }
+  form.value.surgeryDate = parsed
+}
+
+watch(
+  () => form.value.surgeryDate,
+  (newDate) => {
+    if (!isEditingSurgeryDateInput.value) {
+      surgeryDateInputDraft.value = formatSurgeryDateForInput(newDate)
+    }
+  },
+  { immediate: true }
+)
+
+const handleSurgeryDateInputFocus = () => {
+  isEditingSurgeryDateInput.value = true
+}
+
+const handleSurgeryDateInputBlur = () => {
+  commitSurgeryDateInput()
+  isEditingSurgeryDateInput.value = false
+  surgeryDateInputDraft.value = formatSurgeryDateForInput(form.value.surgeryDate)
+}
 
 function openDateDialog() {
   // Initialize tempDate and tempTime from the current surgeryDate
@@ -242,6 +279,38 @@ const sideOptions = [
   { value: 'left', title: t('surgery.side.left') },
   { value: 'right', title: t('surgery.side.right') },
 ]
+
+const normalizeSideValue = (value: unknown): SurgerySideEnum => {
+  if (Array.isArray(value)) {
+    const firstValid = value.find((entry) => entry === 'left' || entry === 'right' || entry === 'none')
+    return (firstValid as SurgerySideEnum | undefined) ?? 'none'
+  }
+
+  if (value === 'left' || value === 'right' || value === 'none') {
+    return value
+  }
+
+  return 'none'
+}
+
+const updateSideValue = (value: unknown) => {
+  form.value.side = normalizeSideValue(value)
+}
+
+const applyCaseDiagnosisIcd10Overrides = () => {
+  if (!props.patientCaseData) return
+
+  const mergedIcd10 = [
+    ...(props.patientCaseData.mainDiagnosisICD10 || []),
+    ...(props.patientCaseData.otherDiagnosisICD10 || []),
+  ]
+    .map((entry) => (entry || '').trim())
+    .filter((entry) => entry.length > 0)
+
+  if (mergedIcd10.length > 0) {
+    form.value.diagnosisICD10 = [...new Set(mergedIcd10)]
+  }
+}
 
 // Load available anaesthesia types (this could come from an API in the future)
 const loadAnaesthesiaTypes = () => {
@@ -373,14 +442,15 @@ const applyBlueprint = (blueprint: Blueprint) => {
     form.value.therapy = content.therapy
   }
 
-  if (content.oPSCodes) {
-    form.value.oPSCodes = Array.isArray(content.oPSCodes)
-      ? [...content.oPSCodes]
-      : [content.oPSCodes]
+  const blueprintOpsCodes = content.oPSCodes ?? content.OPSCodes
+  if (blueprintOpsCodes) {
+    form.value.oPSCodes = Array.isArray(blueprintOpsCodes)
+      ? [...blueprintOpsCodes]
+      : [blueprintOpsCodes]
   }
 
   if (content.side) {
-    form.value.side = content.side as SurgerySideEnum
+    form.value.side = normalizeSideValue(content.side)
   }
 
   if (content.surgeryTime) {
@@ -422,6 +492,9 @@ const applyBlueprint = (blueprint: Blueprint) => {
   form.value.surgeryDate = currentSurgeryDate
   timeOfDay.value = currentTimeOfDay
 
+  // Patient case ICD10 selections must override blueprint presets.
+  applyCaseDiagnosisIcd10Overrides()
+
   // Extract consultation blueprint IDs if present
   if (content.consultations && Array.isArray(content.consultations)) {
     console.log('Found consultation blueprint IDs in surgery blueprint:', content.consultations)
@@ -429,7 +502,9 @@ const applyBlueprint = (blueprint: Blueprint) => {
   }
 
   selectedBlueprint.value = blueprint
-  notifierStore.notify(t('forms.blueprint.blueprintApplied'), 'success')
+  if (props.showButtons !== false) {
+    notifierStore.notify(t('forms.blueprint.blueprintApplied'), 'success')
+  }
 }
 
 // Watch blueprint search query and fetch blueprints
@@ -446,7 +521,13 @@ watch(
 
 // Clear field errors when values change
 watch(() => form.value.side, (newVal) => {
-  if (newVal && newVal !== 'none') {
+  const normalizedValue = normalizeSideValue(newVal)
+  if (normalizedValue !== newVal) {
+    form.value.side = normalizedValue
+    return
+  }
+
+  if (normalizedValue !== 'none') {
     clearFieldError('side')
   }
 })
@@ -472,6 +553,13 @@ onMounted(async () => {
     form.value = { ...props.surgery }
     form.value.patientCase = props.patientCaseId
 
+    const normalizedOpsCodes = props.surgery.oPSCodes ?? (props.surgery as SurgeryWithOpsAlias).OPSCodes
+    if (Array.isArray(normalizedOpsCodes)) {
+      form.value.oPSCodes = [...normalizedOpsCodes]
+    } else if (normalizedOpsCodes) {
+      form.value.oPSCodes = [normalizedOpsCodes]
+    }
+
     // Ensure surgeryDate is in YYYY-MM-DD format for HTML date input
     if (props.surgery.surgeryDate) {
       // Extract just the date part if it's an ISO datetime string
@@ -495,9 +583,7 @@ onMounted(async () => {
       if (props.patientCaseData.mainDiagnosis?.length) {
         form.value.diagnosis = [...props.patientCaseData.mainDiagnosis]
       }
-      if (props.patientCaseData.mainDiagnosisICD10?.length) {
-        form.value.diagnosisICD10 = [...props.patientCaseData.mainDiagnosisICD10]
-      }
+      applyCaseDiagnosisIcd10Overrides()
     }
     // Autoselect current user as surgeon if they are a doctor
     if (userStore.hasRole('doctor')) {
@@ -521,9 +607,19 @@ onMounted(async () => {
 })
 
 const saveSurgery = async () => {
+  let savedSurgery: Surgery | null = null
+
   try {
+    // Commit any in-progress manual date text before validation/submission.
+    commitSurgeryDateInput()
+
     // Mark form as submitted so all fields show validation errors
     formSubmitted.value = true
+
+    const normalizedSide = normalizeSideValue(form.value.side)
+    if (normalizedSide !== form.value.side) {
+      form.value.side = normalizedSide
+    }
 
     // Clear previous errors
     clearAllErrors()
@@ -537,9 +633,11 @@ const saveSurgery = async () => {
         (v: unknown) => (v ? true : 'Surgery date is required'),
       ],
       side: [
-        (v: unknown) => (v && v !== 'none' ? true : 'Side selection is required'),
+        (v: unknown) => (normalizeSideValue(v) !== 'none' ? true : 'Side selection is required'),
       ],
     }
+
+    Object.keys(validationRules).forEach((fieldName) => touchField(fieldName))
 
     if (!validateForm(form.value, validationRules)) {
       notifierStore.notify(t('alerts.validation.failed'), 'error')
@@ -592,7 +690,7 @@ const saveSurgery = async () => {
       diagnosisICD10: form.value.diagnosisICD10,
       therapy: form.value.therapy,
       oPSCodes: form.value.oPSCodes,
-      side: form.value.side,
+      side: normalizedSide,
       surgeryDate: surgeryDateAndTimeString,
       surgeryTime: form.value.surgeryTime,
       tourniquet: form.value.tourniquet,
@@ -615,16 +713,20 @@ const saveSurgery = async () => {
         updateSurgeryByIdRequest: surgeryData,
       })
       console.log('Surgery updated successfully:', response)
-      notifierStore.notify(t('alerts.surgery.updated'), 'success')
+      if (props.showButtons !== false) {
+        notifierStore.notify(t('alerts.surgery.updated'), 'success')
+      }
     } else {
       response = await surgeryApi.createSurgery({
         createSurgerySchema: surgeryData,
       })
       console.log('Surgery created successfully:', response)
-      notifierStore.notify(t('alerts.surgery.created'), 'success')
+      if (props.showButtons !== false) {
+        notifierStore.notify(t('alerts.surgery.created'), 'success')
+      }
     }
 
-    emit('submit', response.responseObject)
+    savedSurgery = response.responseObject ?? null
   } catch (error: unknown) {
     let errorMessage = 'An unexpected error occurred'
     if (error instanceof ResponseError) {
@@ -632,7 +734,16 @@ const saveSurgery = async () => {
     }
     console.error('Error saving surgery:', errorMessage)
     notifierStore.notify(t('alerts.surgery.saveFailed'), 'error')
+    return
   }
+
+  if (!savedSurgery) {
+    console.error('Surgery saved but no response payload was returned')
+    notifierStore.notify(t('alerts.surgery.saveFailed'), 'error')
+    return
+  }
+
+  emit('submit', savedSurgery)
 }
 
 // Save surgery and move to next step
@@ -704,7 +815,7 @@ defineExpose({
           <v-col cols="12" md="6">
             <!-- Text field for surgery date with manual input support -->
             <v-text-field
-                          v-model="displaySurgeryDate"
+                          v-model="surgeryDateInputDraft"
                           :label="t('surgery.surgeryDate')"
                           :placeholder="t('forms.hints.dateFormat')"
                           outlined
@@ -712,7 +823,9 @@ defineExpose({
                           :hint="t('forms.hints.required') + ' (Time fixed to 11:00 UTC internally)'"
                           persistent-hint
                           :error="hasError('surgeryDate')"
-                          :error-messages="hasError('surgeryDate') ? [getError('surgeryDate')] : []">
+                          :error-messages="hasError('surgeryDate') ? [getError('surgeryDate')] : []"
+                          @focus="handleSurgeryDateInputFocus"
+                          @blur="handleSurgeryDateInputBlur">
               <template #append-inner>
                 <v-btn
                        icon="mdi-calendar"
@@ -745,7 +858,8 @@ defineExpose({
           </v-col>
           <v-col cols="12" md="6">
             <v-select
-                      v-model="form.side"
+                      :model-value="normalizeSideValue(form.side)"
+                      @update:modelValue="updateSideValue"
                       :items="sideOptions"
                       item-value="value"
                       item-title="title"
@@ -753,10 +867,13 @@ defineExpose({
                       outlined
                       dense
                       required
+                      :class="{ 'operation-side-select': hasError('side') }"
+                      :base-color="hasError('side') ? 'error' : undefined"
+                      :color="hasError('side') ? 'error' : undefined"
                       :hint="t('forms.hints.required')"
                       persistent-hint
                       :error="hasError('side')"
-                      :error-messages="hasError('side') ? [getError('side')] : []"></v-select>
+                      :error-messages="hasError('side') ? [formSubmitted ? getErrorForce('side') : getError('side')] : []"></v-select>
           </v-col>
         </v-row>
 
@@ -906,5 +1023,18 @@ defineExpose({
   border-color: rgb(var(--v-theme-primary));
   border-width: 2px;
   outline: none;
+}
+
+.operation-side-select :deep(.v-field) {
+  box-shadow: 0 0 0 2px rgba(var(--v-theme-error), 0.18);
+  border-radius: 4px;
+}
+
+.operation-side-select :deep(.v-field__outline) {
+  --v-field-border-opacity: 1;
+}
+
+.operation-side-select :deep(.v-label) {
+  color: rgb(var(--v-theme-error));
 }
 </style>

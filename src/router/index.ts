@@ -1,6 +1,7 @@
 import { createRouter, createWebHistory, type RouteRecordRaw } from 'vue-router'
 import i18n from '@/plugins/i18n'
 import { useUserStore } from '@/stores/userStore'
+import { savePostLoginRedirect } from '@/utils/postLoginRedirect'
 
 // Import route modules
 import { authRoutes } from './routes/auth'
@@ -28,9 +29,10 @@ const router = createRouter({
 // Add a global navigation guard to check authentication
 router.beforeEach((to, from, next) => {
   const userStore = useUserStore()
-  const allowedUnauthenticatedRoutes = ['Login', 'setup', 'register', 'about', 'logout', 'presentation', 'feedback', 'patientflow', 'showConsultationForms', 'showInternalConsultationForms', 'formview', 'completioninfo']
+  const allowedUnauthenticatedRoutes = ['Login', 'setup', 'register', 'about', 'logout', 'presentation', 'feedback', 'patientflow', 'showConsultationForms', 'showInternalConsultationForms', 'formview', 'completioninfo', 'EntityNotFound']
 
   if (!allowedUnauthenticatedRoutes.includes(String(to.name)) && !userStore.isAuthenticated()) {
+    savePostLoginRedirect(to.fullPath)
     next({ name: 'Login', query: { redirect: to.fullPath } })
   } else if (to.name === 'Login' && userStore.isAuthenticated()) {
     // Redirect authenticated users based on their role

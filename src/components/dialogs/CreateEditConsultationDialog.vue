@@ -103,6 +103,97 @@ const form = ref<ConsultationFormState>({
   formAccessCode: null,
 })
 
+const isEditingConsultationDateInput = ref(false)
+const consultationDateInputDraft = ref('')
+
+const formatConsultationDateForInput = (rawDate: string | Date | null | undefined): string => {
+  if (!rawDate) return ''
+  const parsed = getLocalizedDayjs(rawDate)
+  if (!parsed.isValid()) return ''
+  return parsed.format('DD.MM.YYYY HH:mm')
+}
+
+const parseConsultationDateInput = (inputValue: string): string | null | undefined => {
+  const value = inputValue.trim()
+
+  if (!value) return null
+
+  // Accept DD.MM.YYYY HH:mm input.
+  const localizedMatch = value.match(/^(\d{1,2})\.(\d{1,2})\.(\d{4})\s+(\d{1,2}):(\d{2})$/)
+  if (localizedMatch) {
+    const [, day, month, year, hour, minute] = localizedMatch
+    const dayNum = Number(day)
+    const monthNum = Number(month)
+    const yearNum = Number(year)
+    const hourNum = Number(hour)
+    const minuteNum = Number(minute)
+
+    if (
+      dayNum >= 1 && dayNum <= 31
+      && monthNum >= 1 && monthNum <= 12
+      && hourNum >= 0 && hourNum <= 23
+      && minuteNum >= 0 && minuteNum <= 59
+    ) {
+      const isoLike = `${yearNum.toString().padStart(4, '0')}-${monthNum.toString().padStart(2, '0')}-${dayNum.toString().padStart(2, '0')}T${hourNum.toString().padStart(2, '0')}:${minuteNum.toString().padStart(2, '0')}:00`
+      const parsed = getLocalizedDayjs(isoLike)
+      if (parsed.isValid()) {
+        return parsed.toISOString()
+      }
+    }
+
+    return undefined
+  }
+
+  // Accept YYYY-MM-DD HH:mm input.
+  const isoDateTimeMatch = value.match(/^(\d{4})-(\d{2})-(\d{2})\s+(\d{2}):(\d{2})$/)
+  if (isoDateTimeMatch) {
+    const [, year, month, day, hour, minute] = isoDateTimeMatch
+    const parsed = getLocalizedDayjs(`${year}-${month}-${day}T${hour}:${minute}:00`)
+    if (parsed.isValid()) {
+      return parsed.toISOString()
+    }
+    return undefined
+  }
+
+  // Accept ISO datetime input.
+  if (value.includes('T')) {
+    const parsed = getLocalizedDayjs(value)
+    if (parsed.isValid()) {
+      return parsed.toISOString()
+    }
+  }
+
+  return undefined
+}
+
+const commitConsultationDateInput = () => {
+  const parsed = parseConsultationDateInput(consultationDateInputDraft.value)
+  if (parsed === undefined) {
+    return
+  }
+  form.value.dateAndTime = parsed
+}
+
+const handleConsultationDateInputFocus = () => {
+  isEditingConsultationDateInput.value = true
+}
+
+const handleConsultationDateInputBlur = () => {
+  commitConsultationDateInput()
+  isEditingConsultationDateInput.value = false
+  consultationDateInputDraft.value = formatConsultationDateForInput(form.value.dateAndTime)
+}
+
+watch(
+  () => form.value.dateAndTime,
+  (newDate) => {
+    if (!isEditingConsultationDateInput.value) {
+      consultationDateInputDraft.value = formatConsultationDateForInput(newDate)
+    }
+  },
+  { immediate: true }
+)
+
 // helper used when a consultation object needs to be applied to form state
 function populateFormFromConsultation(cons: ApiConsultationFlexible) {
   form.value = { ...cons }
@@ -246,12 +337,27 @@ async function fetchFormTemplates() {
       })
       // Fall back to the cached shortlist
       await formTemplateStore.fetchIfNeeded()
+      if (formTemplateStore.templates.length === 0) {
+        // Retry once in case an earlier session-scoped fetch cached an empty shortlist.
+        await formTemplateStore.refresh()
+      }
     }
   } else {
     // No department filter – use the cached shortlist
     await formTemplateStore.fetchIfNeeded()
+    if (formTemplateStore.templates.length === 0) {
+      // Retry once in case the shortlist was loaded while session/department context was not ready.
+      await formTemplateStore.refresh()
+    }
   }
 }
+
+watch(
+  () => props.departmentId,
+  async () => {
+    await fetchFormTemplates()
+  },
+)
 
 async function fetchAvailableCodes() {
   try {
@@ -283,6 +389,9 @@ onMounted(async () => {
 
 const saveConsultation = async () => {
   try {
+    // Commit any in-progress manual date input before validation/submission.
+    commitConsultationDateInput()
+
     // Mark form as submitted so all fields show validation errors
     formSubmitted.value = true
 
@@ -399,38 +508,46 @@ const saveConsultation = async () => {
 }
 
 async function generateNewCode() {
-  if (generatingCode.value) return
+  if (generatingCode.value) return;
 
   try {
-    generatingCode.value = true
-    logger.info('Generating new code')
+    generatingCode.value = true;
+    logger.info("Generating new code");
 
-    // Generate a single new code
-    const response = await codeApi.addCodes({ numberOfCodes: 1 })
+    // Commit any pending date changes before generating the code
+    commitConsultationDateInput();
+
+    // Generate a single new code, passing the consultation date
+    const response = await codeApi.addCodes({
+      addCodesRequest: {
+        numberOfCodes: 1,
+        consultationDate: form.value.dateAndTime || undefined,
+      },
+    });
 
     if (response.responseObject && response.responseObject.length > 0) {
-      const newCode = response.responseObject[0]
-      logger.info('New code generated successfully', { codeId: newCode.id, code: newCode.code })
+      const newCode = response.responseObject[0];
+      logger.info("New code generated successfully", { codeId: newCode.id, code: newCode.code });
 
       // Add the new code to the codes list
-      codes.value.unshift(newCode) // Add at the beginning for easy selection
+      codes.value.unshift(newCode); // Add at the beginning for easy selection
 
       // Select the new code
-      selectedCode.value = newCode
+      selectedCode.value = newCode;
 
-      notifierStore.notify(t('alerts.code.generated'), 'success')
+      notifierStore.notify(t("alerts.code.generated"), "success");
     } else {
-      throw new Error('No code returned from API')
+      throw new Error("No code returned from API");
     }
   } catch (error: unknown) {
-    let errorMessage = 'An unexpected error occurred'
+    let errorMessage = "An unexpected error occurred";
     if (error instanceof ResponseError) {
-      errorMessage = (await error.response.json()).message
+      errorMessage = (await error.response.json()).message;
     }
-    logger.error('Error generating new code', { errorMessage })
-    notifierStore.notify(t('alerts.code.generateFailed'), 'error')
+    logger.error("Error generating new code", { errorMessage });
+    notifierStore.notify(t("alerts.code.generateFailed"), "error");
   } finally {
-    generatingCode.value = false
+    generatingCode.value = false;
   }
 }
 
@@ -462,9 +579,21 @@ defineExpose({
                   :error-messages="errors.reasonForConsultation ? [errors.reasonForConsultation] : []"
                   multiple
                   outlined
-                  dense></v-select>
+                  dense
+                  data-testid="consultation-reason"></v-select>
         <v-row class="my-2">
           <v-col cols="8">
+            <v-text-field
+                          v-model="consultationDateInputDraft"
+                          :label="t('consultation.dateAndTime')"
+                          :placeholder="t('forms.hints.dateFormat') + ' HH:mm'"
+                          :hint="t('forms.hints.required')"
+                          persistent-hint
+                          @focus="handleConsultationDateInputFocus"
+                          @blur="handleConsultationDateInputBlur"
+                          class="mb-2"
+                          :error="!!errors.dateAndTime"
+                          :error-messages="errors.dateAndTime ? [errors.dateAndTime] : []" />
             <VueDatePicker
                            v-model="form.dateAndTime"
                            :class="{ 'error-border': errors.dateAndTime }"
@@ -472,7 +601,7 @@ defineExpose({
                            week-num-name="Wo"
                            format="dd.MM.yyyy HH:mm"
                            week-numbers="iso"
-                           :text-input="true"
+                           :text-input="false"
                            :teleport-center="true"
                            :cancelText="t('buttons.cancelTimeDateText')"
                            :selectText="t('buttons.selectTimeDateText')" />
@@ -535,7 +664,8 @@ defineExpose({
                         item-title="title"
                         :label="t('consultation.formTemplate')"
                         outlined
-                        dense>
+                        dense
+                        data-testid="consultation-form-templates">
           <!-- Custom chip display with access level -->
           <template #chip="{ item, props: chipProps }">
             <v-chip
@@ -569,7 +699,8 @@ defineExpose({
                         :label="t('consultation.visitedBy')"
                         multiple
                         outlined
-                        dense></v-autocomplete>
+                        dense
+                        data-testid="consultation-visited-by"></v-autocomplete>
 
         <!-- Form Access Code Section -->
         <v-row>
@@ -581,14 +712,16 @@ defineExpose({
                         item-title="code"
                         :label="t('consultation.form-access-code')"
                         outlined
-                        dense>
-              <template #append-inner v-if="!isEditMode">
+                        dense
+                        data-testid="consultation-access-code">
+              <template #append-inner>
                 <v-icon
                         :class="{ 'text-success': !generatingCode, 'text-disabled': generatingCode }"
                         :style="{ cursor: generatingCode ? 'not-allowed' : 'pointer' }"
                         @mousedown.stop.prevent
                         @click.stop.prevent="!generatingCode && generateNewCode()"
-                        :disabled="generatingCode">
+                        :disabled="generatingCode"
+                        :title="t('consultation.generateCode')">
                   {{ generatingCode ? 'mdi-loading' : 'mdi-plus' }}
                 </v-icon>
               </template>

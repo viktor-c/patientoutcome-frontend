@@ -27,6 +27,7 @@ const props = defineProps<{
   surgeryDate?: string
   patientId: string
   caseId: string
+  departmentId?: string
   preSelectedBlueprintIds?: string[]
   // Whether to show the form's internal buttons (default: true)
   showButtons?: boolean
@@ -87,7 +88,17 @@ const isSelected = (blueprint: Blueprint): boolean => {
 }
 
 const calculateBlueprintDate = (timeDelta?: string): dayjs.Dayjs => {
-  if (!props.surgeryDate || !timeDelta) {
+  if (!timeDelta) {
+    return dayjs()
+  }
+
+  // Handle special case: "now" returns current date
+  if (timeDelta.toLowerCase() === 'now') {
+    return dayjs()
+  }
+
+  // If no surgery date, return current date
+  if (!props.surgeryDate) {
     return dayjs()
   }
 
@@ -207,7 +218,6 @@ const handleManualConsultationCreated = (consultation: Consultation) => {
   createdConsultations.value.push({ ...consultation, blueprintTitle: 'Manual' })
   showManualConsultationDialog.value = false
   emit('manual-consultation-dialog-state', false)
-  notifierStore.notify(t('alerts.consultation.created'), 'success')
 }
 
 /**
@@ -260,6 +270,32 @@ const createConsultationsFromBlueprints = async () => {
     })
 
     // Create all consultations
+        // Assign formAccessCode to at most one consultation.
+        // If any already-created consultation already has a code, strip codes from all blueprint entries.
+        // Otherwise give the code to: (1) the entry with timeDelta '0d', or (2) the one closest to now.
+        const manualConsultationHasCode = createdConsultations.value.some(c => !!c.formAccessCode)
+        const anyCode = consultationsToCreate.value.find(c => !!c.formAccessCode)?.formAccessCode
+        if (anyCode !== undefined) {
+          if (manualConsultationHasCode) {
+            consultationsToCreate.value = consultationsToCreate.value.map(c => ({ ...c, formAccessCode: undefined }))
+          } else {
+            const isZeroDelta = (td: string) => /^[+]?0[dD]$/.test(td.trim())
+            let designatedIndex = consultationsToCreate.value.findIndex(c => isZeroDelta(c.timeDelta))
+            if (designatedIndex === -1) {
+              const now = Date.now()
+              let minDiff = Infinity
+              consultationsToCreate.value.forEach((c, i) => {
+                const diff = Math.abs(new Date(c.calculatedDate).getTime() - now)
+                if (diff < minDiff) { minDiff = diff; designatedIndex = i }
+              })
+            }
+            consultationsToCreate.value = consultationsToCreate.value.map((c, i) => ({
+              ...c,
+              formAccessCode: i === designatedIndex ? anyCode : undefined,
+            }))
+          }
+        }
+
     const newConsultations: (Consultation & { blueprintTitle?: string })[] = []
     for (const consultationData of consultationsToCreate.value) {
       // Remove extra properties that are not part of CreateConsultation
@@ -283,8 +319,10 @@ const createConsultationsFromBlueprints = async () => {
 
     createdConsultations.value.push(...newConsultations)
 
-    notifierStore.notify(t('alerts.consultation.batchCreated', { count: newConsultations.length }), 'success')
-    notifierStore.clearNotifications()
+    if (props.showButtons !== false) {
+      notifierStore.notify(t('alerts.consultation.batchCreated', { count: newConsultations.length }), 'success')
+      notifierStore.clearNotifications()
+    }
 
     // Emit consultations-created event for parent component
     emit('consultations-created', newConsultations)
@@ -326,12 +364,14 @@ const processBlueprint = async (blueprint: Blueprint): Promise<Array<CreateConsu
     notes?: string[]
     visitedBy?: string[]
     formTemplates?: string[]
+    formAccessCode?: string | null
   }
 
   interface BlueprintContent {
     consultations?: ConsultationTemplate[]
     consultation?: ConsultationTemplate
     formTemplates?: string[]
+    formAccessCode?: string | null
   }
 
   const content = blueprint.content as BlueprintContent
@@ -362,6 +402,15 @@ const processBlueprint = async (blueprint: Blueprint): Promise<Array<CreateConsu
     return formTemplateIds
   }
 
+  const normalizeFormAccessCode = (formAccessCode: unknown): string | undefined => {
+    if (typeof formAccessCode !== 'string') {
+      return undefined
+    }
+
+    const trimmedCode = formAccessCode.trim()
+    return trimmedCode.length > 0 ? trimmedCode : undefined
+  }
+
   // Handle different blueprint content structures
   if (Array.isArray(content.consultations)) {
     // Multiple consultations in array
@@ -378,7 +427,7 @@ const processBlueprint = async (blueprint: Blueprint): Promise<Array<CreateConsu
         notes: convertNotes(consultation.notes),
         images: [],
         visitedBy: [],
-        formAccessCode: undefined,
+        formAccessCode: normalizeFormAccessCode(consultation.formAccessCode ?? content.formAccessCode),
         formTemplates: convertFormTemplateIds(consultation.formTemplates),
       })
     })
@@ -397,7 +446,7 @@ const processBlueprint = async (blueprint: Blueprint): Promise<Array<CreateConsu
       notes: convertNotes(consultation.notes),
       images: [],
       visitedBy: [],
-      formAccessCode: undefined,
+      formAccessCode: normalizeFormAccessCode(consultation.formAccessCode ?? content.formAccessCode),
       formTemplates: convertFormTemplateIds(consultation.formTemplates),
     })
   } else {
@@ -414,7 +463,7 @@ const processBlueprint = async (blueprint: Blueprint): Promise<Array<CreateConsu
       notes: [],
       images: [],
       visitedBy: [],
-      formAccessCode: undefined,
+      formAccessCode: normalizeFormAccessCode(content.formAccessCode),
       formTemplates: convertFormTemplateIds(content.formTemplates || []),
     })
   }
@@ -425,11 +474,16 @@ const processBlueprint = async (blueprint: Blueprint): Promise<Array<CreateConsu
 // Parse timeDelta and calculate actual date
 /**
  * @description Parses the timeDelta string and calculates the actual consultation date.
- * @param {string} timeDelta - The time delta string (e.g., "7d", "2w").
+ * @param {string} timeDelta - The time delta string (e.g., "7d", "2w", "now").
  * @param {dayjs.Dayjs} referenceDate - The reference date to calculate from.
  * @returns {dayjs.Dayjs} The calculated date.
  */
 const calculateConsultationDate = (timeDelta: string, referenceDate: dayjs.Dayjs): dayjs.Dayjs => {
+  // Handle special case: "now" returns current date
+  if (timeDelta.toLowerCase() === 'now') {
+    return dayjs()
+  }
+
   // Parse timeDelta format like "7d", "2w", "1m", "0d", etc. (case insensitive)
   const match = timeDelta.match(/^([+-]?\d+)([dwmy])$/i)
   if (!match) {
@@ -537,7 +591,9 @@ const handlePreSelectedBlueprints = async () => {
 watch(creationComplete, (isComplete) => {
   if (isComplete) {
     if (createdConsultations.value.length > 0) {
-      notifierStore.notify(t('consultation.creationCompleteMessage', { count: createdConsultations.value.length }), 'success')
+      if (props.showButtons !== false) {
+        notifierStore.notify(t('consultation.creationCompleteMessage', { count: createdConsultations.value.length }), 'success')
+      }
     } else {
       notifierStore.notify(t('consultation.noConsultationsCreatedYet'), 'info')
     }
@@ -721,7 +777,7 @@ defineExpose({
                             color="info"
                             variant="outlined"
                             class="mr-2">
-                      {{ blueprint.timeDelta }}
+                      {{ formatLocalizedCustomDate(calculateBlueprintDate(blueprint.timeDelta).toDate(), dateFormats.shortDate) }}
                     </v-chip>
                     <div v-if="blueprint.tags && blueprint.tags.length > 0">
                       <v-chip
@@ -749,12 +805,13 @@ defineExpose({
 
           <!-- Right panel: Selected blueprints -->
           <v-col cols="5">
-            <h3>{{ t('consultation.selectedBlueprints') }}</h3>
-            <v-chip class="mb-4" color="primary">
-              {{ selectedBlueprints.length }} {{ t('consultation.selected') }}
-            </v-chip>
+            <div class="selected-blueprints-sticky">
+              <h3>{{ t('consultation.selectedBlueprints') }}</h3>
+              <v-chip class="mb-4" color="primary">
+                {{ selectedBlueprints.length }} {{ t('consultation.selected') }}
+              </v-chip>
 
-            <v-list v-if="selectedBlueprints.length > 0" class="selected-list">
+              <v-list v-if="selectedBlueprints.length > 0" class="selected-list">
               <v-list-item
                            v-for="blueprint in sortedSelectedBlueprints"
                            :key="blueprint.id || blueprint.title"
@@ -764,7 +821,7 @@ defineExpose({
                     {{ blueprint.title }}
                   </v-list-item-title>
                   <v-list-item-subtitle>
-                    {{ blueprint.timeDelta }}
+                    {{ formatLocalizedCustomDate(calculateBlueprintDate(blueprint.timeDelta).toDate(), dateFormats.longDate) }}
                   </v-list-item-subtitle>
                 </div>
 
@@ -777,25 +834,26 @@ defineExpose({
                          @click="removeBlueprint(blueprint)" />
                 </template>
               </v-list-item>
-            </v-list>
+              </v-list>
 
-            <!-- Empty selected state -->
-            <v-card v-else outlined class="text-center pa-4">
-              <v-icon size="48" color="grey">mdi-calendar-plus</v-icon>
-              <h4 class="mt-2">{{ t('consultation.noSelectedBlueprints') }}</h4>
-              <p class="text-grey">{{ t('consultation.selectFromLeft') }}</p>
-            </v-card>
+              <!-- Empty selected state -->
+              <v-card v-else outlined class="text-center pa-4">
+                <v-icon size="48" color="grey">mdi-calendar-plus</v-icon>
+                <h4 class="mt-2">{{ t('consultation.noSelectedBlueprints') }}</h4>
+                <p class="text-grey">{{ t('consultation.selectFromLeft') }}</p>
+              </v-card>
 
-            <!-- Surgery date reference -->
-            <v-card v-if="surgeryDate" outlined class="mt-4">
-              <v-card-text>
-                <h4>{{ t('consultation.referenceDate') }}</h4>
-                <p class="text-body-2">{{ formatLocalizedCustomDate(surgeryDate, dateFormats.longDate) }}</p>
-                <p class="text-caption text-grey">
-                  {{ t('consultation.consultationTimesCalculated') }}
-                </p>
-              </v-card-text>
-            </v-card>
+              <!-- Surgery date reference -->
+              <v-card v-if="surgeryDate" outlined class="mt-4">
+                <v-card-text>
+                  <h4>{{ t('consultation.referenceDate') }}</h4>
+                  <p class="text-body-2">{{ formatLocalizedCustomDate(surgeryDate, dateFormats.longDate) }}</p>
+                  <p class="text-caption text-grey">
+                    {{ t('consultation.consultationTimesCalculated') }}
+                  </p>
+                </v-card-text>
+              </v-card>
+            </div>
           </v-col>
         </v-row>
       </div>
@@ -864,6 +922,7 @@ defineExpose({
       <CreateEditConsultationDialog
                                     :patient-id="props.patientId"
                                     :case-id="props.caseId"
+                                    :department-id="props.departmentId"
                                     @submit="handleManualConsultationCreated"
                                     @cancel="() => { showManualConsultationDialog = false; emit('manual-consultation-dialog-state', false) }" />
     </v-card-text>
@@ -872,13 +931,23 @@ defineExpose({
 
 <style scoped>
 .blueprint-list {
-  max-height: 400px;
-  overflow-y: auto;
+  overflow: visible;
 }
 
 .selected-list {
-  max-height: 300px;
-  overflow-y: auto;
+  overflow: visible;
+}
+
+.selected-blueprints-sticky {
+  position: sticky;
+  top: calc(var(--v-layout-top, 0px) + 12px);
+}
+
+@media (max-width: 959px) {
+  .selected-blueprints-sticky {
+    position: static;
+    top: auto;
+  }
 }
 
 .blueprint-item {

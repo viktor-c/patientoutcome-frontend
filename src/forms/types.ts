@@ -64,6 +64,13 @@ export interface FormComponentProps {
 
   /** Current locale for translations */
   locale?: string
+
+  /** Optional contextual data supplied by the host view */
+  context?: FormComponentContext
+}
+
+export interface FormComponentContext {
+  surgeryDate?: string | null
 }
 
 /**

@@ -28,6 +28,8 @@ vi.mock('vue-i18n', () => ({
 }))
 
 const mockNotify = vi.fn()
+const mockValidateForm = vi.fn().mockReturnValue(true)
+const mockTouchField = vi.fn()
 vi.mock('@/stores/notifierStore', () => ({
   useNotifierStore: () => ({
     notify: mockNotify,
@@ -82,11 +84,13 @@ vi.mock('@/composables/useDateFormat', () => ({
 
 vi.mock('@/composables/useFormValidation', () => ({
   useFormValidation: () => ({
-    validateForm: vi.fn().mockReturnValue(true),
+    validateForm: mockValidateForm,
     clearAllErrors: vi.fn(),
     clearFieldError: vi.fn(),
+    touchField: mockTouchField,
     hasError: vi.fn().mockReturnValue(false),
     getError: vi.fn().mockReturnValue(null),
+    getErrorForce: vi.fn().mockReturnValue('forced error'),
     resetFormState: vi.fn(),
   }),
 }))
@@ -128,6 +132,7 @@ describe('CreateEditSurgeryDialog.vue', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
+    mockValidateForm.mockReturnValue(true)
     mockGetUsers.mockResolvedValue({ responseObject: [] })
     mockSearchBlueprints.mockResolvedValue({ responseObject: { blueprints: [] } })
     vuetify = createVuetify({ components, directives })
@@ -306,6 +311,55 @@ describe('CreateEditSurgeryDialog.vue', () => {
   })
 
   describe('saveSurgery', () => {
+    it('should mark required fields as touched before failing validation', async () => {
+      mockValidateForm.mockReturnValue(false)
+
+      const wrapper = mountComponent()
+      await flushPromises()
+
+      const vm = wrapper.vm as unknown as {
+        saveSurgery: () => Promise<void>
+      }
+
+      await vm.saveSurgery()
+      await flushPromises()
+
+      expect(mockTouchField).toHaveBeenCalledWith('diagnosisICD10')
+      expect(mockTouchField).toHaveBeenCalledWith('surgeryDate')
+      expect(mockTouchField).toHaveBeenCalledWith('side')
+      expect(mockNotify).toHaveBeenCalledWith('alerts.validation.failed', 'error')
+      expect(mockCreateSurgery).not.toHaveBeenCalled()
+    })
+
+    it('should normalize array side values and block save when no side is selected', async () => {
+      mockValidateForm.mockImplementation((formData: Record<string, unknown>, rules: Record<string, Array<(val: unknown) => boolean | string>>) => {
+        return Object.entries(rules).every(([fieldName, validators]) => validators.every((validator) => validator(formData[fieldName]) === true))
+      })
+
+      const wrapper = mountComponent()
+      await flushPromises()
+
+      const vm = wrapper.vm as unknown as {
+        form: {
+          diagnosisICD10: string[]
+          side: unknown
+          surgeryDate: string
+        }
+        saveSurgery: () => Promise<void>
+      }
+
+      vm.form.diagnosisICD10 = ['M20.1']
+      vm.form.side = []
+      vm.form.surgeryDate = '2024-01-15T10:00:00.000Z'
+
+      await vm.saveSurgery()
+      await flushPromises()
+
+      expect(mockCreateSurgery).not.toHaveBeenCalled()
+      expect(mockNotify).toHaveBeenCalledWith('alerts.validation.failed', 'error')
+      expect(vm.form.side).toBe('none')
+    })
+
     it('should create surgery when not in edit mode', async () => {
       mockCreateSurgery.mockResolvedValue({
         success: true,

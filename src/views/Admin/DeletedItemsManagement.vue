@@ -7,6 +7,7 @@ import {
 } from '@/api'
 import type { ApiPatientCaseWithDetails, ApiConsultationForm } from '@/types'
 import { extractObjectId } from '@/utils/formDataUtils'
+import { formatDateTimeForLocale } from '@/utils/localeDateTime'
 import { useNotifierStore } from '@/stores/notifierStore'
 import { patientApi, caseApi, formApi } from '@/api'
 
@@ -79,6 +80,10 @@ const formDeletedByDisplay = (deletedBy: unknown): string => {
 
 const formIdForActions = (item: ApiConsultationForm): string => {
   return extractObjectId(item) || ''
+}
+
+const formatDateTime = (value?: string | null): string => {
+  return formatDateTimeForLocale(value, '-')
 }
 
 // Fetch deleted patients
@@ -309,7 +314,7 @@ watch(activeTab, (newTab) => {
               </template>
 
               <template #item.deletedAt="{ item }">
-                {{ item.deletedAt ? new Date(item.deletedAt).toLocaleString() : '-' }}
+                {{ formatDateTime(item.deletedAt) }}
               </template>
 
               <template #item.actions="{ item }">
@@ -375,7 +380,7 @@ watch(activeTab, (newTab) => {
               </template>
 
               <template #item.deletedAt="{ item }">
-                {{ item.deletedAt ? new Date(item.deletedAt).toLocaleString() : '-' }}
+                {{ formatDateTime(item.deletedAt) }}
               </template>
 
               <template #item.actions="{ item }">
@@ -458,7 +463,7 @@ watch(activeTab, (newTab) => {
               </template>
 
               <template #item.deletedAt="{ item }">
-                {{ item.deletedAt ? new Date(item.deletedAt).toLocaleString() : '-' }}
+                {{ formatDateTime(item.deletedAt) }}
               </template>
 
               <template #item.actions="{ item }">

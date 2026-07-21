@@ -70,6 +70,7 @@ import { useI18n } from 'vue-i18n'
 import { type UserNoPassword, type Consultation } from '@/api'
 import { kioskApi, consultationApi } from '@/api'
 import { useNotifierStore } from '@/stores/notifierStore'
+import { formatDateTimeForLocale } from '@/utils/localeDateTime'
 
 const { t } = useI18n()
 const notifierStore = useNotifierStore()
@@ -167,7 +168,7 @@ const formatConsultationInfo = (consultation: Consultation | null): string => {
 
 const formatDate = (dateString: string | null | undefined): string => {
   if (!dateString) return 'N/A'
-  return new Date(dateString).toLocaleString()
+  return formatDateTimeForLocale(dateString, 'N/A')
 }
 
 const getStatusColor = (consultation: Consultation | null): string => {

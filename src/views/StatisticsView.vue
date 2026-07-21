@@ -15,6 +15,7 @@
       </v-card-title>
 
       <v-card-text>
+
         <!-- Reference Date Info -->
         <v-row v-if="statistics && ((statistics as any).surgeryDate || (statistics as any).caseCreatedAt)" class="mb-4">
           <v-col>
@@ -55,7 +56,6 @@
         <v-row class="mb-4">
           <v-col>
             <v-alert type="info" variant="tonal" density="compact">
-              <v-icon start>mdi-information-outline</v-icon>
               {{ t('statistics.normalizationNote') }}
             </v-alert>
           </v-col>
@@ -79,6 +79,36 @@
             <div class="chart-container">
               <Line :data="chartData" :options="chartOptions" />
             </div>
+          </v-col>
+          <v-col v-if="elsnerAggregatedPoints.length > 0" cols="12" md="4" lg="6">
+            <v-card variant="outlined" class="elsner-chart-card">
+              <v-card-title class="text-subtitle-1 font-weight-medium">
+                {{ elsnerChartTitle }}
+              </v-card-title>
+              <v-card-text class="elsner-chart-card-body">
+                <ElsnerFeedbackChart
+                  :points="elsnerAggregatedPoints"
+                  :show-trend-line="true"
+                  :interactive="false"
+                  :x-axis-label="elsnerXAxisLabel"
+                  :y-axis-label="elsnerYAxisLabel"
+                  :better-area-label="elsnerBetterLabel"
+                  :worse-area-label="elsnerWorseLabel"
+                  :x-max="elsnerXMax"
+                  :y-max="140"
+                />
+                <div class="d-flex flex-wrap gap-2 mt-2">
+                  <v-chip color="primary" variant="tonal" size="small">
+                    <v-icon start>mdi-dots-grid</v-icon>
+                    {{ elsnerPointCountLabel }}: {{ elsnerPointCount }}
+                  </v-chip>
+                  <v-chip v-if="elsnerLatestWeek != null" color="primary" variant="tonal" size="small">
+                    <v-icon start>mdi-calendar-clock</v-icon>
+                    {{ elsnerLatestWeekLabel }}: {{ elsnerLatestWeek }}
+                  </v-chip>
+                </div>
+              </v-card-text>
+            </v-card>
           </v-col>
         </v-row>
 
@@ -175,6 +205,7 @@ import zoomPlugin from "chartjs-plugin-zoom";
 import annotationPlugin, { type AnnotationOptions } from "chartjs-plugin-annotation";
 import { useNotifierStore } from "@/stores/notifierStore";
 import { statisticsApi } from '@/api'
+import ElsnerFeedbackChart from '@/components/forms/ElsnerFeedbackChart.vue'
 import type {
   GetCaseStatistics200ResponseResponseObject as CaseStats,
   GetScoreData200ResponseResponseObject as ScoreData,
@@ -188,6 +219,12 @@ type StatisticsWithSurgeries = CaseStats & {
   surgeries?: Array<{ surgeryDate: string; therapy?: string | null }>;
   surgeryDate?: string;
   caseCreatedAt?: string;
+};
+
+type ElsnerPoint = {
+  week: number;
+  expectation: number;
+  date?: string;
 };
 
 // Register Chart.js components
@@ -215,7 +252,7 @@ const notifierStore = useNotifierStore();
 const currentLocale = computed(() => locale.value === 'de' ? 'de-DE' : 'en-US');
 
 const caseId = computed(() => route.params.caseId as string);
-const timelineMode = ref<"realTime" | "fixedInterval">("realTime");
+const timelineMode = ref<"realTime" | "fixedInterval">("fixedInterval");
 const loading = ref(false);
 const error = ref<string | null>(null);
 const statistics = ref<StatisticsWithSurgeries | null>(null);
@@ -249,6 +286,8 @@ const TEMPLATE_ID_TO_CATEGORY: Record<string, "aofas" | "efas" | "moxfq" | "vas"
   '67b4e612d0feb4ad99ae2e86': 'vas', // VAS template ID
 };
 
+const ELSNER_FEEDBACK_TEMPLATE_ID = '67b4e612d0feb4ad99ae2e8b';
+
 const INVERTED_CATEGORIES: Record<"aofas" | "efas" | "moxfq" | "vas", boolean> = {
   aofas: false,
   efas: false,
@@ -266,6 +305,31 @@ const toChartScore = (category: "aofas" | "efas" | "moxfq" | "vas", normalizedSc
 const formatScoreForTooltip = (value: number | null | undefined): string => {
   if (value == null || Number.isNaN(value)) return t('common.notAvailable');
   return Number.isInteger(value) ? String(value) : value.toFixed(2);
+};
+
+const getValidDate = (value: string | null | undefined): Date | null => {
+  if (!value) return null;
+
+  const parsed = new Date(value);
+  return Number.isNaN(parsed.getTime()) ? null : parsed;
+};
+
+const getConsultationDate = (consultation: StatisticsConsultation): Date | null => {
+  const consultationLevelDate = getValidDate(consultation.date ?? consultation.completedAt ?? null);
+  if (consultationLevelDate) return consultationLevelDate;
+
+  if (!consultation.proms || consultation.proms.length === 0) return null;
+
+  const scoredPromDates = (consultation.proms as ConsultationProm[])
+    .filter((prom) => prom.scoring && prom.scoring.totalScore != null)
+    .map((prom) => {
+      const completedAt = getValidDate((prom as PromWithTemplate).completedAt ?? null);
+      return completedAt ?? getValidDate(prom.createdAt);
+    })
+    .filter((date): date is Date => date !== null)
+    .sort((a, b) => a.getTime() - b.getTime());
+
+  return scoredPromDates[0] ?? null;
 };
 
 const getPointScoresByCategory = (point: RealTimePoint & Record<string, unknown>, category: "aofas" | "efas" | "moxfq" | "vas") => {
@@ -332,8 +396,117 @@ type PromWithTemplate = ConsultationProm & {
   formTemplateId?: string | null;
 };
 
+type StatisticsConsultation = CaseConsultation & {
+  date?: string | null;
+  completedAt?: string | null;
+  completionTimeSeconds?: number | null;
+};
+
+const parseElsnerPoints = (pointsJson: unknown): ElsnerPoint[] => {
+  if (typeof pointsJson !== 'string' || pointsJson.trim().length === 0) return [];
+
+  try {
+    const parsed = JSON.parse(pointsJson);
+    if (!Array.isArray(parsed)) return [];
+
+    return parsed
+      .map((entry) => {
+        if (!entry || typeof entry !== 'object') return null;
+        const candidate = entry as Record<string, unknown>;
+        const week = Number(candidate.week);
+        const expectation = Number(candidate.expectation);
+        if (!Number.isFinite(week) || !Number.isFinite(expectation)) return null;
+
+        return {
+          week: Math.max(0, Math.round(week)),
+          expectation: Math.max(0, Math.min(140, Math.round(expectation))),
+        };
+      })
+      .filter((point): point is ElsnerPoint => point !== null);
+  } catch {
+    return [];
+  }
+};
+
+const getElsnerPointsFromProm = (prom: PromWithTemplate): ElsnerPoint[] => {
+  const scoringRawFormData = (prom.scoring?.rawFormData as Record<string, unknown> | null | undefined) ?? null;
+  const elsnerSection =
+    scoringRawFormData && typeof scoringRawFormData.elsnerFeedback === 'object'
+      ? (scoringRawFormData.elsnerFeedback as Record<string, unknown>)
+      : null;
+
+  if (!elsnerSection) return [];
+
+  const pointsFromJson = parseElsnerPoints(elsnerSection.pointsJson);
+  if (pointsFromJson.length > 0) return pointsFromJson;
+
+  const week = Number(elsnerSection.currentWeek);
+  const expectation = Number(elsnerSection.selectedExpectation);
+  if (!Number.isFinite(week) || !Number.isFinite(expectation)) return [];
+
+  return [{
+    week: Math.max(0, Math.round(week)),
+    expectation: Math.max(0, Math.min(140, Math.round(expectation))),
+  }];
+};
+
+const elsnerAggregatedPoints = computed<ElsnerPoint[]>(() => {
+  const consultations = (statistics.value?.consultations as StatisticsConsultation[] | undefined) ?? [];
+  if (consultations.length === 0) return [];
+
+  const allPoints: ElsnerPoint[] = [];
+
+  for (const consultation of consultations) {
+    if (!consultation.proms || !Array.isArray(consultation.proms)) continue;
+
+    const consultationDate = getConsultationDate(consultation as StatisticsConsultation);
+
+    for (const promRaw of consultation.proms as ConsultationProm[]) {
+      const prom = promRaw as PromWithTemplate;
+      if (!prom.formTemplateId || String(prom.formTemplateId) !== ELSNER_FEEDBACK_TEMPLATE_ID) continue;
+
+      const points = getElsnerPointsFromProm(prom);
+      if (consultationDate) {
+        points.forEach((p) => { p.date = consultationDate.toISOString(); });
+      }
+      allPoints.push(...points);
+    }
+  }
+
+  const uniquePoints = new Map<string, ElsnerPoint>();
+  allPoints.forEach((point) => {
+    const key = `${point.week}-${point.expectation}`;
+    if (!uniquePoints.has(key)) {
+      uniquePoints.set(key, point);
+    }
+  });
+
+  return [...uniquePoints.values()].sort((left, right) => {
+    if (left.week !== right.week) return left.week - right.week;
+    return left.expectation - right.expectation;
+  });
+});
+
+const elsnerXMax = computed(() => {
+  const maxWeek = elsnerAggregatedPoints.value.reduce((max, point) => Math.max(max, point.week), 0);
+  return Math.max(12, maxWeek) + 2;
+});
+
+const elsnerChartTitle = computed(() => (locale.value === 'de' ? 'Elsner Feedback Verlauf' : 'Elsner Feedback Trend'));
+const elsnerXAxisLabel = computed(() => (locale.value === 'de' ? 'Wochen postoperativ' : 'Weeks postoperative'));
+const elsnerYAxisLabel = computed(() => (locale.value === 'de' ? 'Patientenerwartung' : 'Patient expectation'));
+const elsnerBetterLabel = computed(() => (locale.value === 'de' ? 'besser' : 'better'));
+const elsnerWorseLabel = computed(() => (locale.value === 'de' ? 'schlechter' : 'worse'));
+const elsnerPointCount = computed(() => elsnerAggregatedPoints.value.length);
+const elsnerLatestWeek = computed(() => {
+  if (elsnerAggregatedPoints.value.length === 0) return null;
+  return elsnerAggregatedPoints.value.reduce((max, point) => Math.max(max, point.week), 0);
+});
+const elsnerPointCountLabel = computed(() => (locale.value === 'de' ? 'Punkte' : 'Points'));
+const elsnerLatestWeekLabel = computed(() => (locale.value === 'de' ? 'Letzte Woche' : 'Latest week'));
+
 // Convert consultations returned by getCaseStatistics into the score-data shape
-const computeScoreDataFromConsultations = (consultations: CaseConsultation[] | undefined) => {
+const computeScoreDataFromConsultations = (consultations: StatisticsConsultation[] | undefined) => {
   if (!consultations || consultations.length === 0) return null;
 
   const realTime: RealTimePoint[] = [];
@@ -349,19 +522,12 @@ const computeScoreDataFromConsultations = (consultations: CaseConsultation[] | u
   
   // Add consultations
   consultations.forEach((consultation) => {
-    const firstPromWithScore = consultation.proms && consultation.proms.length > 0
-      ? (consultation.proms as ConsultationProm[]).find(
-        p => p.scoring && p.scoring.totalScore != null,
-      )
-      : null;
+    const consultationDate = getConsultationDate(consultation);
 
-    // Include only consultations with at least one scored form
-    if (!firstPromWithScore?.createdAt) {
+    // Include only consultations with at least one scored form and a valid date
+    if (!consultationDate) {
       return;
     }
-
-    const dateStr = firstPromWithScore.createdAt.toString();
-    const consultationDate = new Date(dateStr);
     
     mixedItems.push({
       type: 'consultation',
@@ -391,7 +557,7 @@ const computeScoreDataFromConsultations = (consultations: CaseConsultation[] | u
     if (item.type === 'surgery') {
       // For fixed interval, add a blank point for the surgery space
       (fixedInterval as unknown as Array<Record<string, unknown>>).push({
-        date: item.date.toString(),
+        date: item.date.toISOString(),
         dateIndex: fixedIntervalIdx++,
         aofasScore: null,
         efasScore: null,
@@ -403,7 +569,7 @@ const computeScoreDataFromConsultations = (consultations: CaseConsultation[] | u
     } else {
       // It's a consultation
       const consultation = item.data as CaseConsultation;
-      const dateStr = item.date.toString();
+      const dateStr = item.date.toISOString();
       dates.push(item.date);
       
       let aofasScore: number | null = null;
@@ -570,9 +736,25 @@ const chartData = computed<ChartData<"line"> | null>(() => {
   // For fixedInterval mode, we use simple labels
   const isRealTime = timelineMode.value === "realTime";
 
+  let consultationNumber = 0;
   const labels = isRealTime
     ? [] // Not used for time scale with {x, y} data
-    : data.map((_, index) => t('statistics.visit', { number: index + 1 }));
+    : data.map((point) => {
+      const p = point as RealTimePoint & Record<string, unknown>;
+      const dateStr = p.date as string | undefined;
+      const dateLabel = dateStr
+        ? new Date(dateStr).toLocaleDateString(currentLocale.value, { day: '2-digit', month: 'short', year: 'numeric' })
+        : '';
+      if (p.isSurgery) {
+        return dateLabel
+          ? [String(t('statistics.surgery')), dateLabel]
+          : String(t('statistics.surgery'));
+      }
+      consultationNumber++;
+      return dateLabel
+        ? [String(t('statistics.visit', { number: consultationNumber })), dateLabel]
+        : String(t('statistics.visit', { number: consultationNumber }));
+    });
 
   const datasets = [];
 
@@ -830,9 +1012,15 @@ const chartOptions = computed(() => {
       || (stats?.caseCreatedAt ? new Date(stats.caseCreatedAt) : null)
       || new Date();
 
-    const xAxisStartDate = [firstScoredConsultationDate, earliestSurgeryDate]
-      .filter((value): value is Date => value !== null)
-      .sort((a, b) => a.getTime() - b.getTime())[0] ?? referenceDate;
+    // Start the x-axis at most 3 months before the first consultation.
+    // If the surgery is within that window it will be visible; otherwise it is
+    // annotated off-screen rather than forcing a year-long empty gap.
+    const threeMonthsBeforeFirst = firstScoredConsultationDate
+      ? new Date(firstScoredConsultationDate.getTime() - 90 * 24 * 60 * 60 * 1000)
+      : referenceDate;
+    const xAxisStartDate = (earliestSurgeryDate && earliestSurgeryDate >= threeMonthsBeforeFirst)
+      ? earliestSurgeryDate
+      : threeMonthsBeforeFirst;
 
     const isSurgeryReference = !!stats?.surgeryDate;
 
@@ -860,9 +1048,11 @@ const chartOptions = computed(() => {
                 const timeSince = calculateTimeSinceReference(date, referenceDate);
                 const afterText = t('statistics.after');
                 const referenceText = isSurgeryReference ? t('statistics.surgery') : t('statistics.caseCreation');
-                return `${date.toLocaleDateString(currentLocale.value)} (${timeSince} ${afterText} ${referenceText})`;
+                return `${date.toLocaleDateString(currentLocale.value)} ${date.toLocaleTimeString(currentLocale.value, { hour: '2-digit', minute: '2-digit' })} (${timeSince} ${afterText} ${referenceText})`;
               }
-              return date ? date.toLocaleDateString(currentLocale.value) : '';
+              return date
+                ? `${date.toLocaleDateString(currentLocale.value)} ${date.toLocaleTimeString(currentLocale.value, { hour: '2-digit', minute: '2-digit' })}`
+                : '';
             },
             label: (context: TooltipItem<"line">) => {
               const point = realTimeData[context.dataIndex] as RealTimePoint & Record<string, unknown>;
@@ -984,6 +1174,14 @@ onMounted(async () => {
   min-height: 300px;
   height: 50vh;
   max-height: 500px;
+}
+
+.elsner-chart-card {
+  height: 100%;
+}
+
+.elsner-chart-card-body {
+  padding-top: 0;
 }
 
 @media (max-width: 600px) {

@@ -1,3 +1,5 @@
+import { resolveApiBaseUrl } from '@/utils/apiBaseUrl'
+
 /**
  * ICD-OPS API Service
  *
@@ -201,8 +203,7 @@ function clearOldCacheEntries(): void {
 function getBaseUrl(): string {
   // During tests, import.meta.env may not be available
   try {
-    const envUrl = import.meta.env?.VITE_API_URL
-    if (envUrl) return envUrl.replace(/\/$/, '')
+    return resolveApiBaseUrl(import.meta.env?.VITE_API_URL)
   } catch {
     // Fallback for non-Vite environments (SSR, tests)
   }

@@ -31,7 +31,8 @@
         </v-col>
 
         <v-col cols="auto" md="4" class="text-end">
-          <span class="footer-version">v{{ appVersion }}</span>
+          <span class="footer-version">v{{ appVersion }} ({{ frontendBuildRef }})</span>
+          <span class="footer-version d-block">API v{{ backendVersion }} ({{ backendBuildRef }})</span>
         </v-col>
       </v-row>
     </v-container>
@@ -41,6 +42,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { getBuildInfo } from '@/services/buildInfoService'
 
 const { t } = useI18n()
 
@@ -48,6 +50,9 @@ const currentYear = computed(() => new Date().getFullYear())
 
 // You can read this from package.json or env variable if needed
 const appVersion = computed(() => import.meta.env.VITE_APP_VERSION || '1.0.0')
+const frontendBuildRef = ref('unknown')
+const backendVersion = ref('unknown')
+const backendBuildRef = ref('unknown')
 
 // Track if user is at bottom of page
 const isAtBottom = ref(false)
@@ -67,6 +72,12 @@ onMounted(() => {
   window.addEventListener('resize', checkScrollPosition)
   // Check initial position
   checkScrollPosition()
+
+  getBuildInfo().then((info) => {
+    frontendBuildRef.value = info.frontendBuildRef
+    backendVersion.value = info.backendVersion
+    backendBuildRef.value = info.backendBuildRef
+  })
 })
 
 onUnmounted(() => {

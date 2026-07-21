@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, watch } from 'vue'
+import { ref, onMounted, watch, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import {
@@ -16,6 +16,7 @@ import CreateEditSurgeryDialog from '@/components/dialogs/CreateEditSurgeryDialo
 import ConsultationBlueprintSelectionDialog from '@/components/dialogs/ConsultationBlueprintSelectionDialog.vue'
 import CaseSeparatedView from '@/components/cases/CaseSeparatedView.vue'
 import CaseChronologicalView from '@/components/cases/CaseChronologicalView.vue'
+import NotFoundErrorPage from '@/components/NotFoundErrorPage.vue'
 
 // Importing the notifier store for notifications
 import { useNotifierStore } from '@/stores/'
@@ -44,6 +45,8 @@ const selectedCase = ref<PatientCase | null>(null)
 const createNewCase = ref(false)
 // Controls visibility of the create/edit case dialog
 const caseDialogVisible = ref(false)
+const viewLoadError = ref(false)
+const viewLoadErrorMessage = ref('')
 
 // Blueprint creation flow state
 const showCreateFlow = ref(false)
@@ -51,6 +54,21 @@ const currentFlowStep = ref(1) // 1: Case, 2: Surgery, 3: Consultation Selection
 const createdCase = ref<ApiPatientCaseWithDetails | null>(null)
 const createdSurgery = ref<Surgery | null>(null)
 const createdConsultations = ref<Consultation[]>([])
+
+const caseDepartmentId = computed<string | undefined>(() => {
+  const depts = createdCase.value?.patient?.departments
+  if (!Array.isArray(depts) || depts.length === 0) return undefined
+
+  const first = depts[0] as unknown
+  if (typeof first === 'string' && first.length > 0) return first
+  if (first && typeof first === 'object') {
+    const record = first as Record<string, unknown>
+    if (typeof record.id === 'string' && record.id.length > 0) return record.id
+    if (typeof record._id === 'string' && record._id.length > 0) return record._id
+  }
+
+  return undefined
+})
 
 // Blueprint-related state
 const selectedConsultationBlueprints = ref<Blueprint[]>([])
@@ -62,6 +80,7 @@ import { patientCaseApi, consultationApi } from '@/api'
 // Fetch all cases for the patient
 const fetchCases = async () => {
   try {
+    viewLoadError.value = false
     const response = await patientCaseApi.getAllPatientCases({ patientId })
     if (response.responseObject) {
       cases.value = response.responseObject.map((caseItem) => ({
@@ -76,9 +95,17 @@ const fetchCases = async () => {
     if (error instanceof ResponseError) {
       errorMessage = (await error.response.json()).message
     }
+    viewLoadError.value = true
+    viewLoadErrorMessage.value = errorMessage
     console.error('Error fetching cases:', errorMessage)
     notifierStore.notify(t('alerts.fetchCasesFailed'), 'error')
   }
+}
+
+const retryLoad = async () => {
+  viewLoadError.value = false
+  viewLoadErrorMessage.value = ''
+  await fetchCases()
 }
 
 // Fetch consultations for a specific case
@@ -326,6 +353,8 @@ const completeCreateFlow = () => {
 onMounted(() => {
   if (!patientId) {
     console.error('No patient ID provided.')
+    viewLoadError.value = true
+    viewLoadErrorMessage.value = t('alerts.patient.noPatientId')
     notifierStore.notify(t('alerts.patient.noPatientId'), 'error')
     return
   }
@@ -335,7 +364,15 @@ onMounted(() => {
 </script>
 
 <template>
-  <v-table hover>
+  <NotFoundErrorPage
+                    v-if="viewLoadError"
+                    :title="t('patientCaseLanding.errorTitle')"
+                    :message="viewLoadErrorMessage || t('patientCaseLanding.loadError')"
+                    :button-text="t('buttons.retry')"
+                    @retry="retryLoad" />
+
+  <template v-else>
+    <v-table hover>
     <thead>
       <tr>
         <th class="text-left">{{ t('cases.table.mainDiagnosis') }}</th>
@@ -443,10 +480,10 @@ onMounted(() => {
         </td>
       </tr>
     </tbody>
-  </v-table>
+    </v-table>
 
   <!-- Create or Edit Case Form (modal) -->
-  <v-dialog v-model="caseDialogVisible" max-width="900px">
+    <v-dialog v-model="caseDialogVisible" max-width="900px">
     <v-card>
       <v-card-text>
         <PatientCaseCreateEditForm
@@ -458,10 +495,10 @@ onMounted(() => {
                                    @cancel="handleDialogCancel" />
       </v-card-text>
     </v-card>
-  </v-dialog>
+    </v-dialog>
 
   <!-- Blueprint Creation Flow -->
-  <v-dialog v-model="showCreateFlow" max-width="1200px">
+    <v-dialog v-model="showCreateFlow" max-width="1200px">
     <v-card>
       <v-card-title class="d-flex align-center">
         <v-icon class="mr-2">mdi-creation</v-icon>
@@ -540,6 +577,7 @@ onMounted(() => {
                                                   :surgery-date="createdSurgery?.surgeryDate || undefined"
                                                   :patient-id="patientId"
                                                   :case-id="createdCase.id!"
+                                                  :department-id="caseDepartmentId"
                                                   :pre-selected-blueprint-ids="surgeryBlueprintConsultations"
                                                   :showButtons="false"
                                                   @consultations-created="handleConsultationsCreatedInFlow"
@@ -611,7 +649,8 @@ onMounted(() => {
         </div>
       </v-card-actions>
     </v-card>
-  </v-dialog>
+    </v-dialog>
+  </template>
 
 
 </template>

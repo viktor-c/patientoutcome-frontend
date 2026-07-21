@@ -8,11 +8,13 @@ interface Props {
   notes: Note[]
   title?: string
   addButtonText?: string
+  hideAddButton?: boolean
 }
 
 const props = withDefaults(defineProps<Props>(), {
   title: 'notes.title',
-  addButtonText: 'notes.addNote'
+  addButtonText: 'notes.addNote',
+  hideAddButton: false,
 })
 
 const emit = defineEmits<{
@@ -89,6 +91,10 @@ function deleteNote(index: number) {
   localNotes.value.splice(index, 1)
   emit('update:notes', localNotes.value)
 }
+
+defineExpose({
+  addNote,
+})
 </script>
 
 <template>
@@ -116,6 +122,7 @@ function deleteNote(index: number) {
                           rows="2"
                           variant="outlined"
                           density="compact"
+                          data-testid="note-textarea"
                           autofocus></v-textarea>
             </v-row>
             <v-row>
@@ -123,7 +130,8 @@ function deleteNote(index: number) {
                 <v-btn
                        color="success"
                        @click="saveNote(index)"
-                       size="small">
+                       size="small"
+                       data-testid="note-save-btn">
                   <v-icon>mdi-check</v-icon>
                 </v-btn>
               </v-col>
@@ -156,10 +164,11 @@ function deleteNote(index: number) {
       </v-list>
 
       <v-btn
-             v-if="editingNoteIndex === null"
+              v-if="!props.hideAddButton && editingNoteIndex === null"
              color="primary"
              @click="addNote"
-             class="mt-2">
+             class="mt-2"
+             data-testid="note-add-btn">
         {{ t(addButtonText) }}
       </v-btn>
     </v-card-text>

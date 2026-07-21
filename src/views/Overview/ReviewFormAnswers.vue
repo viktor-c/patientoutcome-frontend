@@ -5,7 +5,7 @@ import { useI18n } from 'vue-i18n'
 import { useDateFormat } from '@/composables/useDateFormat'
 import PluginFormRenderer from '@/forms/components/PluginFormRenderer.vue'
 import { type Form, type ScoringData } from '@/types'
-import { type FormSubmissionData } from '@/forms/types'
+import { type FormSubmissionData, type FormComponentContext } from '@/forms/types'
 import type { FormAnswerComment } from '@/types/backend/scoring'
 import { useNotifierStore } from '@/stores/notifierStore'
 import FormProgressCard from '@/components/FormProgressCard.vue'
@@ -35,6 +35,44 @@ const getIdFromUnknown = (value: unknown): string => {
 
 const getFormRecord = () => (form.value || {}) as Record<string, unknown>
 
+const getRelevantSurgeryDate = (caseValue: unknown, consultationValue: unknown): string | null => {
+  if (!caseValue || typeof caseValue !== 'object') return null
+
+  const surgeries = (caseValue as Record<string, unknown>).surgeries
+  if (!Array.isArray(surgeries) || surgeries.length === 0) return null
+
+  const consultationDateAndTime =
+    consultationValue && typeof consultationValue === 'object'
+      ? (consultationValue as Record<string, unknown>).dateAndTime
+      : null
+  const consultationTime = new Date(String(consultationDateAndTime ?? ''))
+  const consultationTimestamp = Number.isNaN(consultationTime.getTime()) ? null : consultationTime.getTime()
+
+  const datedSurgeries = surgeries
+    .map((surgery) => {
+      if (!surgery || typeof surgery !== 'object') return null
+      const surgeryDate = (surgery as Record<string, unknown>).surgeryDate
+      if (typeof surgeryDate !== 'string' || surgeryDate.length === 0) return null
+      const timestamp = new Date(surgeryDate).getTime()
+      if (Number.isNaN(timestamp)) return null
+      return { surgeryDate, timestamp }
+    })
+    .filter((entry): entry is { surgeryDate: string; timestamp: number } => entry !== null)
+    .sort((left, right) => left.timestamp - right.timestamp)
+
+  if (datedSurgeries.length === 0) return null
+
+  if (consultationTimestamp == null) {
+    return datedSurgeries[datedSurgeries.length - 1].surgeryDate
+  }
+
+  const mostRecentBeforeConsultation = [...datedSurgeries]
+    .reverse()
+    .find((entry) => entry.timestamp <= consultationTimestamp)
+
+  return mostRecentBeforeConsultation?.surgeryDate ?? datedSurgeries[datedSurgeries.length - 1].surgeryDate
+}
+
 // State
 const form = ref<Form | null>(null)
 const formData = ref<unknown>({})
@@ -45,6 +83,8 @@ const reviewComments = ref<FormAnswerComment[]>([])
 const originalComments = ref<FormAnswerComment[]>([])
 const newCommentQuestionKey = ref('')
 const newCommentContent = ref('')
+const showRawData = ref(false)
+const selectedKeys = ref<Set<string>>(new Set())
 const loading = ref(true)
 const saving = ref(false)
 
@@ -95,6 +135,15 @@ const formStartTime = computed(() => {
   return formatLocalizedCustomDate(startTime, 'DD.MM.YYYY HH:mm:ss')
 })
 
+const formContext = computed<FormComponentContext | undefined>(() => {
+  const surgeryDate = getRelevantSurgeryDate(form.value?.caseId, form.value?.consultationId)
+  if (!surgeryDate) return undefined
+
+  return {
+    surgeryDate,
+  }
+})
+
 const formDuration = computed(() => {
   // Try to use completionTimeSeconds first
   const seconds = Number(getFormRecord().completionTimeSeconds || 0)
@@ -103,19 +152,19 @@ const formDuration = computed(() => {
     const secs = Math.floor(seconds % 60)
     return `${minutes}:${String(secs).padStart(2, '0')} min`
   }
-  
+
   // Calculate from start and end times if completionTimeSeconds is not available
   const startTime = form.value?.patientFormData?.beginFill || (getFormRecord().formStartTime as string | undefined)
   const endTime = form.value?.patientFormData?.completedAt
-  
+
   if (!startTime || !endTime) return t('common.notAvailable')
-  
+
   const start = new Date(startTime).getTime()
   const end = new Date(endTime).getTime()
   const durationSeconds = Math.floor((end - start) / 1000)
-  
+
   if (durationSeconds <= 0) return t('common.notAvailable')
-  
+
   const minutes = Math.floor(durationSeconds / 60)
   const secs = Math.floor(durationSeconds % 60)
   return `${minutes}:${String(secs).padStart(2, '0')} min`
@@ -329,6 +378,92 @@ const goBack = () => {
     navigateToConsultationOverview()
   }
 }
+
+const getCaseId = (): string => {
+  if (!form.value?.caseId) return 'unknown'
+  const caseId = form.value.caseId
+  if (typeof caseId === 'string') return caseId
+  if (caseId && typeof caseId === 'object') {
+    const idObj = caseId as Record<string, unknown>
+    return String(idObj._id || idObj.id || 'unknown')
+  }
+  return String(caseId)
+}
+
+const getPatientFormDataKeys = (): string[] => {
+  if (!form.value?.patientFormData) return []
+  return Object.keys(form.value.patientFormData as Record<string, unknown>)
+}
+
+// Helper functions for file operations
+const downloadData = (data: unknown, filename: string) => {
+  const dataStr = JSON.stringify(data, null, 2)
+  const blob = new Blob([dataStr], { type: 'application/json' })
+  const url = URL.createObjectURL(blob)
+  const link = document.createElement('a')
+  link.href = url
+  link.download = filename
+  document.body.appendChild(link)
+  link.click()
+  document.body.removeChild(link)
+  URL.revokeObjectURL(url)
+  notifierStore.notify(t('reviewForm.downloadSuccess'), 'success')
+}
+
+const copyDataToClipboard = async (data: unknown) => {
+  try {
+    const dataStr = JSON.stringify(data, null, 2)
+    await navigator.clipboard.writeText(dataStr)
+    notifierStore.notify(t('reviewForm.copiedToClipboard'), 'success')
+  } catch (error) {
+    logger.error('Failed to copy to clipboard:', error)
+    notifierStore.notify(t('reviewForm.copyError'), 'error')
+  }
+}
+
+const downloadIndividualItem = (key: string) => {
+  const data = (form.value?.patientFormData as Record<string, unknown>)?.[key]
+  downloadData(data, `case-${getCaseId()}-form-${formId}-${key}.json`)
+}
+
+const copyIndividualItem = async (key: string) => {
+  const data = (form.value?.patientFormData as Record<string, unknown>)?.[key]
+  await copyDataToClipboard(data)
+}
+
+const downloadAllItems = () => {
+  downloadData(form.value?.patientFormData || {}, `case-${getCaseId()}-form-${formId}-complete.json`)
+}
+
+const copyAllItems = async () => {
+  await copyDataToClipboard(form.value?.patientFormData || {})
+}
+
+const toggleSelection = (key: string) => {
+  if (selectedKeys.value.has(key)) {
+    selectedKeys.value.delete(key)
+  } else {
+    selectedKeys.value.add(key)
+  }
+}
+
+const downloadSelectedItems = () => {
+  if (selectedKeys.value.size === 0) return
+  const selectedData: Record<string, unknown> = {}
+  selectedKeys.value.forEach((key) => {
+    selectedData[key] = (form.value?.patientFormData as Record<string, unknown>)?.[key]
+  })
+  downloadData(selectedData, `case-${getCaseId()}-form-${formId}-selected.json`)
+}
+
+const copySelectedItems = async () => {
+  if (selectedKeys.value.size === 0) return
+  const selectedData: Record<string, unknown> = {}
+  selectedKeys.value.forEach((key) => {
+    selectedData[key] = (form.value?.patientFormData as Record<string, unknown>)?.[key]
+  })
+  await copyDataToClipboard(selectedData)
+}
 </script>
 
 <template>
@@ -406,7 +541,8 @@ const goBack = () => {
                   <v-list-item-subtitle>{{ formStartTime }}</v-list-item-subtitle>
                 </v-list-item>
 
-                <v-list-item v-if="(form.patientFormData?.beginFill || (form as any)?.formStartTime) && (form.patientFormData?.completedAt || (form as any)?.completionTimeSeconds)">
+                <v-list-item
+                             v-if="(form.patientFormData?.beginFill || (form as any)?.formStartTime) && (form.patientFormData?.completedAt || (form as any)?.completionTimeSeconds)">
                   <template #prepend>
                     <v-icon>mdi-timer</v-icon>
                   </template>
@@ -445,6 +581,7 @@ const goBack = () => {
                               :show-version-controls="true"
                               :current-version="(form as any)?.currentVersion || 1"
                               :locale="rendererLocale"
+                              :context="formContext"
                               :model-value="form?.patientFormData ?? null"
                               @update:model-value="handleFormDataChange" />
         </v-card-text>
@@ -466,8 +603,11 @@ const goBack = () => {
             <v-expansion-panel v-for="(comment, index) in reviewComments" :key="`review-comment-${index}`">
               <v-expansion-panel-title>
                 <div class="d-flex align-center ga-2">
-                  <span class="text-caption font-weight-bold">{{ comment.questionKey || t('forms.comments.formLevel') }}</span>
-                  <span class="text-caption text-medium-emphasis">{{ formatLocalizedCustomDate(String(comment.createdAt), 'DD.MM.YYYY HH:mm') }}</span>
+                  <span class="text-caption font-weight-bold">{{ comment.questionKey || t('forms.comments.formLevel')
+                    }}</span>
+                  <span class="text-caption text-medium-emphasis">{{
+                    formatLocalizedCustomDate(String(comment.createdAt),
+                    'DD.MM.YYYY HH:mm') }}</span>
                 </div>
               </v-expansion-panel-title>
               <v-expansion-panel-text>
@@ -496,11 +636,105 @@ const goBack = () => {
             </v-col>
           </v-row>
           <div class="d-flex justify-end">
-            <v-btn color="primary" variant="tonal" :disabled="newCommentContent.trim().length === 0" @click="addReviewComment">
+            <v-btn color="primary" variant="tonal" :disabled="newCommentContent.trim().length === 0"
+                   @click="addReviewComment">
               {{ t('reviewForm.addComment') }}
             </v-btn>
           </div>
         </v-card-text>
+        <v-divider />
+        <!-- Raw form data viewer -->
+        <v-card-text class="px-4 py-4">
+          <div class="d-flex align-center justify-space-between mb-4">
+            <h3 class="text-subtitle-1">{{ t('reviewForm.rawData') }}</h3>
+            <div class="d-flex gap-2">
+              <v-btn
+                v-if="getPatientFormDataKeys().length > 0"
+                size="small"
+                variant="tonal"
+                prepend-icon="mdi-download-multiple"
+                @click="downloadAllItems">
+                {{ t('buttons.downloadAll') }}
+              </v-btn>
+              <v-btn
+                v-if="getPatientFormDataKeys().length > 0"
+                size="small"
+                variant="tonal"
+                prepend-icon="mdi-content-copy"
+                @click="copyAllItems">
+                {{ t('buttons.copyAll') }}
+              </v-btn>
+              <v-btn
+                v-if="selectedKeys.size > 0"
+                size="small"
+                variant="tonal"
+                color="success"
+                prepend-icon="mdi-download"
+                @click="downloadSelectedItems">
+                {{ t('buttons.downloadSelected') }}
+              </v-btn>
+              <v-btn
+                v-if="selectedKeys.size > 0"
+                size="small"
+                variant="tonal"
+                color="success"
+                prepend-icon="mdi-content-copy"
+                @click="copySelectedItems">
+                {{ t('buttons.copySelected') }}
+              </v-btn>
+              <v-btn
+                variant="tonal"
+                size="small"
+                @click="showRawData = !showRawData"
+                :prepend-icon="showRawData ? 'mdi-chevron-up' : 'mdi-chevron-down'">
+                {{ showRawData ? t('buttons.hide') : t('buttons.show') }}
+              </v-btn>
+            </div>
+          </div>
+
+          <v-expand-transition>
+            <div v-if="showRawData">
+              <div v-if="getPatientFormDataKeys().length > 0" class="mb-4">
+                <div v-for="key in getPatientFormDataKeys()" :key="key" class="mb-3">
+                  <v-card variant="outlined" class="bg-surface" :class="{ 'border-success': selectedKeys.has(key) }" style="border-width: 2px;">
+                    <v-card-title class="text-subtitle-2 d-flex align-center justify-space-between">
+                      <div class="d-flex align-center gap-2 flex-grow-1">
+                        <v-checkbox
+                          size="small"
+                          :model-value="selectedKeys.has(key)"
+                          @update:model-value="toggleSelection(key)"
+                          hide-details />
+                        <span>{{ key }}</span>
+                      </div>
+                      <div class="d-flex gap-1">
+                        <v-btn
+                          size="x-small"
+                          icon="mdi-content-copy"
+                          variant="text"
+                          @click="copyIndividualItem(key)"
+                          :title="t('buttons.copy')" />
+                        <v-btn
+                          size="x-small"
+                          icon="mdi-download"
+                          variant="text"
+                          @click="downloadIndividualItem(key)"
+                          :title="t('buttons.download')" />
+                      </div>
+                    </v-card-title>
+                    <v-card-text class="font-monospace text-caption" style="overflow-x: auto;">
+                      <pre>{{ JSON.stringify((form?.patientFormData as any)?.[key], null, 2) }}</pre>
+                    </v-card-text>
+                  </v-card>
+                </div>
+              </div>
+              <div v-else class="text-center text-medium-emphasis py-4">
+                {{ t('reviewForm.noRawData') }}
+              </div>
+            </div>
+          </v-expand-transition>
+        </v-card-text>
+
+        <v-divider />
 
         <!-- Action buttons -->
         <v-card-actions class="px-4 pb-4">

@@ -1,5 +1,22 @@
 <template>
   <v-container class="feedback-container" max-width="600">
+    <v-snackbar
+      v-model="submitSuccess"
+      color="success"
+      location="top"
+      :timeout="1500"
+    >
+      {{ t('feedback.successMessage') }}
+    </v-snackbar>
+
+    <v-snackbar
+      v-model="errorSnackbarOpen"
+      color="error"
+      location="top"
+    >
+      {{ submitError }}
+    </v-snackbar>
+
     <v-card class="pa-6">
       <v-card-title class="text-h5 text-center mb-4">
         <v-icon class="mr-2">mdi-message-text-outline</v-icon>
@@ -49,7 +66,7 @@
             <div class="captcha-question">
               <v-icon class="mr-2">mdi-shield-check-outline</v-icon>
               <span v-if="captchaLoading" class="text-body-1">{{ t('feedback.captchaLoading') }}</span>
-              <span v-else class="text-body-1">{{ captchaQuestion }} = ?</span>
+              <div v-else v-html="captchaSvg" class="captcha-svg"></div>
             </div>
             <v-btn 
               icon
@@ -67,10 +84,8 @@
             :label="t('feedback.captchaLabel')"
             :rules="captchaRules"
             variant="outlined"
-            type="number"
             class="mt-3"
             density="compact"
-            hide-spin-buttons
             :disabled="captchaLoading || !captchaId"
           />
         </v-card>
@@ -87,26 +102,6 @@
           {{ t('feedback.submit') }}
         </v-btn>
       </v-form>
-
-      <v-alert
-        v-if="submitSuccess"
-        type="success"
-        class="mt-4"
-        closable
-        @click:close="submitSuccess = false"
-      >
-        {{ t('feedback.successMessage') }}
-      </v-alert>
-
-      <v-alert
-        v-if="submitError"
-        type="error"
-        class="mt-4"
-        closable
-        @click:close="submitError = ''"
-      >
-        {{ submitError }}
-      </v-alert>
     </v-card>
 
     <div class="text-center mt-4">
@@ -122,7 +117,7 @@
 import { ref, reactive, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
-import { feedbackApi } from '@/api'
+import { ResponseError, feedbackApi } from '@/api'
 
 const { t, locale } = useI18n()
 const router = useRouter()
@@ -133,6 +128,7 @@ const loading = ref(false)
 const captchaLoading = ref(false)
 const submitSuccess = ref(false)
 const submitError = ref('')
+const errorSnackbarOpen = ref(false)
 
 const form = reactive({
   name: '',
@@ -143,7 +139,7 @@ const form = reactive({
 
 // Server-side captcha state
 const captchaId = ref('')
-const captchaQuestion = ref('')
+const captchaSvg = ref('')
 
 const fetchCaptcha = async () => {
   captchaLoading.value = true
@@ -153,22 +149,20 @@ const fetchCaptcha = async () => {
     const response = await feedbackApi.getCaptcha()
     console.debug('Captcha response:', response)
 
-    // The responseObject directly contains captchaId and question
-    // Cast to any to handle the schema mismatch between OpenAPI spec and actual response
-    const captchaData = response.responseObject as unknown as { captchaId?: string; question?: string } | undefined
+    const captchaData = response.responseObject as unknown as { captchaId?: string; captchaSvg?: string } | undefined
     
     if (response.success && captchaData?.captchaId) {
       captchaId.value = captchaData.captchaId
-      captchaQuestion.value = captchaData.question ?? ''
+      captchaSvg.value = captchaData.captchaSvg ?? ''
     } else {
       console.error('Failed to fetch captcha:', response.message)
       captchaId.value = ''
-      captchaQuestion.value = t('feedback.captchaError')
+      captchaSvg.value = `<p>${t('feedback.captchaError')}</p>`
     }
   } catch (error) {
     console.error('Captcha fetch error:', error)
     captchaId.value = ''
-    captchaQuestion.value = t('feedback.captchaError')
+    captchaSvg.value = `<p>${t('feedback.captchaError')}</p>`
   } finally {
     captchaLoading.value = false
   }
@@ -199,6 +193,7 @@ const submitFeedback = async () => {
   loading.value = true
   submitSuccess.value = false
   submitError.value = ''
+  errorSnackbarOpen.value = false
 
   try {
     const response = await feedbackApi.submitFeedback({
@@ -226,12 +221,31 @@ const submitFeedback = async () => {
       }, 1500)
     } else {
       submitError.value = response.message || t('feedback.errorMessage')
+      errorSnackbarOpen.value = true
       // Refresh captcha on error (the old one is invalidated)
       fetchCaptcha()
     }
   } catch (error) {
     console.error('Feedback submission error:', error)
-    submitError.value = t('feedback.errorMessage')
+
+    if (error instanceof ResponseError) {
+      try {
+        const errorBody = await error.response.clone().json() as { message?: string }
+        const backendMessage = errorBody.message ?? ''
+
+        if (error.response.status === 400 && /captcha verification failed/i.test(backendMessage)) {
+          submitError.value = t('feedback.captchaInvalid')
+        } else {
+          submitError.value = backendMessage || t('feedback.errorMessage')
+        }
+      } catch {
+        submitError.value = t('feedback.errorMessage')
+      }
+    } else {
+      submitError.value = t('feedback.errorMessage')
+    }
+
+    errorSnackbarOpen.value = true
     fetchCaptcha()
   } finally {
     loading.value = false

@@ -1,22 +1,40 @@
 <script setup lang="ts">
-import { ref, onMounted, computed } from 'vue'
-import { useRouter } from 'vue-router'
+import { ref, onMounted, onUnmounted, computed, watch } from 'vue'
+import { useRouter, useRoute } from 'vue-router'
 import { ResponseError, type Consultation } from '@/api'
 import { useI18n } from 'vue-i18n'
 import { useDateFormat } from '@/composables/useDateFormat'
 import DashboardSearchDialog from '@/components/dialogs/DashboardSearchDialog.vue'
 import type { ApiConsultation } from '@/types'
+import {
+  getPatientExternalIds,
+  getPatientCaseExternalIds,
+  getAccessInfo,
+  getCompletionStyle,
+  getFormId,
+  getFormTitle,
+  getCaseIdFromPatientCase,
+} from '@/utils/dashboardUtils'
 
 import { consultationApi } from '@/api'
 import { patientCaseApi } from '@/api'
 import { useUserStore } from '@/stores/userStore'
 const userStore = useUserStore()
 
+const formCompletionFilter = ref<'all' | 'incomplete' | 'complete'>('all')
+
 const selectedDate = ref([new Date().setDate(new Date().getDate() - Number(userStore.daysBeforeConsultations || 7)), new Date().setDate(new Date().getDate() + 7)]) // Default to today and 1 week in the future
 
 const { t, locale } = useI18n()
 const router = useRouter()
+const route = useRoute()
 const { formatLocalizedCustomDate } = useDateFormat()
+
+watch(() => route.query.refresh, (newVal) => {
+  if (newVal) {
+    fetchConsultations()
+  }
+})
 
 // Helper function to safely format dates
 const safeFormatDate = (date: string | null | undefined, format: string = 'DD.MM.YYYY'): string => {
@@ -36,6 +54,18 @@ const desktopHeaders = [
   { title: t('dashboard.forms'), value: 'forms', align: 'end' as const, sortable: false, key: 'data-table-expand' },
   { title: t('dashboard.actions'), key: 'actions', align: 'end' as const, sortable: false },
 ]
+
+const formCompletionFilterIcons = {
+  all: 'mdi-filter-variant',
+  incomplete: 'mdi-filter-variant-minus',
+  complete: 'mdi-filter-variant-check',
+}
+
+const formCompletionFilterTooltips = {
+  all: 'Show all consultations',
+  incomplete: 'Show only consultations with incomplete forms',
+  complete: 'Show only consultations with complete forms',
+}
 
 const mobileHeaders = [
   { title: t('forms.patient.externalId'), value: 'patientExternalIds', align: 'start' as const },
@@ -60,6 +90,12 @@ const openConsultation = (id: string | null | undefined) => {
   }
 }
 
+const cycleFormCompletionFilter = () => {
+  const states: ('all' | 'incomplete' | 'complete')[] = ['all', 'incomplete', 'complete']
+  const currentIndex = states.indexOf(formCompletionFilter.value)
+  formCompletionFilter.value = states[(currentIndex + 1) % states.length]
+}
+
 // Navigate to creation flow to start a new patient/case/consultation
 const startCreationFlow = () => {
   router.push({ name: 'creation-flow' })
@@ -73,99 +109,8 @@ const onRowClick = (_evt: Event, item: unknown) => {
 }
 
 
-// Extract patient-level external IDs (comma-separated) from the consultation item when available.
-// Backend now populates `patientCaseId.patient.externalPatientId`.
-const getPatientExternalIds = (item: unknown): string => {
-  const obj = item as Record<string, unknown>
-  const pc = obj['patientCaseId'] as Record<string, unknown> | undefined
-  const patient = pc?.['patient'] as Record<string, unknown> | undefined
-  const ext = patient?.['externalPatientId'] as unknown
-  if (!ext) return ''
-  if (Array.isArray(ext)) return (ext as unknown[]).map(String).join(', ')
-  return String(ext)
-}
-
-// Return a comma-separated string of external IDs for the consultation's patient case.
-// Backend now populates `patientCaseId.externalId` when available.
-const getPatientCaseExternalIds = (item: unknown): string => {
-  const obj = item as Record<string, unknown>
-  const pc = obj['patientCaseId'] as Record<string, unknown> | undefined
-  const ext = pc?.['externalId'] as unknown
-  if (!ext) return ''
-  if (Array.isArray(ext)) return (ext as unknown[]).map(String).join(', ')
-  return String(ext)
-}
-
-// Extract access code and kiosk information
-const getAccessInfo = (item: unknown): { code?: string; kioskNumber?: number } => {
-  const obj = item as Record<string, unknown>
-  const result: { code?: string; kioskNumber?: number } = {}
-
-  // Get access code
-  const formAccessCode = obj['formAccessCode'] as Record<string, unknown> | string | undefined
-  if (formAccessCode) {
-    if (typeof formAccessCode === 'string') {
-      result.code = formAccessCode
-    } else if (typeof formAccessCode === 'object' && 'code' in formAccessCode) {
-      result.code = (formAccessCode as Record<string, unknown>).code as string
-    }
-  }
-
-  // Get kiosk number from kioskId (User object with postopWeek)
-  const kioskId = obj['kioskId'] as Record<string, unknown> | undefined
-  if (kioskId && 'postopWeek' in kioskId) {
-    result.kioskNumber = kioskId.postopWeek as number
-  }
-
-  return result
-}
-
-// Calculate completion ratio style for progress buttons
-const getCompletionStyle = (proms: unknown[]) => {
-  if (!proms || proms.length === 0) return {}
-  const completed = proms.filter((prom) => {
-    if (!prom || typeof prom !== 'object') return false
-    const promRecord = prom as Record<string, unknown>
-    const patientFormData =
-      promRecord.patientFormData && typeof promRecord.patientFormData === 'object'
-        ? (promRecord.patientFormData as Record<string, unknown>)
-        : null
-    return patientFormData?.fillStatus === 'complete'
-  }).length
-  const ratio = (completed / proms.length) * 100
-  return {
-    background: `linear-gradient(90deg, rgba(76, 175, 80, 0.5) 0%, rgba(76, 175, 80, 0.5) ${ratio}%, transparent ${ratio}%, transparent 100%)`,
-    transition: 'background 0.3s ease'
-  }
-}
-
-const getFormId = (form: unknown): string | null => {
-  if (!form || typeof form !== 'object') return null
-  const formRecord = form as Record<string, unknown>
-  const id = formRecord.id
-  if (typeof id === 'string' && id.length > 0) return id
-  if (id && typeof id === 'object') {
-    const nestedId = id as Record<string, unknown>
-    if (typeof nestedId.id === 'string' && nestedId.id.length > 0) return nestedId.id
-    if (typeof nestedId._id === 'string' && nestedId._id.length > 0) return nestedId._id
-  }
-  return null
-}
-
-const getFormTitle = (form: unknown): string => {
-  if (!form || typeof form !== 'object') return t('forms.consultation.untitledForm')
-  const title = (form as Record<string, unknown>).title
-  return typeof title === 'string' && title.length > 0 ? title : t('forms.consultation.untitledForm')
-}
-
-const getCaseIdFromPatientCase = (patientCase: unknown): string | null => {
-  if (typeof patientCase === 'string' && patientCase.length > 0) return patientCase
-  if (!patientCase || typeof patientCase !== 'object') return null
-  const patientCaseRecord = patientCase as Record<string, unknown>
-  if (typeof patientCaseRecord._id === 'string' && patientCaseRecord._id.length > 0) return patientCaseRecord._id
-  if (typeof patientCaseRecord.id === 'string' && patientCaseRecord.id.length > 0) return patientCaseRecord.id
-  return null
-}
+// Thin wrappers so the template keeps the same call signatures (getFormTitle needs the i18n fallback)
+const getFormTitleLocalized = (form: unknown): string => getFormTitle(form, t('forms.consultation.untitledForm'))
 
 const openPatientOverviewFromCase = async (caseId: string | null | undefined) => {
   if (!caseId) return
@@ -192,6 +137,30 @@ const datePickerPlaceholder = computed(() => {
     ? t('dashboard.showingAllFutureConsultations', { start: formatLocalizedCustomDate(new Date(new Date().setDate(new Date().getDate() - Number(userStore.daysBeforeConsultations || 7))), 'DD.MM.YYYY') })
     : t('dashboard.selectDateRange')
 })
+
+const filteredConsultations = computed(() => {
+  if (formCompletionFilter.value === 'all') {
+    return consultations.value
+  }
+  return consultations.value.filter(consultation => {
+    const proms = consultation.proms || []
+    if (proms.length === 0) {
+      return formCompletionFilter.value === 'complete' // Treat as complete if no forms
+    }
+    const allComplete = proms.every(form => form.patientFormData?.fillStatus === 'complete')
+    if (formCompletionFilter.value === 'complete') {
+      return allComplete
+    }
+    if (formCompletionFilter.value === 'incomplete') {
+      return !allComplete
+    }
+    return true
+  })
+})
+
+// Determine if we should use pagination or scrolling based on item count
+const usePagination = computed(() => filteredConsultations.value.length > 50)
+const tableHeight = computed(() => usePagination.value ? undefined : '600px')
 
 const fetchConsultations = async () => {
   try {
@@ -228,6 +197,13 @@ const fetchConsultations = async () => {
   }
 }
 
+// Re-fetch when the tab becomes visible (e.g. clinician returns after patient filled a form)
+const onVisibilityChange = () => {
+  if (document.visibilityState === 'visible') {
+    fetchConsultations()
+  }
+}
+
 onMounted(async () => {
   try {
     await fetchConsultations()
@@ -235,6 +211,11 @@ onMounted(async () => {
   } catch (error) {
     console.error('Error during component mount:', error)
   }
+  document.addEventListener('visibilitychange', onVisibilityChange)
+})
+
+onUnmounted(() => {
+  document.removeEventListener('visibilitychange', onVisibilityChange)
 })
 </script>
 
@@ -266,7 +247,7 @@ onMounted(async () => {
       <v-col cols="12" sm="6" md="4">
         <DashboardSearchDialog />
       </v-col>
-      <v-col cols="12" sm="6" md="4" class="d-flex justify-end">
+      <v-col cols="12" sm="6" md="4" class="d-flex justify-end creation-flow-col">
         <v-tooltip location="bottom" :text="t('buttons.startCreationFlow')">
           <template #activator="{ props }">
             <v-btn
@@ -285,14 +266,29 @@ onMounted(async () => {
 
     <!-- data table -->
     <v-data-table
-                  :items="consultations"
+                  :items="filteredConsultations"
                   :headers="headers"
                   @click:row="onRowClick"
                   show-expand
                   hover
                   density="compact"
                   :sort-by="[{ key: 'dateAndTime' }]"
-                  :sort-desc="[true]">
+                  :sort-desc="[true]"
+                  :height="tableHeight"
+                  :fixed-header="!usePagination"
+                  :hide-default-footer="!usePagination"
+                  :items-per-page="usePagination ? 25 : -1">
+      <template v-slot:header.data-table-expand="{ column }">
+        <v-tooltip location="top">
+          <template v-slot:activator="{ props }">
+            <div v-bind="props" @click="cycleFormCompletionFilter" class="d-flex align-center cursor-pointer">
+              <span>{{ column.title }}</span>
+              <v-icon right small class="ms-1">{{ formCompletionFilterIcons[formCompletionFilter] }}</v-icon>
+            </div>
+          </template>
+          <span>{{ formCompletionFilterTooltips[formCompletionFilter] }}</span>
+        </v-tooltip>
+      </template>
       <template v-slot:[`item.data-table-expand`]="{ internalItem, isExpanded, toggleExpand }">
         <v-btn
                v-if="internalItem.raw.proms && internalItem.raw.proms.length > 0"
@@ -323,7 +319,7 @@ onMounted(async () => {
                   <tr v-for="(form, index) in item.proms || []" :key="getFormId(form) || index">
                     <td>
                       Review <RouterLink v-if="getFormId(form)" :to="`/review-form/${getFormId(form)}`" @click.stop>
-                        {{ getFormTitle(form) }}</RouterLink>
+                        {{ getFormTitleLocalized(form) }}</RouterLink>
                       <span v-else>{{ t('forms.consultation.untitledForm') }}</span>
                     </td>
                     <td>
@@ -395,15 +391,27 @@ onMounted(async () => {
 </template>
 
 <style scoped>
+.creation-flow-col {
+  position: relative;
+  z-index: 4;
+  overflow: visible;
+}
+
 .creation-flow-btn {
+  position: relative;
+  z-index: 4;
   box-shadow: 0 0 8px 2px rgba(var(--v-theme-primary), 0.35),
-              0 2px 6px rgba(0, 0, 0, 0.2);
+    0 2px 6px rgba(0, 0, 0, 0.2);
   transition: box-shadow 0.25s ease, transform 0.2s ease;
 }
 
 .creation-flow-btn:hover {
   box-shadow: 0 0 18px 6px rgba(var(--v-theme-primary), 0.65),
-              0 4px 12px rgba(0, 0, 0, 0.25);
+    0 4px 12px rgba(0, 0, 0, 0.25);
   transform: scale(1.07);
+}
+
+.cursor-pointer {
+  cursor: pointer;
 }
 </style>

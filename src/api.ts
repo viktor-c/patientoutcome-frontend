@@ -1,11 +1,12 @@
 import { Configuration, UserApi, FormApi, PatientApi, PatientCaseApi, ConsultationApi, CodeApi, FormtemplateApi, KioskApi, SurgeryApi, BlueprintApi, StatisticsApi, FeedbackApi, UserDepartmentApi, BackupApi, SettingsApi, SetupApi } from '@/api/';
 import { authMiddleware } from '@/middleware/authMiddleware';
+import { notFoundMiddleware } from '@/middleware/notFoundMiddleware';
+import { resolveApiBaseUrl } from '@/utils/apiBaseUrl';
 
-// Create a new configuration with a custom basePath and auth middleware
-// In dev, prefer the local proxy path (`/api`) so requests are same-origin and cookies work
-const defaultBase = import.meta.env.DEV
-  ? (import.meta.env.VITE_API_URL || '/api')
-  : (import.meta.env.VITE_API_URL || 'https://prom.example.com');
+// Create a new configuration with the explicit API basePath and auth middleware.
+// The basePath is resolved from runtime config (window.__APP_CONFIG__.VITE_API_URL)
+// or build-time env (VITE_API_URL) without automatic host fallback.
+const defaultBase = resolveApiBaseUrl(import.meta.env.VITE_API_URL);
 
 /** The configured API base path – used by composables that need raw fetch calls. */
 export const apiBasePath = defaultBase;
@@ -15,7 +16,7 @@ const fileName = "src/api.ts";
 const apiConfig = new Configuration({
   basePath: defaultBase,
   credentials: "include",
-  middleware: [authMiddleware]
+  middleware: [authMiddleware, notFoundMiddleware]
 });
 console.debug(fileName + " API Base Path:", apiConfig.basePath);
 console.debug(fileName + " API Config:", apiConfig);
@@ -105,6 +106,35 @@ export async function updateDepartmentConsultationAccessWindow(
   return await res.json();
 }
 
+/**
+ * Re-deploy form templates and department mappings on an already deployed backend.
+ * Requires an authenticated admin session and forceSeeding enabled by backend policy.
+ */
+export async function redeployFormTemplates() {
+  const base = apiConfig.basePath ?? '';
+  const normalizedBase = base.replace(/\/$/, '');
+  const forceSeedingQuery = '?forceSeeding=true';
+
+  const endpoints = [
+    `${normalizedBase}/seed/formTemplate${forceSeedingQuery}`,
+    `${normalizedBase}/seed/department-formtemplate-mappings${forceSeedingQuery}`,
+  ];
+
+  for (const url of endpoints) {
+    const res = await fetch(url, {
+      method: 'GET',
+      credentials: 'include',
+    });
+
+    if (!res.ok) {
+      const text = await res.text();
+      throw new Error(`Failed to redeploy form templates: ${res.status} ${res.statusText}: ${text}`);
+    }
+  }
+
+  return { success: true };
+}
+
 export async function activateCodeForCase(code: string, caseId: string) {
   const base = apiConfig.basePath ?? '';
   const url = `${base.replace(/\/$/, '')}/form-access-code/activate/${encodeURIComponent(code)}/case/${encodeURIComponent(caseId)}`;
@@ -130,6 +160,126 @@ export async function getActiveCodeForCase(caseId: string) {
   if (!res.ok) {
     const text = await res.text();
     throw new Error(`Failed to get active code for case: ${res.status} ${res.statusText}: ${text}`);
+  }
+  return await res.json();
+}
+
+export async function renewCode(code: string) {
+  const base = apiConfig.basePath ?? '';
+  const url = `${base.replace(/\/$/, '')}/form-access-code/renew/${encodeURIComponent(code)}`;
+  const res = await fetch(url, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    credentials: 'include',
+  });
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`Failed to renew code: ${res.status} ${res.statusText}: ${text}`);
+  }
+  return await res.json();
+}
+
+export async function setCodeActivationStart(code: string, activatedOn: string) {
+  const base = apiConfig.basePath ?? '';
+  const url = `${base.replace(/\/$/, '')}/form-access-code/activation-start/${encodeURIComponent(code)}`;
+  const res = await fetch(url, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    credentials: 'include',
+    body: JSON.stringify({ activatedOn }),
+  });
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`Failed to set code activation start: ${res.status} ${res.statusText}: ${text}`);
+  }
+  return await res.json();
+}
+
+export async function updateCodeValidity(code: string, activatedOn: string, expiresOn: string) {
+  const base = apiConfig.basePath ?? '';
+  const url = `${base.replace(/\/$/, '')}/form-access-code/validity/${encodeURIComponent(code)}`;
+  const res = await fetch(url, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    credentials: 'include',
+    body: JSON.stringify({ activatedOn, expiresOn }),
+  });
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`Failed to update code validity: ${res.status} ${res.statusText}: ${text}`);
+  }
+  return await res.json();
+}
+
+export async function resetConsultationFormsByCode(code: string) {
+  const base = apiConfig.basePath ?? '';
+  const url = `${base.replace(/\/$/, '')}/form-access-code/reset-consultation/${encodeURIComponent(code)}`;
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    credentials: 'include',
+  });
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`Failed to reset consultation forms: ${res.status} ${res.statusText}: ${text}`);
+  }
+  return await res.json();
+}
+
+export async function archiveCode(code: string) {
+  const base = apiConfig.basePath ?? '';
+  const url = `${base.replace(/\/$/, '')}/form-access-code/${encodeURIComponent(code)}/archive`;
+  const res = await fetch(url, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    credentials: 'include',
+  });
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`Failed to archive code: ${res.status} ${res.statusText}: ${text}`);
+  }
+  return await res.json();
+}
+
+export async function restoreCode(code: string) {
+  const base = apiConfig.basePath ?? '';
+  const url = `${base.replace(/\/$/, '')}/form-access-code/${encodeURIComponent(code)}/restore`;
+  const res = await fetch(url, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    credentials: 'include',
+  });
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`Failed to restore code: ${res.status} ${res.statusText}: ${text}`);
+  }
+  return await res.json();
+}
+
+export async function getCodeAccessLogs(code: string) {
+  const base = apiConfig.basePath ?? '';
+  const url = `${base.replace(/\/$/, '')}/form-access-code/${encodeURIComponent(code)}/access-logs`;
+  const res = await fetch(url, {
+    method: 'GET',
+    credentials: 'include',
+  });
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`Failed to get code access logs: ${res.status} ${res.statusText}: ${text}`);
+  }
+  return await res.json();
+}
+
+export async function getCodeAccessStatistics(code: string) {
+  const base = apiConfig.basePath ?? '';
+  const url = `${base.replace(/\/$/, '')}/form-access-code/${encodeURIComponent(code)}/statistics`;
+  const res = await fetch(url, {
+    method: 'GET',
+    credentials: 'include',
+  });
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`Failed to get code access statistics: ${res.status} ${res.statusText}: ${text}`);
   }
   return await res.json();
 }
@@ -161,5 +311,24 @@ export async function checkSessionRaw(): Promise<
     return { authenticated: false };
   } catch {
     return null; // network unavailable – don't force logout
+  }
+}
+
+export interface BackendBuildInfo {
+  appVersion: string;
+  buildRef: string;
+  builtAt: string | null;
+  startedAt: string;
+}
+
+export async function getBackendBuildInfoRaw(): Promise<BackendBuildInfo | null> {
+  try {
+    const base = (apiConfig.basePath ?? '').replace(/\/$/, '');
+    const res = await fetch(`${base}/health-check/build-info`, { credentials: 'include' });
+    if (!res.ok) return null;
+    const json = await res.json() as { responseObject?: BackendBuildInfo };
+    return json?.responseObject ?? null;
+  } catch {
+    return null;
   }
 }
