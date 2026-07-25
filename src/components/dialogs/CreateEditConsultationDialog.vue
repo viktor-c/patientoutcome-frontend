@@ -24,6 +24,8 @@ import { getAccessLevelColor, getAccessLevelDescription } from '@/services/formV
 import { logger } from '@/services/logger'
 import { useUserStore } from '@/stores/userStore'
 import NotesEditor from '@/components/forms/NotesEditor.vue'
+import AccessCodeAssignment from '@/components/AccessCodeAssignment.vue'
+import AssignedCodeDisplay from '@/components/AssignedCodeDisplay.vue'
 
 const props = defineProps<{
   patientId: string | null | undefined
@@ -245,8 +247,13 @@ function populateFormFromConsultation(cons: ApiConsultationFlexible) {
   form.value.notes = cons.notes || []
 
   if (cons.formAccessCode) {
-    selectedCode.value = codes.value.find((code: Code) => code.code === cons.formAccessCode) || null
+    selectedAccessCode.value = String(cons.formAccessCode)
     form.value.formAccessCode = String(cons.formAccessCode)
+    // Check if the code has ignoreAccessWindow set
+    const codeRecord = cons.formAccessCode as unknown as Record<string, unknown>
+    if (typeof codeRecord === 'object' && (codeRecord as Record<string, unknown>).ignoreAccessWindow === true) {
+      ignoreAccessWindow.value = true
+    }
   }
 }
 
@@ -274,6 +281,8 @@ watch(
       }
       selectedFormTemplates.value = []
       selectedCode.value = null
+      selectedAccessCode.value = null
+      ignoreAccessWindow.value = false
     }
   }
 )
@@ -287,10 +296,11 @@ const formTemplates = computed<Array<FormTemplateShortList | FormTemplateFull>>(
   localFormTemplates.value.length ? localFormTemplates.value : formTemplateStore.templates
 )
 const selectedFormTemplates = ref<string[]>([])
+const selectedAccessCode = ref<string | null>(null)
+const ignoreAccessWindow = ref(false)
+const formSubmitted = ref(false)
 const codes = ref<Code[]>([])
 const selectedCode = ref<Code | null>(null)
-const generatingCode = ref(false)
-const formSubmitted = ref(false)
 
 // Filter form templates for display in the consultation builder.
 // Clinicians can assign both patient-facing and authenticated (clinician) forms to a consultation,
@@ -318,6 +328,24 @@ async function fetchUsers() {
       errorMessage = (await error.response.json()).message
     }
     logger.error('Error fetching users', { errorMessage })
+  }
+}
+
+async function fetchCodes() {
+  try {
+    const response = await codeApi.getAllAvailableCodes()
+    codes.value = response.responseObject || []
+  } catch (error: unknown) {
+    let errorMessage = 'An unexpected error occurred'
+    if (error instanceof ResponseError) {
+      try {
+        errorMessage = (await error.response.json()).message
+      } catch {
+        // ignore
+      }
+    }
+    logger.error('Error fetching available codes', { errorMessage })
+    codes.value = []
   }
 }
 
@@ -359,28 +387,10 @@ watch(
   },
 )
 
-async function fetchAvailableCodes() {
-  try {
-    // For editing, we need all codes to potentially find the existing one
-    // For creating, we can just use available codes
-    const response = isEditMode.value
-      ? await codeApi.findAllCodes()
-      : await codeApi.getAllAvailableCodes()
-    codes.value = response.responseObject || []
-    logger.info('Codes fetched successfully', { count: codes.value.length, editMode: isEditMode.value })
-  } catch (error: unknown) {
-    let errorMessage = 'An unexpected error occurred'
-    if (error instanceof ResponseError) {
-      errorMessage = (await error.response.json()).message
-    }
-    logger.error('Error fetching codes', { errorMessage })
-  }
-}
-
 onMounted(async () => {
   await fetchUsers()
   await fetchFormTemplates()
-  await fetchAvailableCodes()
+  await fetchCodes()
 
   if (isEditMode.value && props.consultation) {
     populateFormFromConsultation(props.consultation)
@@ -432,7 +442,7 @@ const saveConsultation = async () => {
         }))
       })),
       visitedBy: form.value.visitedBy,
-      formAccessCode: selectedCode.value?.code || undefined,
+      formAccessCode: selectedAccessCode.value || undefined,
       // Send an array of form template IDs (string[]), not array of objects
       formTemplates: selectedFormTemplates.value,
     }
@@ -507,47 +517,64 @@ const saveConsultation = async () => {
   }
 }
 
-async function generateNewCode() {
-  if (generatingCode.value) return;
+function handleAccessCodeSelected(code: string, ignoreAccessWindowValue: boolean) {
+  selectedAccessCode.value = code
+  ignoreAccessWindow.value = ignoreAccessWindowValue
+}
 
+async function revokeCode() {
+  if (!selectedAccessCode.value) return
   try {
-    generatingCode.value = true;
-    logger.info("Generating new code");
-
-    // Commit any pending date changes before generating the code
-    commitConsultationDateInput();
-
-    // Generate a single new code, passing the consultation date
-    const response = await codeApi.addCodes({
-      addCodesRequest: {
-        numberOfCodes: 1,
-        consultationDate: form.value.dateAndTime || undefined,
-      },
-    });
-
-    if (response.responseObject && response.responseObject.length > 0) {
-      const newCode = response.responseObject[0];
-      logger.info("New code generated successfully", { codeId: newCode.id, code: newCode.code });
-
-      // Add the new code to the codes list
-      codes.value.unshift(newCode); // Add at the beginning for easy selection
-
-      // Select the new code
-      selectedCode.value = newCode;
-
-      notifierStore.notify(t("alerts.code.generated"), "success");
-    } else {
-      throw new Error("No code returned from API");
-    }
+    await codeApi.deactivateCode({ code: selectedAccessCode.value })
+    selectedAccessCode.value = null
+    ignoreAccessWindow.value = false
+    form.value.formAccessCode = null
+    await fetchCodes()
   } catch (error: unknown) {
-    let errorMessage = "An unexpected error occurred";
+    let errorMessage = 'An unexpected error occurred'
     if (error instanceof ResponseError) {
-      errorMessage = (await error.response.json()).message;
+      errorMessage = (await error.response.json()).message
     }
-    logger.error("Error generating new code", { errorMessage });
-    notifierStore.notify(t("alerts.code.generateFailed"), "error");
-  } finally {
-    generatingCode.value = false;
+    logger.error('Error revoking code', { errorMessage })
+    notifierStore.notify(t('consultationOverview.codeRevokeError'), 'error')
+  }
+}
+
+async function handleToggleAccessWindow(newValue: boolean) {
+  if (!selectedAccessCode.value) return
+
+  // If this is an edit of an existing consultation with an assigned code
+  if (isEditMode.value && form.value.id) {
+    try {
+      // Deactivate and reactivate with new flag
+      await codeApi.deactivateCode({ code: selectedAccessCode.value })
+      await codeApi.activateCode({ 
+        code: selectedAccessCode.value, 
+        consultationId: form.value.id,
+        activateCodeRequest: {
+          ignoreAccessWindow: newValue
+        }
+      })
+      
+      ignoreAccessWindow.value = newValue
+      notifierStore.notify(
+        newValue 
+          ? t('consultationOverview.accessWindowIgnored') 
+          : t('consultationOverview.accessWindowEnforced'), 
+        'success'
+      )
+    } catch (error: unknown) {
+      let errorMessage = 'An unexpected error occurred'
+      if (error instanceof ResponseError) {
+        errorMessage = (await error.response.json()).message
+      }
+      logger.error('Error toggling access window', { errorMessage })
+      notifierStore.notify(t('consultationOverview.codeUpdateError'), 'error')
+    }
+  } else {
+    // For new consultations, just update the local state
+    // The flag will be applied when the consultation is saved
+    ignoreAccessWindow.value = newValue
   }
 }
 
@@ -705,27 +732,27 @@ defineExpose({
         <!-- Form Access Code Section -->
         <v-row>
           <v-col cols="12">
-            <v-combobox
-                        v-model="selectedCode"
-                        :items="codes"
-                        item-value="id"
-                        item-title="code"
-                        :label="t('consultation.form-access-code')"
-                        outlined
-                        dense
-                        data-testid="consultation-access-code">
-              <template #append-inner>
-                <v-icon
-                        :class="{ 'text-success': !generatingCode, 'text-disabled': generatingCode }"
-                        :style="{ cursor: generatingCode ? 'not-allowed' : 'pointer' }"
-                        @mousedown.stop.prevent
-                        @click.stop.prevent="!generatingCode && generateNewCode()"
-                        :disabled="generatingCode"
-                        :title="t('consultation.generateCode')">
-                  {{ generatingCode ? 'mdi-loading' : 'mdi-plus' }}
-                </v-icon>
-              </template>
-            </v-combobox>
+            <h4 class="mb-3">{{ t('consultationOverview.codeAssignment') }}</h4>
+            
+            <!-- Show assigned code with revoke option -->
+            <div v-if="selectedAccessCode" class="mb-4">
+              <AssignedCodeDisplay
+                :code="selectedAccessCode"
+                v-model="ignoreAccessWindow"
+                @revoke="revokeCode"
+                @toggle-access-window="handleToggleAccessWindow"
+              />
+            </div>
+
+            <!-- Show selector to add new code (only when no code assigned) -->
+            <div v-if="!selectedAccessCode">
+              <AccessCodeAssignment
+                code-type="consultation"
+                :consultation-date="form.dateAndTime || undefined"
+                v-model="ignoreAccessWindow"
+                @code-selected="handleAccessCodeSelected"
+              />
+            </div>
           </v-col>
         </v-row>
 

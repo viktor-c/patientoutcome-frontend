@@ -131,13 +131,13 @@ onMounted(async () => {
     if (externalCode) {
       const consultation = consultationResponse.responseObject as unknown as Record<string, unknown>
       const patientCaseId = consultation.patientCaseId as unknown
-      const patientCaseIdStr = patientCaseId && typeof patientCaseId === 'string' ? patientCaseId : 
-        (patientCaseId && typeof patientCaseId === 'object' && (patientCaseId as Record<string, unknown>)._id ? 
-        (patientCaseId as Record<string, unknown>)._id : 
-        (patientCaseId && typeof patientCaseId === 'object' && (patientCaseId as Record<string, unknown>).id ? 
+      const patientCaseIdStr = patientCaseId && typeof patientCaseId === 'string' ? patientCaseId :
+        (patientCaseId && typeof patientCaseId === 'object' && (patientCaseId as Record<string, unknown>)._id ?
+        (patientCaseId as Record<string, unknown>)._id :
+        (patientCaseId && typeof patientCaseId === 'object' && (patientCaseId as Record<string, unknown>).id ?
         (patientCaseId as Record<string, unknown>).id : ''))
       const consultationIdStr = consultation._id as string || ''
-      
+
       if (patientCaseIdStr && consultationIdStr) {
         initializeAccessLog({
           code: externalCode,
@@ -167,13 +167,25 @@ onMounted(async () => {
     currentFormIndex.value = 0 // Reset to the first form
   } catch (error: unknown) {
     let message = 'An unexpected error occurred'
+    let statusCode = 0;
     if (error instanceof ResponseError) {
-      message = (await error.response.json()).message
+      message = (await error.response.json()).message;
+      statusCode = (await error.response.json()).statusCode;
     }
     logger.error('Error fetching consultation forms:', message)
-    errorMessage.value = message.includes('not currently active')
-      ? t('flow.consultationNotActiveMessage')
-      : t('alerts.consultation.fetchFormsFailed')
+    logger.error('Status code returned: ', statusCode)
+    if (statusCode == 404) { //consultation not found
+      errorMessage.value = t('flow.consultationNotFoundMessage')
+    } else if (statusCode == 400) { //validation error
+      errorMessage.value = statusCode.toString() + message
+    }
+    else if (statusCode == 403) { //forbidden
+      errorMessage.value = statusCode.toString() + message
+    } else if (statusCode == 500) {  //error while retrieving
+      errorMessage.value = statusCode.toString() + message
+    } else {
+      errorMessage.value = "unknown error" + statusCode.toString() + message
+    }
   } finally {
     isLoading.value = false
     if (!errorMessage.value && forms.value.length === 0 && completedForms.value.length === 0) {
