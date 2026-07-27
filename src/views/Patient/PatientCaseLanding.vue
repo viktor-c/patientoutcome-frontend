@@ -21,13 +21,14 @@ import CreateEditConsultationDialog from '@/components/dialogs/CreateEditConsult
 import CreateBatchConsultationsDialog from '@/components/dialogs/CreateBatchConsultationsDialog.vue'
 import CreateEditSurgeryDialog from '@/components/dialogs/CreateEditSurgeryDialog.vue'
 import CascadeDeleteDialog from '@/components/dialogs/CascadeDeleteDialog.vue'
-import AccessCodeSelector from '@/components/AccessCodeSelector.vue'
 import NotesEditor from '@/components/forms/NotesEditor.vue'
 import QRCodeDisplay from '@/components/QRCodeDisplay.vue'
 import { getConsultationAccessWindowFromConsultation } from '@/utils/consultationAccessWindow'
 import { getAccessInfo } from '@/utils/dashboardUtils'
+import { createCaseAccessCode } from '@/utils/caseAccessCode'
 import { useUserStore } from '@/stores/userStore'
 import { formatDateTimeForLocale } from '@/utils/localeDateTime'
+import { BASE_PATH } from '@/api/runtime'
 
 const { t } = useI18n()
 const route = useRoute()
@@ -146,7 +147,6 @@ interface CaseAccessCode {
 }
 const caseAccessCode = ref<CaseAccessCode | null>(null)
 const loadingCaseCode = ref(false)
-const showCreateCodeDialog = ref(false)
 const showArchiveConfirmStep1 = ref(false)
 const showArchiveConfirmStep2 = ref(false)
 const showDeleteCodeConfirmation = ref(false)
@@ -214,66 +214,6 @@ const liveConsultationId = computed(() => {
   // Use the backend-resolved consultation ID (backend determines which consultation is live)
   return backendResolvedLiveConsultationId.value
 })
-
-// This function is no longer used - backend determines the live consultation via /consultation/code/:code
-// Kept for reference in case of rollback
-const determineLiveConsultationForCase_DEPRECATED = (): string | null => {
-  if (consultations.value.length === 0) return null
-
-  const now = new Date()
-  const nowDateOnly = new Date(now.getFullYear(), now.getMonth(), now.getDate())
-
-  // Filter consultations that:
-  // 1. Have an active access window
-  // 2. Have unfilled forms (at least one form without patientFormData or no forms at all)
-  const activeUnfilledConsultations = consultations.value.filter(consultation => {
-    // Check access window
-    const accessWindow = consultationAccessWindow(consultation)
-    if (!accessWindow?.isActive) return false
-
-    // Check if consultation has unfilled forms
-    const forms = consultation.proms || []
-    if (forms.length === 0) return true // No forms = unfilled
-
-    // Has unfilled forms if at least one form has no patientFormData
-    const hasUnfilledForms = forms.some(form => {
-      const formRecord = form as Record<string, unknown>
-      return !formRecord.patientFormData
-    })
-
-    return hasUnfilledForms
-  })
-
-  if (activeUnfilledConsultations.length === 0) return null
-
-  // Sort by nearest date (ignoring time), preferring past over future when equally distant
-  const sorted = activeUnfilledConsultations.sort((left, right) => {
-    const leftDate = new Date(left.dateAndTime || 0)
-    const rightDate = new Date(right.dateAndTime || 0)
-
-    // Convert to date-only for comparison
-    const leftDateOnly = new Date(leftDate.getFullYear(), leftDate.getMonth(), leftDate.getDate())
-    const rightDateOnly = new Date(rightDate.getFullYear(), rightDate.getMonth(), rightDate.getDate())
-
-    const leftDistance = Math.abs(leftDateOnly.getTime() - nowDateOnly.getTime())
-    const rightDistance = Math.abs(rightDateOnly.getTime() - nowDateOnly.getTime())
-
-    // If distances are equal, prefer the one in the past
-    if (leftDistance === rightDistance) {
-      const leftIsPast = leftDateOnly.getTime() <= nowDateOnly.getTime()
-      const rightIsPast = rightDateOnly.getTime() <= nowDateOnly.getTime()
-
-      if (leftIsPast && !rightIsPast) return -1
-      if (!leftIsPast && rightIsPast) return 1
-
-      return leftDate.getTime() - rightDate.getTime()
-    }
-
-    return leftDistance - rightDistance
-  })
-
-  return sorted[0]?.id || null
-}
 
 const futureConsultations = computed(() => {
   // Get start of today (midnight) - consultations from today onwards are considered future/current
@@ -456,23 +396,24 @@ const resolveLiveConsultationFromBackend = async () => {
   }
 }
 
-const openCreateCodeDialog = () => {
-  showCreateCodeDialog.value = true
-}
-
-const handleCodeSelected = async (code: string) => {
+const createCaseAccessCodeForCase = async () => {
   if (!caseId) return
 
+  loadingCaseCode.value = true
   try {
-    const response = await activateCodeForCase(code, caseId)
-    if (response.success) {
-      notifierStore.notify(t('patientCaseLanding.caseCodeCreated'), 'success')
-      await loadCaseAccessCode()
-      showCreateCodeDialog.value = false
-    }
+    await createCaseAccessCode({
+      caseId,
+      addCodes: params => codeApi.addCodes(params),
+      activateCodeForCase: (code, targetCaseId) => activateCodeForCase(code, targetCaseId),
+    })
+
+    notifierStore.notify(t('patientCaseLanding.caseCodeCreated'), 'success')
+    await loadCaseAccessCode()
   } catch (err: unknown) {
     logger.error('Failed to create case access code', err)
     notifierStore.notify(t('patientCaseLanding.caseCodeCreateFailed'), 'error')
+  } finally {
+    loadingCaseCode.value = false
   }
 }
 
@@ -530,9 +471,9 @@ const deleteCaseAccessCode = async () => {
 
   try {
     // Call the delete API - pass the code directly like archiveCodeApi does
-    const response = await codeApi.deleteCode({code: caseAccessCode.value.code})
-    
-    if (response?.success || response === undefined) {
+    const response = await codeApi.deleteCode({ code: caseAccessCode.value.code })
+
+    if (response === undefined) {
       notifierStore.notify(t('patientCaseLanding.caseCodeDeleted'), 'success')
       await loadCaseAccessCode()
       showDeleteCodeConfirmation.value = false
@@ -562,23 +503,35 @@ const saveCaseNotes = async (updatedNotes: Note[]) => {
 
   savingCaseNotes.value = true
   try {
-    // Update the case with new notes
-    const response = await patientCaseApi.updatePatientCaseById(
-      {
-        patientId: patient.value.id,
-        caseId: patientCase.value.id,
+    const apiBaseUrl = import.meta.env.VITE_API_URL || BASE_PATH
+    const response = await fetch(`${apiBaseUrl}/patient/${encodeURIComponent(patient.value.id)}/case/${encodeURIComponent(patientCase.value.id)}`, {
+      method: 'PUT',
+      credentials: 'include',
+      headers: {
+        'Content-Type': 'application/json',
       },
-      {
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ notes: updatedNotes }),
-      }
-    )
+      body: JSON.stringify({
+        notes: updatedNotes.map(note => ({
+          ...note,
+          createdBy: note.createdBy || undefined,
+        })),
+      }),
+    })
 
-    if (response.success) {
-      caseNotes.value = updatedNotes
-      notifierStore.notify(t('patientCaseLanding.notesSaved'), 'success')
-      logger.info('Case notes saved successfully', { caseId: patientCase.value.id })
+    let payload: { success?: boolean; message?: string } | null = null
+    try {
+      payload = await response.json()
+    } catch {
+      payload = null
     }
+
+    if (!response.ok || payload?.success !== true) {
+      throw new Error(payload?.message || t('patientCaseLanding.notesSaveFailed'))
+    }
+
+    caseNotes.value = updatedNotes
+    notifierStore.notify(t('patientCaseLanding.notesSaved'), 'success')
+    logger.info('Case notes saved successfully', { caseId: patientCase.value.id })
   } catch (err: unknown) {
     logger.error('Failed to save case notes', err)
     notifierStore.notify(t('patientCaseLanding.notesSaveFailed'), 'error')
@@ -996,7 +949,7 @@ onUnmounted(() => {
     <!-- Main content -->
     <div v-else>
       <!-- Header -->
-      <v-card class="mb-6">
+      <v-card class="mb-4">
         <v-card-title class="d-flex align-center justify-space-between">
           <div class="d-flex align-center">
             <v-btn
@@ -1102,7 +1055,8 @@ onUnmounted(() => {
                     color="primary"
                     variant="tonal"
                     size="small"
-                    @click="openCreateCodeDialog"
+                    :loading="loadingCaseCode"
+                    @click="createCaseAccessCodeForCase"
                     prepend-icon="mdi-plus">
                     {{ t('patientCaseLanding.createCaseCode') }}
                   </v-btn>
@@ -1113,9 +1067,10 @@ onUnmounted(() => {
                 <v-progress-circular indeterminate color="primary" size="32"></v-progress-circular>
               </div>
 
-              <div v-else-if="!caseAccessCode" class="text-center py-4">
-                <v-icon size="48" color="grey-lighten-1">mdi-qrcode-remove</v-icon>
-                <p class="text-grey mt-2">{{ t('patientCaseLanding.noCaseAccessCode') }}</p>
+              <div v-else-if="!caseAccessCode" class="text-center py-0">
+                <!-- this has to stay, because caseAccessCode is being checked and then one of its properties is used in the next block. v-if has to be modified if this div is removed -->
+                <!-- <v-icon size="24" color="grey-lighten-1">mdi-qrcode-remove</v-icon>
+                <span class="text-grey ml-2">{{ t('patientCaseLanding.noCaseAccessCode') }}</span> -->
               </div>
 
               <!-- Archived Code: Show minimal info -->
@@ -1202,7 +1157,7 @@ onUnmounted(() => {
       </v-card>
 
       <!-- Case Notes -->
-      <v-card class="mb-6">
+      <v-card class="mb-4">
         <v-card-title class="d-flex align-center justify-space-between">
           <div class="d-flex align-center gap-2">
             <v-icon>mdi-note-multiple</v-icon>
@@ -1223,7 +1178,6 @@ onUnmounted(() => {
         </v-card-title>
         <v-card-text>
           <NotesEditor
-                      v-if="caseNotes.length"
                       ref="caseNotesEditorRef"
                       :notes="caseNotes"
                       @update:notes="handleCaseNotesUpdated"
@@ -1234,7 +1188,7 @@ onUnmounted(() => {
       </v-card>
 
       <!-- Surgeries List -->
-      <v-card class="mb-6">
+      <v-card class="mb-4">
         <v-card-title class="d-flex align-center justify-space-between">
           <div class="d-flex align-center">
             <v-icon class="me-2">mdi-box-cutter</v-icon>
@@ -1305,7 +1259,7 @@ onUnmounted(() => {
       </v-card>
 
       <!-- Future Consultations -->
-      <v-card v-if="futureConsultations.length" class="mb-6">
+      <v-card v-if="futureConsultations.length" class="mb-4">
         <v-card-title class="d-flex align-center justify-space-between">
           <div class="d-flex align-center">
             <v-icon class="me-2">mdi-calendar-arrow-right</v-icon>
@@ -1368,12 +1322,20 @@ onUnmounted(() => {
                           size="small">
                     {{ getConsultationStatusText(consultation) }}
                   </v-chip>
-                  <span v-if="consultation.reasonForConsultation?.length">
+                  <v-chip
+                    v-if="consultation.reasonForConsultation?.length"
+                    size="small"
+                    color="secondary"
+                    variant="tonal">
                     {{ consultation.reasonForConsultation.join(', ') }}
-                  </span>
-                  <span v-if="consultation.proms?.length" class="text-info">
+                  </v-chip>
+                  <v-chip
+                    v-if="consultation.proms?.length"
+                    size="small"
+                    color="info"
+                    variant="tonal">
                     {{ consultation.proms.length }} {{ t('patientCaseLanding.forms') }}
-                  </span>
+                  </v-chip>
                 </div>
               </v-list-item-subtitle>
 
@@ -1433,7 +1395,7 @@ onUnmounted(() => {
       </v-card>
 
       <!-- Past Consultations -->
-      <v-card v-if="pastConsultations.length" class="mb-6">
+      <v-card v-if="pastConsultations.length" class="mb-4">
         <v-card-title class="d-flex align-center justify-space-between">
           <div class="d-flex align-center">
             <v-icon class="me-2">mdi-history</v-icon>
@@ -1496,12 +1458,20 @@ onUnmounted(() => {
                           size="small">
                     {{ getConsultationStatusText(consultation) }}
                   </v-chip>
-                  <span v-if="consultation.reasonForConsultation?.length">
+                  <v-chip
+                    v-if="consultation.reasonForConsultation?.length"
+                    size="small"
+                    color="secondary"
+                    variant="tonal">
                     {{ consultation.reasonForConsultation.join(', ') }}
-                  </span>
-                  <span v-if="consultation.proms?.length" class="text-info">
+                  </v-chip>
+                  <v-chip
+                    v-if="consultation.proms?.length"
+                    size="small"
+                    color="info"
+                    variant="tonal">
                     {{ consultation.proms.length }} {{ t('patientCaseLanding.forms') }}
-                  </span>
+                  </v-chip>
                 </div>
               </v-list-item-subtitle>
 
@@ -1561,7 +1531,7 @@ onUnmounted(() => {
       </v-card>
 
       <!-- Empty state for no consultations -->
-      <v-card v-if="!futureConsultations.length && !pastConsultations.length" class="mb-6">
+      <v-card v-if="!futureConsultations.length && !pastConsultations.length" class="mb-4">
         <v-card-title class="d-flex align-center justify-space-between">
           <div class="d-flex align-center">
             <v-icon class="me-2">mdi-calendar-outline</v-icon>
@@ -1712,26 +1682,6 @@ onUnmounted(() => {
                  @click="confirmMoveConsultationToNow"
                  :loading="movingConsultationId === consultationToMove.id">
             {{ t('patientCaseLanding.moveConsultationToNow') }}
-          </v-btn>
-        </v-card-actions>
-      </v-card>
-    </v-dialog>
-
-    <!-- Create Case Code Dialog -->
-    <v-dialog v-model="showCreateCodeDialog" max-width="500px">
-      <v-card>
-        <v-card-title>{{ t('patientCaseLanding.createCaseCode') }}</v-card-title>
-        <v-card-text>
-          <p class="text-body-2 mb-4">{{ t('patientCaseLanding.selectCodeDialog.description') }}</p>
-          <AccessCodeSelector
-            code-type="case"
-            @code-selected="handleCodeSelected"
-          />
-        </v-card-text>
-        <v-card-actions>
-          <v-spacer />
-          <v-btn variant="text" @click="showCreateCodeDialog = false">
-            {{ t('buttons.cancel') }}
           </v-btn>
         </v-card-actions>
       </v-card>

@@ -1,5 +1,5 @@
 <template>
-  <v-dialog v-model="dialog" max-width="900px" scrollable>
+  <v-dialog v-model="dialog" width="auto" scrollable>
     <template #activator="{ props: activatorProps }">
       <v-btn
         v-bind="activatorProps"

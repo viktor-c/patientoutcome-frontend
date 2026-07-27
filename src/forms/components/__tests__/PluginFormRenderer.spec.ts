@@ -22,7 +22,7 @@ vi.mock('@/stores/userStore', () => ({
   useUserStore: () => ({
     username: '',
     hasRole: () => false,
-    isAuthenticated: () => false,
+    isAuthenticated: () => true,
     isKioskUser: () => false
   })
 }))
@@ -266,6 +266,39 @@ describe('PluginFormRenderer.vue', () => {
   describe('Event Handling', () => {
     beforeEach(() => {
       mockGetFormPlugin.mockReturnValue(mockPlugin)
+      window.localStorage.setItem('form-view-mode', 'standard')
+    })
+
+    it('should render standard-navigation controls and emit next/previous events', async () => {
+      wrapper = mountComponent({
+        templateId: 'test-plugin-id',
+        modelValue: {
+          rawFormData: { test: { q1: null } },
+          fillStatus: 'draft',
+          beginFill: null,
+          completedAt: null
+        } as unknown as PatientFormData,
+        locale: 'en'
+      })
+
+      await wrapper.setProps({
+        showNavigation: true,
+        navigationNextLabel: 'Next',
+        navigationPreviousLabel: 'Previous',
+        navigationCanGoPrevious: true,
+      })
+
+      const nextButton = wrapper.findAllComponents({ name: 'VBtn' }).find((button) => button.text().includes('Next'))
+      const previousButton = wrapper.findAllComponents({ name: 'VBtn' }).find((button) => button.text().includes('Previous'))
+
+      expect(nextButton?.exists()).toBe(true)
+      expect(previousButton?.exists()).toBe(true)
+
+      await nextButton?.vm.$emit('click')
+      await previousButton?.vm.$emit('click')
+
+      expect(wrapper.emitted('next')).toBeTruthy()
+      expect(wrapper.emitted('previous')).toBeTruthy()
     })
 
     it('should emit update:modelValue when plugin component emits it', async () => {

@@ -522,29 +522,14 @@ const isSmallScreen = computed(() => window.innerWidth < 1300)
                               :model-value="(currentForm.patientFormData as any) || {}"
                               :locale="locale"
                               :context="formContext"
+                              :show-navigation="!isReviewMode && !isFinalized"
+                              :can-go-previous="currentFormIndex > 0"
+                              :previous-label="t('common.previous')"
+                              :next-label="currentFormIndex === forms.length - 1 ? t('flow.finishAndClose') : t('common.next')"
                               @update:model-value="(data) => processFormData(data, currentFormIndex)"
-                              @submit="submitForm" />
-
-          <!-- Navigation buttons -->
-          <v-card-actions class="px-6 py-4 d-flex justify-space-between">
-            <v-btn
-                   v-if="currentFormIndex > 0"
-                   variant="outlined"
-                   color="primary"
-                   @click="gotoPreviousForm">
-              <v-icon start>mdi-arrow-left</v-icon>
-              {{ t('common.previous', 'Previous') }}
-            </v-btn>
-            <v-spacer v-else />
-
-            <v-btn
-                   color="primary"
-                   variant="flat"
-                   @click="submitForm">
-              <v-icon end>mdi-arrow-right</v-icon>
-              {{ currentFormIndex === forms.length - 1 ? t('common.review', 'Review') : t('common.next', 'Next') }}
-            </v-btn>
-          </v-card-actions>
+                              @submit="submitForm"
+                              @next="submitForm"
+                              @previous="gotoPreviousForm" />
         </v-card>
       </transition>
     </v-container>

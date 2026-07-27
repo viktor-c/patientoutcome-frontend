@@ -113,6 +113,10 @@ const isCurrentQuestionAnswered = computed(() => {
   return getCurrentValue(question.key) !== null
 })
 
+const allQuestionsAnswered = computed(() => {
+  return questionsData.value.every((question) => getCurrentValue(question.key) !== null)
+})
+
 const answeredQuestions = computed(() => {
   return questionsData.value.filter(q => getCurrentValue(q.key) !== null).length
 })
@@ -123,10 +127,10 @@ const progress = computed(() => {
 })
 
 function goToNext() {
-  if (!isLastQuestion.value) {
-    currentQuestionIndex.value++
-    carouselModel.value = currentQuestionIndex.value
-  }
+  if (!isCurrentQuestionAnswered.value || isLastQuestion.value) return
+
+  currentQuestionIndex.value++
+  carouselModel.value = currentQuestionIndex.value
 }
 
 function goToPrevious() {
@@ -137,10 +141,11 @@ function goToPrevious() {
 }
 
 function goToQuestion(index: number) {
-  if (index >= 0 && index < totalQuestions.value) {
-    currentQuestionIndex.value = index
-    carouselModel.value = index
-  }
+  if (index < 0 || index >= totalQuestions.value) return
+  if (index > currentQuestionIndex.value) return
+
+  currentQuestionIndex.value = index
+  carouselModel.value = index
 }
 
 watch(carouselModel, (newValue) => {
@@ -217,6 +222,7 @@ function saveComment() {
                   :key="index"
                   :value="index"
                   size="x-small"
+                  :disabled="index > currentQuestionIndex"
                   :color="index === currentQuestionIndex ? 'green' : (getCurrentValue(question.key) !== null ? 'success' : 'grey')"
                   @click="goToQuestion(index)">
             {{ index + 1 }}
@@ -295,8 +301,9 @@ function saveComment() {
                      variant="elevated"
                      color="primary"
                      append-icon="mdi-chevron-right"
+                     :disabled="!isCurrentQuestionAnswered"
                      @click="goToNext">
-                {{ tGlobal(isCurrentQuestionAnswered ? 'buttons.next' : 'buttons.skip') }}
+                {{ tGlobal('buttons.next') }}
               </v-btn>
 
               <v-btn
@@ -304,8 +311,9 @@ function saveComment() {
                      variant="elevated"
                      color="success"
                      append-icon="mdi-check"
+                     :disabled="!allQuestionsAnswered"
                      @click="emit('submit')">
-                {{ tGlobal(isCurrentQuestionAnswered ? 'buttons.complete' : 'buttons.skipQuestionAndSubmitForm') }}
+                {{ tGlobal('buttons.complete') }}
               </v-btn>
             </v-card-actions>
           </v-card>
