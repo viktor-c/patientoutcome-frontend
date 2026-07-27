@@ -79,7 +79,7 @@
               </v-card-title>
 
               <v-card-subtitle class="py-1">
-                Changed by: {{ version.changedBy }}
+                Changed by: {{ version.changedByUser.name || 'Unknown User' }}
               </v-card-subtitle>
 
               <v-card-text class="py-2">

@@ -541,7 +541,7 @@ const copySelectedItems = async () => {
     <!-- Form content -->
     <div v-else>
       <!-- Header with form info -->
-      <v-card class="mb-2">
+      <v-card class="mb-2 ">
         <v-card-title class="d-flex align-center">
           <v-btn
                  icon="mdi-arrow-left"

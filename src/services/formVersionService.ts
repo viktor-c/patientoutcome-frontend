@@ -17,7 +17,10 @@ export interface FormVersion {
   formId: string
   version: number
   rawData: PatientFormData | null
-  changedBy: string
+  changedByUser: {
+    id: string
+    name: string
+  }
   changedAt: string
   changeNotes: string
   isRestoration: boolean
