@@ -46,6 +46,31 @@ export const setupApi = new SetupApi(apiConfig)
 export * from '@/api/index'; // Export all APIs and models from the index file
 
 /**
+ * Check if a username is available.
+ * Temporary wrapper until the OpenAPI client is regenerated.
+ */
+export async function checkUsernameAvailability(username: string) {
+  const base = apiConfig.basePath ?? '';
+  const url = `${base.replace(/\/$/, '')}/user/check-username/${encodeURIComponent(username)}`;
+  const res = await fetch(url, {
+    method: 'GET',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    credentials: 'include',
+  });
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`Failed to check username: ${res.status} ${res.statusText}: ${text}`);
+  }
+  const data = await res.json();
+  return {
+    success: true,
+    responseObject: data,
+  };
+}
+
+/**
  * Admin helper to update a user by username by calling the API path that includes the username.
  * Fallback for cases where the standard update endpoint updates the current session user.
  */
