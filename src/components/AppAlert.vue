@@ -7,7 +7,8 @@
                 color="grey-darken-1"
                 location="top"
                 :timeout="-1"
-                class="compact-notification">
+                class="compact-notification"
+                id="app-notification-snackbar">
       <div class="d-flex align-center justify-space-between" style="width:100%">
         <div class="text-caption">
           +{{ hiddenCount }} more notification{{ hiddenCount > 1 ? 's' : '' }}

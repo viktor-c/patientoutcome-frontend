@@ -1,10 +1,11 @@
 <template>
-  <v-footer 
-    app 
-    height="44" 
-    class="app-footer" 
+  <v-footer
+    v-if="!shouldHideFooter"
+    app
+    height="44"
+    class="app-footer"
     :class="{ 'footer-visible': isAtBottom }"
-    color="primary" 
+    color="primary"
     dark
   >
     <v-container fluid class="pa-0 px-4">
@@ -41,12 +42,20 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { useRoute } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { getBuildInfo } from '@/services/buildInfoService'
 
 const { t } = useI18n()
+const route = useRoute()
 
 const currentYear = computed(() => new Date().getFullYear())
+
+/******************************************************
+ * Footer visibility and build info
+ * Hide footer on certain routes, e.g., review form
+ ******************************************************/
+const shouldHideFooter = computed(() => route.name === 'reviewform' || route.name === 'showConsultationForms')
 
 // You can read this from package.json or env variable if needed
 const appVersion = computed(() => import.meta.env.VITE_APP_VERSION || '1.0.0')
@@ -61,7 +70,7 @@ const checkScrollPosition = () => {
   const scrollTop = window.scrollY || document.documentElement.scrollTop
   const scrollHeight = document.documentElement.scrollHeight
   const clientHeight = document.documentElement.clientHeight
-  
+
   // Show footer when within 100px of bottom or when page is not scrollable
   const threshold = 100
   isAtBottom.value = scrollHeight <= clientHeight || (scrollTop + clientHeight >= scrollHeight - threshold)

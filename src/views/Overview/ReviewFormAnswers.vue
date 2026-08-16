@@ -649,6 +649,7 @@ const copySelectedItems = async () => {
                               :locale="rendererLocale"
                               :context="formContext"
                               :model-value="form?.patientFormData ?? null"
+                              :hide-navigation="true"
                               @update:model-value="handleFormDataChange" />
         </v-card-text>
 
@@ -824,7 +825,7 @@ const copySelectedItems = async () => {
       </v-card>
     </div>
 
-    <v-dialog v-model="showLeaveDialog" max-width="420" persistent>
+    <v-dialog v-model="showLeaveDialog" width="auto" persistent>
       <v-card>
         <v-card-title class="text-h6">{{ t('reviewForm.unsavedChangesTitle', 'Unsaved changes') }}</v-card-title>
         <v-card-text>{{ t('reviewForm.unsavedChangesWarning') }}</v-card-text>
