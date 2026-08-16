@@ -87,6 +87,7 @@ const showRawData = ref(false)
 const selectedKeys = ref<Set<string>>(new Set())
 const loading = ref(true)
 const saving = ref(false)
+const showLeaveDialog = ref(false)
 
 // Computed properties for display
 const patientId = computed(() => {
@@ -175,6 +176,36 @@ const hasChanges = computed(() => {
     || JSON.stringify(reviewComments.value) !== JSON.stringify(originalComments.value)
 })
 
+const wasSaved = ref(false)
+
+const reviewFormChipState = computed<'unchanged' | 'unsaved' | 'saved'>(() => {
+  if (hasChanges.value) return 'unsaved'
+  if (wasSaved.value) return 'saved'
+  return 'unchanged'
+})
+
+const reviewFormChipLabel = computed(() => {
+  switch (reviewFormChipState.value) {
+    case 'unsaved':
+      return t('reviewForm.unsavedState')
+    case 'saved':
+      return t('reviewForm.savedState')
+    default:
+      return t('reviewForm.unchangedState')
+  }
+})
+
+const reviewFormChipColor = computed(() => {
+  switch (reviewFormChipState.value) {
+    case 'unsaved':
+      return 'warning'
+    case 'saved':
+      return 'success'
+    default:
+      return 'info'
+  }
+})
+
 const normalizeComments = (comments: unknown): FormAnswerComment[] => {
   if (!Array.isArray(comments)) return []
   return comments
@@ -256,8 +287,24 @@ onMounted(async () => {
 
       // FIX: Unwrap any incorrectly nested data structure
       // Check if formData has a 'body' wrapper (from old corrupted data)
-      originalFormData.value = formReponseData.patientFormData?.rawFormData || {}
-      reviewComments.value = normalizeComments(formReponseData.patientFormData?.comments)
+      const loadedPatientFormData = (formReponseData.patientFormData as FormSubmissionData | undefined) || null
+      const initialSubmissionData: FormSubmissionData = loadedPatientFormData
+        ? {
+          ...loadedPatientFormData,
+          rawFormData: loadedPatientFormData.rawFormData || {},
+          comments: normalizeComments(loadedPatientFormData.comments),
+        }
+        : {
+          rawFormData: {},
+          fillStatus: 'draft',
+          completedAt: null,
+          beginFill: null,
+          comments: [],
+        }
+
+      originalFormData.value = JSON.parse(JSON.stringify(initialSubmissionData))
+      formData.value = JSON.parse(JSON.stringify(initialSubmissionData))
+      reviewComments.value = normalizeComments(initialSubmissionData.comments)
       originalComments.value = JSON.parse(JSON.stringify(reviewComments.value))
       formCompletionStatus.value = formReponseData.patientFormData?.fillStatus ? formReponseData.patientFormData.fillStatus : "draft"
       form.value = formReponseData as unknown as Form
@@ -327,6 +374,7 @@ const saveChanges = async () => {
     // Update original data after successful save
     originalFormData.value = JSON.parse(JSON.stringify(formData.value))
     originalComments.value = JSON.parse(JSON.stringify(reviewComments.value))
+    wasSaved.value = true
     notifierStore.notify(t('reviewForm.saveSuccess'), 'success')
 
     navigateToConsultationOverview()
@@ -371,12 +419,21 @@ const cancelChanges = () => {
 // Go back
 const goBack = () => {
   if (hasChanges.value) {
-    if (confirm(t('reviewForm.unsavedChangesWarning'))) {
-      navigateToConsultationOverview()
-    }
-  } else {
-    navigateToConsultationOverview()
+    showLeaveDialog.value = true
+    return
   }
+
+  navigateToConsultationOverview()
+}
+
+const handleLeaveDialogSave = async () => {
+  showLeaveDialog.value = false
+  await saveChanges()
+}
+
+const handleLeaveDialogDiscard = () => {
+  showLeaveDialog.value = false
+  cancelChanges()
 }
 
 const getCaseId = (): string => {
@@ -484,7 +541,7 @@ const copySelectedItems = async () => {
     <!-- Form content -->
     <div v-else>
       <!-- Header with form info -->
-      <v-card class="mb-6">
+      <v-card class="mb-2 ">
         <v-card-title class="d-flex align-center">
           <v-btn
                  icon="mdi-arrow-left"
@@ -493,29 +550,42 @@ const copySelectedItems = async () => {
                  class="me-2"></v-btn>
           {{ t('reviewForm.title') }}
           <v-spacer></v-spacer>
+          <v-btn
+                  v-if="hasChanges || saving"
+                  color="green darken-1"
+                  :loading="saving"
+                  @click="saveChanges">
+              {{ t('buttons.saveChanges') }}
+          </v-btn>
           <v-chip
-                  :color="hasChanges ? 'warning' : 'success'"
+                  :color="reviewFormChipColor"
                   variant="outlined">
-            {{ hasChanges ? t('reviewForm.hasChanges') : t('reviewForm.saved') }}
+            {{ reviewFormChipLabel }}
           </v-chip>
         </v-card-title>
 
-        <v-card-text>
-          <v-row>
-            <v-col cols="12" md="6">
-
-              <v-list density="compact">
-                <v-list-item>
+        <v-card-text class="py-2 px-3">
+          <v-row dense>
+            <v-col cols="12" md="4" class="py-1">
+              <v-list-item class="px-0 py-0">
                   <template #prepend>
-                    <v-icon>mdi-account</v-icon>
+                    <v-icon size="small">mdi-calendar</v-icon>
+                  </template>
+                  <v-list-item-title>{{ t('reviewForm.consultationDate') }}</v-list-item-title>
+                  <v-list-item-subtitle>{{ consultationDate }}</v-list-item-subtitle>
+                </v-list-item>
+              <v-list density="compact" class="metadata-list">
+                <v-list-item class="px-0 py-0">
+                  <template #prepend>
+                    <v-icon size="small">mdi-account</v-icon>
                   </template>
                   <v-list-item-title>{{ t('reviewForm.patientId') }}</v-list-item-title>
                   <v-list-item-subtitle>{{ patientId }}</v-list-item-subtitle>
                 </v-list-item>
 
-                <v-list-item>
+                <v-list-item class="px-0 py-0">
                   <template #prepend>
-                    <v-icon>mdi-calendar-check</v-icon>
+                    <v-icon size="small">mdi-calendar-check</v-icon>
                   </template>
                   <v-list-item-title>{{ t('reviewForm.consultationId') }}</v-list-item-title>
                   <v-list-item-subtitle>{{ consultationId }}</v-list-item-subtitle>
@@ -523,47 +593,43 @@ const copySelectedItems = async () => {
               </v-list>
             </v-col>
 
-            <v-col cols="12" md="6">
-              <v-list density="compact">
-                <v-list-item>
+            <v-col cols="12" md="4" class="py-1">
+              <v-list density="compact" class="metadata-list">
+                <v-list-item v-if="form.patientFormData?.completedAt" class="px-0 py-0">
                   <template #prepend>
-                    <v-icon>mdi-calendar</v-icon>
-                  </template>
-                  <v-list-item-title>{{ t('reviewForm.consultationDate') }}</v-list-item-title>
-                  <v-list-item-subtitle>{{ consultationDate }}</v-list-item-subtitle>
-                </v-list-item>
-
-                <v-list-item v-if="form.patientFormData?.beginFill || (form as any)?.formStartTime">
-                  <template #prepend>
-                    <v-icon>mdi-play-circle</v-icon>
-                  </template>
-                  <v-list-item-title>{{ t('reviewForm.formStartTime') }}</v-list-item-title>
-                  <v-list-item-subtitle>{{ formStartTime }}</v-list-item-subtitle>
-                </v-list-item>
-
-                <v-list-item
-                             v-if="(form.patientFormData?.beginFill || (form as any)?.formStartTime) && (form.patientFormData?.completedAt || (form as any)?.completionTimeSeconds)">
-                  <template #prepend>
-                    <v-icon>mdi-timer</v-icon>
-                  </template>
-                  <v-list-item-title>{{ t('reviewForm.formDuration') }}</v-list-item-title>
-                  <v-list-item-subtitle>{{ formDuration }}</v-list-item-subtitle>
-                </v-list-item>
-
-                <v-list-item v-if="form.patientFormData?.completedAt">
-                  <template #prepend>
-                    <v-icon>mdi-check-circle</v-icon>
+                    <v-icon size="small">mdi-check-circle</v-icon>
                   </template>
                   <v-list-item-title>{{ t('reviewForm.completedDate') }}</v-list-item-title>
                   <v-list-item-subtitle>{{ completedDate }}</v-list-item-subtitle>
                 </v-list-item>
 
-                <v-list-item>
+                <v-list-item class="px-0 py-0">
                   <template #prepend>
-                    <v-icon>mdi-update</v-icon>
+                    <v-icon size="small">mdi-update</v-icon>
                   </template>
                   <v-list-item-title>{{ t('reviewForm.lastUpdated') }}</v-list-item-title>
                   <v-list-item-subtitle>{{ lastUpdatedDate }}</v-list-item-subtitle>
+                </v-list-item>
+              </v-list>
+            </v-col>
+
+            <v-col cols="12" md="4" class="py-1">
+              <v-list density="compact" class="metadata-list">
+                 <v-list-item v-if="form.patientFormData?.beginFill || (form as any)?.formStartTime" class="px-0 py-0">
+                  <template #prepend>
+                    <v-icon size="small">mdi-play-circle</v-icon>
+                  </template>
+                  <v-list-item-title>{{ t('reviewForm.formStartTime') }}</v-list-item-title>
+                  <v-list-item-subtitle>{{ formStartTime }}</v-list-item-subtitle>
+                </v-list-item>
+                <v-list-item
+                  v-if="(form.patientFormData?.beginFill || (form as any)?.formStartTime) && (form.patientFormData?.completedAt || (form as any)?.completionTimeSeconds)"
+                  class="px-0 py-0">
+                  <template #prepend>
+                    <v-icon size="small">mdi-timer</v-icon>
+                  </template>
+                  <v-list-item-title>{{ t('reviewForm.formDuration') }}</v-list-item-title>
+                  <v-list-item-subtitle>{{ formDuration }}</v-list-item-subtitle>
                 </v-list-item>
               </v-list>
             </v-col>
@@ -583,6 +649,7 @@ const copySelectedItems = async () => {
                               :locale="rendererLocale"
                               :context="formContext"
                               :model-value="form?.patientFormData ?? null"
+                              :hide-navigation="true"
                               @update:model-value="handleFormDataChange" />
         </v-card-text>
 
@@ -757,6 +824,24 @@ const copySelectedItems = async () => {
         </v-card-actions>
       </v-card>
     </div>
+
+    <v-dialog v-model="showLeaveDialog" width="auto" persistent>
+      <v-card>
+        <v-card-title class="text-h6">{{ t('reviewForm.unsavedChangesTitle', 'Unsaved changes') }}</v-card-title>
+        <v-card-text>{{ t('reviewForm.unsavedChangesWarning') }}</v-card-text>
+        <v-card-actions class="justify-end flex-wrap ga-2">
+          <v-btn size="small" variant="text"
+                  @click="showLeaveDialog = false">
+                  {{ t('buttons.cancel') }}</v-btn>
+          <v-btn size="small" variant="tonal" color="red"
+                  @click="handleLeaveDialogDiscard">
+                  {{ t('reviewForm.discardChanges', 'Discard changes') }}</v-btn>
+          <v-btn size="small" variant="flat" color="green"
+                  @click="handleLeaveDialogSave" :loading="saving">
+                  {{ t('buttons.saveChanges') }}</v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
   </v-container>
 </template>
 
@@ -769,7 +854,24 @@ const copySelectedItems = async () => {
   font-weight: 600;
 }
 
-.v-list-item {
+.metadata-list {
+  --v-list-padding-top: 0;
+  --v-list-padding-bottom: 0;
+}
+
+.metadata-list :deep(.v-list-item) {
+  min-height: 36px;
   padding-inline: 0;
+  padding-top: 0;
+  padding-bottom: 0;
+}
+
+.metadata-list :deep(.v-list-item-title),
+.metadata-list :deep(.v-list-item-subtitle) {
+  line-height: 1.15;
+}
+
+.metadata-list :deep(.v-list-item__prepend) {
+  margin-inline-end: 8px;
 }
 </style>

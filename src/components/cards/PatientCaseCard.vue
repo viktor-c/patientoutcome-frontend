@@ -275,7 +275,7 @@ const handleDeleteCase = () => {
                 </v-list-item>
               </v-list>
               <div v-else class="text-medium-emphasis">
-                {{ t('patientOverview.noSurgeries') }}
+                {{ t('cases.noSurgeries') }}
               </div>
             </v-card-text>
           </v-card>

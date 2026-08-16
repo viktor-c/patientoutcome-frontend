@@ -11,11 +11,11 @@ import {
   type UserNoPassword
 } from '@/api'
 import type { ApiConsultation, ApiConsultationForm } from '@/types'
-import { consultationApi, userApi, kioskApi, codeApi, formApi, renewCode, updateCodeValidity, setCodeActivationStart } from '@/api'
+import { consultationApi, userApi, kioskApi, codeApi, formApi, renewCode } from '@/api'
 import CreateEditConsultationDialog from '@/components/dialogs/CreateEditConsultationDialog.vue'
 import CascadeDeleteDialog from '@/components/dialogs/CascadeDeleteDialog.vue'
-import QRCodeDisplay from '@/components/QRCodeDisplay.vue'
-import EditCodeTimeWindow from '@/components/dialogs/EditCodeTimeWindow.vue'
+import AccessCodeAssignment from '@/components/AccessCodeAssignment.vue'
+import AssignedCodeDisplay from '@/components/AssignedCodeDisplay.vue'
 import ElsnerFeedbackChart, { type ElsnerPoint } from '@/components/forms/ElsnerFeedbackChart.vue'
 import { getConsultationAccessWindowFromConsultation } from '@/utils/consultationAccessWindow'
 import ScoreScale from '@/components/ScoreScale.vue'
@@ -56,10 +56,8 @@ const selectedKioskUser = ref<string | null>(null)
 const assigningKiosk = ref(false)
 type CodeItem = { _id?: string | null; id?: string | null; code: string; isCreateNew?: boolean }
 const availableCodes = ref<CodeItem[]>([])
-const selectedCode = ref<string | null>(null)
 const assigningCode = ref(false)
-const showEditCodeTimeWindow = ref(false)
-const selectedCodeForEdit = ref<any>(null)
+const ignoreAccessWindow = ref(false)
 
 // Archive form state
 const archiveFormDialog = ref(false)
@@ -601,43 +599,32 @@ const assignedCodeCreatedAt = computed(() => {
   return code.activatedOn || null
 })
 
-// Get available (unassigned) codes
-const availableCodesForSelection = computed(() => {
-  // If there's an assigned code, filter it out from available codes
-  const currentAssignedCode = assignedCode.value
-  if (!currentAssignedCode) {
-    // No code assigned, all fetched codes are available
-    return availableCodes.value
-  }
-  // Filter out the currently assigned code
-  return availableCodes.value.filter(code => {
-    const codeStr = typeof code === 'string' ? code : code?.code || code?.id || code?._id
-    return codeStr !== currentAssignedCode
-  })
-})
-
-const assignCode = async () => {
-  if (!selectedCode.value || !consultation.value?.id) return
+// Handle code selection from AccessCodeAssignment
+const handleCodeSelection = async (code: string, ignoreAccessWindowValue: boolean) => {
+  if (!consultation.value?.id || assigningCode.value) return
 
   try {
     assigningCode.value = true
-    await codeApi.activateCode({ code: selectedCode.value, consultationId: consultation.value.id })
+    await codeApi.activateCode({ 
+      code, 
+      consultationId: consultation.value.id,
+      activateCodeRequest: {
+        ignoreAccessWindow: ignoreAccessWindowValue
+      }
+    })
     notifierStore.notify(t('consultationOverview.codeAssigned'), 'success')
-    // Reset selected code first to prevent watch from re-triggering
-    selectedCode.value = null
+    
     // Refresh consultation to get updated code info
     const resp = await consultationApi.getConsultationById({ consultationId })
     consultation.value = resp.responseObject || null
     // Refresh available codes
     await fetchAvailableCodes()
+    // Reset the checkbox
+    ignoreAccessWindow.value = false
   } catch (error: unknown) {
     let errorMessage = 'An unexpected error occurred'
     if (error instanceof ResponseError) {
-      try {
-        errorMessage = (await error.response.json()).message
-      } catch {
-        errorMessage = error.response.statusText || errorMessage
-      }
+      errorMessage = (await error.response.json()).message
     } else if (error instanceof Error) {
       errorMessage = error.message
     }
@@ -647,56 +634,6 @@ const assignCode = async () => {
     assigningCode.value = false
   }
 }
-
-// Special value for creating a new code
-const CREATE_NEW_CODE = '__CREATE_NEW_CODE__'
-
-// Create a new code and assign it to the consultation
-const createAndAssignNewCode = async () => {
-  if (!consultation.value?.id) return
-
-  try {
-    assigningCode.value = true
-    // Create a new code
-    const response = await codeApi.addCodes({ addCodesRequest: { numberOfCodes: 1 } })
-    const newCodes = response.responseObject || []
-    if (newCodes.length === 0) {
-      throw new Error('Failed to create new code')
-    }
-    const newCode = newCodes[0].code
-
-    await codeApi.activateCode({ code: newCode, consultationId: consultation.value.id })
-
-    notifierStore.notify(t('consultationOverview.codeCreatedAndAssigned'), 'success')
-    // Reset selected code first to prevent watch from re-triggering
-    selectedCode.value = null
-    // Refresh consultation to get updated code info
-    const resp = await consultationApi.getConsultationById({ consultationId })
-    consultation.value = resp.responseObject || null
-    // Refresh available codes
-    await fetchAvailableCodes()
-  } catch (error: unknown) {
-    let errorMessage = 'An unexpected error occurred'
-    if (error instanceof Error) {
-      errorMessage = error.message
-    }
-    console.error(`${componentName}: Failed to create and assign code:`, errorMessage)
-    notifierStore.notify(t('consultationOverview.codeCreateError'), 'error')
-  } finally {
-    assigningCode.value = false
-  }
-}
-
-// Automatically assign when a code is selected from the dropdown
-watch(selectedCode, async (newVal) => {
-  if (!newVal || assigningCode.value) return
-  if (newVal === CREATE_NEW_CODE) {
-    await createAndAssignNewCode()
-  } else {
-    // assignCode will clear selectedCode when done
-    await assignCode()
-  }
-})
 
 const revokeCode = async () => {
   if (!consultation.value?.formAccessCode) return
@@ -718,7 +655,6 @@ const revokeCode = async () => {
     // Refresh consultation
     const resp = await consultationApi.getConsultationById({ consultationId })
     consultation.value = resp.responseObject || null
-    selectedCode.value = null
     // Refresh available codes list
     await fetchAvailableCodes()
   } catch (error: unknown) {
@@ -764,38 +700,61 @@ const renewAssignedCode = async () => {
   }
 }
 
-const openEditCodeTimeWindow = () => {
-  const codeVal = consultation.value?.formAccessCode as unknown
-  if (codeVal && typeof codeVal === 'object') {
-    selectedCodeForEdit.value = codeVal
-    showEditCodeTimeWindow.value = true
-  }
-}
+const handleToggleAccessWindow = async (newValue: boolean) => {
+  if (!consultation.value?.id) return
 
-const saveCodeTimeWindow = async (data: { code: string; activatedOn: string; expiresOn: string }) => {
+  const codeVal = consultation.value.formAccessCode as unknown
+  const codeStr = typeof codeVal === 'string'
+    ? codeVal
+    : (codeVal && typeof codeVal === 'object')
+      ? ((codeVal as Record<string, unknown>)['code'] as string | undefined) ?? null
+      : null
+
+  if (!codeStr) {
+    notifierStore.notify(t('consultationOverview.codeUpdateError'), 'error')
+    return
+  }
+
   try {
     assigningCode.value = true
-    await updateCodeValidity(data.code, data.activatedOn, data.expiresOn)
-    notifierStore.notify(t('consultationOverview.codeValidityUpdated'), 'success')
+    
+    // Deactivate the current code
+    await codeApi.deactivateCode({ code: codeStr })
+    
+    // Reactivate with the new ignoreAccessWindow value
+    await codeApi.activateCode({ 
+      code: codeStr, 
+      consultationId: consultation.value.id,
+      activateCodeRequest: {
+        ignoreAccessWindow: newValue
+      }
+    })
+    
+    // Update local state
+    ignoreAccessWindow.value = newValue
+    
+    notifierStore.notify(
+      newValue 
+        ? t('consultationOverview.accessWindowIgnored') 
+        : t('consultationOverview.accessWindowEnforced'), 
+      'success'
+    )
+    
+    // Refresh consultation to get updated code info
     const resp = await consultationApi.getConsultationById({ consultationId })
     consultation.value = resp.responseObject || null
   } catch (error: unknown) {
     let errorMessage = 'An unexpected error occurred'
-    if (error instanceof Error) {
+    if (error instanceof ResponseError) {
+      errorMessage = (await error.response.json()).message
+    } else if (error instanceof Error) {
       errorMessage = error.message
     }
-    console.error(`${componentName}: Failed to update code validity:`, errorMessage)
-    notifierStore.notify(t('consultationOverview.codeValidityUpdateError'), 'error')
+    console.error(`${componentName}: Failed to toggle access window:`, errorMessage)
+    notifierStore.notify(t('consultationOverview.codeUpdateError'), 'error')
   } finally {
     assigningCode.value = false
-    showEditCodeTimeWindow.value = false
   }
-}
-
-const openSetActivationStartDialog = () => {
-  // For simplicity, we'll just open the edit time window dialog
-  // which allows setting both start and end dates
-  openEditCodeTimeWindow()
 }
 
 // Archive form functions
@@ -971,16 +930,6 @@ const assignedConsultationAccessWindow = computed(() => {
     consultationAccessDaysBefore: userStore.consultationAccessDaysBefore,
     consultationAccessDaysAfter: userStore.consultationAccessDaysAfter,
   })
-})
-
-// Code expiry helper – true when code expires within the next 48 hours
-const isCodeExpiringSoon = computed(() => {
-  if (!assignedCodeExpiresOn.value) return false
-  const expires = new Date(assignedCodeExpiresOn.value).getTime()
-  const now = Date.now()
-  const timeDifference = expires - now
-  // Check if the code expires within the next 48 hours, but has not yet expired.
-  return timeDifference > 0 && timeDifference < 48 * 60 * 60 * 1000
 })
 </script>
 
@@ -1475,129 +1424,34 @@ const isCodeExpiringSoon = computed(() => {
         <v-card-text>
           <!-- List of assigned code -->
           <div v-if="assignedCode" class="mb-6">
-            <h4 class="mb-3">{{ t('consultationOverview.assignedCode') }}</h4>
-            <v-list>
-              <v-list-item class="border rounded-lg mb-2">
-                <template #prepend>
-                  <v-icon class="me-2">mdi-barcode</v-icon>
-                </template>
-                <v-list-item-title class="font-weight-medium">
-                  {{ assignedCode }}
-                </v-list-item-title>
-                <v-list-item-subtitle>
-                  <div class="text-caption d-flex align-center flex-wrap gap-2">
-                    <span>{{ t('consultationOverview.codeStatus') }}: {{ t('consultationOverview.active') }}</span>
-                    <v-chip
-                      v-if="assignedCodeExpiresOn"
-                      size="x-small"
-                      :color="isCodeExpiringSoon ? 'warning' : 'default'"
-                      variant="tonal"
-                    >
-                      <v-icon start size="x-small">mdi-clock-outline</v-icon>
-                      {{ t('consultationOverview.codeExpiresOn', { date: safeFormatDate(assignedCodeExpiresOn) }) }}
-                    </v-chip>
-                    <v-chip v-if="isCodeExpiringSoon && assignedCodeExpiresOn" size="x-small" color="warning" variant="flat">
-                      {{ t('consultationOverview.codeExpiresSoon') }}
-                    </v-chip>
-                  </div>
-                </v-list-item-subtitle>
-                <template #append>
-                  <div class="d-flex gap-2 align-center flex-wrap">
-                    <QRCodeDisplay
-                                   v-if="patientFlowUrl"
-                                   :url="patientFlowUrl"
-                          :access-window="assignedConsultationAccessWindow"
-                        :expires-on="assignedCodeExpiresOn || undefined"
-                        :case-id="caseRouteId || undefined"
-                        :code-created-at="assignedCodeCreatedAt || undefined" />
-                    <v-btn
-                      color="secondary"
-                      variant="tonal"
-                      size="small"
-                      @click="openSetActivationStartDialog"
-                      :disabled="assigningCode"
-                      :loading="assigningCode"
-                      :title="t('consultationOverview.setActivationStart')"
-                    >
-                      <v-icon start>mdi-clock-start</v-icon>
-                      <!-- {{ t('consultationOverview.setActivationStartBtn') }} -->
-                    </v-btn>
-                    <v-btn
-                      color="primary"
-                      variant="tonal"
-                      size="small"
-                      @click="openEditCodeTimeWindow"
-                      :disabled="assigningCode"
-                      :loading="assigningCode"
-                      :title="t('consultationOverview.extendValidity')"
-                    >
-                      <v-icon start>mdi-calendar-clock</v-icon>
-                      <!-- {{ t('consultationOverview.extendBtn') }} -->
-                    </v-btn>
-                    <v-btn
-                      :color="isCodeExpiringSoon ? 'warning' : 'primary'"
-                      variant="tonal"
-                      size="small"
-                      @click="renewAssignedCode"
-                      :disabled="assigningCode"
-                      :loading="assigningCode"
-                      :title="t('consultationOverview.renewCode')"
-                    >
-                      <v-icon start>mdi-refresh</v-icon>
-                      <!-- {{ t('consultationOverview.codeRenewBtn') }} -->
-                    </v-btn>
-                    <v-btn
-                           color="error"
-                           variant="tonal"
-                           icon="mdi-delete"
-                           size="small"
-                           @click="revokeCode"
-                           :disabled="assigningCode"
-                           :loading="assigningCode"></v-btn>
-                  </div>
-                </template>
-              </v-list-item>
-            </v-list>
+            <AssignedCodeDisplay
+              :code="assignedCode"
+              v-model="ignoreAccessWindow"
+              :expires-on="assignedCodeExpiresOn"
+              :created-at="assignedCodeCreatedAt"
+              :patient-flow-url="patientFlowUrl"
+              :access-window="assignedConsultationAccessWindow"
+              :case-id="caseRouteId || undefined"
+              :disabled="assigningCode"
+              show-renew-button
+              show-qr-code
+              @revoke="revokeCode"
+              @renew="renewAssignedCode"
+              @toggle-access-window="handleToggleAccessWindow"
+            />
           </div>
 
-          <!-- Show dropdown to assign initial code (no code assigned yet) -->
+          <!-- Show selector to assign initial code (no code assigned yet) -->
           <div v-else>
-            <p class="text-body-2 text-medium-emphasis mb-4">
-              {{ t('consultationOverview.noCodesAssigned') }}
-            </p>
             <v-row>
               <v-col cols="12" md="8">
-                <v-autocomplete
-                                v-model="selectedCode"
-                                :items="[{ code: CREATE_NEW_CODE, isCreateNew: true }, ...availableCodesForSelection]"
-                                :label="t('consultationOverview.selectCode')"
-                                item-title="code"
-                                item-value="code"
-                                variant="outlined"
-                                density="compact"
-                                :disabled="assigningCode"
-                                clearable>
-                  <template #item="{ props, item }">
-                    <v-list-item v-bind="props" :title="undefined">
-                      <template v-if="item.raw.isCreateNew">
-                        <v-list-item-title class="text-primary font-weight-medium">
-                          <v-icon class="me-2">mdi-plus</v-icon>
-                          {{ t('consultationOverview.createNewCode') }}
-                        </v-list-item-title>
-                      </template>
-                      <template v-else>
-                        <v-list-item-title>{{ item.raw.code }}</v-list-item-title>
-                      </template>
-                    </v-list-item>
-                  </template>
-                  <template #selection="{ item }">
-                    <span v-if="item.raw.isCreateNew">{{ t('consultationOverview.createNewCode') }}</span>
-                    <span v-else>{{ item.raw.code }}</span>
-                  </template>
-                </v-autocomplete>
-                <p class="text-caption text-medium-emphasis mt-2">{{
-                  t('consultationOverview.selectionAssignsImmediately')
-                }}</p>
+                <AccessCodeAssignment
+                  code-type="consultation"
+                  :consultation-date="consultation?.dateAndTime || undefined"
+                  :disabled="assigningCode"
+                  v-model="ignoreAccessWindow"
+                  @code-selected="handleCodeSelection"
+                />
               </v-col>
             </v-row>
           </div>
@@ -1796,12 +1650,6 @@ const isCodeExpiringSoon = computed(() => {
         </v-card-actions>
       </v-card>
     </v-dialog>
-
-    <EditCodeTimeWindow
-      v-model="showEditCodeTimeWindow"
-      :code="selectedCodeForEdit"
-      @save="saveCodeTimeWindow"
-    />
   </v-container>
 </template>
 

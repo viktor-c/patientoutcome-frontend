@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, toRef } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useForm } from '../../composables/useForm'
 import { calculateScore } from './scoring'
 import { translations } from './translations'
@@ -11,6 +12,7 @@ const props = withDefaults(defineProps<FormComponentProps>(), {
 })
 
 const emit = defineEmits<FormComponentEvents>()
+const { t: tGlobal } = useI18n()
 
 const { updateQuestion, getQuestion, t } = useForm({
   modelValue: toRef(props, 'modelValue'),
@@ -107,6 +109,10 @@ function handleUpdate(questionKey: string, value: number) {
 function getCurrentValue(questionKey: string): number | null {
   return getQuestion('lesserToes', questionKey) as number | null
 }
+
+const allQuestionsAnswered = computed(() => {
+  return questionsData.value.every((question) => getCurrentValue(question.key) !== null)
+})
 </script>
 
 <template>
@@ -196,6 +202,18 @@ function getCurrentValue(questionKey: string): number | null {
           </tr>
         </tbody>
       </v-table>
+    </div>
+
+    <!-- Complete Button -->
+    <div v-if="allQuestionsAnswered && !readonly" class="mt-6 d-flex justify-center">
+      <v-btn
+             variant="elevated"
+             color="success"
+             size="large"
+             prepend-icon="mdi-check-circle"
+             @click="emit('submit')">
+        {{ tGlobal('buttons.complete') }}
+      </v-btn>
     </div>
   </div>
 </template>

@@ -7,7 +7,6 @@ import AppFooter from '@/components/AppFooter.vue'
 import { useNotifierStore, useUserStore } from '@/stores/'
 
 import AppAlert from '@/components/AppAlert.vue'
-import { EditUserSettingsDialog } from '@/components/dialogs/';
 import { useSessionWatcher } from '@/composables/useSessionWatcher'
 
 const { locale, t } = useI18n()
@@ -24,8 +23,6 @@ const notifierStore = useNotifierStore()
 const userStore = useUserStore()
 const router = useRouter()
 
-const showEditUserSettingsKey = ref(0);
-
 const shouldShowNavBar = computed(() => userStore.isAuthenticated() && !userStore.isKioskUser())
 
 // Proactively detect expired sessions when the user returns to the tab after being away.
@@ -36,12 +33,8 @@ function formatDateTime(DateTime: string) {
   return new Intl.DateTimeFormat(locale.value, { timeStyle: 'short' }).format(new Date(DateTime))
 }
 
-const showEditUserSettings = ref(false);
-
-const editUserSettings = () => {
-  showEditUserSettingsKey.value++;
-  // Reset the dialog key to force re-render
-  showEditUserSettings.value = true;
+const navigateToUserSettings = () => {
+  router.push('/user-settings');
 }
 
 const logout = async () => {
@@ -60,7 +53,7 @@ const logout = async () => {
         <!-- Hamburger Menu -->
         <v-menu>
           <template #activator="{ props }">
-            <v-btn icon v-bind="props" class="mr-2">
+            <v-btn icon v-bind="props" class="mr-2" id="app-menu-button">
               <v-icon>mdi-menu</v-icon>
             </v-btn>
           </template>
@@ -115,7 +108,7 @@ const logout = async () => {
         <!-- Notifications Dropdown - only show when there are notifications -->
         <v-menu v-if="notifierStore.notifications.length > 0">
           <template #activator="{ props }">
-            <v-btn icon v-bind="props">
+            <v-btn icon v-bind="props" id="app-notifications-button">
               <v-icon>mdi-bell</v-icon>
             </v-btn>
           </template>
@@ -131,8 +124,8 @@ const logout = async () => {
             </v-list-item>
           </v-list>
         </v-menu>
-        <v-btn icon slim @click="editUserSettings"><v-icon>mdi-account</v-icon></v-btn>
-        <v-btn icon slim @click="logout"><v-icon>mdi-logout</v-icon></v-btn>
+        <v-btn icon slim @click="navigateToUserSettings" id="app-user-settings-button"><v-icon>mdi-account</v-icon></v-btn>
+        <v-btn icon slim @click="logout" id="app-logout-button"><v-icon>mdi-logout</v-icon></v-btn>
         <!-- Language selector component (shows current language + flag) -->
         <!-- The interactive menu moved into LanguageSelector.vue -->
 
@@ -153,7 +146,6 @@ const logout = async () => {
     <!-- App Footer -->
     <AppFooter />
   </v-app>
-  <EditUserSettingsDialog :key="showEditUserSettingsKey" v-model:show="showEditUserSettings" />
 </template>
 
 <style scoped>

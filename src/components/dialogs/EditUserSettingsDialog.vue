@@ -20,7 +20,7 @@ const MIN_DAYS = 0
 const MAX_DAYS = 365
 
 const user = ref({
-  name: userStore.username || '',
+  name: userStore.name || '',
   username: userStore.username || '',
   email: userStore.email || '',
   department: userStore.department || '',
@@ -110,8 +110,7 @@ async function save() {
     };
 
     await userStore.updateUser(payload);
-    // persist the local setting into the localStorage-backed store
-    userStore.daysBeforeConsultations = Number(user.value.daysBeforeConsultations || 7)
+    // The store now automatically syncs all updated fields including daysBeforeConsultations
     show.value = false;
   } catch {
     // handle error, e.g. show notification
@@ -120,13 +119,13 @@ async function save() {
 </script>
 
 <template>
-  <v-dialog v-model="show" max-width="600" @update:model-value="(val) => val && fetchDepartmentData()">
+  <v-dialog v-model="show" max-width="600" @update:model-value="(val) => val && fetchDepartmentData()" id="app-user-settings-dialog">
     <v-card>
       <v-card-title>{{ t('editUserSettings.title') }}</v-card-title>
       <v-card-text>
-        <v-text-field v-if="user" v-model="user.name" :label="t('editUserSettings.name')" />
-        <v-text-field v-if="user" v-model="user.username" :label="t('editUserSettings.username')" />
-        <v-text-field v-if="user" v-model="user.email" :label="t('editUserSettings.email')" />
+        <v-text-field v-if="user" v-model="user.name" :label="t('editUserSettings.name')" id="app-user-settings-name" />
+        <v-text-field v-if="user" v-model="user.username" :label="t('editUserSettings.username')" id="app-user-settings-username" />
+        <v-text-field v-if="user" v-model="user.email" :label="t('editUserSettings.email')" id="app-user-settings-email" />
         <v-text-field
                       v-if="user"
                       v-model="user.departmentName"
@@ -156,8 +155,8 @@ async function save() {
       </v-card-text>
       <v-card-actions>
         <v-spacer />
-        <v-btn @click="() => (show = false)">{{ t('common.cancel') }}</v-btn>
-        <v-btn color="primary" @click="save">{{ t('common.save') }}</v-btn>
+        <v-btn @click="() => (show = false)" id="app-user-settings-cancel-button">{{ t('common.cancel') }}</v-btn>
+        <v-btn color="primary" @click="save" id="app-user-settings-save-button">{{ t('common.save') }}</v-btn>
       </v-card-actions>
     </v-card>
     <ChangePasswordDialog v-model:show="showPasswordDialog" @close="closePasswordDialog" />

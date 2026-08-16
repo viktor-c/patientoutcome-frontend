@@ -19,6 +19,8 @@ export default defineConfig(({ mode }) => {
   const hmrHost = env.VITE_HMR_HOST || undefined
 
   console.debug("VITE_ALLOWED_HOSTS:", allowedHosts)
+  // check the time to see if fake time is used or not
+  console.debug("Time on server:", new Date().toISOString())
 
   return {
     plugins: [

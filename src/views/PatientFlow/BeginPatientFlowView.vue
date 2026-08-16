@@ -3,17 +3,30 @@ import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { ResponseError } from '@/api'
-import { codeApi } from '@/api'
+import { codeApi, caseContactApi } from '@/api'
+import { useNotifierStore } from '@/stores/notifierStore'
 
-const { t } = useI18n()
+const { t, locale } = useI18n()
 const router = useRouter()
+const notifierStore = useNotifierStore()
 
 const patientCode = ref('')
 const errorMessage = ref('')
 const showGreeting = ref(true) // Controls the visibility of the greeting message
 const showInput = ref(false) // Controls the visibility of the input field
 const showMessage = ref(false) // Controls the visibility of the success message
+const isArchivedCode = ref(false) // Flag for archived code
+const showContactForm = ref(false) // Controls visibility of contact form
+const contactMessage = ref('')
+const sendingReport = ref(false)
 
+// Captcha state
+const captchaId = ref('')
+const captchaSvg = ref('')
+const captchaAnswer = ref('')
+const loadingCaptcha = ref(false)
+
+contactMessage.value = t('flow.archivedCodeMessage') // Initialize contact message
 // Accept code as a prop from the route
 const props = defineProps<{
   code?: string | null
@@ -28,6 +41,83 @@ const showNormalFlow = () => {
       showInput2.value = true
     }, 100) // Delay for h2 and input to appear after h1 moves
   }, 500) // Delay for h1
+}
+
+const loadCaptcha = async () => {
+  loadingCaptcha.value = true
+  try {
+    const response = await caseContactApi.getCaseContactCaptcha()
+    if (response.responseObject) {
+      captchaId.value = response.responseObject.captchaId
+      captchaSvg.value = response.responseObject.captchaSvg
+    }
+  } catch (error) {
+    console.error('Failed to load captcha:', error)
+    errorMessage.value = 'Failed to load captcha'
+  } finally {
+    loadingCaptcha.value = false
+  }
+}
+
+const sendContactReport = async () => {
+  if (!contactMessage.value.trim()) {
+    errorMessage.value = t('flow.yourMessage') + ' is required'
+    return
+  }
+
+  if (!captchaAnswer.value.trim()) {
+    errorMessage.value = 'Please complete the captcha'
+    return
+  }
+
+  sendingReport.value = true
+  errorMessage.value = ''
+
+  try {
+    const response = await caseContactApi.submitCaseContactReport({
+      submitCaseContactReportRequest: {
+        code: patientCode.value,
+        message: contactMessage.value,
+        captchaId: captchaId.value,
+        captchaAnswer: captchaAnswer.value,
+        locale: locale.value,
+      },
+    })
+
+    // Check if the response indicates success
+    if (response.success) {
+      notifierStore.notify(t('flow.reportSent'), 'success')
+      showContactForm.value = false
+      contactMessage.value = ''
+      captchaAnswer.value = ''
+
+      // Redirect to patient flow without code after 2 seconds
+      setTimeout(() => {
+        router.push({ name: 'patientflow' })
+      }, 2000)
+    } else {
+      // Response returned but success is false
+      errorMessage.value = response.message || t('flow.reportError')
+      notifierStore.notify(errorMessage.value, 'error')
+      // Reload captcha on error
+      await loadCaptcha()
+      captchaAnswer.value = ''
+    }
+  } catch (error: unknown) {
+    console.error('Error sending contact report:', error)
+    if (error instanceof ResponseError) {
+      const errorData = await error.response.json()
+      errorMessage.value = errorData.message || t('flow.reportError')
+    } else {
+      errorMessage.value = t('flow.reportError')
+    }
+    notifierStore.notify(errorMessage.value, 'error')
+    // Reload captcha on error
+    await loadCaptcha()
+    captchaAnswer.value = ''
+  } finally {
+    sendingReport.value = false
+  }
 }
 
 const validateCode = async () => {
@@ -64,7 +154,12 @@ const validateCode = async () => {
         console.error('Error validating code:', statusCode, errMessage)
 
         // Handle different error statuses
-        if (statusCode === 404 || statusCode === 400 || statusCode === 500) {
+        if (statusCode === 403) {
+          // Archived code - show special UI
+          isArchivedCode.value = true
+          errorMessage.value = errMessage
+          return
+        } else if (statusCode === 404 || statusCode === 400 || statusCode === 500) {
           errorMessage.value = errMessage.includes('not currently active')
             ? t('flow.consultationNotActiveMessage')
             : t('flow.invalidCodeMessage')
@@ -102,7 +197,110 @@ onMounted(() => {
 </script>
 
 <template>
-  <v-container v-show="!showMessage">
+  <!-- Archived Code UI -->
+  <v-container v-if="isArchivedCode" class="archived-code-container">
+    <v-row justify="center">
+      <v-col cols="12" md="8" lg="6">
+        <v-card class="pa-6 animate__animated animate__fadeIn">
+          <v-card-title class="text-h4 text-center mb-4">
+            <v-icon size="large" color="error" class="me-2">mdi-archive-alert</v-icon>
+            {{ t('flow.archivedCodeTitle') }}
+          </v-card-title>
+
+          <v-card-text>
+            <v-alert type="error" variant="tonal" prominent class="mb-6">
+              {{ t('flow.archivedCodeMessage') }}
+            </v-alert>
+
+            <v-divider class="my-6"></v-divider>
+
+            <!-- Contact Form Section -->
+            <div v-if="!showContactForm">
+              <p class="text-center mb-4">{{ t('flow.reportIssueDescription') }}</p>
+              <v-btn
+                color="primary"
+                variant="elevated"
+                size="large"
+                block
+                @click="showContactForm = true; loadCaptcha()"
+                prepend-icon="mdi-email-alert">
+                {{ t('flow.contactPhysician') }}
+              </v-btn>
+            </div>
+
+            <div v-else>
+              <h3 class="text-h6 mb-3">{{ t('flow.reportIssueTitle') }}</h3>
+
+              <v-alert type="warning" variant="tonal" density="compact" class="mb-4">
+                <div class="text-caption">
+                  <v-icon size="small" class="me-1">mdi-information</v-icon>
+                  {{ t('flow.reportIssueNote') }}
+                </div>
+              </v-alert>
+
+              <v-textarea
+                v-model="contactMessage"
+                :label="t('flow.yourMessage')"
+                rows="4"
+                variant="outlined"
+                class="mb-4"></v-textarea>
+
+              <!-- Captcha Section -->
+              <div class="mb-4">
+                <div v-if="loadingCaptcha" class="text-center py-4">
+                  <v-progress-circular indeterminate color="primary"></v-progress-circular>
+                  <p class="text-caption mt-2">Loading captcha...</p>
+                </div>
+                <div v-else-if="captchaSvg">
+                  <div class="captcha-container mb-2" v-html="captchaSvg"></div>
+                  <v-text-field
+                    v-model="captchaAnswer"
+                    label="Enter the code shown above"
+                    variant="outlined"
+                    density="compact"
+                    hide-details="auto"
+                    class="mb-2"></v-text-field>
+                  <v-btn
+                    size="x-small"
+                    variant="text"
+                    prepend-icon="mdi-refresh"
+                    @click="loadCaptcha(); captchaAnswer = ''">
+                    New captcha
+                  </v-btn>
+                </div>
+              </div>
+
+              <v-alert v-if="errorMessage" type="error" density="compact" class="mb-4">
+                {{ errorMessage }}
+              </v-alert>
+
+              <div class="d-flex gap-2">
+                <v-btn
+                  color="grey"
+                  variant="text"
+                  @click="showContactForm = false; contactMessage = ''; captchaAnswer = ''; errorMessage = ''">
+                  {{ t('buttons.cancel') }}
+                </v-btn>
+                <v-spacer></v-spacer>
+                <v-btn
+                  color="primary"
+                  variant="elevated"
+                  :loading="sendingReport"
+                  :disabled="!captchaAnswer || !contactMessage.trim()"
+                  @click="sendContactReport"
+                  prepend-icon="mdi-send">
+                  {{ t('flow.sendReport') }}
+                </v-btn>
+              </div>
+            </div>
+          </v-card-text>
+        </v-card>
+      </v-col>
+    </v-row>
+  </v-container>
+
+  <!-- Normal Flow UI -->
+  <v-container v-show="!showMessage && !isArchivedCode">
     <v-row justify="center">
       <v-col cols="12" md="6">
         <h1 class="start animate__animated animate__fadeInUp" :class="{ 'move-to-top': moveToTop }">
@@ -128,12 +326,19 @@ onMounted(() => {
       </v-col>
     </v-row>
   </v-container>
+
+  <!-- Success Message -->
   <h1 v-if="showMessage" class="success-message animate__animated animate__fadeInUpBig">
     {{ t('flow.successMessage') }}
   </h1>
 </template>
 
 <style scoped>
+/* Archived code container */
+.archived-code-container {
+  margin-top: 10vh;
+}
+
 /* Transition for sliding up the greeting message, input field, and success message */
 .greeting-message {
   text-align: center;

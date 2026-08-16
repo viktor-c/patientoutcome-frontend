@@ -1,4 +1,4 @@
-import { Configuration, UserApi, FormApi, PatientApi, PatientCaseApi, ConsultationApi, CodeApi, FormtemplateApi, KioskApi, SurgeryApi, BlueprintApi, StatisticsApi, FeedbackApi, UserDepartmentApi, BackupApi, SettingsApi, SetupApi } from '@/api/';
+import { Configuration, UserApi, FormApi, PatientApi, PatientCaseApi, ConsultationApi, CodeApi, FormtemplateApi, KioskApi, SurgeryApi, BlueprintApi, StatisticsApi, FeedbackApi, UserDepartmentApi, BackupApi, SettingsApi, SetupApi, CaseContactApi } from '@/api/';
 import { authMiddleware } from '@/middleware/authMiddleware';
 import { notFoundMiddleware } from '@/middleware/notFoundMiddleware';
 import { resolveApiBaseUrl } from '@/utils/apiBaseUrl';
@@ -31,6 +31,7 @@ export const consultationApi = new ConsultationApi(apiConfig)
 export const codeApi = new CodeApi(apiConfig)
 export const patientCaseApi = new PatientCaseApi(apiConfig) // Assuming you have a PatientCaseApi similar to UserApi
 export const caseApi = new PatientCaseApi(apiConfig) // Alias for patientCaseApi
+export const caseContactApi = new CaseContactApi(apiConfig)
 export const formtemplateApi = new FormtemplateApi(apiConfig)
 export const kioskApi = new KioskApi(apiConfig)
 export const surgeryApi = new SurgeryApi(apiConfig)
@@ -43,6 +44,31 @@ export const settingsApi = new SettingsApi(apiConfig)
 export const setupApi = new SetupApi(apiConfig)
 
 export * from '@/api/index'; // Export all APIs and models from the index file
+
+/**
+ * Check if a username is available.
+ * Temporary wrapper until the OpenAPI client is regenerated.
+ */
+export async function checkUsernameAvailability(username: string) {
+  const base = apiConfig.basePath ?? '';
+  const url = `${base.replace(/\/$/, '')}/user/check-username/${encodeURIComponent(username)}`;
+  const res = await fetch(url, {
+    method: 'GET',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    credentials: 'include',
+  });
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`Failed to check username: ${res.status} ${res.statusText}: ${text}`);
+  }
+  const data = await res.json();
+  return {
+    success: true,
+    responseObject: data,
+  };
+}
 
 /**
  * Admin helper to update a user by username by calling the API path that includes the username.
@@ -252,6 +278,35 @@ export async function restoreCode(code: string) {
   if (!res.ok) {
     const text = await res.text();
     throw new Error(`Failed to restore code: ${res.status} ${res.statusText}: ${text}`);
+  }
+  return await res.json();
+}
+
+export async function getExpiringCaseCodes(months = 6) {
+  const base = apiConfig.basePath ?? '';
+  const url = `${base.replace(/\/$/, '')}/form-access-code/expiring?months=${months}`;
+  const res = await fetch(url, {
+    method: 'GET',
+    credentials: 'include',
+  });
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`Failed to get expiring codes: ${res.status} ${res.statusText}: ${text}`);
+  }
+  return await res.json();
+}
+
+export async function extendCaseCodeExpiration(code: string) {
+  const base = apiConfig.basePath ?? '';
+  const url = `${base.replace(/\/$/, '')}/form-access-code/${encodeURIComponent(code)}/extend`;
+  const res = await fetch(url, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    credentials: 'include',
+  });
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`Failed to extend code expiration: ${res.status} ${res.statusText}: ${text}`);
   }
   return await res.json();
 }

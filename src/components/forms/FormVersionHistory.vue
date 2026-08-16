@@ -1,5 +1,5 @@
 <template>
-  <v-dialog v-model="dialog" max-width="900px" scrollable>
+  <v-dialog v-model="dialog" width="auto" scrollable>
     <template #activator="{ props: activatorProps }">
       <v-btn
         v-bind="activatorProps"
@@ -79,7 +79,7 @@
               </v-card-title>
 
               <v-card-subtitle class="py-1">
-                Changed by: {{ version.changedBy }}
+                Changed by: {{ version.changedByUser.name || 'Unknown User' }}
               </v-card-subtitle>
 
               <v-card-text class="py-2">

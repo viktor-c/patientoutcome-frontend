@@ -60,6 +60,24 @@ interface Props {
 
   /** Optional contextual data supplied by the host view */
   context?: FormComponentContext
+
+  /** Whether to show standard-mode navigation buttons for the host flow */
+  showNavigation?: boolean
+
+  /** Whether to suppress form-internal navigation controls */
+  hideNavigation?: boolean
+
+  /** Whether the previous action is available */
+  canGoPrevious?: boolean
+
+  /** Whether the next action is available */
+  canGoNext?: boolean
+
+  /** Label shown on the previous button */
+  previousLabel?: string
+
+  /** Label shown on the next button */
+  nextLabel?: string
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -69,7 +87,13 @@ const props = withDefaults(defineProps<Props>(), {
   showVersionControls: false,
   currentVersion: 1,
   viewingVersion: null,
-  context: undefined
+  context: undefined,
+  showNavigation: false,
+  hideNavigation: false,
+  canGoPrevious: false,
+  canGoNext: true,
+  previousLabel: 'Previous',
+  nextLabel: 'Next'
 })
 
 interface Emits {
@@ -78,6 +102,10 @@ interface Emits {
   (e: 'compareVersions', v1: number, v2: number): void
   (e: 'versionRestored'): void
   (e: 'submit'): void
+  (e: 'next'): void
+  (e: 'previous'): void
+  (e: 'saveAndGoToPreviousForm'): void
+  (e: 'saveAndGoToNextForm'): void
 }
 
 const emit = defineEmits<Emits>()
@@ -265,6 +293,10 @@ const errorMessage = computed(() => {
   return null
 })
 
+const shouldShowStandardNavigation = computed(() => {
+  return !props.hideNavigation && props.showNavigation && viewMode.value === 'standard' && !props.readonly && !isViewingOldVersion.value
+})
+
 // Handle model value updates from the form component
 function handleModelUpdate(value: FormSubmissionData) {
   // Preserve the initial beginFill timestamp
@@ -441,14 +473,35 @@ onMounted(() => {
                :readonly="readonly || isViewingOldVersion"
                :locale="locale"
                :context="context"
+               :hide-navigation="hideNavigation"
                @update:model-value="handleModelUpdate"
-               @submit="emit('submit')" />
+               @submit="emit('submit')"
+               @saveAndGoToPreviousForm="emit('saveAndGoToPreviousForm')"
+               @saveAndGoToNextForm="emit('saveAndGoToNextForm')" />
+
+    <div v-if="shouldShowStandardNavigation" class="d-flex justify-space-between mt-4">
+      <v-btn
+             variant="outlined"
+             color="primary"
+             :disabled="!canGoPrevious"
+             @click="emit('previous')">
+        {{ previousLabel }}
+      </v-btn>
+
+      <v-btn
+             color="primary"
+             variant="flat"
+             :disabled="!canGoNext"
+             @click="emit('next')">
+        {{ nextLabel }}
+      </v-btn>
+    </div>
 
     <!-- Fallback: loading state (shouldn't happen with eager loading) -->
-    <div v-else class="text-center pa-4">
+    <!-- <div v-else class="text-center pa-4">
       <v-progress-circular indeterminate color="primary" />
       <div class="mt-2 text-caption">Loading form...</div>
-    </div>
+    </div> -->
 
     <!-- Version Diff Dialog -->
     <FormVersionDiff

@@ -7,6 +7,7 @@ import StatisticsView from '@/views/StatisticsView.vue'
 
 export const mainRoutes: RouteRecordRaw[] = [
   { path: '/dashboard', name: 'dashboard', component: DashboardView, meta: { titleKey: 'pageTitles.dashboard' } },
+  { path: '/user-settings', name: 'usersettings', component: () => import('@/views/UserSettingsView.vue'), meta: { titleKey: 'pageTitles.userSettings' } },
   { path: '/activity-log', name: 'activitylog', component: ActivityLogView, meta: { titleKey: 'pageTitles.activityLog', requiredRole: 'admin' } },
   { path: '/statistics/:caseId', name: 'statistics', component: StatisticsView, props: true, meta: { titleKey: 'pageTitles.statistics' } },
   { path: '/flow/:code?', name: 'patientflow', component: BeginPatientFlowView, props: true, meta: { titleKey: 'pageTitles.patientFlow' } },

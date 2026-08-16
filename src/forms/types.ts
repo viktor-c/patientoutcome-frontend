@@ -1,6 +1,6 @@
 /**
  * Form Plugin System Type Definitions
- * 
+ *
  * This file defines the interface for form plugins in the application.
  * Each form (MOXFQ, VISA-A, etc.) implements this plugin interface.
  */
@@ -67,6 +67,9 @@ export interface FormComponentProps {
 
   /** Optional contextual data supplied by the host view */
   context?: FormComponentContext
+
+  /** Whether to suppress form-internal navigation UI */
+  hideNavigation?: boolean
 }
 
 export interface FormComponentContext {
@@ -85,6 +88,12 @@ export interface FormComponentEvents {
 
   /** Emitted when the user finishes filling the form (e.g. clicks Done in carousel) */
   'submit': []
+
+  /** Emitted when the user wants to save and move to the previous form */
+  'saveAndGoToPreviousForm': []
+
+  /** Emitted when the user wants to save and move to the next form */
+  'saveAndGoToNextForm': []
 }
 
 export interface FormCommentDraft {
@@ -111,13 +120,13 @@ export interface FormPlugin {
   /** Translations for all supported locales */
   translations: FormTranslations
 
-  /** 
+  /**
    * Calculate scoring from form data
    * This logic should match the backend scoring calculation
    */
   calculateScore: (formData: FormData) => ScoringData
 
-  /** 
+  /**
    * Validate form data
    * @returns true if data is valid, false otherwise
    */

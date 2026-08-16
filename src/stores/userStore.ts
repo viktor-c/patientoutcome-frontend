@@ -13,6 +13,7 @@ export const SESSION_MAX_AGE_MS = 36 * 60 * 60 * 1000;
 
 export const useUserStore = defineStore('user', () => {
   // const sessionId = useLocalStorage('sessionId', '')
+  const name = useLocalStorage('name', '')
   const username = useLocalStorage('username', '')
   const belongsToCenter = useLocalStorage('belongsToCenter', [] as string[])
   const department = useLocalStorage('department', '')
@@ -40,12 +41,14 @@ export const useUserStore = defineStore('user', () => {
   //
   interface SessionData {
     // sessionId: string
+    name: string
     username: string
     belongsToCenter: string[]
     department: string
     email?: string // Optional email field
     consultationAccessDaysBefore?: number
     consultationAccessDaysAfter?: number
+    daysBeforeConsultations?: number
     roles?: string[] // Optional roles array field
     permissions?: string[] // Optional permissions array field
     postopWeek?: number // Optional postopWeek field for kiosk users
@@ -53,6 +56,7 @@ export const useUserStore = defineStore('user', () => {
 
   const setSession = (data: SessionData) => {
     // sessionId.value = data.sessionId
+    name.value = data.name
     username.value = data.username
     belongsToCenter.value = data.belongsToCenter
     department.value = data.department
@@ -70,12 +74,14 @@ export const useUserStore = defineStore('user', () => {
   const clearSession = () => {
 
     // sessionId.value = ''
+    name.value = ''
     username.value = ''
     belongsToCenter.value = []
     department.value = ''
     email.value = ''
-    consultationAccessDaysBefore.value = 3
-    consultationAccessDaysAfter.value = 30
+    consultationAccessDaysBefore.value = 0
+    consultationAccessDaysAfter.value = 0
+    daysBeforeConsultations.value = 0
     roles.value = []
     permissions.value = []
     postopWeek.value = undefined
@@ -130,7 +136,23 @@ export const useUserStore = defineStore('user', () => {
   }
 
   const updateUser = async (update: UpdateUserRequest) => {
-    return await userApi.updateUser({ updateUserRequest: update });
+    const response = await userApi.updateUser({ updateUserRequest: update });
+    // Sync local store with the updated user data from the backend
+    if (response.success && response.responseObject) {
+      const updatedUser = response.responseObject;
+      if (updatedUser.name) name.value = updatedUser.name;
+      if (updatedUser.username) username.value = updatedUser.username;
+      if (updatedUser.email) email.value = updatedUser.email;
+      if (updatedUser.department) department.value = updatedUser.department[0] || '';
+      if (updatedUser.belongsToCenter) belongsToCenter.value = [updatedUser.belongsToCenter];
+      if (updatedUser.daysBeforeConsultations !== undefined) daysBeforeConsultations.value = updatedUser.daysBeforeConsultations;
+      if (updatedUser.consultationAccessDaysBefore !== undefined) consultationAccessDaysBefore.value = updatedUser.consultationAccessDaysBefore;
+      if (updatedUser.consultationAccessDaysAfter !== undefined) consultationAccessDaysAfter.value = updatedUser.consultationAccessDaysAfter;
+      if (updatedUser.roles) roles.value = updatedUser.roles;
+      if (updatedUser.permissions) permissions.value = updatedUser.permissions;
+      if (updatedUser.postopWeek !== undefined) postopWeek.value = updatedUser.postopWeek;
+    }
+    return response;
   };
 
   const changePassword = async (currentPassword: string, newPassword: string, confirmPassword: string) => {
@@ -156,6 +178,7 @@ export const useUserStore = defineStore('user', () => {
   }
 
   return {
+    name,
     username, belongsToCenter, department, email, roles, permissions,
     consultationAccessDaysBefore, consultationAccessDaysAfter,
     daysBeforeConsultations, postopWeek,

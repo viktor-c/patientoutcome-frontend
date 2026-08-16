@@ -15,54 +15,54 @@ export const translations: FormTranslations = {
     "efas.instructions.description": "Bitte beantworten Sie die folgenden Fragen zum Zustand Ihres Fußes und/oder Sprunggelenks und wählen Sie die passendste Antwort aus.",
     "efas.sportQuestions.info": "Die Sportfragen sind optional und nur für Personen relevant, die regelmäßig Sport treiben.",
     "efas.notApplicable": "nicht zutreffend",
-    
+
     "standardfragebogen.title": "Standardfragen",
     "standardfragebogen.q1.label": "Haben Sie in Ruhe Schmerzen im Fuß / Sprunggelenk ?",
     "standardfragebogen.q1.description": "0 immer -> 4 nie",
     "standardfragebogen.q1.tickLabelLow": "immer",
     "standardfragebogen.q1.tickLabelHigh": "nie",
-    
+
     "standardfragebogen.q2.label": "Wie weit können Sie gehen bis Sie Schmerzen am Fuß / Sprunggelenk bekommen?",
     "standardfragebogen.q2.description": "0 Gehen unmöglich -> 4 Keine Einschränkungen",
     "standardfragebogen.q2.tickLabelLow": "unmöglich",
     "standardfragebogen.q2.tickLabelHigh": "keine Einschränkungen",
-    
+
     "standardfragebogen.q3.label": "Wie stark hat sich Ihr Gang (d.h. die Art wie Sie gehen) wegen Problemen am Fuß / Sprunggelenk verändert?",
     "standardfragebogen.q3.description": "0 Extreme Veränderung -> 4 Keine Veränderung",
     "standardfragebogen.q3.tickLabelLow": "extreme Veränderung",
     "standardfragebogen.q3.tickLabelHigh": "keine Veränderung",
-    
+
     "standardfragebogen.q4.label": "Haben Sie Schwierigkeiten beim Gehen auf unebenem Untergrund?",
     "standardfragebogen.q4.description": "0 immer -> 4 nie",
     "standardfragebogen.q4.tickLabelLow": "immer",
     "standardfragebogen.q4.tickLabelHigh": "nie",
-    
+
     "standardfragebogen.q5.label": "Haben Sie Schmerzen im Fuß / Sprunggelenk beim Gehen?",
     "standardfragebogen.q5.description": "0 immer -> 4 nie",
     "standardfragebogen.q5.tickLabelLow": "immer",
     "standardfragebogen.q5.tickLabelHigh": "nie",
-    
+
     "standardfragebogen.q6.label": "Wie oft haben Sie Schmerzen im Fuß / Sprunggelenk während körperlicher Aktivität?",
     "standardfragebogen.q6.description": "0 immer -> 4 nie",
     "standardfragebogen.q6.tickLabelLow": "immer",
     "standardfragebogen.q6.tickLabelHigh": "nie",
-    
+
     "sportfragebogen.title": "Sportfragen",
     "sportfragebogen.s1.label": "Können Sie rennen/schnell laufen?",
     "sportfragebogen.s1.description": "0 unmöglich -> 4 Keine Einschränkungen",
     "sportfragebogen.s1.tickLabelLow": "unmöglich",
     "sportfragebogen.s1.tickLabelHigh": "keine Einschränkungen",
-    
+
     "sportfragebogen.s2.label": "Können Sie joggen/langsam laufen?",
     "sportfragebogen.s2.description": "0 unmöglich -> 4 Keine Einschränkungen",
     "sportfragebogen.s2.tickLabelLow": "unmöglich",
     "sportfragebogen.s2.tickLabelHigh": "keine Einschränkungen",
-    
+
     "sportfragebogen.s3.label": "Haben Sie Probleme bei der Landung nach einem Sprung?",
     "sportfragebogen.s3.description": "0 unmöglich -> 4 Keine Einschränkungen",
     "sportfragebogen.s3.tickLabelLow": "unmöglich",
     "sportfragebogen.s3.tickLabelHigh": "keine Einschränkungen",
-    
+
     "sportfragebogen.s4.label": "Können Sie Ihren Sport mit Ihrer üblichen Technik ausüben?",
     "sportfragebogen.s4.description": "0 unmöglich -> 4 Keine Einschränkungen",
     "sportfragebogen.s4.tickLabelLow": "unmöglich",
@@ -77,54 +77,54 @@ export const translations: FormTranslations = {
     "efas.instructions.description": "Please answer the following questions about the condition of your foot and/or ankle and select the most appropriate answer.",
     "efas.sportQuestions.info": "The sport questions are optional and only relevant for people who exercise regularly.",
     "efas.notApplicable": "not applicable",
-    
+
     "standardfragebogen.title": "Standard questions",
     "standardfragebogen.q1.label": "Do you have pain at rest in the foot/ankle?",
     "standardfragebogen.q1.description": "0 always -> 4 never",
     "standardfragebogen.q1.tickLabelLow": "always",
     "standardfragebogen.q1.tickLabelHigh": "never",
-    
+
     "standardfragebogen.q2.label": "How far can you walk before you get pain in the foot/ankle?",
     "standardfragebogen.q2.description": "0 walking impossible -> 4 no limitations",
     "standardfragebogen.q2.tickLabelLow": "impossible",
     "standardfragebogen.q2.tickLabelHigh": "no limitations",
-    
+
     "standardfragebogen.q3.label": "How much has your gait changed because of foot/ankle problems?",
     "standardfragebogen.q3.description": "0 extreme change -> 4 no change",
     "standardfragebogen.q3.tickLabelLow": "extreme change",
     "standardfragebogen.q3.tickLabelHigh": "no change",
-    
+
     "standardfragebogen.q4.label": "Do you have difficulty walking on uneven surfaces?",
     "standardfragebogen.q4.description": "0 always -> 4 never",
     "standardfragebogen.q4.tickLabelLow": "always",
     "standardfragebogen.q4.tickLabelHigh": "never",
-    
+
     "standardfragebogen.q5.label": "Do you have pain in the foot/ankle while walking?",
     "standardfragebogen.q5.description": "0 always -> 4 never",
     "standardfragebogen.q5.tickLabelLow": "always",
     "standardfragebogen.q5.tickLabelHigh": "never",
-    
+
     "standardfragebogen.q6.label": "How often do you have pain during physical activity?",
     "standardfragebogen.q6.description": "0 always -> 4 never",
     "standardfragebogen.q6.tickLabelLow": "always",
     "standardfragebogen.q6.tickLabelHigh": "never",
-    
+
     "sportfragebogen.title": "Sport questions",
     "sportfragebogen.s1.label": "Can you run/fast run?",
     "sportfragebogen.s1.description": "0 impossible -> 4 no limitations",
     "sportfragebogen.s1.tickLabelLow": "impossible",
     "sportfragebogen.s1.tickLabelHigh": "no limitations",
-    
+
     "sportfragebogen.s2.label": "Can you jog/slow run?",
     "sportfragebogen.s2.description": "0 impossible -> 4 no limitations",
     "sportfragebogen.s2.tickLabelLow": "impossible",
     "sportfragebogen.s2.tickLabelHigh": "no limitations",
-    
+
     "sportfragebogen.s3.label": "Do you have problems on landing after a jump?",
     "sportfragebogen.s3.description": "0 impossible -> 4 no limitations",
     "sportfragebogen.s3.tickLabelLow": "impossible",
     "sportfragebogen.s3.tickLabelHigh": "no limitations",
-    
+
     "sportfragebogen.s4.label": "Can you perform your sport with your usual technique?",
     "sportfragebogen.s4.description": "0 impossible -> 4 no limitations",
     "sportfragebogen.s4.tickLabelLow": "impossible",

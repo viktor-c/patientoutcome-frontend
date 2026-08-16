@@ -131,13 +131,13 @@ onMounted(async () => {
     if (externalCode) {
       const consultation = consultationResponse.responseObject as unknown as Record<string, unknown>
       const patientCaseId = consultation.patientCaseId as unknown
-      const patientCaseIdStr = patientCaseId && typeof patientCaseId === 'string' ? patientCaseId : 
-        (patientCaseId && typeof patientCaseId === 'object' && (patientCaseId as Record<string, unknown>)._id ? 
-        (patientCaseId as Record<string, unknown>)._id : 
-        (patientCaseId && typeof patientCaseId === 'object' && (patientCaseId as Record<string, unknown>).id ? 
+      const patientCaseIdStr = patientCaseId && typeof patientCaseId === 'string' ? patientCaseId :
+        (patientCaseId && typeof patientCaseId === 'object' && (patientCaseId as Record<string, unknown>)._id ?
+        (patientCaseId as Record<string, unknown>)._id :
+        (patientCaseId && typeof patientCaseId === 'object' && (patientCaseId as Record<string, unknown>).id ?
         (patientCaseId as Record<string, unknown>).id : ''))
       const consultationIdStr = consultation._id as string || ''
-      
+
       if (patientCaseIdStr && consultationIdStr) {
         initializeAccessLog({
           code: externalCode,
@@ -167,13 +167,25 @@ onMounted(async () => {
     currentFormIndex.value = 0 // Reset to the first form
   } catch (error: unknown) {
     let message = 'An unexpected error occurred'
+    let statusCode = 0;
     if (error instanceof ResponseError) {
-      message = (await error.response.json()).message
+      message = (await error.response.json()).message;
+      statusCode = (await error.response.json()).statusCode;
     }
     logger.error('Error fetching consultation forms:', message)
-    errorMessage.value = message.includes('not currently active')
-      ? t('flow.consultationNotActiveMessage')
-      : t('alerts.consultation.fetchFormsFailed')
+    logger.error('Status code returned: ', statusCode)
+    if (statusCode == 404) { //consultation not found
+      errorMessage.value = t('flow.consultationNotFoundMessage')
+    } else if (statusCode == 400) { //validation error
+      errorMessage.value = statusCode.toString() + message
+    }
+    else if (statusCode == 403) { //forbidden
+      errorMessage.value = statusCode.toString() + message
+    } else if (statusCode == 500) {  //error while retrieving
+      errorMessage.value = statusCode.toString() + message
+    } else {
+      errorMessage.value = "unknown error" + statusCode.toString() + message
+    }
   } finally {
     isLoading.value = false
     if (!errorMessage.value && forms.value.length === 0 && completedForms.value.length === 0) {
@@ -228,35 +240,28 @@ const incompleteForms = computed(() => {
 })
 
 // Handle form submission
-const submitForm = async () => {
-  logger.debug(`========== submitForm() called ==========`)
-  logger.debug(`Current form index: ${currentFormIndex.value}, Total forms: ${forms.value.length}`)
-
+const saveCurrentForm = async (options: { markCompleted?: boolean } = {}) => {
   const currentForm = forms.value[currentFormIndex.value]
   if (!currentForm) {
     logger.error('ShowConsultationForms: Current form not found')
     notifierStore.notify(t('alerts.form.submitFailed'), 'error')
-    return
+    return false
   }
 
   if (!currentForm._id) {
     logger.error('ShowConsultationForms: Form ID missing, cannot save form data')
     notifierStore.notify(t('alerts.form.submitFailed'), 'error')
-    return
+    return false
   }
 
   try {
-    // Save the form data to the backend
     logger.debug(`Saving form ${currentFormIndex.value}: ${currentForm._id}`)
 
-    // form data should be saved even if the form is incomplete
     const updatePayload: Parameters<typeof formApi.updateForm>[0] = {
       formId: currentForm._id,
       updateFormRequest: {
-        code: externalCode ? externalCode : "", // Include code if available for authorization
+        code: externalCode ? externalCode : '',
         patientFormData: currentForm.patientFormData as never,
-        // Send session boundaries so the backend accumulates only this session's duration,
-        // never the idle time between separate fill sessions.
         formStartTime: sessionStartTime.value.toISOString(),
         formEndTime: new Date().toISOString(),
       }
@@ -268,10 +273,11 @@ const submitForm = async () => {
     logger.info(`Form ${currentForm._id} saved successfully`)
     notifierStore.notify(t('alerts.form.saved'), 'success')
 
-    // Track form completion for access logging if using external code
-    if (externalCode && currentForm._id) {
+    if (options.markCompleted && externalCode && currentForm._id) {
       trackFormCompleted(currentForm._id)
     }
+
+    return true
   } catch (error: unknown) {
     logger.error(`Failed to save form ${currentForm._id}:`, error)
     let errorMessage = t('alerts.form.submitFailed')
@@ -284,40 +290,65 @@ const submitForm = async () => {
       }
     }
     notifierStore.notify(errorMessage, 'error')
+    return false
+  }
+}
+
+const submitForm = async () => {
+  logger.debug(`========== submitForm() called ==========`)
+  logger.debug(`Current form index: ${currentFormIndex.value}, Total forms: ${forms.value.length}`)
+
+  const saved = await saveCurrentForm({ markCompleted: true })
+  if (!saved) {
     return
   }
 
-  // Proceed to next form only after successful save
   logger.debug(`Form ${currentFormIndex.value} submitted.`)
   if (currentFormIndex.value < forms.value.length - 1) {
     logger.debug(`Moving to next form: ${currentFormIndex.value} -> ${currentFormIndex.value + 1}`)
     currentFormIndex.value++
-    // Reset scroll position for the next form
     y.value = 0
   } else if (isReviewMode.value) {
     logger.debug(`In review mode, moving past last form`)
-    // In review mode, go to review complete screen
     currentFormIndex.value++
     y.value = 0
   } else {
-    logger.debug(`All forms filled, showing review option`)
-    // All new forms are filled, show review option
-    showReviewOption.value = true
+    logger.debug(`All forms filled, redirecting to completion info`)
+    finalizeAndClose()
     y.value = 0
   }
   logger.debug(`========== submitForm() done ==========`)
 }
 
+const saveAndGoToPreviousForm = async () => {
+  const saved = await saveCurrentForm()
+  if (!saved) {
+    return
+  }
+
+  if (currentFormIndex.value > 0) {
+    currentFormIndex.value--
+    y.value = 0
+  }
+}
+
+const saveAndGoToNextForm = async () => {
+  const saved = await saveCurrentForm()
+  if (!saved) {
+    return
+  }
+
+  if (currentFormIndex.value < forms.value.length - 1) {
+    currentFormIndex.value++
+    y.value = 0
+  } else {
+    finalizeAndClose()
+    y.value = 0
+  }
+}
+
 const startCountdown = () => {
-  let countdown = 4 // 4 seconds
-  const interval = setInterval(() => {
-    countdown--
-    countdownProgress.value = (countdown / 4) * 100
-    if (countdown <= 0) {
-      clearInterval(interval)
-      router.push({ name: 'completioninfo' })
-    }
-  }, 1000)
+  router.push({ name: 'completioninfo' })
 }
 
 // Start reviewing previously completed forms
@@ -388,6 +419,7 @@ const gotoPreviousForm = () => {
 }
 
 const isSmallScreen = computed(() => window.innerWidth < 1300)
+console.debug(`ShowConsultationForms.vue isSmallScreen: ${isSmallScreen.value}, window.innerWidth: ${window.innerWidth}`)
 </script>
 
 <template>
@@ -418,22 +450,25 @@ const isSmallScreen = computed(() => window.innerWidth < 1300)
       <v-progress-linear color="green" :model-value="formFillProgress" :height="8"></v-progress-linear>
     </v-container> -->
     <v-container>
-      <!-- Notification Preferences (patient case-code flow) -->
-      <v-card v-if="externalCode" class="mb-4">
+      <!--TODO Notification Preferences (patient case-code flow) -->
+      <!-- <v-card v-if="externalCode" class="mb-4">
         <v-card-text>
           <NotificationPreferences :case-access-token="externalCode" />
         </v-card-text>
-      </v-card>
+      </v-card> -->
 
       <transition name="slide-down">
+        <!-- show error messages -->
         <v-card v-if="errorMessage">
           <v-card-text class="error">{{ errorMessage }}</v-card-text>
         </v-card>
+        <!-- show success message after all forms are filled -->
         <v-card v-else-if="showSuccessMessage" class="pa-6">
           <h1 class="success-message">{{ t('flow.allFormsFilled') }}</h1>
           <p class="text-center text-grey mt-2">{{ t('flow.redirectingMessage') }}</p>
           <v-progress-linear :model-value="countdownProgress" color="blue" :height="8" class="mt-4"></v-progress-linear>
         </v-card>
+        <!--  -->
         <v-card v-else-if="showReviewOption" class="pa-6">
           <v-card-title class="text-h5 text-center">
             {{ t('flow.formsCompleted') }}
@@ -453,6 +488,7 @@ const isSmallScreen = computed(() => window.innerWidth < 1300)
                 <span class="text-body-2 mt-2">{{ t('flow.incompleteFormsExplanation') }}</span>
               </div>
             </v-alert>
+            <!-- all forms completed -->
             <v-alert
                      v-else
                      type="success"
@@ -500,9 +536,9 @@ const isSmallScreen = computed(() => window.innerWidth < 1300)
           </v-card-actions>
         </v-card>
         <v-card v-else-if="currentForm" v-scroll="onScroll" ref="formContainer">
-          <v-chip v-if="isReviewMode" color="info" class="ma-2" size="small">
+          <!-- <v-chip v-if="isReviewMode" color="info" class="ma-2" size="small">
             {{ t('flow.reviewModeLabel') }}
-          </v-chip>
+          </v-chip> -->
           <!-- formData coming from backend has less info than FormSubmissionData, the backend should fix this  -->
           <PluginFormRenderer
                               :key="`${currentForm._id}-${locale}`"
@@ -510,29 +546,16 @@ const isSmallScreen = computed(() => window.innerWidth < 1300)
                               :model-value="(currentForm.patientFormData as any) || {}"
                               :locale="locale"
                               :context="formContext"
+                              :show-navigation="!isReviewMode && !isFinalized"
+                              :can-go-previous="currentFormIndex > 0"
+                              :previous-label="t('common.previous')"
+                              :next-label="currentFormIndex === forms.length - 1 ? t('flow.finishAndClose') : t('common.next')"
                               @update:model-value="(data) => processFormData(data, currentFormIndex)"
-                              @submit="submitForm" />
-
-          <!-- Navigation buttons -->
-          <v-card-actions class="px-6 py-4 d-flex justify-space-between">
-            <v-btn
-                   v-if="currentFormIndex > 0"
-                   variant="outlined"
-                   color="primary"
-                   @click="gotoPreviousForm">
-              <v-icon start>mdi-arrow-left</v-icon>
-              {{ t('common.previous', 'Previous') }}
-            </v-btn>
-            <v-spacer v-else />
-
-            <v-btn
-                   color="primary"
-                   variant="flat"
-                   @click="submitForm">
-              <v-icon end>mdi-arrow-right</v-icon>
-              {{ currentFormIndex === forms.length - 1 ? t('common.review', 'Review') : t('common.next', 'Next') }}
-            </v-btn>
-          </v-card-actions>
+                              @submit="submitForm"
+                              @next="submitForm"
+                              @previous="gotoPreviousForm"
+                              @saveAndGoToPreviousForm="saveAndGoToPreviousForm"
+                              @saveAndGoToNextForm="saveAndGoToNextForm" />
         </v-card>
       </transition>
     </v-container>
@@ -561,7 +584,7 @@ const isSmallScreen = computed(() => window.innerWidth < 1300)
 .language-selector-floating {
   position: fixed;
   top: 0;
-  right: 15%;
+  right: 30%;
   z-index: 10;
   background: white;
   border-radius: 4px;

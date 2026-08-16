@@ -207,11 +207,11 @@ defineExpose({
             <div class="d-flex align-center justify-space-between mb-2">{{ safeFormatDate(consultation.dateAndTime,
               'DD.MM.YY') }}
               <div class="text-subtitle-2">
-                {{ t('patientOverview.consultation') }} #
                 <RouterLink
                             class="consultation-id-link"
                             :to="{ name: 'consultationoverview', params: { consultationId: getConsultationId(consultation) } }">
-                  {{ getConsultationId(consultation) }}
+                {{ t('patientOverview.consultation') }} # {{ sortedConsultations.length - consultationIndex }}
+                  <!-- {{ getConsultationId(consultation) }} -->
                 </RouterLink>
               </div>
               <v-chip

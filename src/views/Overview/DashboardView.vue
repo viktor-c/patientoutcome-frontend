@@ -250,7 +250,7 @@ onUnmounted(() => {
       <v-col cols="12" sm="6" md="4" class="d-flex justify-end creation-flow-col">
         <v-tooltip location="bottom" :text="t('buttons.startCreationFlow')">
           <template #activator="{ props }">
-            <v-btn
+             <v-btn
                    v-bind="props"
                    icon
                    color="primary"

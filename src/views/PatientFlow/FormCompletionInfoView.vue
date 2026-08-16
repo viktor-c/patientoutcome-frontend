@@ -9,6 +9,10 @@ const { t } = useI18n()
     <v-row justify="center" class="mt-4 mt-md-12">
       <v-col cols="12" md="10" lg="8">
         <v-card class="pa-4 pa-sm-6 pa-md-8 completion-card">
+          <v-alert type="success" variant="tonal" prominent class="mb-6">
+            {{ t('completionInfo.thankyou') || 'Thank you for completing the form!' }}
+          </v-alert>
+
           <!-- Success Icon and Title -->
           <div class="text-center mb-6 mb-md-8">
             <v-icon :size="$vuetify.display.smAndDown ? 60 : 80" color="success"

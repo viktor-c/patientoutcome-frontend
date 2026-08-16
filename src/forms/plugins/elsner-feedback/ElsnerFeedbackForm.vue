@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useUserStore } from '@/stores/userStore'
 import ElsnerFeedbackChart from '@/components/forms/ElsnerFeedbackChart.vue'
 import {
@@ -22,6 +23,7 @@ const props = withDefaults(defineProps<FormComponentProps>(), {
 
 const emit = defineEmits<FormComponentEvents>()
 const userStore = useUserStore()
+const { t: tGlobal } = useI18n()
 
 const localSection = ref(getSection(getInitialData()))
 const localPoints = ref<ElsnerFeedbackPoint[]>([])
@@ -107,6 +109,7 @@ function setExpectation(expectation: number) {
 
 const currentWeek = computed(() => localSection.value.currentWeek)
 const selectedExpectation = computed(() => localSection.value.selectedExpectation)
+const isFormComplete = computed(() => currentWeek.value != null && selectedExpectation.value != null)
 const chartXMax = computed(() => {
   const maxWeekInPoints = localPoints.value.reduce((max, point) => Math.max(max, point.week), 0)
   const baseline = Math.max(currentWeek.value ?? 0, maxWeekInPoints, 12)
@@ -170,6 +173,18 @@ watch(
               color="red"
               :disabled="currentWeek == null"
               @update:model-value="(value) => setExpectation(Number(value))" />
+
+    <!-- Complete Button -->
+    <div v-if="isFormComplete && !readonly" class="mt-6 d-flex justify-center">
+      <v-btn
+             variant="elevated"
+             color="success"
+             size="large"
+             prepend-icon="mdi-check-circle"
+             @click="emit('submit')">
+        {{ tGlobal('buttons.complete') }}
+      </v-btn>
+    </div>
   </div>
 </template>
 

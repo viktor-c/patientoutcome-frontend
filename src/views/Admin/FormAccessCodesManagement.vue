@@ -2,12 +2,11 @@
 import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
-import { codeApi, consultationApi, patientCaseApi, resetConsultationFormsByCode, setCodeActivationStart, updateCodeValidity } from '@/api'
+import { codeApi, consultationApi, patientCaseApi, resetConsultationFormsByCode, setCodeActivationStart, getExpiringCaseCodes, extendCaseCodeExpiration } from '@/api'
 import { useNotifierStore } from '@/stores/notifierStore'
 import type { ApiCode } from '@/types'
 import { ResponseError } from '@/api'
 import { useDateFormat } from '@/composables/useDateFormat'
-import EditCodeTimeWindow from '@/components/dialogs/EditCodeTimeWindow.vue'
 
 const { t, locale } = useI18n()
 const router = useRouter()
@@ -32,8 +31,9 @@ const searchingAssignConsultation = ref(false)
 const showResetDialogStep1 = ref(false)
 const showResetDialogStep2 = ref(false)
 const selectedCodeForReset = ref<ApiCode | null>(null)
-const showEditTimeWindow = ref(false)
-const selectedCodeForEdit = ref<ApiCode | null>(null)
+const expiringCodesCount = ref(0)
+const showOnlyExpiring = ref(false)
+const loadingExpiringCodes = ref(false)
 
 const headers = computed(() => [
   { title: t('admin.formAccessCodes.table.code'), key: 'code', sortable: true },
@@ -64,6 +64,28 @@ const hasConsultationLink = (code: ApiCode) => !!consultationIdForCode(code)
 const isCodeActive = (code: ApiCode) => !!code.activatedOn
 const canManageAssignedCode = (code: ApiCode) => hasConsultationLink(code) && isCodeActive(code)
 const canAssignConsultation = (code: ApiCode) => !hasConsultationLink(code)
+const isCaseCode = (code: ApiCode) => !!code.patientCaseId && !code.consultationId
+const isCodeExpiring = (code: ApiCode): boolean => {
+  if (!code.expiresOn) return false
+  const expiryDate = new Date(code.expiresOn)
+  const now = new Date()
+  const sixMonthsFromNow = new Date()
+  sixMonthsFromNow.setMonth(sixMonthsFromNow.getMonth() + 6)
+  return expiryDate > now && expiryDate <= sixMonthsFromNow
+}
+const getDaysUntilExpiry = (code: ApiCode): number => {
+  if (!code.expiresOn) return Infinity
+  const expiryDate = new Date(code.expiresOn)
+  const now = new Date()
+  const diffTime = expiryDate.getTime() - now.getTime()
+  return Math.ceil(diffTime / (1000 * 60 * 60 * 24))
+}
+const canExtendCaseCode = (code: ApiCode) => isCaseCode(code) && isCodeActive(code) && isCodeExpiring(code)
+
+const filteredRows = computed(() => {
+  if (!showOnlyExpiring.value) return rows.value
+  return rows.value.filter(code => isCaseCode(code) && isCodeExpiring(code))
+})
 
 const consultationLabel = (code: ApiCode) => {
   const consultationDate = code.consultationId?.dateAndTime
@@ -84,12 +106,33 @@ const loadCodes = async () => {
       const bTime = new Date(b.activatedOn || b.expiresOn || 0).getTime()
       return bTime - aTime
     })
+    // Load expiring codes count
+    await loadExpiringCodesCount()
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : t('admin.formAccessCodes.errors.loadFailed')
     notifierStore.notify(message || t('admin.formAccessCodes.errors.loadFailed'), 'error')
   } finally {
     loading.value = false
   }
+}
+
+const loadExpiringCodesCount = async () => {
+  loadingExpiringCodes.value = true
+  try {
+    const response = await getExpiringCaseCodes(6)
+    if (response.success && Array.isArray(response.responseObject)) {
+      expiringCodesCount.value = response.responseObject.length
+    }
+  } catch (error: unknown) {
+    // Silently fail for expiring codes count
+    console.error('Failed to load expiring codes count:', error)
+  } finally {
+    loadingExpiringCodes.value = false
+  }
+}
+
+const toggleExpiringFilter = () => {
+  showOnlyExpiring.value = !showOnlyExpiring.value
 }
 
 const withCodeAction = async (code: string, action: () => Promise<void>) => {
@@ -109,24 +152,17 @@ const extendCode = async (code: ApiCode) => {
   })
 }
 
-const openEditTimeWindow = (code: ApiCode) => {
-  selectedCodeForEdit.value = code
-  showEditTimeWindow.value = true
-}
-
-const saveCodeTimeWindow = async (data: { code: string; activatedOn: string; expiresOn: string }) => {
-  await withCodeAction(data.code, async () => {
-    await updateCodeValidity(data.code, data.activatedOn, data.expiresOn)
-    notifierStore.notify(t('admin.formAccessCodes.messages.validityUpdated', { code: data.code }), 'success')
-  })
-  showEditTimeWindow.value = false
-  selectedCodeForEdit.value = null
-}
-
 const revokeCode = async (code: ApiCode) => {
   await withCodeAction(code.code, async () => {
     await codeApi.deactivateCode({ code: code.code })
     notifierStore.notify(t('admin.formAccessCodes.messages.revoked', { code: code.code }), 'success')
+  })
+}
+
+const extendCaseCode = async (code: ApiCode) => {
+  await withCodeAction(code.code, async () => {
+    await extendCaseCodeExpiration(code.code)
+    notifierStore.notify(t('admin.formAccessCodes.caseCodeExtended', { code: code.code }), 'success')
   })
 }
 
@@ -371,6 +407,14 @@ const safeResetConsultationForms = async () => {
   }
 }
 
+const safeExtendCaseCode = async (code: ApiCode) => {
+  try {
+    await extendCaseCode(code)
+  } catch (error: unknown) {
+    await handleActionError(error)
+  }
+}
+
 onMounted(() => {
   loadCodes()
 })
@@ -401,9 +445,35 @@ onMounted(() => {
       </v-card-title>
 
       <v-card-text>
+        <!-- Expiring codes warning banner -->
+        <v-alert 
+          v-if="expiringCodesCount > 0" 
+          type="warning" 
+          variant="tonal" 
+          prominent
+          class="mb-4"
+        >
+          <div class="d-flex align-center justify-space-between flex-wrap ga-2">
+            <div>
+              <div class="text-h6">{{ t('admin.formAccessCodes.expiringCodesWarning') }}</div>
+              <div class="text-body-2">
+                {{ t('admin.formAccessCodes.expiringCodesCount', { count: expiringCodesCount }) }}
+              </div>
+            </div>
+            <v-btn 
+              :color="showOnlyExpiring ? 'primary' : 'warning'" 
+              :variant="showOnlyExpiring ? 'elevated' : 'tonal'"
+              @click="toggleExpiringFilter"
+              :prepend-icon="showOnlyExpiring ? 'mdi-filter-off' : 'mdi-filter'"
+            >
+              {{ showOnlyExpiring ? t('admin.formAccessCodes.hideExpiringCodes') : t('admin.formAccessCodes.viewExpiringCodes') }}
+            </v-btn>
+          </div>
+        </v-alert>
+
         <v-data-table
           :headers="headers"
-          :items="rows"
+          :items="filteredRows"
           :loading="loading"
           :search="search"
           item-value="code"
@@ -412,6 +482,12 @@ onMounted(() => {
             <div class="d-flex align-center ga-2">
               <v-icon size="18">mdi-qrcode</v-icon>
               <span class="font-weight-medium">{{ item.code }}</span>
+              <v-chip v-if="isCaseCode(item)" size="x-small" color="info" variant="outlined">
+                {{ t('admin.formAccessCodes.isCaseCode') }}
+              </v-chip>
+              <v-chip v-if="isCodeExpiring(item)" size="x-small" color="warning" variant="tonal">
+                {{ t('admin.formAccessCodes.expiresIn', { days: getDaysUntilExpiry(item) }) }}
+              </v-chip>
             </div>
           </template>
 
@@ -470,13 +546,23 @@ onMounted(() => {
                 :title="t('admin.formAccessCodes.setActivationStart')"
               />
               <v-btn
+                v-if="canExtendCaseCode(item)"
+                icon="mdi-calendar-plus"
+                size="small"
+                variant="text"
+                color="success"
+                :loading="actionLoadingCode === item.code"
+                @click="safeExtendCaseCode(item)"
+                :title="t('admin.formAccessCodes.extendCaseCode')"
+              />
+              <v-btn
                 v-if="canManageAssignedCode(item)"
                 icon="mdi-calendar-clock"
                 size="small"
                 variant="text"
                 color="primary"
                 :loading="actionLoadingCode === item.code"
-                @click="openEditTimeWindow(item)"
+                @click="safeExtendCode(item)"
                 :title="t('admin.formAccessCodes.extend')"
               />
               <v-btn
@@ -504,8 +590,6 @@ onMounted(() => {
       </v-card-text>
     </v-card>
   </v-container>
-
-  <EditCodeTimeWindow v-model="showEditTimeWindow" :code="selectedCodeForEdit" @save="saveCodeTimeWindow" />
 
   <v-dialog v-model="showActivationStartDialog" max-width="500">
     <v-card>

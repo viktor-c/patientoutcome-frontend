@@ -51,7 +51,6 @@ function addNote() {
   localNotes.value.push(newNote)
   editingNoteIndex.value = localNotes.value.length - 1
   editedNote.value = ''
-  emit('update:notes', localNotes.value)
 }
 
 function editNote(index: number) {
@@ -98,12 +97,9 @@ defineExpose({
 </script>
 
 <template>
-  <v-card class="my-2">
-    <!-- <v-card-title>
-      <h4>{{ t(title) }}</h4>
-    </v-card-title> -->
-    <v-card-text>
-      <v-list>
+  <v-card class="pa-0">
+    <v-card-text class="pa-0">
+       <v-list class="pa-0">
         <v-list-item v-for="(note, index) in localNotes" :key="index">
           <template v-slot:prepend v-if="editingNoteIndex !== index">
             <v-chip color="blue" class="mr-2">
@@ -150,7 +146,7 @@ defineExpose({
           <v-container v-else>
             <v-list-item-title>{{ note.note }}</v-list-item-title>
             <v-list-item-subtitle>
-              <p class="text-caption mb-1">
+              <p class="text-caption">
                 {{ t('notes.createdOn') }}
                 {{ safeFormatDate(note.dateCreated) }}
               </p>

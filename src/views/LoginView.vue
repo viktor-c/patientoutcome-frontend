@@ -83,6 +83,7 @@ const login = async () => {
       const apiUser = response.responseObject
 
       userStore.setSession({
+        name: apiUser.name || '',
         username: username.value,
         department: Array.isArray(apiUser.department) ? apiUser.department[0] || '' : apiUser.department || '',
         belongsToCenter: apiUser.belongsToCenter ? [apiUser.belongsToCenter] : [],
@@ -152,9 +153,17 @@ const login = async () => {
           {{ t('login.sessionExpired') }}
         </v-alert>
         <v-form @submit.prevent="login">
-          <v-text-field v-model="username" :label="t('login.username')" outlined dense required
-                        autocomplete="username" autofocus
-                        data-testid="login-username"></v-text-field>
+          <v-text-field
+            v-model="username"
+            :label="t('login.username')"
+            outlined
+            dense
+            required
+            autocomplete="username"
+            autofocus
+            data-testid="login-username"
+            id="login-username"
+          ></v-text-field>
           <v-text-field
                         v-model="password"
                         :label="t('login.password')"
@@ -163,7 +172,8 @@ const login = async () => {
                         dense
                         required
                         autocomplete="current-password"
-                        data-testid="login-password">
+                        data-testid="login-password"
+                        id="login-password">
             <template #append-inner>
               <v-icon
                       style="cursor: pointer"
@@ -185,7 +195,8 @@ const login = async () => {
                        color="primary"
                        type="submit"
                        :disabled="!canSubmit"
-                       data-testid="login-submit">
+                       data-testid="login-submit"
+                       id="login-submit">
                   {{ t('login.loginButton') }}
                 </v-btn>
               </template>
@@ -199,7 +210,8 @@ const login = async () => {
                      :loading="isLoading"
                      color="primary"
                      type="submit"
-                     data-testid="login-submit">
+                     data-testid="login-submit"
+                     id="login-submit">
                 {{ t('login.loginButton') }}
               </v-btn>
             </template>
