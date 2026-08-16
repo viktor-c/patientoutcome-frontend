@@ -64,6 +64,9 @@ interface Props {
   /** Whether to show standard-mode navigation buttons for the host flow */
   showNavigation?: boolean
 
+  /** Whether to suppress form-internal navigation controls */
+  hideNavigation?: boolean
+
   /** Whether the previous action is available */
   canGoPrevious?: boolean
 
@@ -86,6 +89,7 @@ const props = withDefaults(defineProps<Props>(), {
   viewingVersion: null,
   context: undefined,
   showNavigation: false,
+  hideNavigation: false,
   canGoPrevious: false,
   canGoNext: true,
   previousLabel: 'Previous',
@@ -100,6 +104,8 @@ interface Emits {
   (e: 'submit'): void
   (e: 'next'): void
   (e: 'previous'): void
+  (e: 'saveAndGoToPreviousForm'): void
+  (e: 'saveAndGoToNextForm'): void
 }
 
 const emit = defineEmits<Emits>()
@@ -288,7 +294,7 @@ const errorMessage = computed(() => {
 })
 
 const shouldShowStandardNavigation = computed(() => {
-  return props.showNavigation && viewMode.value === 'standard' && !props.readonly && !isViewingOldVersion.value
+  return !props.hideNavigation && props.showNavigation && viewMode.value === 'standard' && !props.readonly && !isViewingOldVersion.value
 })
 
 // Handle model value updates from the form component
@@ -467,8 +473,11 @@ onMounted(() => {
                :readonly="readonly || isViewingOldVersion"
                :locale="locale"
                :context="context"
+               :hide-navigation="hideNavigation"
                @update:model-value="handleModelUpdate"
-               @submit="emit('submit')" />
+               @submit="emit('submit')"
+               @saveAndGoToPreviousForm="emit('saveAndGoToPreviousForm')"
+               @saveAndGoToNextForm="emit('saveAndGoToNextForm')" />
 
     <div v-if="shouldShowStandardNavigation" class="d-flex justify-space-between mt-4">
       <v-btn

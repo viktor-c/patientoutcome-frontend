@@ -37,7 +37,8 @@ const MockFormComponent: Component = {
     },
     readonly: Boolean,
     locale: String,
-    context: Object
+    context: Object,
+    hideNavigation: Boolean
   },
   emits: ['update:modelValue'],
   setup(props, { emit }) {
@@ -112,6 +113,7 @@ describe('PluginFormRenderer.vue', () => {
     readonly?: boolean
     locale?: string
     context?: FormComponentContext
+    hideNavigation?: boolean
   }) => {
     return mount(PluginFormRenderer, {
       props,
@@ -260,6 +262,17 @@ describe('PluginFormRenderer.vue', () => {
 
       const mockForm = wrapper.findComponent(MockFormComponent)
       expect(mockForm.props('context')).toEqual(context)
+    })
+
+    it('should pass hideNavigation prop to plugin component', () => {
+      wrapper = mountComponent({
+        templateId: 'test-plugin-id',
+        modelValue: {} as unknown as PatientFormData,
+        hideNavigation: true
+      })
+
+      const mockForm = wrapper.findComponent(MockFormComponent)
+      expect(mockForm.props('hideNavigation')).toBe(true)
     })
   })
 
