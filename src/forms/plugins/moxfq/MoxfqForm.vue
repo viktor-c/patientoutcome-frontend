@@ -4,9 +4,12 @@ import { useI18n } from 'vue-i18n'
 import { useForm } from '../../composables/useForm'
 import { calculateScore } from './scoring'
 import { translations } from './translations'
+import FormQuestionNavigation from '../../components/FormQuestionNavigation.vue'
+import FormCarouselNavigation from '../../components/FormCarouselNavigation.vue'
 import type { FormComponentProps, FormComponentEvents, FormSubmissionData, FormCommentContext } from '../../types'
 import type { Ref } from 'vue'
 import type { FormViewMode } from '../../composables/useFormViewMode'
+import type { QuestionNavItem } from '../../components/FormQuestionNavigation.vue'
 
 // Component props following the plugin interface
 const props = withDefaults(defineProps<FormComponentProps>(), {
@@ -103,6 +106,20 @@ function getCurrentValue(questionKey: string): number | null {
 const currentQuestionIndex = ref(0)
 const carouselModel = ref(0)
 
+// Track original values to detect modifications
+const originalValues = ref<Record<string, number | null>>({})
+const hasInitializedOriginalValues = ref(false)
+
+// Initialize original values from modelValue
+watch(() => props.modelValue, () => {
+  if (!hasInitializedOriginalValues.value) {
+    questionsData.value.forEach((question) => {
+      originalValues.value[question.key] = getCurrentValue(question.key)
+    })
+    hasInitializedOriginalValues.value = true
+  }
+}, { immediate: true })
+
 const currentQuestion = computed(() => questionsData.value[currentQuestionIndex.value])
 const totalQuestions = computed(() => questionsData.value.length)
 const isLastQuestion = computed(() => currentQuestionIndex.value === totalQuestions.value - 1)
@@ -126,6 +143,21 @@ const progress = computed(() => {
   return Math.round(((currentQuestionIndex.value + 1) / totalQuestions.value) * 100)
 })
 
+// Check if a question has been modified
+function isQuestionModified(questionKey: string): boolean {
+  const current = getCurrentValue(questionKey)
+  const original = originalValues.value[questionKey]
+  return current !== null && original !== null && current !== original
+}
+
+// Get color for a question based on its state
+function getQuestionColor(questionKey: string, index: number): string {
+  if (index === currentQuestionIndex.value) return 'green'
+  if (isQuestionModified(questionKey)) return 'warning'
+  if (getCurrentValue(questionKey) !== null) return 'success'
+  return 'grey'
+}
+
 function goToNext() {
   if (!isCurrentQuestionAnswered.value || isLastQuestion.value) return
 
@@ -142,8 +174,7 @@ function goToPrevious() {
 
 function goToQuestion(index: number) {
   if (index < 0 || index >= totalQuestions.value) return
-  if (index > currentQuestionIndex.value) return
-
+  // Allow navigation to any question (removed restriction)
   currentQuestionIndex.value = index
   carouselModel.value = index
 }
@@ -183,6 +214,15 @@ function saveComment() {
   showCommentDialog.value = false
   commentDraft.value = ''
 }
+
+// Prepare navigation items for the navigation component
+const navigationItems = computed<QuestionNavItem[]>(() => {
+  return questionsData.value.map((question, index) => ({
+    index,
+    color: getQuestionColor(question.key, index),
+    title: question.title
+  }))
+})
 </script>
 
 <template>
@@ -215,20 +255,12 @@ function saveComment() {
       </v-card>
 
       <!-- Question Navigation Dots (Mobile) -->
-      <div class="d-flex d-md-none justify-center mb-4">
-        <v-chip-group v-model="carouselModel" mandatory class="question-dots">
-          <v-chip
-                  v-for="(question, index) in questionsData"
-                  :key="index"
-                  :value="index"
-                  size="x-small"
-                  :disabled="index > currentQuestionIndex"
-                  :color="index === currentQuestionIndex ? 'green' : (getCurrentValue(question.key) !== null ? 'success' : 'grey')"
-                  @click="goToQuestion(index)">
-            {{ index + 1 }}
-          </v-chip>
-        </v-chip-group>
-      </div>
+      <FormQuestionNavigation
+                              :questions="navigationItems"
+                              :current-index="currentQuestionIndex"
+                              variant="dots"
+                              class="d-flex d-md-none"
+                              @navigate="goToQuestion" />
 
       <!-- Carousel -->
       <v-window v-model="carouselModel" class="form-carousel" touch v-if="currentQuestion">
@@ -276,46 +308,20 @@ function saveComment() {
             </v-card-text>
 
             <!-- Navigation Footer -->
-            <v-card-actions class="pa-4 justify-space-between">
-              <v-btn
-                     :disabled="isFirstQuestion"
-                     variant="outlined"
-                     color="primary"
-                     prepend-icon="mdi-chevron-left"
-                     @click="goToPrevious">
-                {{ tGlobal('buttons.previous') }}
-              </v-btn>
-
-              <v-btn
-                     variant="tonal"
-                     color="warning"
-                     prepend-icon="mdi-comment-alert-outline"
-                     :disabled="readonly"
-                     @click="openCommentDialog">
-                {{ tGlobal('forms.comments.add') }}
-                <v-tooltip activator="parent" location="top">{{ tGlobal('forms.comments.hint') }}</v-tooltip>
-              </v-btn>
-
-              <v-btn
-                     v-if="!isLastQuestion"
-                     variant="elevated"
-                     color="primary"
-                     append-icon="mdi-chevron-right"
-                     :disabled="!isCurrentQuestionAnswered"
-                     @click="goToNext">
-                {{ tGlobal('buttons.next') }}
-              </v-btn>
-
-              <v-btn
-                     v-else
-                     variant="elevated"
-                     color="success"
-                     append-icon="mdi-check"
-                     :disabled="!allQuestionsAnswered"
-                     @click="emit('submit')">
-                {{ tGlobal('buttons.complete') }}
-              </v-btn>
-            </v-card-actions>
+            <FormCarouselNavigation
+                                    v-if="!props.hideNavigation"
+                                    :is-first-question="isFirstQuestion"
+                                    :is-last-question="isLastQuestion"
+                                    :is-current-question-answered="isCurrentQuestionAnswered"
+                                    :all-questions-answered="allQuestionsAnswered"
+                                    :readonly="readonly"
+                                    :total-questions="totalQuestions"
+                                    @previous="goToPrevious"
+                                    @next="goToNext"
+                                    @comment="openCommentDialog"
+                                    @submit="emit('submit')"
+                                    @saveAndGoToPreviousForm="emit('saveAndGoToPreviousForm')"
+                                    @saveAndGoToNextForm="emit('saveAndGoToNextForm')" />
           </v-card>
         </v-window-item>
       </v-window>
@@ -349,32 +355,13 @@ function saveComment() {
       </v-dialog>
 
       <!-- Desktop Sidebar -->
-      <v-card class="d-none d-md-block mt-4" elevation="1">
-        <v-card-title class="text-subtitle-1 py-2 bg-grey-lighten-4">{{ tGlobal('forms.carousel.allQuestions')
-          }}</v-card-title>
-        <v-list density="compact">
-          <v-list-item
-                       v-for="(question, index) in questionsData"
-                       :key="index"
-                       :active="index === currentQuestionIndex"
-                       @click="goToQuestion(index)"
-                       class="cursor-pointer">
-            <template #prepend>
-              <v-avatar
-                        size="24"
-                        :color="index === currentQuestionIndex ? 'green' : (getCurrentValue(question.key) !== null ? 'success' : 'grey-lighten-2')">
-                <v-icon v-if="getCurrentValue(question.key) !== null" size="16" color="white">
-                  mdi-check
-                </v-icon>
-                <span v-else class="text-caption">{{ index + 1 }}</span>
-              </v-avatar>
-            </template>
-            <v-list-item-title class="text-body-2" style="white-space: normal; line-height: 1.3;">
-              {{ question.title }}
-            </v-list-item-title>
-          </v-list-item>
-        </v-list>
-      </v-card>
+      <FormQuestionNavigation
+                              :questions="navigationItems"
+                              :current-index="currentQuestionIndex"
+                              :show-titles="true"
+                              variant="list"
+                              :title="tGlobal('forms.carousel.allQuestions')"
+                              @navigate="goToQuestion" />
     </div>
 
     <!-- Standard View -->
@@ -503,6 +490,18 @@ function saveComment() {
             </tr>
           </tbody>
         </v-table>
+      </div>
+
+      <!-- Complete Button for Standard View -->
+      <div v-if="allQuestionsAnswered && !readonly" class="mt-6 d-flex justify-center">
+        <v-btn
+               variant="elevated"
+               color="success"
+               size="large"
+               prepend-icon="mdi-check-circle"
+               @click="emit('submit')">
+          {{ tGlobal('buttons.complete') }}
+        </v-btn>
       </div>
     </template>
   </div>

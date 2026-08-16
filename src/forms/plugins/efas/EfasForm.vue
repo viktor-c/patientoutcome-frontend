@@ -4,9 +4,12 @@ import { useI18n } from 'vue-i18n'
 import { useForm } from '../../composables/useForm'
 import { calculateScore } from './scoring'
 import { translations } from './translations'
+import FormQuestionNavigation from '../../components/FormQuestionNavigation.vue'
+import FormCarouselNavigation from '../../components/FormCarouselNavigation.vue'
 import type { FormComponentProps, FormComponentEvents, FormSubmissionData, FormCommentContext } from '../../types'
 import type { Ref } from 'vue'
 import type { FormViewMode } from '../../composables/useFormViewMode'
+import type { QuestionNavItem } from '../../components/FormQuestionNavigation.vue'
 
 // Component props following the plugin interface
 const props = withDefaults(defineProps<FormComponentProps>(), {
@@ -30,6 +33,7 @@ const { updateQuestion, getQuestion, t } = useForm({
     }
   }
 })
+
 
 // Standard questions (q1-q6) - Required
 const standardQuestions = computed(() => [
@@ -106,6 +110,23 @@ const allQuestions = computed(() => [...standardQuestions.value, ...sportQuestio
 const currentQuestionIndex = ref(0)
 const carouselModel = ref(0)
 
+// Track original values to detect modifications
+const originalValues = ref<Record<string, Record<string, number | null>>>({})
+const hasInitializedOriginalValues = ref(false)
+
+// Initialize original values from modelValue
+watch(() => props.modelValue, () => {
+  if (!hasInitializedOriginalValues.value) {
+    allQuestions.value.forEach((question) => {
+      if (!originalValues.value[question.section]) {
+        originalValues.value[question.section] = {}
+      }
+      originalValues.value[question.section][question.key] = getCurrentValue(question.section, question.key)
+    })
+    hasInitializedOriginalValues.value = true
+  }
+}, { immediate: true })
+
 const currentQuestion = computed(() => allQuestions.value[currentQuestionIndex.value])
 const totalQuestions = computed(() => allQuestions.value.length)
 const isLastQuestion = computed(() => currentQuestionIndex.value === totalQuestions.value - 1)
@@ -115,6 +136,14 @@ const isCurrentQuestionAnswered = computed(() => {
   if (!question) return false
   const value = getCurrentValue(question.section, question.key)
   return value !== null || isNA(question.section, question.key)
+})
+
+const allQuestionsAnswered = computed(() => {
+  return allQuestions.value.every((q) => {
+    const value = getCurrentValue(q.section, q.key)
+    const na = isNA(q.section, q.key)
+    return value !== null || na
+  })
 })
 
 const answeredQuestions = computed(() => {
@@ -129,6 +158,23 @@ const progress = computed(() => {
   if (totalQuestions.value === 0) return 0
   return Math.round(((currentQuestionIndex.value + 1) / totalQuestions.value) * 100)
 })
+
+// Check if a question has been modified
+function isQuestionModified(section: string, questionKey: string): boolean {
+  const current = getCurrentValue(section, questionKey)
+  const original = originalValues.value[section]?.[questionKey]
+  return current !== null && original !== null && current !== original
+}
+
+// Get color for a question based on its state
+function getQuestionColor(section: string, questionKey: string, index: number): string {
+  if (index === currentQuestionIndex.value) return 'green'
+  if (isQuestionModified(section, questionKey)) return 'warning'
+  const value = getCurrentValue(section, questionKey)
+  const na = isNA(section, questionKey)
+  if (value !== null || na) return 'success'
+  return 'grey'
+}
 
 function goToNext() {
   if (!isLastQuestion.value) {
@@ -189,6 +235,15 @@ function saveComment() {
   showCommentDialog.value = false
   commentDraft.value = ''
 }
+
+// Prepare navigation items for the navigation component
+const navigationItems = computed<QuestionNavItem[]>(() => {
+  return allQuestions.value.map((question, index) => ({
+    index,
+    color: getQuestionColor(question.section, question.key, index),
+    title: getQuestionLabel(question.section, question.key)
+  }))
+})
 </script>
 
 <template>
@@ -221,115 +276,78 @@ function saveComment() {
       </v-card>
 
       <!-- Question Navigation Dots (Mobile) -->
-      <div class="d-flex d-md-none justify-center mb-4">
-        <v-chip-group v-model="carouselModel" mandatory class="question-dots">
-          <v-chip
-                  v-for="(question, index) in allQuestions"
-                  :key="index"
-                  :value="index"
-                  size="x-small"
-                  :color="index === currentQuestionIndex ? 'green' : (getCurrentValue(question.section, question.key) !== null || isNA(question.section, question.key) ? 'success' : 'grey')"
-                  @click="goToQuestion(index)">
-            {{ index + 1 }}
-          </v-chip>
-        </v-chip-group>
-      </div>
+      <FormQuestionNavigation
+                              v-if="totalQuestions > 1 && !props.hideNavigation"
+                              :questions="navigationItems"
+                              :current-index="currentQuestionIndex"
+                              variant="dots"
+                              @navigate="goToQuestion" />
+
 
       <!-- Carousel -->
-      <v-window v-model="carouselModel" class="form-carousel" touch v-if="currentQuestion">
-        <v-window-item :value="currentQuestionIndex">
-          <v-card class="question-carousel-card" elevation="3">
-            <v-card-title class="text-h6 pa-4 bg-primary text-white">
-              <div class="d-flex align-center">
-                <v-avatar size="32" color="white" class="text-primary mr-3 flex-shrink-0">
-                  <span class="font-weight-bold">{{ currentQuestionIndex + 1 }}</span>
-                </v-avatar>
-                <div class="flex-1" style="word-break: break-word; white-space: normal; line-height: 1.4;">
-                  {{ getQuestionLabel(currentQuestion.section, currentQuestion.key) }}
-                </div>
+      <div v-if="currentQuestion" class="form-carousel">
+        <v-card class="question-carousel-card" elevation="3">
+          <v-card-title class="text-h6 pa-4 bg-primary text-white">
+            <div class="d-flex align-center">
+              <v-avatar size="32" color="white" class="text-primary mr-3 flex-shrink-0">
+                <span class="font-weight-bold">{{ currentQuestionIndex + 1 }}</span>
+              </v-avatar>
+              <div class="flex-1" style="word-break: break-word; white-space: normal; line-height: 1.4;">
+                {{ getQuestionLabel(currentQuestion.section, currentQuestion.key) }}
               </div>
-            </v-card-title>
+            </div>
+          </v-card-title>
 
-            <v-card-text class="pa-6">
-              <div v-if="getQuestionDescription(currentQuestion.section, currentQuestion.key)"
-                   class="text-body-2 text-medium-emphasis mb-4">
-                {{ getQuestionDescription(currentQuestion.section, currentQuestion.key) }}
-              </div>
+          <v-card-text class="pa-6">
+            <!-- N/A Checkbox -->
+            <div class="mb-4">
+              <v-checkbox
+                          :model-value="isNA(currentQuestion.section, currentQuestion.key)"
+                          @update:model-value="toggleNA(currentQuestion.section, currentQuestion.key)"
+                          :disabled="readonly"
+                          :label="t('efas.notApplicable')"
+                          density="comfortable"
+                          color="primary"
+                          hide-details />
+            </div>
 
-              <!-- N/A Checkbox -->
-              <div class="mb-4">
-                <v-checkbox
-                            :model-value="isNA(currentQuestion.section, currentQuestion.key)"
-                            @update:model-value="toggleNA(currentQuestion.section, currentQuestion.key)"
-                            :disabled="readonly"
-                            :label="t('efas.notApplicable')"
-                            density="comfortable"
-                            color="primary"
-                            hide-details />
-              </div>
+            <!-- Slider -->
+            <v-slider
+                      :model-value="getCurrentValue(currentQuestion.section, currentQuestion.key) ?? 0"
+                      :readonly="readonly"
+                      :disabled="isNA(currentQuestion.section, currentQuestion.key) || readonly"
+                      :min="0"
+                      :max="4"
+                      :step="1"
+                      :thumb-label="getCurrentValue(currentQuestion.section, currentQuestion.key) !== null ? 'always' : false"
+                      :color="getCurrentValue(currentQuestion.section, currentQuestion.key) !== null ? 'primary' : 'grey-lighten-1'"
+                      :track-color="getCurrentValue(currentQuestion.section, currentQuestion.key) !== null ? 'grey-lighten-2' : 'grey-lighten-3'"
+                      @update:model-value="(value) => handleUpdate(currentQuestion.section, currentQuestion.key, value as number)"
+                      class="mt-4 mb-1" />
 
-              <!-- Slider -->
-              <v-slider
-                        :model-value="getCurrentValue(currentQuestion.section, currentQuestion.key) ?? 0"
-                        :readonly="readonly"
-                        :disabled="isNA(currentQuestion.section, currentQuestion.key) || readonly"
-                        :min="0"
-                        :max="4"
-                        :step="1"
-                        :thumb-label="getCurrentValue(currentQuestion.section, currentQuestion.key) !== null ? 'always' : false"
-                        :color="getCurrentValue(currentQuestion.section, currentQuestion.key) !== null ? 'primary' : 'grey-lighten-1'"
-                        :track-color="getCurrentValue(currentQuestion.section, currentQuestion.key) !== null ? 'grey-lighten-2' : 'grey-lighten-3'"
-                        @update:model-value="(value) => handleUpdate(currentQuestion.section, currentQuestion.key, value as number)"
-                        class="mt-4 mb-6" />
+            <div class="d-flex justify-space-between">
+              <span class="">0 - {{ getTickLabels(currentQuestion.section, currentQuestion.key).low }}</span>
+              <span class="">4 - {{ getTickLabels(currentQuestion.section, currentQuestion.key).high }}</span>
+            </div>
+          </v-card-text>
 
-              <div class="d-flex justify-space-between text-caption text-medium-emphasis">
-                <span>0 - {{ getTickLabels(currentQuestion.section, currentQuestion.key).low }}</span>
-                <span>4 - {{ getTickLabels(currentQuestion.section, currentQuestion.key).high }}</span>
-              </div>
-            </v-card-text>
-
-            <!-- Navigation Footer -->
-            <v-card-actions class="pa-4 justify-space-between">
-              <v-btn
-                     :disabled="isFirstQuestion"
-                     variant="outlined"
-                     color="primary"
-                     prepend-icon="mdi-chevron-left"
-                     @click="goToPrevious">
-                {{ tGlobal('buttons.previous') }}
-              </v-btn>
-
-              <v-btn
-                     variant="tonal"
-                     color="warning"
-                     prepend-icon="mdi-comment-alert-outline"
-                     :disabled="readonly"
-                     @click="openCommentDialog">
-                {{ tGlobal('forms.comments.add') }}
-                <v-tooltip activator="parent" location="top">{{ tGlobal('forms.comments.hint') }}</v-tooltip>
-              </v-btn>
-
-              <v-btn
-                     v-if="!isLastQuestion"
-                     variant="elevated"
-                     color="primary"
-                     append-icon="mdi-chevron-right"
-                     @click="goToNext">
-                {{ tGlobal(isCurrentQuestionAnswered ? 'buttons.next' : 'buttons.skip') }}
-              </v-btn>
-
-              <v-btn
-                     v-else
-                     variant="elevated"
-                     color="success"
-                     append-icon="mdi-check"
-                     @click="emit('submit')">
-                {{ tGlobal(isCurrentQuestionAnswered ? 'buttons.complete' : 'buttons.skipQuestionAndSubmitForm') }}
-              </v-btn>
-            </v-card-actions>
-          </v-card>
-        </v-window-item>
-      </v-window>
+          <!-- Navigation Footer -->
+          <FormCarouselNavigation
+                                  v-if="!props.hideNavigation"
+                                  :is-first-question="isFirstQuestion"
+                                  :is-last-question="isLastQuestion"
+                                  :is-current-question-answered="isCurrentQuestionAnswered"
+                                  :all-questions-answered="allQuestionsAnswered"
+                                  :readonly="readonly"
+                                  :total-questions="totalQuestions"
+                                  @previous="goToPrevious"
+                                  @next="goToNext"
+                                  @comment="openCommentDialog"
+                                  @submit="emit('submit')"
+                                  @saveAndGoToPreviousForm="emit('saveAndGoToPreviousForm')"
+                                  @saveAndGoToNextForm="emit('saveAndGoToNextForm')" />
+        </v-card>
+      </div>
 
       <v-dialog v-model="showCommentDialog" max-width="560">
         <v-card>
@@ -360,33 +378,14 @@ function saveComment() {
       </v-dialog>
 
       <!-- Desktop Sidebar -->
-      <v-card class="d-none d-md-block mt-4" elevation="1">
-        <v-card-title class="text-subtitle-1 py-2 bg-grey-lighten-4">{{ tGlobal('forms.carousel.allQuestions')
-          }}</v-card-title>
-        <v-list density="compact">
-          <v-list-item
-                       v-for="(question, index) in allQuestions"
-                       :key="index"
-                       :active="index === currentQuestionIndex"
-                       @click="goToQuestion(index)"
-                       class="cursor-pointer">
-            <template #prepend>
-              <v-avatar
-                        size="24"
-                        :color="index === currentQuestionIndex ? 'green' : (getCurrentValue(question.section, question.key) !== null || isNA(question.section, question.key) ? 'success' : 'grey-lighten-2')">
-                <v-icon v-if="getCurrentValue(question.section, question.key) !== null || isNA(question.section, question.key)"
-                        size="16" color="white">
-                  mdi-check
-                </v-icon>
-                <span v-else class="text-caption">{{ index + 1 }}</span>
-              </v-avatar>
-            </template>
-            <v-list-item-title class="text-body-2" style="white-space: normal; line-height: 1.3;">
-              {{ getQuestionLabel(question.section, question.key) }}
-            </v-list-item-title>
-          </v-list-item>
-        </v-list>
-      </v-card>
+      <FormQuestionNavigation
+                              v-if="!props.hideNavigation"
+                              :questions="navigationItems"
+                              :current-index="currentQuestionIndex"
+                              :show-titles="true"
+                              variant="list"
+                              :title="tGlobal('forms.carousel.allQuestions')"
+                              @navigate="goToQuestion" />
     </div>
 
     <!-- Standard View -->
@@ -599,6 +598,18 @@ function saveComment() {
           </div>
         </div>
       </div>
+
+      <!-- Complete Button for Standard View -->
+      <div v-if="allQuestionsAnswered && !readonly" class="mt-6 d-flex justify-center">
+        <v-btn
+               variant="elevated"
+               color="success"
+               size="large"
+               prepend-icon="mdi-check-circle"
+               @click="emit('submit')">
+          {{ tGlobal('buttons.complete') }}
+        </v-btn>
+      </div>
     </template>
   </div>
 </template>
@@ -607,7 +618,7 @@ function saveComment() {
 .efas-container {
   max-width: 1200px;
   margin: 0 auto;
-  padding: 1rem;
+  /* padding: 1rem; */
 }
 
 .section-container {
@@ -822,6 +833,47 @@ function saveComment() {
 .question-carousel-card {
   border-radius: 12px;
   overflow: hidden;
+}
+
+@media (max-width: 767px) {
+  .efas-carousel {
+    height: calc(100dvh - 9rem);
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .question-carousel-card {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    overflow: hidden;
+    min-height: 0;
+  }
+
+  .question-carousel-card :deep(.v-card-title),
+  .question-carousel-card :deep(.v-card-actions) {
+    flex-shrink: 0;
+  }
+
+  .question-carousel-card :deep(.v-card-text) {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+  }
+
+  .question-carousel-card :deep(.v-card-actions) {
+    margin-top: auto;
+    z-index: 2;
+    background: rgb(var(--v-theme-surface));
+    border-top: 1px solid rgba(var(--v-border-color), 0.12);
+  }
+
+  .form-carousel {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow: hidden;
+  }
 }
 
 .question-dots {

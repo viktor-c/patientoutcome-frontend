@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, toRef } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useForm } from '../../composables/useForm'
 import { calculateScore } from './scoring'
 import { translations } from './translations'
@@ -13,6 +14,7 @@ const props = withDefaults(defineProps<FormComponentProps>(), {
 
 // Component events
 const emit = defineEmits<FormComponentEvents>()
+const { t: tGlobal } = useI18n()
 
 // Use the shared form composable
 const { localData, updateQuestion, t } = useForm({
@@ -40,6 +42,11 @@ const painFaces = [
 // Get current pain level value
 const currentPainLevel = computed(() => {
   return localData.value.painScale?.painLevel ?? null
+})
+
+// Check if form is complete
+const isFormComplete = computed(() => {
+  return currentPainLevel.value !== null
 })
 
 // Get current face based on pain level
@@ -154,6 +161,18 @@ function handleFaceClick(value: number) {
         <div class="pain-face-value">{{ face.value }}</div>
         <div class="pain-face-label">{{ t(face.label) }}</div>
       </div>
+    </div>
+
+    <!-- Complete Button -->
+    <div v-if="isFormComplete && !readonly" class="mt-6 d-flex justify-center">
+      <v-btn
+             variant="elevated"
+             color="success"
+             size="large"
+             prepend-icon="mdi-check-circle"
+             @click="emit('submit')">
+        {{ tGlobal('buttons.complete') }}
+      </v-btn>
     </div>
   </div>
 </template>
