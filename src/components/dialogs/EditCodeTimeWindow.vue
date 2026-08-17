@@ -17,7 +17,7 @@ const emit = defineEmits<{
 }>()
 
 const { t } = useI18n()
-const { formatLocalizedDate, dateFormats, getLocalizedDayjs } = useDateFormat()
+const { formatLocalizedDate, getLocalizedDayjs } = useDateFormat()
 
 const internalVisible = computed({
   get: () => props.modelValue,

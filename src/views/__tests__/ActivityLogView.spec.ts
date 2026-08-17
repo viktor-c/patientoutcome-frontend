@@ -33,7 +33,7 @@ class MockEventSource {
   OPEN = 1
   CLOSED = 2
 
-  constructor(url: string, options?: any) {
+  constructor(url: string) {
     this.url = url
     setTimeout(() => {
       this.readyState = this.OPEN
@@ -48,7 +48,7 @@ class MockEventSource {
   }
 
   // Helper method to simulate receiving messages
-  simulateMessage(data: any) {
+  simulateMessage(data: unknown) {
     if (this.onmessage) {
       this.onmessage(new MessageEvent('message', { data: JSON.stringify(data) }))
     }
@@ -64,10 +64,10 @@ class MockEventSource {
 
 let mockEventSourceInstance: MockEventSource | null = null
 
-global.EventSource = vi.fn((url: string, options?: any) => {
+global.EventSource = vi.fn((url: string, options?: unknown) => {
   mockEventSourceInstance = new MockEventSource(url, options)
   return mockEventSourceInstance
-}) as any
+}) as unknown as typeof EventSource
 
 const i18n = createI18n({
   legacy: false,

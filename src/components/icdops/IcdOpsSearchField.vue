@@ -294,7 +294,7 @@
               </v-card-title>
               <v-list density="compact" class="pa-1" style="max-height: 240px; overflow-y: auto">
                 <v-list-item
-                             v-for="(val, idx) in displayChips"
+                             v-for="val in displayChips"
                              :key="typeof val === 'object' ? (val as IcdOpsEntry).code : val"
                              rounded="md"
                              class="px-2"

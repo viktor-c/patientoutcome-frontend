@@ -8,10 +8,10 @@ import type { ApiCode } from '@/types'
 import { ResponseError } from '@/api'
 import { useDateFormat } from '@/composables/useDateFormat'
 
-const { t, locale } = useI18n()
+const { t } = useI18n()
 const router = useRouter()
 const notifierStore = useNotifierStore()
-const { formatLocalizedDate, dateFormats, getLocalizedDayjs } = useDateFormat()
+const { formatLocalizedDate, dateFormats } = useDateFormat()
 
 const loading = ref(false)
 const rows = ref<ApiCode[]>([])
@@ -189,13 +189,18 @@ const searchConsultationsForAssign = async () => {
     if (/^[a-fA-F0-9]{24}$/.test(query)) {
       try {
         const byId = await consultationApi.getConsultationById({ consultationId: query })
-        const consultation = byId.responseObject as any
+        const consultation = byId.responseObject as {
+          id?: string
+          dateAndTime?: string
+          createdAt?: string
+          forms?: Array<{ name?: string }>
+        } | undefined
         const foundId = consultation?.id
         if (foundId) {
           const dateAndTime = consultation?.dateAndTime
           const createdAt = consultation?.createdAt
           const forms = consultation?.forms || []
-          const formLabels = forms.map((f: any) => f?.name || 'Unnamed').join(', ')
+          const formLabels = forms.map((f: { name?: string }) => f?.name || 'Unnamed').join(', ')
           let label = `${foundId}`
           if (dateAndTime) label += ` | Planned: ${formatDateTime(dateAndTime)}`
           if (createdAt) label += ` | Created: ${formatDateTime(createdAt)}`
@@ -218,12 +223,12 @@ const searchConsultationsForAssign = async () => {
         if (!caseId) continue
         const consultationsResponse = await consultationApi.getAllConsultations({ caseId })
         const consultations = consultationsResponse.responseObject || []
-        consultations.forEach((consultation: any) => {
+        consultations.forEach((consultation: { id?: string; dateAndTime?: string; createdAt?: string; forms?: Array<{ name?: string }> }) => {
           if (!consultation.id) return
           const dateAndTime = consultation?.dateAndTime
           const createdAt = consultation?.createdAt
           const forms = consultation?.forms || []
-          const formLabels = forms.map((f: any) => f?.name || 'Unnamed').join(', ')
+          const formLabels = forms.map((f: { name?: string }) => f?.name || 'Unnamed').join(', ')
           let label = `${consultation.id}`
           if (dateAndTime) label += ` | Planned: ${formatDateTime(dateAndTime)}`
           if (createdAt) label += ` | Created: ${formatDateTime(createdAt)}`

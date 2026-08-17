@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { useCodeAccessLogging } from '../useCodeAccessLogging'
+import { logger } from '@/services/logger'
 
 // Mock the logger service
 vi.mock('@/services/logger', () => ({
@@ -102,9 +103,9 @@ describe('useCodeAccessLogging', () => {
     })
 
     it('should warn if session not initialized', () => {
-      const { logger } = require('@/services/logger')
+      const warnSpy = vi.spyOn(logger, 'warn')
       composable.trackFormOpened('form1')
-      expect(logger.warn).toHaveBeenCalledWith('Code access session not initialized')
+      expect(warnSpy).toHaveBeenCalledWith('Code access session not initialized')
     })
 
     it('should track multiple forms opened', () => {
@@ -139,7 +140,10 @@ describe('useCodeAccessLogging', () => {
       composable.trackFormOpened('form1')
 
       // Simulate time passing
-      const startTime = composable.getSessionData()?.formsStarted.get('form1')!
+      const startTime = composable.getSessionData()?.formsStarted.get('form1')
+      if (!startTime) {
+        throw new Error('Expected start time to be initialized')
+      }
       vi.useFakeTimers()
       vi.setSystemTime(new Date(startTime.getTime() + 300000)) // 5 minutes later
 
@@ -155,7 +159,7 @@ describe('useCodeAccessLogging', () => {
     })
 
     it('should warn if form was not opened before completion', () => {
-      const { logger } = require('@/services/logger')
+      const warnSpy = vi.spyOn(logger, 'warn')
       const data = {
         code: 'TEST123',
         patientCaseId: 'case123',
@@ -165,7 +169,7 @@ describe('useCodeAccessLogging', () => {
       composable.initializeAccessLog(data)
       composable.trackFormCompleted('unopened_form')
 
-      expect(logger.warn).toHaveBeenCalledWith('Form start time not found', expect.objectContaining({ formId: 'unopened_form' }))
+      expect(warnSpy).toHaveBeenCalledWith('Form start time not found', expect.objectContaining({ formId: 'unopened_form' }))
     })
 
     it('should handle multiple form completions', () => {
@@ -244,7 +248,7 @@ describe('useCodeAccessLogging', () => {
     })
 
     it('should log session duration when ending', () => {
-      const { logger } = require('@/services/logger')
+      const debugSpy = vi.spyOn(logger, 'debug')
       const data = {
         code: 'TEST123',
         patientCaseId: 'case123',
@@ -257,7 +261,7 @@ describe('useCodeAccessLogging', () => {
 
       composable.endAccessSession()
 
-      expect(logger.debug).toHaveBeenCalledWith(
+      expect(debugSpy).toHaveBeenCalledWith(
         'Code access session ended',
         expect.objectContaining({
           code: 'TEST123',

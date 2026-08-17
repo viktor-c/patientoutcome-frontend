@@ -1,10 +1,9 @@
-import type { FullConfig } from '@playwright/test'
 
 /**
  * Global setup: runs once before all Playwright tests.
  * Reseeds the database with fresh mock data so every test run starts clean.
  */
-async function globalSetup(_config: FullConfig) {
+async function globalSetup() {
   const backendUrl = process.env.BACKEND_URL ?? 'http://localhost:40001'
   const seedUrl = `${backendUrl}/seed/reset-all`
 

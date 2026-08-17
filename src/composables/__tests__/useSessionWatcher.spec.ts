@@ -415,7 +415,7 @@ describe('useSessionWatcher', () => {
     })
 
     it('should handle session check errors gracefully', async () => {
-      const checkSessionSpy = vi.spyOn(userStore, 'checkSessionWithServer').mockRejectedValue(new Error('Network error'))
+      vi.spyOn(userStore, 'checkSessionWithServer').mockRejectedValue(new Error('Network error'))
       userStore.isAuthenticated = vi.fn().mockReturnValue(true)
 
       const wrapper = mount(TestComponent, {
@@ -451,7 +451,7 @@ describe('useSessionWatcher', () => {
     })
 
     it('should handle concurrent session checks', async () => {
-      let resolveChecks: Array<(value: boolean) => void> = []
+      const resolveChecks: Array<(value: boolean) => void> = []
       const checkSessionSpy = vi.spyOn(userStore, 'checkSessionWithServer').mockImplementation(() => {
         return new Promise((resolve) => {
           resolveChecks.push(resolve as (value: boolean) => void)
@@ -483,7 +483,7 @@ describe('useSessionWatcher', () => {
 
   describe('Memory Leaks Prevention', () => {
     it('should not leak event listeners after multiple mount/unmount cycles', () => {
-      const initialListenerCount = (document as any)._eventListeners?.visibilitychange?.length || 0
+      const initialListenerCount = (document as Document & { _eventListeners?: Record<string, Array<unknown>> })._eventListeners?.visibilitychange?.length || 0
 
       // Mount and unmount multiple times
       for (let i = 0; i < 5; i++) {
@@ -496,7 +496,7 @@ describe('useSessionWatcher', () => {
       }
 
       // Event listeners should be cleaned up
-      const finalListenerCount = (document as any)._eventListeners?.visibilitychange?.length || 0
+      const finalListenerCount = (document as Document & { _eventListeners?: Record<string, Array<unknown>> })._eventListeners?.visibilitychange?.length || 0
       expect(finalListenerCount).toBe(initialListenerCount)
     })
 

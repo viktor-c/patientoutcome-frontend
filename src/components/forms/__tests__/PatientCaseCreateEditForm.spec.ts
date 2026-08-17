@@ -290,7 +290,10 @@ describe('PatientCaseCreateEditForm.vue', () => {
       await nextTick()
 
       // Simulate adding a diagnosis entry by updating mainDiagnosisICD10Entries
-      const vm = wrapper.vm as any
+      const vm = wrapper.vm as unknown as {
+        mainDiagnosisICD10Entries?: Array<{ code: string; label: string } | string>
+        formSubmitted?: boolean
+      }
       if (vm.mainDiagnosisICD10Entries) {
         // Add an entry to make the field valid
         vm.mainDiagnosisICD10Entries = [{ code: 'M20.1', label: 'Hallux valgus' }]

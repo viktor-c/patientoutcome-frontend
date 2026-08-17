@@ -1,5 +1,8 @@
+// eslint-disable-next-line @typescript-eslint/no-require-imports
 const fs = require('node:fs');
+// eslint-disable-next-line @typescript-eslint/no-require-imports
 const path = require('node:path');
+// eslint-disable-next-line @typescript-eslint/no-require-imports
 const { createJiti } = require('jiti');
 
 const projectRoot = path.resolve(__dirname, '..');

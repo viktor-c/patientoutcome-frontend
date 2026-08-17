@@ -204,7 +204,7 @@ const saveProfile = async () => {
     await userStore.updateUser(payload);
     profileForm.value.originalUsername = profileForm.value.username;
     usernameAvailable.value = null;
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error saving profile:', error);
     // Show error notification
   } finally {
@@ -230,7 +230,7 @@ const savePassword = async () => {
     passwordForm.value.currentPassword = '';
     passwordForm.value.newPassword = '';
     passwordForm.value.confirmPassword = '';
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error changing password:', error);
     notifierStore.notify(t('changePassword.error_api'), 'error');
   } finally {
@@ -250,7 +250,7 @@ const saveConsultationSettings = async () => {
     };
 
     await userStore.updateUser(payload);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error saving consultation settings:', error);
     // Show error notification
   } finally {

@@ -40,11 +40,6 @@ watch(ignoreAccessWindow, (newValue) => {
 function handleCodeSelected(code: string) {
   emit('code-selected', code, ignoreAccessWindow.value)
 }
-
-function handleCodeRemoved() {
-  ignoreAccessWindow.value = false
-  emit('code-removed')
-}
 </script>
 
 <template>

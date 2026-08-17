@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import { computed } from 'vue'
 
 export interface QuestionNavItem {
   index: number
@@ -15,7 +14,7 @@ interface Props {
   title?: string
 }
 
-const props = withDefaults(defineProps<Props>(), {
+withDefaults(defineProps<Props>(), {
   showTitles: false,
   variant: 'dots'
 })

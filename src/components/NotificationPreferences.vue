@@ -72,7 +72,7 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, ref } from 'vue'
+import { onMounted } from 'vue'
 import { usePushNotifications } from '@/composables/usePushNotifications'
 
 const props = defineProps<{

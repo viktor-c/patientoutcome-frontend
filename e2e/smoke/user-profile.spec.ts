@@ -29,7 +29,7 @@ test.describe('Authentication flow', () => {
       await sharedPage.locator('#user-settings-profile-name').fill('Ethan');
       await sharedPage.locator('#user-settings-profile-save').click();
       // Wait for save to complete
-      await expect(sharedPage.locator('#user-settings-profile-save')).not.toBeDisabled({ timeout: 5000 });
+      await expect(sharedPage.locator('#user-settings-profile-save')).toBeEnabled({ timeout: 5000 });
     });
   });
 

@@ -5,7 +5,6 @@
 
 import { ref, type Ref } from 'vue'
 import { logger } from '@/services/logger'
-import type { Form } from '@/types'
 
 export interface CodeAccessSession {
   accessLogId: string | null

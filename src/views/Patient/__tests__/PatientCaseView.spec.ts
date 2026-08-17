@@ -192,7 +192,7 @@ describe('PatientCaseView.vue', () => {
       router.push({ name: 'PatientCaseView', params: { patientId: 'patient-1' } })
       await router.isReady()
 
-      const wrapper = mount(PatientCaseView, {
+      mount(PatientCaseView, {
         global: {
           plugins: [vuetify, router, i18n],
         },

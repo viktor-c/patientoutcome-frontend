@@ -21,7 +21,7 @@ import { useNotifierStore } from '@/stores/notifierStore'
 const notifierStore = useNotifierStore()
 
 const { t } = useI18n()
-const { validateForm, clearAllErrors, resetFormState, errors, getErrorForce, touchField } = useFormValidation()
+const { validateForm, clearAllErrors, resetFormState, getErrorForce, touchField } = useFormValidation()
 
 // Props
 const props = defineProps<{
