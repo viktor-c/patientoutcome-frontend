@@ -35,7 +35,7 @@ watch(
     if (newValue && props.code) {
       startDate.value = props.code.activatedOn ? new Date(props.code.activatedOn) : new Date()
       endDate.value = props.code.expiresOn ? new Date(props.code.expiresOn) : new Date()
-      
+
       // Calculate and store initial duration in milliseconds
       if (startDate.value && endDate.value) {
         initialDuration.value = endDate.value.getTime() - startDate.value.getTime()
@@ -80,7 +80,7 @@ const applyPresetToStart = (preset: '8h' | '-8h' | '1d' | '-1d' | '1w' | '-1w' |
   }
 
   startDate.value = newDate.toDate()
-  
+
   // Maintain initial duration by updating end date
   if (endDate.value && initialDuration.value > 0) {
     endDate.value = new Date(startDate.value.getTime() + initialDuration.value)
@@ -168,87 +168,78 @@ const isFormValid = computed(() => {
             {{ t('admin.formAccessCodes.table.activatedOn') }}
           </div>
           <VueDatePicker
-            v-model="startDate"
-            :enable-time-picker="true"
-            :teleport="true"
-            :format="formatLocalizedDate"
-            auto-apply
-          />
+                         v-model="startDate"
+                         :enable-time-picker="true"
+                         :teleport="true"
+                         :format="formatLocalizedDate"
+                         auto-apply />
           <div class="mt-3">
             <div class="mb-2 text-caption text-medium-emphasis">
               {{ t('admin.formAccessCodes.quickAdjustStart') }}
             </div>
             <div class="d-flex flex-wrap gap-2">
               <v-btn
-                size="small"
-                variant="tonal"
-                color="secondary"
-                @click="applyPresetToStart('-8h')"
-                prepend-icon="mdi-minus"
-              >
+                     size="small"
+                     variant="tonal"
+                     color="secondary"
+                     @click="applyPresetToStart('-8h')"
+                     prepend-icon="mdi-minus">
                 {{ t('admin.formAccessCodes.presets.label8h') }}
               </v-btn>
               <v-btn
-                size="small"
-                variant="tonal"
-                color="secondary"
-                @click="applyPresetToStart('8h')"
-                prepend-icon="mdi-plus"
-              >
+                     size="small"
+                     variant="tonal"
+                     color="secondary"
+                     @click="applyPresetToStart('8h')"
+                     prepend-icon="mdi-plus">
                 {{ t('admin.formAccessCodes.presets.label8h') }}
               </v-btn>
               <v-btn
-                size="small"
-                variant="tonal"
-                color="secondary"
-                @click="applyPresetToStart('-1d')"
-                prepend-icon="mdi-minus"
-              >
+                     size="small"
+                     variant="tonal"
+                     color="secondary"
+                     @click="applyPresetToStart('-1d')"
+                     prepend-icon="mdi-minus">
                 {{ t('admin.formAccessCodes.presets.label1d') }}
               </v-btn>
               <v-btn
-                size="small"
-                variant="tonal"
-                color="secondary"
-                @click="applyPresetToStart('1d')"
-                prepend-icon="mdi-plus"
-              >
+                     size="small"
+                     variant="tonal"
+                     color="secondary"
+                     @click="applyPresetToStart('1d')"
+                     prepend-icon="mdi-plus">
                 {{ t('admin.formAccessCodes.presets.label1d') }}
               </v-btn>
               <v-btn
-                size="small"
-                variant="tonal"
-                color="secondary"
-                @click="applyPresetToStart('-1w')"
-                prepend-icon="mdi-minus"
-              >
+                     size="small"
+                     variant="tonal"
+                     color="secondary"
+                     @click="applyPresetToStart('-1w')"
+                     prepend-icon="mdi-minus">
                 {{ t('admin.formAccessCodes.presets.label1w') }}
               </v-btn>
               <v-btn
-                size="small"
-                variant="tonal"
-                color="secondary"
-                @click="applyPresetToStart('1w')"
-                prepend-icon="mdi-plus"
-              >
+                     size="small"
+                     variant="tonal"
+                     color="secondary"
+                     @click="applyPresetToStart('1w')"
+                     prepend-icon="mdi-plus">
                 {{ t('admin.formAccessCodes.presets.label1w') }}
               </v-btn>
               <v-btn
-                size="small"
-                variant="tonal"
-                color="secondary"
-                @click="applyPresetToStart('-1m')"
-                prepend-icon="mdi-minus"
-              >
+                     size="small"
+                     variant="tonal"
+                     color="secondary"
+                     @click="applyPresetToStart('-1m')"
+                     prepend-icon="mdi-minus">
                 {{ t('admin.formAccessCodes.presets.label1m') }}
               </v-btn>
               <v-btn
-                size="small"
-                variant="tonal"
-                color="secondary"
-                @click="applyPresetToStart('1m')"
-                prepend-icon="mdi-plus"
-              >
+                     size="small"
+                     variant="tonal"
+                     color="secondary"
+                     @click="applyPresetToStart('1m')"
+                     prepend-icon="mdi-plus">
                 {{ t('admin.formAccessCodes.presets.label1m') }}
               </v-btn>
             </div>
@@ -263,87 +254,78 @@ const isFormValid = computed(() => {
             {{ t('admin.formAccessCodes.table.expiresOn') }}
           </div>
           <VueDatePicker
-            v-model="endDate"
-            :enable-time-picker="true"
-            :teleport="true"
-            :format="formatLocalizedDate"
-            auto-apply
-          />
+                         v-model="endDate"
+                         :enable-time-picker="true"
+                         :teleport="true"
+                         :format="formatLocalizedDate"
+                         auto-apply />
           <div class="mt-3">
             <div class="mb-2 text-caption text-medium-emphasis">
               {{ t('admin.formAccessCodes.quickAdjustEnd') }}
             </div>
             <div class="d-flex flex-wrap gap-2">
               <v-btn
-                size="small"
-                variant="tonal"
-                color="primary"
-                @click="applyPresetToEnd('-8h')"
-                prepend-icon="mdi-minus"
-              >
+                     size="small"
+                     variant="tonal"
+                     color="primary"
+                     @click="applyPresetToEnd('-8h')"
+                     prepend-icon="mdi-minus">
                 {{ t('admin.formAccessCodes.presets.label8h') }}
               </v-btn>
               <v-btn
-                size="small"
-                variant="tonal"
-                color="primary"
-                @click="applyPresetToEnd('8h')"
-                prepend-icon="mdi-plus"
-              >
+                     size="small"
+                     variant="tonal"
+                     color="primary"
+                     @click="applyPresetToEnd('8h')"
+                     prepend-icon="mdi-plus">
                 {{ t('admin.formAccessCodes.presets.label8h') }}
               </v-btn>
               <v-btn
-                size="small"
-                variant="tonal"
-                color="primary"
-                @click="applyPresetToEnd('-1d')"
-                prepend-icon="mdi-minus"
-              >
+                     size="small"
+                     variant="tonal"
+                     color="primary"
+                     @click="applyPresetToEnd('-1d')"
+                     prepend-icon="mdi-minus">
                 {{ t('admin.formAccessCodes.presets.label1d') }}
               </v-btn>
               <v-btn
-                size="small"
-                variant="tonal"
-                color="primary"
-                @click="applyPresetToEnd('1d')"
-                prepend-icon="mdi-plus"
-              >
+                     size="small"
+                     variant="tonal"
+                     color="primary"
+                     @click="applyPresetToEnd('1d')"
+                     prepend-icon="mdi-plus">
                 {{ t('admin.formAccessCodes.presets.label1d') }}
               </v-btn>
               <v-btn
-                size="small"
-                variant="tonal"
-                color="primary"
-                @click="applyPresetToEnd('-1w')"
-                prepend-icon="mdi-minus"
-              >
+                     size="small"
+                     variant="tonal"
+                     color="primary"
+                     @click="applyPresetToEnd('-1w')"
+                     prepend-icon="mdi-minus">
                 {{ t('admin.formAccessCodes.presets.label1w') }}
               </v-btn>
               <v-btn
-                size="small"
-                variant="tonal"
-                color="primary"
-                @click="applyPresetToEnd('1w')"
-                prepend-icon="mdi-plus"
-              >
+                     size="small"
+                     variant="tonal"
+                     color="primary"
+                     @click="applyPresetToEnd('1w')"
+                     prepend-icon="mdi-plus">
                 {{ t('admin.formAccessCodes.presets.label1w') }}
               </v-btn>
               <v-btn
-                size="small"
-                variant="tonal"
-                color="primary"
-                @click="applyPresetToEnd('-1m')"
-                prepend-icon="mdi-minus"
-              >
+                     size="small"
+                     variant="tonal"
+                     color="primary"
+                     @click="applyPresetToEnd('-1m')"
+                     prepend-icon="mdi-minus">
                 {{ t('admin.formAccessCodes.presets.label1m') }}
               </v-btn>
               <v-btn
-                size="small"
-                variant="tonal"
-                color="primary"
-                @click="applyPresetToEnd('1m')"
-                prepend-icon="mdi-plus"
-              >
+                     size="small"
+                     variant="tonal"
+                     color="primary"
+                     @click="applyPresetToEnd('1m')"
+                     prepend-icon="mdi-plus">
                 {{ t('admin.formAccessCodes.presets.label1m') }}
               </v-btn>
             </div>
@@ -351,12 +333,11 @@ const isFormValid = computed(() => {
         </div>
 
         <v-alert
-          v-if="startDate && endDate && startDate > endDate"
-          type="warning"
-          variant="tonal"
-          density="compact"
-          class="mt-4"
-        >
+                 v-if="startDate && endDate && startDate > endDate"
+                 type="warning"
+                 variant="tonal"
+                 density="compact"
+                 class="mt-4">
           {{ t('admin.formAccessCodes.invalidDateRange') }}
         </v-alert>
       </v-card-text>

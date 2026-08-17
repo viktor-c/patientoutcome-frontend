@@ -47,24 +47,22 @@ function handleCodeSelected(code: string) {
     <p class="text-body-2 text-medium-emphasis mb-3">
       {{ t('consultationOverview.noCodesAssigned') }}
     </p>
-    
+
     <v-checkbox
-      v-model="ignoreAccessWindow"
-      :label="t('consultationOverview.ignoreAccessWindow')"
-      :hint="t('consultationOverview.ignoreAccessWindowHint')"
-      persistent-hint
-      density="compact"
-      class="mb-3"
-      :disabled="disabled"
-    ></v-checkbox>
-    
+                v-model="ignoreAccessWindow"
+                :label="t('consultationOverview.ignoreAccessWindow')"
+                :hint="t('consultationOverview.ignoreAccessWindowHint')"
+                persistent-hint
+                density="compact"
+                class="mb-3"
+                :disabled="disabled"></v-checkbox>
+
     <AccessCodeSelector
-      :code-type="codeType"
-      :consultation-date="consultationDate"
-      :disabled="disabled"
-      @code-selected="handleCodeSelected"
-    />
-    
+                        :code-type="codeType"
+                        :consultation-date="consultationDate"
+                        :disabled="disabled"
+                        @code-selected="handleCodeSelected" />
+
     <p class="text-caption text-medium-emphasis mt-2">
       {{ t('consultationOverview.selectionAssignsImmediately') }}
     </p>

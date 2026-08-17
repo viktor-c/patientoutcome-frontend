@@ -8,7 +8,7 @@ import type { ApiCode } from '@/types'
 import { ResponseError } from '@/api'
 import { useDateFormat } from '@/composables/useDateFormat'
 
-const { t } = useI18n()
+const { t, locale } = useI18n()
 const router = useRouter()
 const notifierStore = useNotifierStore()
 const { formatLocalizedDate, dateFormats } = useDateFormat()
@@ -223,12 +223,12 @@ const searchConsultationsForAssign = async () => {
         if (!caseId) continue
         const consultationsResponse = await consultationApi.getAllConsultations({ caseId })
         const consultations = consultationsResponse.responseObject || []
-        consultations.forEach((consultation: { id?: string; dateAndTime?: string; createdAt?: string; forms?: Array<{ name?: string }> }) => {
+        consultations.forEach((consultation: { id?: string | null; dateAndTime?: string | null; createdAt?: string | null; forms?: Array<{ name?: string | null }> | null }) => {
           if (!consultation.id) return
           const dateAndTime = consultation?.dateAndTime
           const createdAt = consultation?.createdAt
           const forms = consultation?.forms || []
-          const formLabels = forms.map((f: { name?: string }) => f?.name || 'Unnamed').join(', ')
+          const formLabels = forms.map((f: { name?: string | null }) => f?.name || 'Unnamed').join(', ')
           let label = `${consultation.id}`
           if (dateAndTime) label += ` | Planned: ${formatDateTime(dateAndTime)}`
           if (createdAt) label += ` | Created: ${formatDateTime(createdAt)}`
@@ -435,15 +435,15 @@ onMounted(() => {
         </div>
         <div class="d-flex ga-2 align-center header-controls">
           <v-text-field
-            v-model="search"
-            :label="t('admin.formAccessCodes.search')"
-            density="comfortable"
-            variant="outlined"
-            hide-details
-            prepend-inner-icon="mdi-magnify"
-            class="search-input"
-          />
-          <v-btn color="primary" variant="tonal" prepend-icon="mdi-refresh" @click="loadCodes" :loading="loading" height="48">
+                        v-model="search"
+                        :label="t('admin.formAccessCodes.search')"
+                        density="comfortable"
+                        variant="outlined"
+                        hide-details
+                        prepend-inner-icon="mdi-magnify"
+                        class="search-input" />
+          <v-btn color="primary" variant="tonal" prepend-icon="mdi-refresh" @click="loadCodes" :loading="loading"
+                 height="48">
             {{ t('buttons.retry') }}
           </v-btn>
         </div>
@@ -451,13 +451,12 @@ onMounted(() => {
 
       <v-card-text>
         <!-- Expiring codes warning banner -->
-        <v-alert 
-          v-if="expiringCodesCount > 0" 
-          type="warning" 
-          variant="tonal" 
-          prominent
-          class="mb-4"
-        >
+        <v-alert
+                 v-if="expiringCodesCount > 0"
+                 type="warning"
+                 variant="tonal"
+                 prominent
+                 class="mb-4">
           <div class="d-flex align-center justify-space-between flex-wrap ga-2">
             <div>
               <div class="text-h6">{{ t('admin.formAccessCodes.expiringCodesWarning') }}</div>
@@ -465,24 +464,23 @@ onMounted(() => {
                 {{ t('admin.formAccessCodes.expiringCodesCount', { count: expiringCodesCount }) }}
               </div>
             </div>
-            <v-btn 
-              :color="showOnlyExpiring ? 'primary' : 'warning'" 
-              :variant="showOnlyExpiring ? 'elevated' : 'tonal'"
-              @click="toggleExpiringFilter"
-              :prepend-icon="showOnlyExpiring ? 'mdi-filter-off' : 'mdi-filter'"
-            >
-              {{ showOnlyExpiring ? t('admin.formAccessCodes.hideExpiringCodes') : t('admin.formAccessCodes.viewExpiringCodes') }}
+            <v-btn
+                   :color="showOnlyExpiring ? 'primary' : 'warning'"
+                   :variant="showOnlyExpiring ? 'elevated' : 'tonal'"
+                   @click="toggleExpiringFilter"
+                   :prepend-icon="showOnlyExpiring ? 'mdi-filter-off' : 'mdi-filter'">
+              {{ showOnlyExpiring ? t('admin.formAccessCodes.hideExpiringCodes') :
+                t('admin.formAccessCodes.viewExpiringCodes') }}
             </v-btn>
           </div>
         </v-alert>
 
         <v-data-table
-          :headers="headers"
-          :items="filteredRows"
-          :loading="loading"
-          :search="search"
-          item-value="code"
-        >
+                      :headers="headers"
+                      :items="filteredRows"
+                      :loading="loading"
+                      :search="search"
+                      item-value="code">
           <template #item.code="{ item }">
             <div class="d-flex align-center ga-2">
               <v-icon size="18">mdi-qrcode</v-icon>
@@ -508,87 +506,79 @@ onMounted(() => {
             <div class="d-flex align-center ga-2">
               <span>{{ consultationLabel(item) }}</span>
               <v-btn
-                v-if="consultationIdForCode(item)"
-                icon="mdi-open-in-new"
-                size="x-small"
-                variant="text"
-                @click="openConsultation(item)"
-                :title="t('admin.formAccessCodes.openConsultation')"
-              />
+                     v-if="consultationIdForCode(item)"
+                     icon="mdi-open-in-new"
+                     size="x-small"
+                     variant="text"
+                     @click="openConsultation(item)"
+                     :title="t('admin.formAccessCodes.openConsultation')" />
             </div>
           </template>
 
           <template #item.actions="{ item }">
             <div class="d-flex ga-1">
               <v-btn
-                v-if="canAssignConsultation(item)"
-                icon="mdi-link-plus"
-                size="small"
-                variant="text"
-                color="info"
-                :loading="actionLoadingCode === item.code"
-                @click="openAssignConsultationDialog(item)"
-                :title="t('admin.formAccessCodes.assignConsultation')"
-              />
+                     v-if="canAssignConsultation(item)"
+                     icon="mdi-link-plus"
+                     size="small"
+                     variant="text"
+                     color="info"
+                     :loading="actionLoadingCode === item.code"
+                     @click="openAssignConsultationDialog(item)"
+                     :title="t('admin.formAccessCodes.assignConsultation')" />
               <v-btn
-                v-if="hasConsultationLink(item)"
-                icon="mdi-restore"
-                size="small"
-                variant="text"
-                color="error"
-                :loading="actionLoadingCode === item.code"
-                @click="openResetDialog(item)"
-                :title="t('admin.formAccessCodes.resetConsultationForms')"
-              />
+                     v-if="hasConsultationLink(item)"
+                     icon="mdi-restore"
+                     size="small"
+                     variant="text"
+                     color="error"
+                     :loading="actionLoadingCode === item.code"
+                     @click="openResetDialog(item)"
+                     :title="t('admin.formAccessCodes.resetConsultationForms')" />
               <v-btn
-                v-if="canManageAssignedCode(item)"
-                icon="mdi-clock-start"
-                size="small"
-                variant="text"
-                color="secondary"
-                :loading="actionLoadingCode === item.code"
-                @click="openSetActivationStartDialog(item)"
-                :title="t('admin.formAccessCodes.setActivationStart')"
-              />
+                     v-if="canManageAssignedCode(item)"
+                     icon="mdi-clock-start"
+                     size="small"
+                     variant="text"
+                     color="secondary"
+                     :loading="actionLoadingCode === item.code"
+                     @click="openSetActivationStartDialog(item)"
+                     :title="t('admin.formAccessCodes.setActivationStart')" />
               <v-btn
-                v-if="canExtendCaseCode(item)"
-                icon="mdi-calendar-plus"
-                size="small"
-                variant="text"
-                color="success"
-                :loading="actionLoadingCode === item.code"
-                @click="safeExtendCaseCode(item)"
-                :title="t('admin.formAccessCodes.extendCaseCode')"
-              />
+                     v-if="canExtendCaseCode(item)"
+                     icon="mdi-calendar-plus"
+                     size="small"
+                     variant="text"
+                     color="success"
+                     :loading="actionLoadingCode === item.code"
+                     @click="safeExtendCaseCode(item)"
+                     :title="t('admin.formAccessCodes.extendCaseCode')" />
               <v-btn
-                v-if="canManageAssignedCode(item)"
-                icon="mdi-calendar-clock"
-                size="small"
-                variant="text"
-                color="primary"
-                :loading="actionLoadingCode === item.code"
-                @click="safeExtendCode(item)"
-                :title="t('admin.formAccessCodes.extend')"
-              />
+                     v-if="canManageAssignedCode(item)"
+                     icon="mdi-calendar-clock"
+                     size="small"
+                     variant="text"
+                     color="primary"
+                     :loading="actionLoadingCode === item.code"
+                     @click="safeExtendCode(item)"
+                     :title="t('admin.formAccessCodes.extend')" />
               <v-btn
-                v-if="canManageAssignedCode(item)"
-                icon="mdi-cancel"
-                size="small"
-                variant="text"
-                color="warning"
-                :loading="actionLoadingCode === item.code"
-                @click="safeRevokeCode(item)"
-                :title="t('admin.formAccessCodes.revoke')"
-              />
+                     v-if="canManageAssignedCode(item)"
+                     icon="mdi-cancel"
+                     size="small"
+                     variant="text"
+                     color="warning"
+                     :loading="actionLoadingCode === item.code"
+                     @click="safeRevokeCode(item)"
+                     :title="t('admin.formAccessCodes.revoke')" />
               <v-btn
-                icon="mdi-delete"
-                size="small"
-                variant="text"
-                color="error"
-                :loading="actionLoadingCode === item.code"
-                @click="safeDeleteCode(item)"
-                :title="t('admin.formAccessCodes.delete')"
-              />
+                     icon="mdi-delete"
+                     size="small"
+                     variant="text"
+                     color="error"
+                     :loading="actionLoadingCode === item.code"
+                     @click="safeDeleteCode(item)"
+                     :title="t('admin.formAccessCodes.delete')" />
             </div>
           </template>
         </v-data-table>
@@ -601,32 +591,33 @@ onMounted(() => {
       <v-card-title>{{ t('admin.formAccessCodes.setActivationStartTitle') }}</v-card-title>
       <v-card-text>
         <div class="text-body-2 mb-3">
-          {{ t('admin.formAccessCodes.setActivationStartDescription', { code: selectedCodeForActivationStart?.code || '' }) }}
+          {{ t('admin.formAccessCodes.setActivationStartDescription', {
+            code: selectedCodeForActivationStart?.code || ''
+          }) }}
         </div>
         <v-text-field
-          :model-value="activationStartInput ? formatLocalizedDate(activationStartInput, dateFormats.dateTime) : ''"
-          :label="t('admin.formAccessCodes.table.activatedOn')"
-          variant="outlined"
-          readonly
-          hide-details="auto"
-          class="mb-3"
-        />
+                      :model-value="activationStartInput ? formatLocalizedDate(activationStartInput, dateFormats.dateTime) : ''"
+                      :label="t('admin.formAccessCodes.table.activatedOn')"
+                      variant="outlined"
+                      readonly
+                      hide-details="auto"
+                      class="mb-3" />
         <VueDatePicker
-          v-model="activationStartInput"
-          :locale="locale"
-          week-num-name="Wo"
-          format="dd.MM.yyyy HH:mm"
-          week-numbers="iso"
-          :text-input="true"
-          :teleport-center="true"
-          :cancelText="t('buttons.cancelTimeDateText')"
-          :selectText="t('buttons.selectTimeDateText')"
-        />
+                       v-model="activationStartInput"
+                       :locale="locale"
+                       week-num-name="Wo"
+                       format="dd.MM.yyyy HH:mm"
+                       week-numbers="iso"
+                       :text-input="true"
+                       :teleport-center="true"
+                       :cancelText="t('buttons.cancelTimeDateText')"
+                       :selectText="t('buttons.selectTimeDateText')" />
       </v-card-text>
       <v-card-actions>
         <v-spacer />
         <v-btn variant="text" @click="showActivationStartDialog = false">{{ t('buttons.cancel') }}</v-btn>
-        <v-btn color="primary" @click="safeSaveActivationStart" :loading="!!selectedCodeForActivationStart && actionLoadingCode === selectedCodeForActivationStart.code">
+        <v-btn color="primary" @click="safeSaveActivationStart"
+               :loading="!!selectedCodeForActivationStart && actionLoadingCode === selectedCodeForActivationStart.code">
           {{ t('buttons.save') }}
         </v-btn>
       </v-card-actions>
@@ -639,28 +630,28 @@ onMounted(() => {
       <v-card-text>
         <div class="text-body-2 mb-3">{{ t('admin.formAccessCodes.assignConsultationDescription') }}</div>
         <v-text-field
-          v-model="assignSearchQuery"
-          :label="t('admin.formAccessCodes.assignSearchLabel')"
-          prepend-inner-icon="mdi-magnify"
-          @update:model-value="searchConsultationsForAssign"
-          :loading="searchingAssignConsultation"
-          variant="outlined"
-          class="mb-3"
-        />
+                      v-model="assignSearchQuery"
+                      :label="t('admin.formAccessCodes.assignSearchLabel')"
+                      prepend-inner-icon="mdi-magnify"
+                      @update:model-value="searchConsultationsForAssign"
+                      :loading="searchingAssignConsultation"
+                      variant="outlined"
+                      class="mb-3" />
         <v-select
-          v-model="selectedConsultationIdForAssign"
-          :items="assignResults"
-          item-title="label"
-          item-value="id"
-          :label="t('admin.formAccessCodes.assignSelectLabel')"
-          :disabled="assignResults.length === 0"
-          variant="outlined"
-        />
+                  v-model="selectedConsultationIdForAssign"
+                  :items="assignResults"
+                  item-title="label"
+                  item-value="id"
+                  :label="t('admin.formAccessCodes.assignSelectLabel')"
+                  :disabled="assignResults.length === 0"
+                  variant="outlined" />
       </v-card-text>
       <v-card-actions>
         <v-spacer />
         <v-btn variant="text" @click="showAssignConsultationDialog = false">{{ t('buttons.cancel') }}</v-btn>
-        <v-btn color="primary" @click="safeAssignConsultation" :loading="!!selectedCodeForAssign && actionLoadingCode === selectedCodeForAssign.code" :disabled="!selectedConsultationIdForAssign">
+        <v-btn color="primary" @click="safeAssignConsultation"
+               :loading="!!selectedCodeForAssign && actionLoadingCode === selectedCodeForAssign.code"
+               :disabled="!selectedConsultationIdForAssign">
           {{ t('buttons.save') }}
         </v-btn>
       </v-card-actions>
@@ -676,7 +667,8 @@ onMounted(() => {
       <v-card-actions>
         <v-spacer />
         <v-btn variant="text" @click="showDeleteDialog = false">{{ t('buttons.cancel') }}</v-btn>
-        <v-btn color="error" variant="tonal" @click="safeDeleteConfirmedCode" :loading="!!selectedCodeForDelete && actionLoadingCode === selectedCodeForDelete.code">
+        <v-btn color="error" variant="tonal" @click="safeDeleteConfirmedCode"
+               :loading="!!selectedCodeForDelete && actionLoadingCode === selectedCodeForDelete.code">
           {{ t('buttons.delete') }}
         </v-btn>
       </v-card-actions>
@@ -686,7 +678,8 @@ onMounted(() => {
   <v-dialog v-model="showResetDialogStep1" max-width="520">
     <v-card>
       <v-card-title>{{ t('admin.formAccessCodes.resetConsultationForms') }}</v-card-title>
-      <v-card-text>{{ t('admin.formAccessCodes.resetConfirmStep1', { code: selectedCodeForReset?.code || '' }) }}</v-card-text>
+      <v-card-text>{{ t('admin.formAccessCodes.resetConfirmStep1', { code: selectedCodeForReset?.code || '' })
+        }}</v-card-text>
       <v-card-actions>
         <v-spacer />
         <v-btn variant="text" @click="showResetDialogStep1 = false">{{ t('buttons.cancel') }}</v-btn>
@@ -698,11 +691,13 @@ onMounted(() => {
   <v-dialog v-model="showResetDialogStep2" max-width="520">
     <v-card>
       <v-card-title>{{ t('admin.formAccessCodes.resetConsultationForms') }}</v-card-title>
-      <v-card-text>{{ t('admin.formAccessCodes.resetConfirmStep2', { code: selectedCodeForReset?.code || '' }) }}</v-card-text>
+      <v-card-text>{{ t('admin.formAccessCodes.resetConfirmStep2', { code: selectedCodeForReset?.code || '' })
+        }}</v-card-text>
       <v-card-actions>
         <v-spacer />
         <v-btn variant="text" @click="showResetDialogStep2 = false">{{ t('buttons.cancel') }}</v-btn>
-        <v-btn color="error" variant="tonal" @click="safeResetConsultationForms" :loading="!!selectedCodeForReset && actionLoadingCode === selectedCodeForReset.code">
+        <v-btn color="error" variant="tonal" @click="safeResetConsultationForms"
+               :loading="!!selectedCodeForReset && actionLoadingCode === selectedCodeForReset.code">
           {{ t('buttons.confirm') }}
         </v-btn>
       </v-card-actions>

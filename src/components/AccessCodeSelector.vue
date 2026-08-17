@@ -30,10 +30,10 @@ const selectedCode = ref<ApiCode | null>(null)
 const generatingCode = ref(false)
 
 const availableCodes = computed(() => {
-  return codes.value.filter(code => 
-    !code.activatedOn && 
-    !code.archivedOn && 
-    !code.consultationId && 
+  return codes.value.filter(code =>
+    !code.activatedOn &&
+    !code.archivedOn &&
+    !code.consultationId &&
     !code.patientCaseId
   )
 })
@@ -64,18 +64,15 @@ async function generateNewCode() {
     const response = await codeApi.addCodes({
       addCodesRequest: {
         numberOfCodes: 1,
-        consultationDate: props.codeType === 'consultation' && props.consultationDate 
-          ? props.consultationDate 
-          : undefined,
       },
     })
 
     if (response.responseObject && response.responseObject.length > 0) {
       const newCode = response.responseObject[0]
-      logger.info('New code generated successfully', { 
-        codeId: newCode.id, 
+      logger.info('New code generated successfully', {
+        codeId: newCode.id,
         code: newCode.code,
-        codeType: props.codeType 
+        codeType: props.codeType
       })
 
       // Add the new code to the codes list
@@ -117,30 +114,28 @@ onMounted(async () => {
 
 <template>
   <v-combobox
-    v-model="selectedCode"
-    :items="availableCodes"
-    item-value="id"
-    item-title="code"
-    :label="codeType === 'case' 
-      ? t('patientCaseLanding.selectCodeDialog.selectLabel') 
-      : t('consultation.form-access-code')"
-    outlined
-    dense
-    :disabled="disabled"
-    @update:model-value="handleCodeChange"
-    data-testid="access-code-selector"
-  >
+              v-model="selectedCode"
+              :items="availableCodes"
+              item-value="id"
+              item-title="code"
+              :label="codeType === 'case'
+                ? t('patientCaseLanding.selectCodeDialog.selectLabel')
+                : t('consultation.form-access-code')"
+              outlined
+              dense
+              :disabled="disabled"
+              @update:model-value="handleCodeChange"
+              data-testid="access-code-selector">
     <template #append-inner>
       <v-icon
-        :class="{ 'text-success': !generatingCode && !disabled, 'text-disabled': generatingCode || disabled }"
-        :style="{ cursor: (generatingCode || disabled) ? 'not-allowed' : 'pointer' }"
-        @mousedown.stop.prevent
-        @click.stop.prevent="!generatingCode && !disabled && generateNewCode()"
-        :disabled="generatingCode || disabled"
-        :title="codeType === 'case' 
-          ? t('patientCaseLanding.createCaseCode') 
-          : t('consultation.generateCode')"
-      >
+              :class="{ 'text-success': !generatingCode && !disabled, 'text-disabled': generatingCode || disabled }"
+              :style="{ cursor: (generatingCode || disabled) ? 'not-allowed' : 'pointer' }"
+              @mousedown.stop.prevent
+              @click.stop.prevent="!generatingCode && !disabled && generateNewCode()"
+              :disabled="generatingCode || disabled"
+              :title="codeType === 'case'
+                ? t('patientCaseLanding.createCaseCode')
+                : t('consultation.generateCode')">
         {{ generatingCode ? 'mdi-loading' : 'mdi-plus' }}
       </v-icon>
     </template>

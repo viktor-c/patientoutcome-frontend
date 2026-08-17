@@ -128,14 +128,23 @@ onMounted(async () => {
 
     // Initialize access logging if using an external code
     if (externalCode) {
-      const consultation = consultationResponse.responseObject as unknown as Record<string, unknown>
-      const patientCaseId = consultation.patientCaseId as unknown
-      const patientCaseIdStr = patientCaseId && typeof patientCaseId === 'string' ? patientCaseId :
-        (patientCaseId && typeof patientCaseId === 'object' && (patientCaseId as Record<string, unknown>)._id ?
-        (patientCaseId as Record<string, unknown>)._id :
-        (patientCaseId && typeof patientCaseId === 'object' && (patientCaseId as Record<string, unknown>).id ?
-        (patientCaseId as Record<string, unknown>).id : ''))
-      const consultationIdStr = consultation._id as string || ''
+      const consultation = consultationResponse.responseObject as unknown as {
+        patientCaseId?: unknown
+        _id?: unknown
+      }
+      const patientCaseIdValue = consultation.patientCaseId
+      let patientCaseIdStr = ''
+      if (typeof patientCaseIdValue === 'string') {
+        patientCaseIdStr = patientCaseIdValue
+      } else if (typeof patientCaseIdValue === 'object' && patientCaseIdValue !== null) {
+        const patientCaseRecord = patientCaseIdValue as Record<string, unknown>
+        if (typeof patientCaseRecord.id === 'string') {
+          patientCaseIdStr = patientCaseRecord.id
+        } else if (typeof patientCaseRecord._id === 'string') {
+          patientCaseIdStr = patientCaseRecord._id
+        }
+      }
+      const consultationIdStr = typeof consultation._id === 'string' ? consultation._id : ''
 
       if (patientCaseIdStr && consultationIdStr) {
         initializeAccessLog({

@@ -36,6 +36,7 @@ describe('userStore', () => {
       const store = useUserStore()
 
       store.setSession({
+        name: 'Test User',
         username: 'testuser',
         belongsToCenter: ['center1', 'center2'],
         department: 'Orthopedics',
@@ -54,6 +55,7 @@ describe('userStore', () => {
       const store = useUserStore()
 
       store.setSession({
+        name: 'Test User',
         username: 'testuser',
         belongsToCenter: [],
         department: 'Test',
@@ -69,6 +71,7 @@ describe('userStore', () => {
       const store = useUserStore()
 
       store.setSession({
+        name: 'Test User',
         username: 'testuser',
         belongsToCenter: ['center1'],
         department: 'Test',
@@ -115,6 +118,7 @@ describe('userStore', () => {
     it('should check if user has specific role', () => {
       const store = useUserStore()
       store.setSession({
+        name: 'Test User',
         username: 'testuser',
         belongsToCenter: [],
         department: '',
@@ -129,6 +133,7 @@ describe('userStore', () => {
     it('should identify kiosk users', () => {
       const store = useUserStore()
       store.setSession({
+        name: 'Kiosk User',
         username: 'kioskuser',
         belongsToCenter: [],
         department: '',
@@ -141,6 +146,7 @@ describe('userStore', () => {
     it('should return false for non-kiosk users', () => {
       const store = useUserStore()
       store.setSession({
+        name: 'Normal User',
         username: 'normaluser',
         belongsToCenter: [],
         department: '',
@@ -155,6 +161,7 @@ describe('userStore', () => {
     it('should persist data to localStorage', () => {
       const store = useUserStore()
       store.setSession({
+        name: 'Test User',
         username: 'testuser',
         belongsToCenter: ['center1'],
         department: 'Test Dept',

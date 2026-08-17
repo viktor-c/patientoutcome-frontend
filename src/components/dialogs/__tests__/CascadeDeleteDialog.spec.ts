@@ -212,9 +212,10 @@ describe('CascadeDeleteDialog.vue', () => {
       })
 
       // Verify options are passed as props
-      expect(wrapper.props('options')).toEqual(mockOptions)
-      expect(wrapper.props('options').length).toBe(3)
-      
+      const options = wrapper.props('options')
+      expect(options).toEqual(mockOptions)
+      expect(options?.length).toBe(3)
+
       const vm = wrapper.vm as any
       expect(vm.hasOptions).toBe(true)
     })

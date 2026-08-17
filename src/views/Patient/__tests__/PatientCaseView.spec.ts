@@ -9,6 +9,8 @@ import { createPinia, setActivePinia } from 'pinia'
 import { createI18n } from 'vue-i18n'
 import PatientCaseView from '../PatientCaseView.vue'
 import { patientCaseApi, consultationApi } from '@/api'
+import type { GetAllPatientCases200ResponseResponseObjectInner } from '@/api/models/GetAllPatientCases200ResponseResponseObjectInner'
+import type { FindAllCodes200ResponseResponseObjectInnerConsultationId } from '@/api/models/FindAllCodes200ResponseResponseObjectInnerConsultationId'
 import en from '@/locales/en'
 import de from '@/locales/de'
 
@@ -48,45 +50,51 @@ describe('PatientCaseView.vue', () => {
   let vuetify: ReturnType<typeof createVuetify>
   let router: ReturnType<typeof createRouter>
 
-  const mockCases = [
+  const mockCases: GetAllPatientCases200ResponseResponseObjectInner[] = [
     {
       id: 'case-1',
       externalId: 'EXT-001',
-      diagnosis: 'Test diagnosis',
       patient: {
-        id: 'patient-1',
         externalPatientId: ['P001'],
-        departments: ['dept-1'],
       },
       surgeries: [],
+      supervisors: [],
+      notes: [],
       consultations: [],
     },
     {
       id: 'case-2',
       externalId: 'EXT-002',
-      diagnosis: 'Another diagnosis',
       patient: {
-        id: 'patient-1',
         externalPatientId: ['P001'],
-        departments: ['dept-1'],
       },
       surgeries: [],
+      supervisors: [],
+      notes: [],
       consultations: [],
     },
   ]
 
-  const mockConsultations = [
+  const mockConsultations: FindAllCodes200ResponseResponseObjectInnerConsultationId[] = [
     {
       id: 'consult-1',
-      caseId: 'case-1',
-      title: 'Initial Consultation',
-      consultationDate: '2024-01-15',
+      patientCaseId: 'case-1',
+      dateAndTime: '2024-01-15',
+      reasonForConsultation: [],
+      notes: [],
+      proms: [],
+      images: [],
+      visitedBy: [],
     },
     {
       id: 'consult-2',
-      caseId: 'case-1',
-      title: 'Follow-up',
-      consultationDate: '2024-02-15',
+      patientCaseId: 'case-1',
+      dateAndTime: '2024-02-15',
+      reasonForConsultation: [],
+      notes: [],
+      proms: [],
+      images: [],
+      visitedBy: [],
     },
   ]
 
@@ -358,7 +366,7 @@ describe('PatientCaseView.vue', () => {
       router.push({ name: 'PatientCaseView', params: { patientId: 'patient-1' } })
       await router.isReady()
 
-      mount(PatientCaseView, {
+      const wrapper = mount(PatientCaseView, {
         global: {
           plugins: [vuetify, router, i18n],
         },
@@ -538,18 +546,17 @@ describe('PatientCaseView.vue', () => {
 
   describe('Performance', () => {
     it('should handle large number of cases efficiently', async () => {
-      const manyCases = Array(100)
+      const manyCases: GetAllPatientCases200ResponseResponseObjectInner[] = Array(100)
         .fill(null)
         .map((_, i) => ({
           id: `case-${i}`,
           externalId: `EXT-${i}`,
-          diagnosis: `Diagnosis ${i}`,
           patient: {
-            id: 'patient-1',
             externalPatientId: ['P001'],
-            departments: ['dept-1'],
           },
           surgeries: [],
+          supervisors: [],
+          notes: [],
           consultations: [],
         }))
 

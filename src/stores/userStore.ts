@@ -36,12 +36,12 @@ export const useUserStore = defineStore('user', () => {
    * Unix timestamp (ms) of the last time an API response was received successfully.
    * Used by the session watcher to decide when to probe the server.
    */
-  const lastActivityAt = useLocalStorage<number>('lastActivityAt', 0)
+  const lastActivityAt = useLocalStorage<number | undefined>('lastActivityAt', undefined)
 
   //
   interface SessionData {
     // sessionId: string
-    name: string
+    name?: string
     username: string
     belongsToCenter: string[]
     department: string
@@ -56,7 +56,7 @@ export const useUserStore = defineStore('user', () => {
 
   const setSession = (data: SessionData) => {
     // sessionId.value = data.sessionId
-    name.value = data.name
+    name.value = data.name || ''
     username.value = data.username
     belongsToCenter.value = data.belongsToCenter
     department.value = data.department
@@ -86,7 +86,7 @@ export const useUserStore = defineStore('user', () => {
     permissions.value = []
     postopWeek.value = undefined
     sessionExpiresAt.value = null
-    lastActivityAt.value = 0
+    lastActivityAt.value = undefined
   }
 
   /**

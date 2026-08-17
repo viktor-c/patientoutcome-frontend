@@ -433,7 +433,7 @@ describe('useSessionWatcher', () => {
     it('should handle missing lastActivityAt', async () => {
       const checkSessionSpy = vi.spyOn(userStore, 'checkSessionWithServer').mockResolvedValue(true)
       userStore.isAuthenticated = vi.fn().mockReturnValue(true)
-      userStore.lastActivityAt = undefined
+      userStore.lastActivityAt = undefined as unknown as number
 
       mount(TestComponent, {
         global: {
@@ -508,7 +508,7 @@ describe('useSessionWatcher', () => {
       })
 
       const timersBeforeUnmount = vi.getTimerCount()
-      
+
       wrapper.unmount()
 
       const timersAfterUnmount = vi.getTimerCount()

@@ -278,7 +278,7 @@ async function generateNewCode() {
     console.log('Generating new code...')
 
     // Generate a single new code
-    const response = await codeApi.addCodes({ numberOfCodes: 1 })
+    const response = await codeApi.addCodes({ addCodesRequest: { numberOfCodes: 1 } })
 
     if (response.responseObject && response.responseObject.length > 0) {
       const newCode = response.responseObject[0]
@@ -315,95 +315,95 @@ async function generateNewCode() {
     </div>
 
     <NotFoundErrorPage
-                      v-else-if="viewLoadError"
-                      :title="t('consultationOverview.notFound')"
-                      :message="viewLoadErrorMessage"
-                      :button-text="t('buttons.retry')"
-                      @retry="retryLoad" />
+                       v-else-if="viewLoadError"
+                       :title="t('consultationOverview.notFound')"
+                       :message="viewLoadErrorMessage"
+                       :button-text="t('buttons.retry')"
+                       @retry="retryLoad" />
 
     <template v-else>
       <v-card>
         <v-card-title>{{ isEditMode ? t('consultation.edit') : t('consultation.add') }}</v-card-title>
         <v-card-text>
           <v-form @submit.prevent="saveConsultation">
-          <!-- Reason for Consultation -->
-          <v-select
-                    v-model="form.reasonForConsultation"
-                    :items="['planned', 'unplanned', 'emergency', 'pain', 'followup']"
-                    :label="t('consultation.reasonForConsultation')"
-                    multiple
-                    outlined
-                    dense></v-select>
+            <!-- Reason for Consultation -->
+            <v-select
+                      v-model="form.reasonForConsultation"
+                      :items="['planned', 'unplanned', 'emergency', 'pain', 'followup']"
+                      :label="t('consultation.reasonForConsultation')"
+                      multiple
+                      outlined
+                      dense></v-select>
 
-          <!-- Date and Time -->
-          <v-row class="my-2">
-            <v-col cols="8">
-              <VueDatePicker
-                             v-model="form.dateAndTime"
-                             multi-calendars
-                             :locale="locale"
-                             week-num-name="Wo"
-                             format="dd.MM.yyyy HH:mm"
-                             week-numbers="iso"
-                             :cancelText="t('buttons.cancelTimeDateText')"
-                             :selectText="t('buttons.selectTimeDateText')">
-              </VueDatePicker>
-            </v-col>
-            <v-col cols="4">
-              <v-btn inline color="info" @click="form.dateAndTime = new Date().toISOString()">
-                {{ t('buttons.timeAndDateNow') }}
-              </v-btn>
-            </v-col>
-          </v-row>
+            <!-- Date and Time -->
+            <v-row class="my-2">
+              <v-col cols="8">
+                <VueDatePicker
+                               v-model="form.dateAndTime"
+                               multi-calendars
+                               :locale="locale"
+                               week-num-name="Wo"
+                               format="dd.MM.yyyy HH:mm"
+                               week-numbers="iso"
+                               :cancelText="t('buttons.cancelTimeDateText')"
+                               :selectText="t('buttons.selectTimeDateText')">
+                </VueDatePicker>
+              </v-col>
+              <v-col cols="4">
+                <v-btn inline color="info" @click="form.dateAndTime = new Date().toISOString()">
+                  {{ t('buttons.timeAndDateNow') }}
+                </v-btn>
+              </v-col>
+            </v-row>
 
-          <!-- Notes -->
-          <NotesEditor
-                       v-model:notes="form.notes"
-                       title="consultation.notes"
-                       add-button-text="consultation.addNote" />
+            <!-- Notes -->
+            <NotesEditor
+                         v-model:notes="form.notes"
+                         title="consultation.notes"
+                         add-button-text="consultation.addNote" />
 
-          <!-- Form Templates -->
-          <v-autocomplete
-                          multiple
-                          chips
-                          clearable
-                          closable-chips
-                          v-model="selectedFormTemplates"
-                          :items="formTemplates"
-                          item-value="id"
-                          item-title="title"
-                          :label="t('consultation.formTemplate')"
-                          outlined
-                          dense></v-autocomplete>
+            <!-- Form Templates -->
+            <v-autocomplete
+                            multiple
+                            chips
+                            clearable
+                            closable-chips
+                            v-model="selectedFormTemplates"
+                            :items="formTemplates"
+                            item-value="id"
+                            item-title="title"
+                            :label="t('consultation.formTemplate')"
+                            outlined
+                            dense></v-autocomplete>
 
-          <!-- Visited By -->
-          <v-autocomplete v-model="form.visitedBy" :items="users" item-value="id" item-title="name"
-                          :label="t('consultation.visitedBy')" multiple outlined dense></v-autocomplete>
+            <!-- Visited By -->
+            <v-autocomplete v-model="form.visitedBy" :items="users" item-value="id" item-title="name"
+                            :label="t('consultation.visitedBy')" multiple outlined dense></v-autocomplete>
 
-          <!-- Code Selection -->
-          <v-row>
-            <v-col cols="8">
-              <v-combobox v-model="selectedCode" :items="codes" item-value="id" item-title="code"
-                          :label="t('consultation.form-access-code')" outlined dense></v-combobox>
-            </v-col>
-            <v-col cols="4" v-if="!isEditMode" class="d-flex align-center">
-              <v-btn
-                     color="secondary"
-                     :loading="generatingCode"
-                     :disabled="generatingCode"
-                     @click="generateNewCode">
-                <v-icon left>mdi-plus</v-icon>
-                {{ t('buttons.generateNewCode') }}
-              </v-btn>
-            </v-col>
-          </v-row>
+            <!-- Code Selection -->
+            <v-row>
+              <v-col cols="8">
+                <v-combobox v-model="selectedCode" :items="codes" item-value="id" item-title="code"
+                            :label="t('consultation.form-access-code')" outlined dense></v-combobox>
+              </v-col>
+              <v-col cols="4" v-if="!isEditMode" class="d-flex align-center">
+                <v-btn
+                       color="secondary"
+                       :loading="generatingCode"
+                       :disabled="generatingCode"
+                       @click="generateNewCode">
+                  <v-icon left>mdi-plus</v-icon>
+                  {{ t('buttons.generateNewCode') }}
+                </v-btn>
+              </v-col>
+            </v-row>
 
-          <v-btn color="primary" type="submit" class="mt-4">
-            {{ isEditMode ? t('buttons.saveChanges') : t('buttons.consultation') }}
-          </v-btn>
-          <v-btn color="secondary" @click="router.push(`/cases/patient/${patientId}`)">
-            {{ t('buttons.cancel') }}
-          </v-btn>
+            <v-btn color="primary" type="submit" class="mt-4">
+              {{ isEditMode ? t('buttons.saveChanges') : t('buttons.consultation') }}
+            </v-btn>
+            <v-btn color="secondary" @click="router.push(`/cases/patient/${patientId}`)">
+              {{ t('buttons.cancel') }}
+            </v-btn>
           </v-form>
         </v-card-text>
       </v-card>

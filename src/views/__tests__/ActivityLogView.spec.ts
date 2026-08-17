@@ -33,7 +33,7 @@ class MockEventSource {
   OPEN = 1
   CLOSED = 2
 
-  constructor(url: string) {
+  constructor(url: string, options?: EventSourceInit) {
     this.url = url
     setTimeout(() => {
       this.readyState = this.OPEN
@@ -64,7 +64,7 @@ class MockEventSource {
 
 let mockEventSourceInstance: MockEventSource | null = null
 
-global.EventSource = vi.fn((url: string, options?: unknown) => {
+global.EventSource = vi.fn((url: string, options?: EventSourceInit) => {
   mockEventSourceInstance = new MockEventSource(url, options)
   return mockEventSourceInstance
 }) as unknown as typeof EventSource
@@ -751,7 +751,7 @@ describe('ActivityLogView.vue', () => {
 
       await flushPromises()
 
-      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => { })
 
       // Simulate malformed message
       if (mockEventSourceInstance!.onmessage) {

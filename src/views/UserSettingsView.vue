@@ -244,8 +244,6 @@ const saveConsultationSettings = async () => {
   saving.value = true;
   try {
     const payload: UpdateUserRequest = {
-      consultationAccessDaysBefore: Number(consultationForm.value.consultationAccessDaysBefore),
-      consultationAccessDaysAfter: Number(consultationForm.value.consultationAccessDaysAfter),
       daysBeforeConsultations: Number(consultationForm.value.daysBeforeConsultations),
     };
 
@@ -300,23 +298,21 @@ onMounted(() => {
               <v-window-item value="profile">
                 <v-form id="user-settings-profile-form">
                   <v-text-field
-                    v-model="profileForm.name"
-                    :label="t('userSettings.fields.name')"
-                    :rules="[(v: string) => !!v || t('validation.required')]"
-                    id="user-settings-profile-name"
-                    class="mb-4"
-                  />
+                                v-model="profileForm.name"
+                                :label="t('userSettings.fields.name')"
+                                :rules="[(v: string) => !!v || t('validation.required')]"
+                                id="user-settings-profile-name"
+                                class="mb-4" />
 
                   <v-text-field
-                    v-model="profileForm.username"
-                    :label="t('userSettings.fields.username')"
-                    :rules="[(v: string) => v.length >= MIN_USERNAME_LENGTH || t('userSettings.usernameMinLength', { min: MIN_USERNAME_LENGTH })]"
-                    :error-messages="usernameError"
-                    :color="usernameErrorColor"
-                    :loading="checkingUsername"
-                    id="user-settings-profile-username"
-                    class="mb-4"
-                  >
+                                v-model="profileForm.username"
+                                :label="t('userSettings.fields.username')"
+                                :rules="[(v: string) => v.length >= MIN_USERNAME_LENGTH || t('userSettings.usernameMinLength', { min: MIN_USERNAME_LENGTH })]"
+                                :error-messages="usernameError"
+                                :color="usernameErrorColor"
+                                :loading="checkingUsername"
+                                id="user-settings-profile-username"
+                                class="mb-4">
                     <template v-slot:append-inner v-if="usernameAvailable === true">
                       <v-icon color="success">mdi-check-circle</v-icon>
                     </template>
@@ -326,46 +322,42 @@ onMounted(() => {
                   </v-text-field>
 
                   <v-text-field
-                    v-model="profileForm.email"
-                    :label="t('userSettings.fields.email')"
-                    type="email"
-                    :rules="[
-                      (v: string) => !!v || t('validation.required'),
-                      (v: string) => v.includes('@') || t('validation.email')
-                    ]"
-                    id="user-settings-profile-email"
-                    class="mb-4"
-                  />
+                                v-model="profileForm.email"
+                                :label="t('userSettings.fields.email')"
+                                type="email"
+                                :rules="[
+                                  (v: string) => !!v || t('validation.required'),
+                                  (v: string) => v.includes('@') || t('validation.email')
+                                ]"
+                                id="user-settings-profile-email"
+                                class="mb-4" />
 
                   <v-text-field
-                    v-model="profileForm.departmentName"
-                    :label="t('userSettings.fields.department')"
-                    readonly
-                    :loading="loadingDepartments"
-                    :hint="t('userSettings.fields.departmentReadOnly')"
-                    persistent-hint
-                    id="user-settings-profile-department"
-                    class="mb-4"
-                  />
+                                v-model="profileForm.departmentName"
+                                :label="t('userSettings.fields.department')"
+                                readonly
+                                :loading="loadingDepartments"
+                                :hint="t('userSettings.fields.departmentReadOnly')"
+                                persistent-hint
+                                id="user-settings-profile-department"
+                                class="mb-4" />
 
                   <v-text-field
-                    v-model="profileForm.belongsToCenterName"
-                    :label="t('userSettings.fields.center')"
-                    readonly
-                    :loading="loadingDepartments"
-                    :hint="t('userSettings.fields.centerReadOnly')"
-                    persistent-hint
-                    id="user-settings-profile-center"
-                    class="mb-4"
-                  />
+                                v-model="profileForm.belongsToCenterName"
+                                :label="t('userSettings.fields.center')"
+                                readonly
+                                :loading="loadingDepartments"
+                                :hint="t('userSettings.fields.centerReadOnly')"
+                                persistent-hint
+                                id="user-settings-profile-center"
+                                class="mb-4" />
 
                   <v-btn
-                    color="primary"
-                    @click="saveProfile"
-                    :disabled="!profileValid || saving"
-                    :loading="saving"
-                    id="user-settings-profile-save"
-                  >
+                         color="primary"
+                         @click="saveProfile"
+                         :disabled="!profileValid || saving"
+                         :loading="saving"
+                         id="user-settings-profile-save">
                     {{ t('common.save') }}
                   </v-btn>
                 </v-form>
@@ -375,42 +367,38 @@ onMounted(() => {
               <v-window-item value="password">
                 <v-form id="user-settings-password-form">
                   <v-text-field
-                    v-model="passwordForm.currentPassword"
-                    :label="t('userSettings.fields.currentPassword')"
-                    type="password"
-                    :rules="[(v: string) => v.length >= 6 || t('userSettings.passwordMinLength')]"
-                    id="user-settings-password-current"
-                    class="mb-4"
-                  />
+                                v-model="passwordForm.currentPassword"
+                                :label="t('userSettings.fields.currentPassword')"
+                                type="password"
+                                :rules="[(v: string) => v.length >= 6 || t('userSettings.passwordMinLength')]"
+                                id="user-settings-password-current"
+                                class="mb-4" />
 
                   <v-text-field
-                    v-model="passwordForm.newPassword"
-                    :label="t('userSettings.fields.newPassword')"
-                    type="password"
-                    :rules="[(v: string) => v.length >= 6 || t('userSettings.passwordMinLength')]"
-                    id="user-settings-password-new"
-                    class="mb-4"
-                  />
+                                v-model="passwordForm.newPassword"
+                                :label="t('userSettings.fields.newPassword')"
+                                type="password"
+                                :rules="[(v: string) => v.length >= 6 || t('userSettings.passwordMinLength')]"
+                                id="user-settings-password-new"
+                                class="mb-4" />
 
                   <v-text-field
-                    v-model="passwordForm.confirmPassword"
-                    :label="t('userSettings.fields.confirmPassword')"
-                    type="password"
-                    :rules="[
-                      (v: string) => v.length >= 6 || t('userSettings.passwordMinLength'),
-                      (v: string) => v === passwordForm.newPassword || t('userSettings.passwordsDoNotMatch')
-                    ]"
-                    id="user-settings-password-confirm"
-                    class="mb-4"
-                  />
+                                v-model="passwordForm.confirmPassword"
+                                :label="t('userSettings.fields.confirmPassword')"
+                                type="password"
+                                :rules="[
+                                  (v: string) => v.length >= 6 || t('userSettings.passwordMinLength'),
+                                  (v: string) => v === passwordForm.newPassword || t('userSettings.passwordsDoNotMatch')
+                                ]"
+                                id="user-settings-password-confirm"
+                                class="mb-4" />
 
                   <v-btn
-                    color="primary"
-                    @click="savePassword"
-                    :disabled="!passwordValid || saving"
-                    :loading="saving"
-                    id="user-settings-password-save"
-                  >
+                         color="primary"
+                         @click="savePassword"
+                         :disabled="!passwordValid || saving"
+                         :loading="saving"
+                         id="user-settings-password-save">
                     {{ t('userSettings.changePassword') }}
                   </v-btn>
                 </v-form>
@@ -420,48 +408,44 @@ onMounted(() => {
               <v-window-item value="consultation">
                 <v-form id="user-settings-consultation-form">
                   <v-text-field
-                    v-model.number="consultationForm.consultationAccessDaysBefore"
-                    :label="t('userSettings.fields.consultationAccessDaysBefore')"
-                    type="number"
-                    :hint="t('userSettings.fields.consultationAccessDaysBeforeHint')"
-                    persistent-hint
-                    :min="MIN_DAYS"
-                    :max="MAX_DAYS"
-                    id="user-settings-consultation-days-before"
-                    class="mb-4"
-                  />
+                                v-model.number="consultationForm.consultationAccessDaysBefore"
+                                :label="t('userSettings.fields.consultationAccessDaysBefore')"
+                                type="number"
+                                :hint="t('userSettings.fields.consultationAccessDaysBeforeHint')"
+                                persistent-hint
+                                :min="MIN_DAYS"
+                                :max="MAX_DAYS"
+                                id="user-settings-consultation-days-before"
+                                class="mb-4" />
 
                   <v-text-field
-                    v-model.number="consultationForm.consultationAccessDaysAfter"
-                    :label="t('userSettings.fields.consultationAccessDaysAfter')"
-                    type="number"
-                    :hint="t('userSettings.fields.consultationAccessDaysAfterHint')"
-                    persistent-hint
-                    :min="MIN_DAYS"
-                    :max="MAX_DAYS"
-                    id="user-settings-consultation-days-after"
-                    class="mb-4"
-                  />
+                                v-model.number="consultationForm.consultationAccessDaysAfter"
+                                :label="t('userSettings.fields.consultationAccessDaysAfter')"
+                                type="number"
+                                :hint="t('userSettings.fields.consultationAccessDaysAfterHint')"
+                                persistent-hint
+                                :min="MIN_DAYS"
+                                :max="MAX_DAYS"
+                                id="user-settings-consultation-days-after"
+                                class="mb-4" />
 
                   <v-text-field
-                    v-model.number="consultationForm.daysBeforeConsultations"
-                    :label="t('userSettings.fields.daysBeforeConsultations')"
-                    type="number"
-                    :hint="t('userSettings.fields.daysBeforeConsultationsHint')"
-                    persistent-hint
-                    :min="MIN_DAYS"
-                    :max="MAX_DAYS"
-                    id="user-settings-consultation-days-before-consultations"
-                    class="mb-4"
-                  />
+                                v-model.number="consultationForm.daysBeforeConsultations"
+                                :label="t('userSettings.fields.daysBeforeConsultations')"
+                                type="number"
+                                :hint="t('userSettings.fields.daysBeforeConsultationsHint')"
+                                persistent-hint
+                                :min="MIN_DAYS"
+                                :max="MAX_DAYS"
+                                id="user-settings-consultation-days-before-consultations"
+                                class="mb-4" />
 
                   <v-btn
-                    color="primary"
-                    @click="saveConsultationSettings"
-                    :disabled="!consultationValid || saving"
-                    :loading="saving"
-                    id="user-settings-consultation-save"
-                  >
+                         color="primary"
+                         @click="saveConsultationSettings"
+                         :disabled="!consultationValid || saving"
+                         :loading="saving"
+                         id="user-settings-consultation-save">
                     {{ t('common.save') }}
                   </v-btn>
                 </v-form>

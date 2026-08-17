@@ -2,12 +2,11 @@
   <v-dialog v-model="dialog" width="auto" scrollable>
     <template #activator="{ props: activatorProps }">
       <v-btn
-        v-bind="activatorProps"
-        icon
-        size="small"
-        variant="text"
-        :disabled="!canViewVersions"
-      >
+             v-bind="activatorProps"
+             icon
+             size="small"
+             variant="text"
+             :disabled="!canViewVersions">
         <v-icon>mdi-history</v-icon>
         <v-tooltip activator="parent">Version History</v-tooltip>
       </v-btn>
@@ -42,11 +41,10 @@
 
         <v-timeline v-else side="end" density="compact" align="start">
           <v-timeline-item
-            v-for="version in versions"
-            :key="version.version"
-            :dot-color="getVersionColor(version)"
-            size="small"
-          >
+                           v-for="version in versions"
+                           :key="version.version"
+                           :dot-color="getVersionColor(version)"
+                           size="small">
             <template #opposite>
               <v-chip size="small" :color="version.version === currentVersion ? 'primary' : 'default'">
                 v{{ version.version }}
@@ -58,20 +56,18 @@
                 <div class="d-flex align-center">
                   <span>{{ formatDate(version.changedAt) }}</span>
                   <v-chip
-                    v-if="version.isRestoration"
-                    size="x-small"
-                    color="warning"
-                    class="ml-2"
-                  >
+                          v-if="version.isRestoration"
+                          size="x-small"
+                          color="warning"
+                          class="ml-2">
                     <v-icon start size="x-small">mdi-restore</v-icon>
                     Restored from v{{ version.restoredFromVersion }}
                   </v-chip>
                   <v-chip
-                    v-if="version.version === currentVersion"
-                    size="x-small"
-                    color="success"
-                    class="ml-2"
-                  >
+                          v-if="version.version === currentVersion"
+                          size="x-small"
+                          color="success"
+                          class="ml-2">
                     <v-icon start size="x-small">mdi-check-circle</v-icon>
                     Current
                   </v-chip>
@@ -79,7 +75,7 @@
               </v-card-title>
 
               <v-card-subtitle class="py-1">
-                Changed by: {{ version.changedByUser.name || 'Unknown User' }}
+                Changed by: {{ version.changedByUser?.name || version.changedBy || 'Unknown User' }}
               </v-card-subtitle>
 
               <v-card-text class="py-2">
@@ -93,34 +89,32 @@
 
               <v-card-actions class="py-1 px-2">
                 <v-btn
-                  size="small"
-                  variant="text"
-                  color="primary"
-                  @click="handleViewVersion(version.version)"
-                >
+                       size="small"
+                       variant="text"
+                       color="primary"
+                       @click="handleViewVersion(version.version)">
                   <v-icon start>mdi-eye</v-icon>
                   View
                 </v-btn>
                 <v-btn
-                  size="small"
-                  variant="text"
-                  color="info"
-                  :disabled="compareSelection.length >= 2"
-                  @click="toggleCompareSelection(version.version)"
-                >
+                       size="small"
+                       variant="text"
+                       color="info"
+                       :disabled="compareSelection.length >= 2"
+                       @click="toggleCompareSelection(version.version)">
                   <v-icon start>
-                    {{ compareSelection.includes(version.version) ? 'mdi-checkbox-marked' : 'mdi-checkbox-blank-outline' }}
+                    {{ compareSelection.includes(version.version) ? 'mdi-checkbox-marked' : 'mdi-checkbox-blank-outline'
+                    }}
                   </v-icon>
                   {{ compareSelection.includes(version.version) ? 'Selected' : 'Select' }}
                 </v-btn>
                 <v-spacer />
                 <v-btn
-                  v-if="version.version !== currentVersion"
-                  size="small"
-                  variant="text"
-                  color="warning"
-                  @click="openRestoreDialog(version.version)"
-                >
+                       v-if="version.version !== currentVersion"
+                       size="small"
+                       variant="text"
+                       color="warning"
+                       @click="openRestoreDialog(version.version)">
                   <v-icon start>mdi-restore</v-icon>
                   Restore
                 </v-btn>
@@ -134,11 +128,10 @@
 
       <v-card-actions>
         <v-btn
-          v-if="compareSelection.length === 2"
-          color="info"
-          variant="elevated"
-          @click="handleCompareVersions"
-        >
+               v-if="compareSelection.length === 2"
+               color="info"
+               variant="elevated"
+               @click="handleCompareVersions">
           <v-icon start>mdi-compare</v-icon>
           Compare v{{ compareSelection[0] }} and v{{ compareSelection[1] }}
         </v-btn>
@@ -161,12 +154,11 @@
           </v-alert>
 
           <v-textarea
-            v-model="restoreNotes"
-            label="Restoration Notes (Optional)"
-            placeholder="Describe why you are restoring this version..."
-            rows="3"
-            variant="outlined"
-          />
+                      v-model="restoreNotes"
+                      label="Restoration Notes (Optional)"
+                      placeholder="Describe why you are restoring this version..."
+                      rows="3"
+                      variant="outlined" />
 
           <div class="text-caption text-medium-emphasis mt-2">
             Default note: "Restored from version {{ versionToRestore }}"
@@ -176,11 +168,10 @@
           <v-spacer />
           <v-btn variant="text" @click="restoreDialog = false">Cancel</v-btn>
           <v-btn
-            color="warning"
-            variant="elevated"
-            :loading="restoring"
-            @click="confirmRestore"
-          >
+                 color="warning"
+                 variant="elevated"
+                 :loading="restoring"
+                 @click="confirmRestore">
             <v-icon start>mdi-restore</v-icon>
             Restore Version
           </v-btn>
