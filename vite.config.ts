@@ -40,6 +40,18 @@ export default defineConfig(({ mode }) => {
         '@': fileURLToPath(new URL('./src', import.meta.url))
       },
     },
+    build: {
+      rollupOptions: {
+        output: {
+          manualChunks: {
+            'vuetify': ['vuetify'],
+            'chart': ['chart.js', 'vue-chartjs', 'chartjs-adapter-date-fns', 'chartjs-plugin-annotation', 'chartjs-plugin-zoom'],
+            'vendor': ['vue', 'vue-router', 'pinia', 'vue-i18n'],
+          },
+        },
+      },
+      chunkSizeWarningLimit: 1000,
+    },
     server: {
       // allow access from LAN IPs (so dev server is reachable via 192.168.x.x)
       host: true,

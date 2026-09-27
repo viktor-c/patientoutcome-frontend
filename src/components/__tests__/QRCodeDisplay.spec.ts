@@ -146,7 +146,7 @@ describe('QRCodeDisplay.vue', () => {
     it('displays the show QR code button', () => {
       const button = wrapper.find('button')
       expect(button.exists()).toBe(true)
-      expect(button.text()).toContain('Show QR Code')
+      expect(button.attributes('title')).toBe('Show QR Code')
     })
 
     it('applies custom size prop', () => {

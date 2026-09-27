@@ -47,9 +47,8 @@ const selectedBackupCollections = ref<string[]>([]);
 const encryptBackup = ref(false);
 const encryptionPassword = ref('');
 const encryptionPasswordConfirm = ref('');
-const uploadFile = ref<File | null>(null);
-const uploadDialog = ref(false);
 const selectedDestination = ref<string>('local');
+const fileInputRef = ref<HTMLInputElement | null>(null);
 
 const shouldDeselectByDefault = (collectionName: string): boolean => {
   const normalizedName = collectionName.toLowerCase();
@@ -242,22 +241,29 @@ const toggleCollection = (collectionName: string, selected: boolean | null) => {
   }
 };
 
-const handleFileUpload = async () => {
-  if (!uploadFile.value) {
-    notifierStore.notify('Please select a file to upload', 'info');
+const triggerFileUpload = () => {
+  fileInputRef.value?.click();
+};
+
+const handleFileSelected = async (event: Event) => {
+  const input = event.target as HTMLInputElement;
+  const files = input.files;
+
+  if (!files || files.length === 0) {
     return;
   }
 
+  const file = files[0];
   loading.value = true;
+
   try {
     const response = await backupApi.uploadBackup({
-      file: uploadFile.value || undefined,
+      file,
     });
 
     if (response.success) {
       notifierStore.notify('Backup uploaded successfully', 'success');
-      uploadDialog.value = false;
-      uploadFile.value = null;
+      input.value = '';
       await loadBackupHistory();
     }
   } catch (error) {
@@ -446,7 +452,7 @@ onMounted(async () => {
                     <v-spacer />
                     <v-btn
                            color="secondary"
-                           @click="uploadDialog = true">
+                           @click="triggerFileUpload">
                       <v-icon left>mdi-upload</v-icon>
                       Upload Backup
                     </v-btn>
@@ -562,31 +568,6 @@ onMounted(async () => {
       </v-card>
     </v-dialog>
 
-    <!-- Upload Dialog -->
-    <v-dialog v-model="uploadDialog" max-width="500px">
-      <v-card>
-        <v-card-title>Upload Backup File</v-card-title>
-        <v-card-text>
-          <v-file-input
-                        v-model="uploadFile"
-                        label="Select backup file (.tar.gz)"
-                        accept=".tar.gz,.tgz"
-                        prepend-icon="mdi-file-upload"
-                        show-size />
-        </v-card-text>
-        <v-card-actions>
-          <v-spacer />
-          <v-btn text @click="uploadDialog = false">Cancel</v-btn>
-          <v-btn
-                 color="primary"
-                 :loading="loading"
-                 @click="handleFileUpload">
-            Upload
-          </v-btn>
-        </v-card-actions>
-      </v-card>
-    </v-dialog>
-
     <!-- Backup History - Always displayed at the bottom -->
     <v-row class="mt-4">
       <v-col cols="12">
@@ -598,6 +579,14 @@ onMounted(async () => {
                            @restore="openRestoreDialog" />
       </v-col>
     </v-row>
+
+    <!-- Hidden file input for backup upload -->
+    <input
+           ref="fileInputRef"
+           type="file"
+           accept=".tar.gz,.tgz"
+           style="display: none"
+           @change="handleFileSelected" />
   </v-container>
 </template>
 

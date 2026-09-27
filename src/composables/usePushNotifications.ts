@@ -1,4 +1,4 @@
-import { ref, readonly } from 'vue'
+import { computed, ref, readonly } from 'vue'
 import { apiBasePath } from '@/api'
 
 /**
@@ -23,23 +23,64 @@ import { apiBasePath } from '@/api'
  */
 
 export type PushPermission = 'default' | 'granted' | 'denied' | 'unsupported'
+export type PushSupportStatus =
+  | 'supported'
+  | 'insecure-context'
+  | 'ios-home-screen-required'
+  | 'unsupported-browser'
+
+function isIosDevice(): boolean {
+  if (typeof navigator === 'undefined') return false
+
+  const userAgent = navigator.userAgent || ''
+  return /iPad|iPhone|iPod/.test(userAgent)
+    || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)
+}
+
+function isStandaloneDisplayMode(): boolean {
+  if (typeof window === 'undefined') return false
+
+  const navigatorWithStandalone = navigator as Navigator & { standalone?: boolean }
+  return window.matchMedia('(display-mode: standalone)').matches || navigatorWithStandalone.standalone === true
+}
+
+function detectPushSupportStatus(): PushSupportStatus {
+  if (typeof window === 'undefined' || typeof navigator === 'undefined') {
+    return 'unsupported-browser'
+  }
+
+  if (!window.isSecureContext) {
+    return 'insecure-context'
+  }
+
+  if (isIosDevice() && !isStandaloneDisplayMode()) {
+    return 'ios-home-screen-required'
+  }
+
+  const browserSupportsPushApis =
+    'serviceWorker' in navigator
+    && 'PushManager' in window
+    && 'Notification' in window
+
+  return browserSupportsPushApis ? 'supported' : 'unsupported-browser'
+}
 
 export function usePushNotifications() {
-  /** True when the browser supports the required APIs. */
-  const supported = ref(
-    typeof window !== 'undefined' &&
-      'serviceWorker' in navigator &&
-      'PushManager' in window &&
-      'Notification' in window,
-  )
+  const supportStatus = ref<PushSupportStatus>(detectPushSupportStatus())
+  const supported = computed(() => supportStatus.value === 'supported')
 
   const permission = ref<PushPermission>(
-    !supported.value ? 'unsupported' : (Notification.permission as PushPermission),
+    supported.value ? (Notification.permission as PushPermission) : 'unsupported',
   )
 
   const subscribed = ref(false)
   const loading = ref(false)
   const error = ref<string | null>(null)
+
+  function refreshSupportState(): void {
+    supportStatus.value = detectPushSupportStatus()
+    permission.value = supported.value ? (Notification.permission as PushPermission) : 'unsupported'
+  }
 
   // ── Helpers ───────────────────────────────────────────────────────────────
 
@@ -72,12 +113,14 @@ export function usePushNotifications() {
     sub: PushSubscription,
     caseAccessToken?: string | null,
   ): Promise<boolean> {
+    const serialized = sub.toJSON()
+    if (!serialized.endpoint || !serialized.keys?.auth || !serialized.keys?.p256dh) {
+      return false
+    }
+
     const body = {
-      endpoint: sub.endpoint,
-      keys: {
-        auth: btoa(String.fromCharCode(...new Uint8Array(sub.getKey('auth')!))),
-        p256dh: btoa(String.fromCharCode(...new Uint8Array(sub.getKey('p256dh')!))),
-      },
+      endpoint: serialized.endpoint,
+      keys: serialized.keys,
       caseAccessToken: caseAccessToken ?? null,
       userAgent: navigator.userAgent,
     }
@@ -108,6 +151,12 @@ export function usePushNotifications() {
     }
   }
 
+  async function getCurrentPushSubscription(): Promise<PushSubscription | null> {
+    const reg = await navigator.serviceWorker.getRegistration()
+    if (!reg) return null
+    return reg.pushManager.getSubscription()
+  }
+
   // ── Public API ────────────────────────────────────────────────────────────
 
   /**
@@ -116,6 +165,8 @@ export function usePushNotifications() {
    * @param options.caseAccessToken  Patient case-code session token (patient flow only)
    */
   async function subscribe(options: { caseAccessToken?: string | null } = {}): Promise<void> {
+    refreshSupportState()
+
     if (!supported.value) {
       error.value = 'Push notifications are not supported in this browser.'
       return
@@ -171,6 +222,7 @@ export function usePushNotifications() {
    * Unsubscribe from push notifications (remove from browser and server).
    */
   async function unsubscribe(): Promise<void> {
+    refreshSupportState()
     loading.value = true
     error.value = null
 
@@ -190,11 +242,49 @@ export function usePushNotifications() {
     }
   }
 
+  async function sendTestNotification(): Promise<boolean> {
+    refreshSupportState()
+    loading.value = true
+    error.value = null
+
+    try {
+      const pushSub = await getCurrentPushSubscription()
+      if (!pushSub) {
+        error.value = 'No active push subscription found for this browser.'
+        return false
+      }
+
+      const res = await fetch(`${apiBasePath}/notifications/test`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          endpoint: pushSub.endpoint,
+          url: window.location.href,
+        }),
+      })
+
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}))
+        error.value = data.message || 'Failed to send test push notification.'
+        return false
+      }
+
+      return true
+    } catch (err: unknown) {
+      error.value = err instanceof Error ? err.message : 'Failed to send test push notification.'
+      return false
+    } finally {
+      loading.value = false
+    }
+  }
+
   /** Check whether the browser already has an active subscription. */
   async function checkCurrentSubscription(): Promise<void> {
+    refreshSupportState()
     if (!supported.value) return
     try {
-      const reg = await navigator.serviceWorker.getRegistration('/sw.js')
+      const reg = await navigator.serviceWorker.getRegistration()
       if (!reg) { subscribed.value = false; return }
       const sub = await reg.pushManager.getSubscription()
       subscribed.value = Boolean(sub) && permission.value === 'granted'
@@ -205,12 +295,14 @@ export function usePushNotifications() {
 
   return {
     supported: readonly(supported),
+    supportStatus: readonly(supportStatus),
     permission: readonly(permission),
     subscribed,
     loading: readonly(loading),
     error: readonly(error),
     subscribe,
     unsubscribe,
+    sendTestNotification,
     checkCurrentSubscription,
   }
 }

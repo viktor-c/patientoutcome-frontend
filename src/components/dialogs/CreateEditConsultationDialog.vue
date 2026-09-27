@@ -19,7 +19,7 @@ import type {
 } from '@/types'
 import { useNotifierStore } from '@/stores/notifierStore'
 import { useFormTemplateStore } from '@/stores'
-import { consultationApi, userApi, codeApi, formtemplateApi } from '@/api'
+import { consultationApi, userApi, codeApi } from '@/api'
 import { getAccessLevelColor, getAccessLevelDescription } from '@/services/formVersionService'
 import { logger } from '@/services/logger'
 import { useUserStore } from '@/stores/userStore'
@@ -43,7 +43,7 @@ const userStore = useUserStore()
 const consultationStore = useConsultationStore()
 const formTemplateStore = useFormTemplateStore()
 const { getLocalizedDayjs } = useDateFormat()
-const { errors, validateForm, clearAllErrors, resetFormState } = useFormValidation()
+const { errors, validateForm, clearAllErrors, clearFieldError, resetFormState } = useFormValidation()
 
 const isEditMode = ref(!!(props.consultation && props.consultation.id))
 
@@ -97,7 +97,7 @@ const form = ref<ConsultationFormState>({
   dateAndTime: new Date().toISOString(),
   consultationAccessDaysBefore: userStore.consultationAccessDaysBefore,
   consultationAccessDaysAfter: userStore.consultationAccessDaysAfter,
-  reasonForConsultation: [],
+  reasonForConsultation: ['followup'],
   notes: [],
   proms: [],
   images: [],
@@ -107,6 +107,11 @@ const form = ref<ConsultationFormState>({
 
 const isEditingConsultationDateInput = ref(false)
 const consultationDateInputDraft = ref('')
+
+// Controls the popup menu that contains the date picker
+const isDatePickerOpen = ref(false)
+const consultationDateFieldRef = ref<HTMLElement>()
+const consultationDateMenuWidth = ref<number>(360)
 
 const formatConsultationDateForInput = (rawDate: string | Date | null | undefined): string => {
   if (!rawDate) return ''
@@ -192,9 +197,26 @@ watch(
     if (!isEditingConsultationDateInput.value) {
       consultationDateInputDraft.value = formatConsultationDateForInput(newDate)
     }
+    clearFieldError('dateAndTime')
   },
   { immediate: true }
 )
+
+const onDatePickerSelect = () => {
+  // VueDatePicker already updates `form.dateAndTime` via v-model.
+  isDatePickerOpen.value = false
+  isEditingConsultationDateInput.value = false
+  consultationDateInputDraft.value = formatConsultationDateForInput(form.value.dateAndTime)
+  clearFieldError('dateAndTime')
+}
+
+const openDatePicker = () => {
+  const fieldWidth = consultationDateFieldRef.value?.offsetWidth
+  if (typeof fieldWidth === 'number' && fieldWidth > 0) {
+    consultationDateMenuWidth.value = fieldWidth
+  }
+  isDatePickerOpen.value = true
+}
 
 // helper used when a consultation object needs to be applied to form state
 function populateFormFromConsultation(cons: ApiConsultationFlexible) {
@@ -209,11 +231,11 @@ function populateFormFromConsultation(cons: ApiConsultationFlexible) {
     consultationRecord.consultationAccessDaysAfter ?? userStore.consultationAccessDaysAfter,
   ) as never
 
-  // Keep reasonForConsultation as array (backend type)
-  if (Array.isArray(cons.reasonForConsultation)) {
+  // Keep reasonForConsultation as array (backend type). Default to 'followup'
+  if (Array.isArray(cons.reasonForConsultation) && cons.reasonForConsultation.length > 0) {
     form.value.reasonForConsultation = cons.reasonForConsultation
   } else {
-    form.value.reasonForConsultation = []
+    form.value.reasonForConsultation = ['followup']
   }
 
   // fill titles using template cache
@@ -272,7 +294,7 @@ watch(
         dateAndTime: new Date().toISOString(),
         consultationAccessDaysBefore: userStore.consultationAccessDaysBefore,
         consultationAccessDaysAfter: userStore.consultationAccessDaysAfter,
-        reasonForConsultation: [],
+        reasonForConsultation: ['followup'],
         notes: [],
         proms: [],
         images: [],
@@ -291,10 +313,14 @@ watch(
 const users = ref<UserNoPassword[]>([])
 // When a departmentId is provided, we fetch the full form template list filtered by that
 // department (which includes the accessLevel field). Otherwise we fall back to the store shortlist.
-const localFormTemplates = ref<FormTemplateFull[]>([])
-const formTemplates = computed<Array<FormTemplateShortList | FormTemplateFull>>(() =>
-  localFormTemplates.value.length ? localFormTemplates.value : formTemplateStore.templates
-)
+// Always prefer the store as the single source of truth for templates. When a
+// departmentId is provided, request the department-scoped list from the store.
+const formTemplates = computed<Array<FormTemplateShortList | FormTemplateFull>>(() => {
+  const deptId = props.departmentId
+  // `getTemplatesForDepartment` returns department-specific full templates
+  // if available, otherwise falls back to the shortlist.
+  return formTemplateStore.getTemplatesForDepartment(deptId) as Array<FormTemplateShortList | FormTemplateFull>
+})
 const selectedFormTemplates = ref<string[]>([])
 const selectedAccessCode = ref<string | null>(null)
 const ignoreAccessWindow = ref(false)
@@ -306,6 +332,7 @@ const selectedCode = ref<Code | null>(null)
 // Clinicians can assign both patient-facing and authenticated (clinician) forms to a consultation,
 // so we show both. Only 'inactive' forms are hidden (unless the user is an admin).
 const availableFormTemplates = computed(() => {
+  console.debug(`All form templates: ${formTemplates.value}`)
   return formTemplates.value.filter((template: TemplateWithAccess) => {
     const accessLevel = template.accessLevel
 
@@ -322,6 +349,19 @@ async function fetchUsers() {
     const response = await userApi.getUsers()
     users.value = response.responseObject || []
     logger.info('Users fetched successfully', { count: users.value.length })
+    // If creating a new consultation (not edit mode) and visitedBy is empty,
+    // pre-fill with the currently logged-in user when present in the users list.
+    if (!isEditMode.value && (!form.value.visitedBy || (Array.isArray(form.value.visitedBy) && form.value.visitedBy.length === 0))) {
+      try {
+        const currentUsername = typeof userStore.username === 'string' ? userStore.username : ''
+        const currentUser = users.value.find((user) => user.username === currentUsername)
+        if (currentUser?.id) {
+          form.value.visitedBy = [String(currentUser.id)]
+        }
+      } catch {
+        // ignore any matching errors
+      }
+    }
   } catch (error: unknown) {
     let errorMessage = 'An unexpected error occurred'
     if (error instanceof ResponseError) {
@@ -350,34 +390,21 @@ async function fetchCodes() {
 }
 
 async function fetchFormTemplates() {
+  // Always ensure the shortlist is loaded first.
+  await formTemplateStore.fetchIfNeeded()
+
+  // If departmentId is provided, try to fetch department-scoped full templates
+  // via the store. If the store's templates remain empty, force a refresh.
   if (props.departmentId) {
-    try {
-      const response = await formtemplateApi.getFormTemplates({ departmentId: props.departmentId })
-      localFormTemplates.value = response.responseObject || []
-    } catch (error: unknown) {
-      let errorMessage = 'An unexpected error occurred'
-      if (error instanceof ResponseError) {
-        errorMessage = (await error.response.json()).message
-      }
-      logger.error('Error fetching form templates for department', {
-        departmentId: props.departmentId,
-        errorMessage,
-      })
-      // Fall back to the cached shortlist
-      await formTemplateStore.fetchIfNeeded()
-      if (formTemplateStore.templates.length === 0) {
-        // Retry once in case an earlier session-scoped fetch cached an empty shortlist.
-        await formTemplateStore.refresh()
-      }
-    }
-  } else {
-    // No department filter – use the cached shortlist
-    await formTemplateStore.fetchIfNeeded()
-    if (formTemplateStore.templates.length === 0) {
-      // Retry once in case the shortlist was loaded while session/department context was not ready.
-      await formTemplateStore.refresh()
-    }
+    const tmpTemplates = await formTemplateStore.fetchForDepartment(props.departmentId)
+    console.debug(tmpTemplates)
   }
+
+  if (formTemplateStore.templates.length === 0) {
+    // Attempt a forced refresh to rule out caching issues.
+    await formTemplateStore.refresh()
+  }
+  console.debug('templates in store', formTemplateStore.templates)
 }
 
 watch(
@@ -548,19 +575,19 @@ async function handleToggleAccessWindow(newValue: boolean) {
     try {
       // Deactivate and reactivate with new flag
       await codeApi.deactivateCode({ code: selectedAccessCode.value })
-      await codeApi.activateCode({ 
-        code: selectedAccessCode.value, 
+      await codeApi.activateCode({
+        code: selectedAccessCode.value,
         consultationId: form.value.id,
         activateCodeRequest: {
           ignoreAccessWindow: newValue
         }
       })
-      
+
       ignoreAccessWindow.value = newValue
       notifierStore.notify(
-        newValue 
-          ? t('consultationOverview.accessWindowIgnored') 
-          : t('consultationOverview.accessWindowEnforced'), 
+        newValue
+          ? t('consultationOverview.accessWindowIgnored')
+          : t('consultationOverview.accessWindowEnforced'),
         'success'
       )
     } catch (error: unknown) {
@@ -596,57 +623,91 @@ defineExpose({
     </v-card-title>
     <v-card-text>
       <v-form @submit.prevent="saveConsultation">
-        <v-select
-                  v-model="form.reasonForConsultation"
-                  :items="['planned', 'unplanned', 'emergency', 'pain', 'followup']"
-                  :label="t('consultation.reasonForConsultation')"
-                  :hint="t('forms.hints.required')"
-                  persistent-hint
-                  :error="!!errors.reasonForConsultation"
-                  :error-messages="errors.reasonForConsultation ? [errors.reasonForConsultation] : []"
-                  multiple
-                  outlined
-                  dense
-                  data-testid="consultation-reason"></v-select>
-        <v-row class="my-2">
-          <v-col cols="8">
-            <v-text-field
-                          v-model="consultationDateInputDraft"
-                          :label="t('consultation.dateAndTime')"
-                          :placeholder="t('forms.hints.dateFormat') + ' HH:mm'"
-                          :hint="t('forms.hints.required')"
-                          persistent-hint
-                          @focus="handleConsultationDateInputFocus"
-                          @blur="handleConsultationDateInputBlur"
-                          class="mb-2"
-                          :error="!!errors.dateAndTime"
-                          :error-messages="errors.dateAndTime ? [errors.dateAndTime] : []" />
-            <VueDatePicker
-                           v-model="form.dateAndTime"
-                           :class="{ 'error-border': errors.dateAndTime }"
-                           :locale="locale"
-                           week-num-name="Wo"
-                           format="dd.MM.yyyy HH:mm"
-                           week-numbers="iso"
-                           :text-input="false"
-                           :teleport-center="true"
-                           :cancelText="t('buttons.cancelTimeDateText')"
-                           :selectText="t('buttons.selectTimeDateText')" />
+
+        <v-row>
+          <v-col cols="6">
+            <v-select
+                      v-model="form.reasonForConsultation"
+                      :items="['planned', 'unplanned', 'emergency', 'pain', 'followup']"
+                      :label="t('consultation.reasonForConsultation')"
+                      :hint="t('forms.hints.required')"
+                      persistent-hint
+                      :error="!!errors.reasonForConsultation"
+                      :error-messages="errors.reasonForConsultation ? [errors.reasonForConsultation] : []"
+                      multiple
+                      outlined
+                      dense
+                      data-testid="consultation-reason"></v-select>
+          </v-col>
+          <v-col cols="4">
+            <div ref="consultationDateFieldRef">
+              <v-text-field
+                            v-model="consultationDateInputDraft"
+                            :label="t('consultation.dateAndTime')"
+                            :placeholder="t('forms.hints.dateFormat') + ' HH:mm'"
+                            :hint="t('forms.hints.required')"
+                            persistent-hint
+                            @focus="handleConsultationDateInputFocus"
+                            @blur="handleConsultationDateInputBlur"
+                            class="mb-2"
+                            :error="!!errors.dateAndTime"
+                            :error-messages="errors.dateAndTime ? [errors.dateAndTime] : []">
+                <template #append-inner>
+                  <v-btn
+                         icon
+                         size="x-small"
+                         variant="text"
+                         density="comfortable"
+                         @mousedown.prevent.stop
+                         @click.stop="openDatePicker"
+                         aria-label="Open date picker">
+                    <v-icon size="16">mdi-calendar</v-icon>
+                  </v-btn>
+                </template>
+              </v-text-field>
+            </div>
+
+            <v-menu
+                    v-model="isDatePickerOpen"
+                    :activator="consultationDateFieldRef"
+                    :open-on-click="false"
+                    :close-on-content-click="false"
+                    :min-width="consultationDateMenuWidth"
+                    :max-width="consultationDateMenuWidth"
+                    location="bottom start"
+                    offset-y>
+              <div class="pa-2 consultation-date-picker-menu">
+                <VueDatePicker
+                               v-model="form.dateAndTime"
+                               class="consultation-inline-picker"
+                               :class="{ 'error-border': errors.dateAndTime }"
+                               :locale="locale"
+                               week-num-name="Wo"
+                               format="dd.MM.yyyy HH:mm"
+                               week-numbers="iso"
+                               inline
+                               :text-input="false"
+                               :cancelText="t('buttons.cancelTimeDateText')"
+                               :selectText="t('buttons.selectTimeDateText')"
+                               @select="onDatePickerSelect"
+                               @cancel="isDatePickerOpen = false"></VueDatePicker>
+              </div>
+            </v-menu>
             <v-text-field
                           v-if="errors.dateAndTime"
                           :error="true"
                           :error-messages="[errors.dateAndTime]"
                           hidden></v-text-field>
           </v-col>
-          <v-col cols="4">
+          <v-col cols="1">
             <v-btn inline color="info" @click="form.dateAndTime = new Date().toISOString()">
               {{ t('buttons.timeAndDateNow') }}
             </v-btn>
           </v-col>
         </v-row>
-
         <v-row>
-          <v-col cols="12" md="6">
+          <!-- First column -->
+          <v-col cols="4">
             <v-text-field
                           v-model.number="form.consultationAccessDaysBefore"
                           type="number"
@@ -654,11 +715,12 @@ defineExpose({
                           :max="365"
                           :label="t('departmentCodeSettings.daysBeforeLabel')"
                           :hint="t('departmentCodeSettings.daysBeforeHint')"
-                          persistent-hint
                           outlined
                           dense></v-text-field>
+
           </v-col>
-          <v-col cols="12" md="6">
+          <!-- Second column -->
+          <v-col cols="4">
             <v-text-field
                           v-model.number="form.consultationAccessDaysAfter"
                           type="number"
@@ -666,9 +728,65 @@ defineExpose({
                           :max="365"
                           :label="t('departmentCodeSettings.daysAfterLabel')"
                           :hint="t('departmentCodeSettings.daysAfterHint')"
-                          persistent-hint
                           outlined
                           dense></v-text-field>
+
+          </v-col>
+          <!-- 3rd Column -->
+          <v-col cols="4">
+            <!-- Form Visited By section -->
+            <v-autocomplete
+                            v-model="form.visitedBy"
+                            :items="users"
+                            item-value="id"
+                            item-title="name"
+                            :label="t('consultation.visitedBy')"
+                            multiple
+                            outlined
+                            dense
+                            data-testid="consultation-visited-by"></v-autocomplete>
+
+          </v-col>
+        </v-row>
+        <v-row>
+          <v-col cols="12">
+            <!-- Form Templates Selection with Access Level -->
+            <v-autocomplete
+                            multiple
+                            chips
+                            clearable
+                            closable-chips
+                            v-model="selectedFormTemplates"
+                            :items="availableFormTemplates"
+                            item-value="id"
+                            item-title="title"
+                            :label="t('consultation.formTemplate')"
+                            outlined
+                            dense
+                            data-testid="consultation-form-templates">
+              <!-- Custom chip display with access level -->
+              <template #chip="{ item, props: chipProps }">
+                <v-chip
+                        v-bind="chipProps"
+                        :color="getAccessLevelColor(getTemplateAccess(item.raw))"
+                        closable>
+                  <span>{{ getTemplateTitle(item.raw) }}</span>
+                </v-chip>
+              </template>
+
+              <!-- Custom item display with badge and inline chip; remove default title duplication -->
+              <template #item="{ item, props: itemProps }">
+                <v-list-item v-bind="itemProps">
+                  <v-chip
+                          size="x-small"
+                          :color="getAccessLevelColor(getTemplateAccess(item.raw))"
+                          class="ml-2">
+                    {{ getAccessLevelDescription(getTemplateAccess(item.raw)) }}
+                  </v-chip>
+
+                </v-list-item>
+              </template>
+            </v-autocomplete>
           </v-col>
         </v-row>
 
@@ -678,80 +796,27 @@ defineExpose({
                      title="consultation.notes"
                      add-button-text="consultation.addNote" />
 
-        <!-- Form Templates Selection with Access Level -->
-
-        <v-autocomplete
-                        multiple
-                        chips
-                        clearable
-                        closable-chips
-                        v-model="selectedFormTemplates"
-                        :items="availableFormTemplates"
-                        item-value="id"
-                        item-title="title"
-                        :label="t('consultation.formTemplate')"
-                        outlined
-                        dense
-                        data-testid="consultation-form-templates">
-          <!-- Custom chip display with access level -->
-          <template #chip="{ item, props: chipProps }">
-            <v-chip
-                    v-bind="chipProps"
-                    :color="getAccessLevelColor(getTemplateAccess(item.raw))"
-                    closable>
-              <span>{{ getTemplateTitle(item.raw) }}</span>
-            </v-chip>
-          </template>
-
-          <!-- Custom item display with badge and inline chip; remove default title duplication -->
-          <template #item="{ item, props: itemProps }">
-            <v-list-item v-bind="itemProps">
-              <v-chip
-                      size="x-small"
-                      :color="getAccessLevelColor(getTemplateAccess(item.raw))"
-                      class="ml-2">
-                {{ getAccessLevelDescription(getTemplateAccess(item.raw)) }}
-              </v-chip>
-
-            </v-list-item>
-          </template>
-        </v-autocomplete>
-
-
-        <v-autocomplete
-                        v-model="form.visitedBy"
-                        :items="users"
-                        item-value="id"
-                        item-title="name"
-                        :label="t('consultation.visitedBy')"
-                        multiple
-                        outlined
-                        dense
-                        data-testid="consultation-visited-by"></v-autocomplete>
-
         <!-- Form Access Code Section -->
         <v-row>
           <v-col cols="12">
             <h4 class="mb-3">{{ t('consultationOverview.codeAssignment') }}</h4>
-            
+
             <!-- Show assigned code with revoke option -->
             <div v-if="selectedAccessCode" class="mb-4">
               <AssignedCodeDisplay
-                :code="selectedAccessCode"
-                v-model="ignoreAccessWindow"
-                @revoke="revokeCode"
-                @toggle-access-window="handleToggleAccessWindow"
-              />
+                                   :code="selectedAccessCode"
+                                   v-model="ignoreAccessWindow"
+                                   @revoke="revokeCode"
+                                   @toggle-access-window="handleToggleAccessWindow" />
             </div>
 
             <!-- Show selector to add new code (only when no code assigned) -->
             <div v-if="!selectedAccessCode">
               <AccessCodeAssignment
-                code-type="consultation"
-                :consultation-date="form.dateAndTime || undefined"
-                v-model="ignoreAccessWindow"
-                @code-selected="handleAccessCodeSelected"
-              />
+                                    code-type="consultation"
+                                    :consultation-date="form.dateAndTime || undefined"
+                                    v-model="ignoreAccessWindow"
+                                    @code-selected="handleAccessCodeSelected" />
             </div>
           </v-col>
         </v-row>
@@ -768,6 +833,16 @@ defineExpose({
 </template>
 
 <style scoped>
+.consultation-date-picker-menu {
+  width: 100%;
+}
+
+.consultation-date-picker-menu :deep(.consultation-inline-picker),
+.consultation-date-picker-menu :deep(.dp__main),
+.consultation-date-picker-menu :deep(.dp__menu) {
+  width: 100%;
+}
+
 .error-border {
   border: 2px solid red !important;
   border-radius: 4px;

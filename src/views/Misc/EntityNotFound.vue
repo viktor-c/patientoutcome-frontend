@@ -62,10 +62,10 @@ onUnmounted(() => {
 <template>
   <v-container>
     <NotFoundErrorPage
-                      :title="t('entityNotFound.title')"
-                      :message="description"
-                      :button-text="t('buttons.goToDashboard')"
-                      @retry="redirectToDashboard" />
+                       :title="t('entityNotFound.title')"
+                       :message="description"
+                       :button-text="t('dashboardSearch.goToDashboard')"
+                       @retry="redirectToDashboard" />
 
     <p class="text-center text-medium-emphasis mt-4">
       {{ t('entityNotFound.redirectHint', { seconds: redirectCountdown }) }}

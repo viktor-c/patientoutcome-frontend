@@ -97,9 +97,9 @@ defineExpose({
 </script>
 
 <template>
-  <v-card class="pa-0">
+  <v-card class="pa-0 pb-1 mb-2">
     <v-card-text class="pa-0">
-       <v-list class="pa-0">
+      <v-list class="pa-0">
         <v-list-item v-for="(note, index) in localNotes" :key="index">
           <template v-slot:prepend v-if="editingNoteIndex !== index">
             <v-chip color="blue" class="mr-2">
@@ -160,7 +160,7 @@ defineExpose({
       </v-list>
 
       <v-btn
-              v-if="!props.hideAddButton && editingNoteIndex === null"
+             v-if="!props.hideAddButton && editingNoteIndex === null"
              color="primary"
              @click="addNote"
              class="mt-2"

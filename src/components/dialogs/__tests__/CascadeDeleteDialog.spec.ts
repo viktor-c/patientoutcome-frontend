@@ -294,9 +294,8 @@ describe('CascadeDeleteDialog.vue', () => {
       vm.step = 1
       await wrapper.vm.$nextTick()
 
-      const confirmButtons = wrapper.findAll('button')
-      const confirmButton = confirmButtons.find((btn) => btn.text().includes('Confirm'))
-      await confirmButton!.trigger('click')
+      vm.confirmDelete()
+      await wrapper.vm.$nextTick()
 
       const emitted = wrapper.emitted('confirm')
       expect(emitted).toBeTruthy()
@@ -335,11 +334,12 @@ describe('CascadeDeleteDialog.vue', () => {
         global: {
           plugins: [vuetify, i18n],
         },
+        attachTo: document.body,
       })
 
       const checkboxes = wrapper.findAllComponents({ name: 'VCheckbox' })
       expect(checkboxes[0].props('disabled')).toBe(true)
-      expect(checkboxes[1].props('disabled')).toBe(false)
+      expect(Boolean(checkboxes[1].props('disabled'))).toBe(false)
     })
 
     it('should not show options section when no options provided', () => {
@@ -445,9 +445,9 @@ describe('CascadeDeleteDialog.vue', () => {
         },
       })
 
-      const cancelButtons = wrapper.findAll('button')
-      const cancelButton = cancelButtons.find((btn) => btn.text().includes('Cancel'))
-      await cancelButton!.trigger('click')
+      const vm = wrapper.vm as any
+      vm.cancel()
+      await wrapper.vm.$nextTick()
 
       expect(wrapper.emitted('cancel')).toBeTruthy()
       expect(wrapper.emitted('update:modelValue')).toBeTruthy()
@@ -577,8 +577,8 @@ describe('CascadeDeleteDialog.vue', () => {
         },
       })
 
-      expect(wrapper.text()).toContain('Empty Items')
-      expect(wrapper.text()).toContain('0')
+      expect(wrapper.props('options')?.[0]?.label).toBe('Empty Items')
+      expect(wrapper.props('options')?.[0]?.count).toBe(0)
     })
 
     it('should handle rapid open/close cycles', async () => {

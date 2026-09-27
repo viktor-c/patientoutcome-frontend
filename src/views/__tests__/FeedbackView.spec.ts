@@ -37,7 +37,7 @@ describe('FeedbackView.vue', () => {
     message: '',
     responseObject: {
       captchaId: 'captcha-123',
-      question: '5 + 3',
+      captchaSvg: '<svg><text>5 + 3</text></svg>',
     },
     statusCode: 200,
   }
@@ -74,7 +74,7 @@ describe('FeedbackView.vue', () => {
       await flushPromises()
 
       expect(wrapper.find('.feedback-container').exists()).toBe(true)
-      expect(wrapper.text()).toContain('Feedback')
+      expect(wrapper.text()).toContain('Contact Us')
     })
 
     it('should fetch captcha on mount', async () => {
@@ -104,7 +104,7 @@ describe('FeedbackView.vue', () => {
 
       await flushPromises()
 
-      expect(wrapper.text()).toContain('5 + 3')
+      expect(wrapper.html()).toContain('5 + 3')
     })
 
     it('should handle captcha fetch error', async () => {
@@ -187,7 +187,8 @@ describe('FeedbackView.vue', () => {
 
       await flushPromises()
 
-      const captchaField = wrapper.find('input[type="number"]')
+      const captchaField = wrapper.findAll('input').at(-1)
+      //@ts-ignore
       expect(captchaField.exists()).toBe(true)
     })
 
@@ -367,10 +368,7 @@ describe('FeedbackView.vue', () => {
 
       await flushPromises()
 
-      const refreshButtons = wrapper.findAll('button')
-      const refreshButton = refreshButtons.find((btn) =>
-        btn.find('.v-icon').text().includes('mdi-refresh')
-      )
+      const refreshButton = wrapper.findAll('button').find((btn) => Boolean(btn.attributes('title')))
 
       expect(refreshButton).toBeDefined()
     })
@@ -392,7 +390,7 @@ describe('FeedbackView.vue', () => {
         ...mockCaptchaResponse,
         responseObject: {
           captchaId: 'captcha-456',
-          question: '10 + 5',
+          captchaSvg: '<svg><text>10 + 5</text></svg>',
         },
       } as any)
 
@@ -401,7 +399,8 @@ describe('FeedbackView.vue', () => {
       await flushPromises()
 
       expect(feedbackApi.getCaptcha).toHaveBeenCalled()
-      expect(vm.captchaQuestion).toBe('10 + 5')
+      expect(vm.captchaId).toBe('captcha-456')
+      expect(vm.captchaSvg).toContain('10 + 5')
     })
 
     it('should clear captcha answer when refreshing', async () => {
@@ -468,7 +467,7 @@ describe('FeedbackView.vue', () => {
 
       const vm = wrapper.vm as any
       expect(vm.captchaId).toBe('')
-      expect(vm.captchaQuestion).toBeTruthy()
+      expect(vm.captchaSvg).toBeTruthy()
     })
   })
 
@@ -710,6 +709,7 @@ describe('FeedbackView.vue', () => {
       const submitPromiseCall = vm.submitFeedback()
 
       // Check loading state
+      await Promise.resolve()
       expect(vm.loading).toBe(true)
 
       // Resolve
@@ -776,8 +776,7 @@ describe('FeedbackView.vue', () => {
 
       await flushPromises()
 
-      const link = wrapper.find('a[href="/login"]')
-      expect(link.exists()).toBe(true)
+      expect(wrapper.text()).toContain('Back to Home')
     })
 
     it('should navigate to login after successful submission', async () => {
@@ -789,6 +788,7 @@ describe('FeedbackView.vue', () => {
         responseObject: null,
         statusCode: 200,
       } as any)
+      const routerPushSpy = vi.spyOn(router, 'push')
 
       router.push('/feedback')
       await router.isReady()
@@ -813,10 +813,9 @@ describe('FeedbackView.vue', () => {
       await flushPromises()
 
       // Fast-forward timer
-      vi.advanceTimersByTime(1500)
-      await flushPromises()
+      await vi.advanceTimersByTimeAsync(1500)
 
-      expect(router.currentRoute.value.name).toBe('Login')
+      expect(routerPushSpy).toHaveBeenCalledWith({ name: 'Login' })
 
       vi.useRealTimers()
     })

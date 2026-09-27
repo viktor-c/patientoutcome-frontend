@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-labelledby="title desc">
+  <title id="title">Patient Outcome</title>
+  <desc id="desc">Patient Outcome application icon</desc>
+  <rect width="512" height="512" rx="112" fill="#ffffff"/>
+  <path d="M315.31 90.55 256 193.28l-59.31-102.73H74.46L256 404.96 437.54 90.55Z" fill="#41b883"/>
+  <path d="M315.31 90.55 256 193.28l-59.31-102.73h-94.8L256 357.5 410.11 90.55Z" fill="#34495e"/>
+</svg>

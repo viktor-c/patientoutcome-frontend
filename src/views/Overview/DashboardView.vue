@@ -19,18 +19,38 @@ import {
 import { consultationApi } from '@/api'
 import { patientCaseApi } from '@/api'
 import { useUserStore } from '@/stores/userStore'
+import { useDashboardStore } from '@/stores/dashboardStore'
 const userStore = useUserStore()
+const dashboardStore = useDashboardStore()
 
 const formCompletionFilter = ref<'all' | 'incomplete' | 'complete'>('all')
 
-const selectedDate = ref([new Date().setDate(new Date().getDate() - Number(userStore.daysBeforeConsultations || 7)), new Date().setDate(new Date().getDate() + 7)]) // Default to today and 1 week in the future
+// Initialize selectedDate from store if available, otherwise use default range
+const getDefaultDateRange = (): [number, number] => [
+  new Date().setDate(new Date().getDate() - Number(userStore.daysBeforeConsultations || 7)),
+  new Date().setDate(new Date().getDate() + 7)
+]
+
+const storedDateRange = dashboardStore.getDateRange()
+const selectedDate = ref<[number, number] | null>(
+  storedDateRange && storedDateRange[0] !== null && storedDateRange[1] !== null
+    ? (storedDateRange as [number, number])
+    : getDefaultDateRange()
+)
 
 const { t, locale } = useI18n()
 const router = useRouter()
 const route = useRoute()
 const { formatLocalizedCustomDate } = useDateFormat()
 
-watch(() => route.query.refresh, (newVal) => {
+// Watch for changes to selectedDate and persist to store
+watch(() => selectedDate.value, (newValue) => {
+  if (newValue && Array.isArray(newValue) && newValue.length === 2) {
+    dashboardStore.setDateRange(newValue as [number, number])
+  }
+}, { deep: true })
+
+watch(() => route.query?.refresh, (newVal) => {
   if (newVal) {
     fetchConsultations()
   }
@@ -130,8 +150,7 @@ const openPatientOverviewFromCase = async (caseId: string | null | undefined) =>
 
 // Computed placeholder for date picker
 const datePickerPlaceholder = computed(() => {
-  const isDateCleared = !selectedDate.value || selectedDate.value.length === 0 ||
-    (Array.isArray(selectedDate.value) && selectedDate.value.every(date => date == null))
+  const isDateCleared = !selectedDate.value
 
   return isDateCleared
     ? t('dashboard.showingAllFutureConsultations', { start: formatLocalizedCustomDate(new Date(new Date().setDate(new Date().getDate() - Number(userStore.daysBeforeConsultations || 7))), 'DD.MM.YYYY') })
@@ -167,9 +186,8 @@ const fetchConsultations = async () => {
     let start: string
     let end: string
 
-    // Check if date is cleared (null, undefined, or empty array)
-    if (!selectedDate.value || selectedDate.value.length === 0 ||
-      (Array.isArray(selectedDate.value) && selectedDate.value.every(date => date == null))) {
+    // Check if date is cleared (null)
+    if (!selectedDate.value) {
       // When date is cleared, show all future consultations from the past week and onwards
       // use per-user setting for how many days to look back
       const daysBefore = Number(userStore.daysBeforeConsultations || 7)
@@ -250,7 +268,7 @@ onUnmounted(() => {
       <v-col cols="12" sm="6" md="4" class="d-flex justify-end creation-flow-col">
         <v-tooltip location="bottom" :text="t('buttons.startCreationFlow')">
           <template #activator="{ props }">
-             <v-btn
+            <v-btn
                    v-bind="props"
                    icon
                    color="primary"

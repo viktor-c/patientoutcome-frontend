@@ -123,9 +123,6 @@ function handleRenew() {
     <h4 class="mb-3">{{ t('consultationOverview.assignedCode') }}</h4>
     <v-list>
       <v-list-item class="border rounded-lg mb-2">
-        <template #prepend>
-          <v-icon class="me-2">mdi-barcode</v-icon>
-        </template>
         <v-list-item-title class="font-weight-medium">
           {{ code }}
         </v-list-item-title>
@@ -133,20 +130,18 @@ function handleRenew() {
           <div class="text-caption d-flex align-center flex-wrap gap-2">
             <span>{{ t('consultationOverview.codeStatus') }}: {{ t('consultationOverview.active') }}</span>
             <v-chip
-              v-if="ignoreAccessWindow"
-              size="x-small"
-              color="info"
-              variant="flat"
-              prepend-icon="mdi-lock-open-variant"
-            >
+                    v-if="ignoreAccessWindow"
+                    size="x-small"
+                    color="info"
+                    variant="flat"
+                    prepend-icon="mdi-lock-open-variant">
               {{ t('consultationOverview.alwaysAccessible') }}
             </v-chip>
             <v-chip
-              v-if="expiresOn"
-              size="x-small"
-              :color="isCodeExpiringSoon ? 'warning' : 'default'"
-              variant="tonal"
-            >
+                    v-if="expiresOn"
+                    size="x-small"
+                    :color="isCodeExpiringSoon ? 'warning' : 'default'"
+                    variant="tonal">
               <v-icon start size="x-small">mdi-clock-outline</v-icon>
               {{ t('consultationOverview.codeExpiresOn', { date: safeFormatDate(expiresOn) }) }}
             </v-chip>
@@ -158,52 +153,48 @@ function handleRenew() {
         <template #append>
           <div class="d-flex gap-2 align-center">
             <QRCodeDisplay
-              v-if="showQrCode && patientFlowUrl"
-              :url="patientFlowUrl"
-              :access-window="accessWindow"
-              :expires-on="expiresOn || undefined"
-              :case-id="caseId || undefined"
-              :code-created-at="createdAt || undefined"
-            />
+                           v-if="showQrCode && patientFlowUrl"
+                           :url="patientFlowUrl"
+                           :access-window="accessWindow"
+                           :expires-on="expiresOn || undefined"
+                           :case-id="caseId || undefined"
+                           :code-created-at="createdAt || undefined" />
             <v-tooltip location="top">
               <template #activator="{ props: tooltipProps }">
                 <v-btn
-                  v-bind="tooltipProps"
-                  :color="accessWindowButtonColor"
-                  variant="tonal"
-                  size="small"
-                  icon
-                  @click="handleToggleAccessWindow"
-                  :disabled="disabled || isUpdatingAccessWindow"
-                  :loading="isUpdatingAccessWindow"
-                >
+                       v-bind="tooltipProps"
+                       :color="accessWindowButtonColor"
+                       variant="flat"
+                       size="small"
+                       icon
+                       @click="handleToggleAccessWindow"
+                       :disabled="disabled || isUpdatingAccessWindow"
+                       :loading="isUpdatingAccessWindow">
                   <v-icon>{{ accessWindowIcon }}</v-icon>
                 </v-btn>
               </template>
               <span>{{ accessWindowTooltip }}</span>
             </v-tooltip>
             <v-btn
-              v-if="showRenewButton"
-              :color="isCodeExpiringSoon ? 'warning' : 'primary'"
-              variant="tonal"
-              size="small"
-              @click="handleRenew"
-              :disabled="disabled"
-              :loading="disabled"
-              :title="t('consultationOverview.renewCode')"
-            >
+                   v-if="showRenewButton"
+                   :color="isCodeExpiringSoon ? 'warning' : 'primary'"
+                   variant="flat"
+                   size="small"
+                   icon
+                   @click="handleRenew"
+                   :disabled="disabled"
+                   :loading="disabled"
+                   :title="t('consultationOverview.renewCode')">
               <v-icon start>mdi-refresh</v-icon>
-              {{ t('consultationOverview.codeRenewBtn') }}
             </v-btn>
             <v-btn
-              color="error"
-              variant="tonal"
-              icon="mdi-delete"
-              size="small"
-              @click="handleRevoke"
-              :disabled="disabled"
-              :loading="disabled"
-            ></v-btn>
+                   color="error"
+                   variant="tonal"
+                   icon="mdi-delete"
+                   size="small"
+                   @click="handleRevoke"
+                   :disabled="disabled"
+                   :loading="disabled"></v-btn>
           </div>
         </template>
       </v-list-item>

@@ -189,8 +189,8 @@ const caseRouteId = computed(() => {
 
 // Load consultation data
 onMounted(async () => {
+  // Load the consultation (critical - failure here should redirect)
   try {
-    // Fetch consultation details
     const consultationResponse = await consultationApi.getConsultationById({ consultationId })
     consultation.value = consultationResponse.responseObject || null
 
@@ -219,15 +219,6 @@ onMounted(async () => {
         }
       })
     }
-
-    // Fetch kiosk users for assignment dropdown
-    await fetchKioskUsers()
-
-    // Fetch available codes for assignment
-    await fetchAvailableCodes()
-
-    // For now, we'll skip loading previous consultations since we'd need the patientId
-    // This can be added later if needed
   } catch (error: unknown) {
     let errorMessage = 'An unexpected error occurred'
     if (error instanceof ResponseError) {
@@ -240,9 +231,17 @@ onMounted(async () => {
     }
     console.error(`${componentName}: Failed to load consultation:`, errorMessage)
     notifierStore.notify(t('consultationOverview.loadError'), 'error')
-  } finally {
     loading.value = false
+    return
   }
+
+  // Load supplementary data (non-critical - failures here shouldn't prevent page display)
+  // These functions have their own error handling and won't throw
+  await fetchKioskUsers()
+  await fetchAvailableCodes()
+
+  // Done loading
+  loading.value = false
 })
 
 onUnmounted(() => {
@@ -605,15 +604,15 @@ const handleCodeSelection = async (code: string, ignoreAccessWindowValue: boolea
 
   try {
     assigningCode.value = true
-    await codeApi.activateCode({ 
-      code, 
+    await codeApi.activateCode({
+      code,
       consultationId: consultation.value.id,
       activateCodeRequest: {
         ignoreAccessWindow: ignoreAccessWindowValue
       }
     })
     notifierStore.notify(t('consultationOverview.codeAssigned'), 'success')
-    
+
     // Refresh consultation to get updated code info
     const resp = await consultationApi.getConsultationById({ consultationId })
     consultation.value = resp.responseObject || null
@@ -717,29 +716,29 @@ const handleToggleAccessWindow = async (newValue: boolean) => {
 
   try {
     assigningCode.value = true
-    
+
     // Deactivate the current code
     await codeApi.deactivateCode({ code: codeStr })
-    
+
     // Reactivate with the new ignoreAccessWindow value
-    await codeApi.activateCode({ 
-      code: codeStr, 
+    await codeApi.activateCode({
+      code: codeStr,
       consultationId: consultation.value.id,
       activateCodeRequest: {
         ignoreAccessWindow: newValue
       }
     })
-    
+
     // Update local state
     ignoreAccessWindow.value = newValue
-    
+
     notifierStore.notify(
-      newValue 
-        ? t('consultationOverview.accessWindowIgnored') 
-        : t('consultationOverview.accessWindowEnforced'), 
+      newValue
+        ? t('consultationOverview.accessWindowIgnored')
+        : t('consultationOverview.accessWindowEnforced'),
       'success'
     )
-    
+
     // Refresh consultation to get updated code info
     const resp = await consultationApi.getConsultationById({ consultationId })
     consultation.value = resp.responseObject || null
@@ -1172,7 +1171,8 @@ const assignedConsultationAccessWindow = computed(() => {
                     </template>
                   </p>
                   <!-- Visual scale representation -->
-                  <div v-if="!isElsnerFeedbackForm(form) && form.patientFormData?.totalScore && form.formTemplateId" class="mb-3">
+                  <div v-if="!isElsnerFeedbackForm(form) && form.patientFormData?.totalScore && form.formTemplateId"
+                       class="mb-3">
                     <ScoreScale :scale-info="generateScaleInfo(form.patientFormData.totalScore, form.formTemplateId)" />
                   </div>
                   <p class="text-body-2 mb-2" v-if="getFormStartTime(form)">
@@ -1340,7 +1340,7 @@ const assignedConsultationAccessWindow = computed(() => {
               <h4 class="mb-3">{{ t('consultationOverview.assignAdditionalKiosk') }}</h4>
               <p class="text-caption text-medium-emphasis mt-2">{{
                 t('consultationOverview.selectionAssignsImmediately')
-              }}</p>
+                }}</p>
               <v-row>
                 <v-col cols="12" md="8">
                   <v-autocomplete
@@ -1404,7 +1404,7 @@ const assignedConsultationAccessWindow = computed(() => {
                   </v-autocomplete>
                   <p class="text-caption text-medium-emphasis mt-2">{{
                     t('consultationOverview.selectionAssignsImmediately')
-                  }}</p>
+                    }}</p>
                 </v-col>
 
                 <v-col cols="12" md="4">
@@ -1425,20 +1425,19 @@ const assignedConsultationAccessWindow = computed(() => {
           <!-- List of assigned code -->
           <div v-if="assignedCode" class="mb-6">
             <AssignedCodeDisplay
-              :code="assignedCode"
-              v-model="ignoreAccessWindow"
-              :expires-on="assignedCodeExpiresOn"
-              :created-at="assignedCodeCreatedAt"
-              :patient-flow-url="patientFlowUrl"
-              :access-window="assignedConsultationAccessWindow"
-              :case-id="caseRouteId || undefined"
-              :disabled="assigningCode"
-              show-renew-button
-              show-qr-code
-              @revoke="revokeCode"
-              @renew="renewAssignedCode"
-              @toggle-access-window="handleToggleAccessWindow"
-            />
+                                 :code="assignedCode"
+                                 v-model="ignoreAccessWindow"
+                                 :expires-on="assignedCodeExpiresOn"
+                                 :created-at="assignedCodeCreatedAt"
+                                 :patient-flow-url="patientFlowUrl"
+                                 :access-window="assignedConsultationAccessWindow"
+                                 :case-id="caseRouteId || undefined"
+                                 :disabled="assigningCode"
+                                 show-renew-button
+                                 show-qr-code
+                                 @revoke="revokeCode"
+                                 @renew="renewAssignedCode"
+                                 @toggle-access-window="handleToggleAccessWindow" />
           </div>
 
           <!-- Show selector to assign initial code (no code assigned yet) -->
@@ -1446,12 +1445,11 @@ const assignedConsultationAccessWindow = computed(() => {
             <v-row>
               <v-col cols="12" md="8">
                 <AccessCodeAssignment
-                  code-type="consultation"
-                  :consultation-date="consultation?.dateAndTime || undefined"
-                  :disabled="assigningCode"
-                  v-model="ignoreAccessWindow"
-                  @code-selected="handleCodeSelection"
-                />
+                                      code-type="consultation"
+                                      :consultation-date="consultation?.dateAndTime || undefined"
+                                      :disabled="assigningCode"
+                                      v-model="ignoreAccessWindow"
+                                      @code-selected="handleCodeSelection" />
               </v-col>
             </v-row>
           </div>
@@ -1539,7 +1537,8 @@ const assignedConsultationAccessWindow = computed(() => {
                                 </span>
                               </div>
                               <!-- Visual scale representation -->
-                              <div v-if="!isElsnerFeedbackForm(form) && form.patientFormData?.totalScore && form.formTemplateId" class="mt-2">
+                              <div v-if="!isElsnerFeedbackForm(form) && form.patientFormData?.totalScore && form.formTemplateId"
+                                   class="mt-2">
                                 <ScoreScale :scale-info="generateScaleInfo(form.patientFormData.totalScore, form.formTemplateId)"
                                             :height="6" />
                               </div>

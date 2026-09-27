@@ -138,7 +138,7 @@ const validateCode = async () => {
           // showMessage.value = false;
           router.push({ name: 'showConsultationForms', params: { externalCode: patientCode.value } })
           console.debug(`Redirecting to showConsultationForms with code: ${patientCode.value}`)
-        }, 4000) // Keep success message visible for 2 seconds
+        }, 2000) // Keep success message visible for 2 seconds
       } else {
         errorMessage.value = t('flow.invalidCodeMessage')
         patientCode.value = '' // Clear the input
@@ -218,12 +218,12 @@ onMounted(() => {
             <div v-if="!showContactForm">
               <p class="text-center mb-4">{{ t('flow.reportIssueDescription') }}</p>
               <v-btn
-                color="primary"
-                variant="elevated"
-                size="large"
-                block
-                @click="showContactForm = true; loadCaptcha()"
-                prepend-icon="mdi-email-alert">
+                     color="primary"
+                     variant="elevated"
+                     size="large"
+                     block
+                     @click="showContactForm = true; loadCaptcha()"
+                     prepend-icon="mdi-email-alert">
                 {{ t('flow.contactPhysician') }}
               </v-btn>
             </div>
@@ -239,11 +239,11 @@ onMounted(() => {
               </v-alert>
 
               <v-textarea
-                v-model="contactMessage"
-                :label="t('flow.yourMessage')"
-                rows="4"
-                variant="outlined"
-                class="mb-4"></v-textarea>
+                          v-model="contactMessage"
+                          :label="t('flow.yourMessage')"
+                          rows="4"
+                          variant="outlined"
+                          class="mb-4"></v-textarea>
 
               <!-- Captcha Section -->
               <div class="mb-4">
@@ -254,17 +254,17 @@ onMounted(() => {
                 <div v-else-if="captchaSvg">
                   <div class="captcha-container mb-2" v-html="captchaSvg"></div>
                   <v-text-field
-                    v-model="captchaAnswer"
-                    label="Enter the code shown above"
-                    variant="outlined"
-                    density="compact"
-                    hide-details="auto"
-                    class="mb-2"></v-text-field>
+                                v-model="captchaAnswer"
+                                label="Enter the code shown above"
+                                variant="outlined"
+                                density="compact"
+                                hide-details="auto"
+                                class="mb-2"></v-text-field>
                   <v-btn
-                    size="x-small"
-                    variant="text"
-                    prepend-icon="mdi-refresh"
-                    @click="loadCaptcha(); captchaAnswer = ''">
+                         size="x-small"
+                         variant="text"
+                         prepend-icon="mdi-refresh"
+                         @click="loadCaptcha(); captchaAnswer = ''">
                     New captcha
                   </v-btn>
                 </div>
@@ -276,19 +276,19 @@ onMounted(() => {
 
               <div class="d-flex gap-2">
                 <v-btn
-                  color="grey"
-                  variant="text"
-                  @click="showContactForm = false; contactMessage = ''; captchaAnswer = ''; errorMessage = ''">
+                       color="grey"
+                       variant="text"
+                       @click="showContactForm = false; contactMessage = ''; captchaAnswer = ''; errorMessage = ''">
                   {{ t('buttons.cancel') }}
                 </v-btn>
                 <v-spacer></v-spacer>
                 <v-btn
-                  color="primary"
-                  variant="elevated"
-                  :loading="sendingReport"
-                  :disabled="!captchaAnswer || !contactMessage.trim()"
-                  @click="sendContactReport"
-                  prepend-icon="mdi-send">
+                       color="primary"
+                       variant="elevated"
+                       :loading="sendingReport"
+                       :disabled="!captchaAnswer || !contactMessage.trim()"
+                       @click="sendContactReport"
+                       prepend-icon="mdi-send">
                   {{ t('flow.sendReport') }}
                 </v-btn>
               </div>

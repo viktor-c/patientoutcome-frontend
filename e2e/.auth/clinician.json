@@ -1,48 +1,63 @@
 {
-  "cookies": [],
+  "cookies": [
+    {
+      "name": "connect.sid",
+      "value": "s%3Av7yq9yqRKKF8ULSb1ayZDkDu7AF3ev_D.Wu%2F1EKEo4M3YIiMTwQ1scpGb%2B1reX2aC6XJFauXniTQ",
+      "domain": "localhost",
+      "path": "/",
+      "expires": 1790660775.127,
+      "httpOnly": true,
+      "secure": false,
+      "sameSite": "Lax"
+    }
+  ],
   "origins": [
     {
       "origin": "http://localhost:5173",
       "localStorage": [
         {
           "name": "daysBeforeConsultations",
-          "value": "0"
+          "value": "7"
         },
         {
           "name": "name",
-          "value": ""
+          "value": "Ethan"
+        },
+        {
+          "name": "sessionExpiresAt",
+          "value": "2026-09-29T05:46:15.131Z"
         },
         {
           "name": "consultationAccessDaysAfter",
-          "value": "0"
+          "value": "30"
         },
         {
           "name": "app_logs",
-          "value": "[{\"timestamp\":\"2026-08-15T23:04:08.086Z\",\"level\":\"INFO\",\"message\":\"Application started\",\"data\":{\"environment\":\"development\",\"apiUrl\":\"http://localhost:40001\",\"timestamp\":\"2026-08-15T23:04:08.086Z\"},\"url\":\"http://localhost:5173/\",\"userAgent\":\"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.7499.4 Safari/537.36\"},{\"timestamp\":\"2026-08-15T23:04:53.767Z\",\"level\":\"INFO\",\"message\":\"Application started\",\"data\":{\"environment\":\"development\",\"apiUrl\":\"http://localhost:40001\",\"timestamp\":\"2026-08-15T23:04:53.767Z\"},\"url\":\"http://localhost:5173/\",\"userAgent\":\"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.7499.4 Safari/537.36\"},{\"timestamp\":\"2026-08-15T23:08:20.404Z\",\"level\":\"INFO\",\"message\":\"Application started\",\"data\":{\"environment\":\"development\",\"apiUrl\":\"http://localhost:40001\",\"timestamp\":\"2026-08-15T23:08:20.404Z\"},\"url\":\"http://localhost:5173/\",\"userAgent\":\"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.7499.4 Safari/537.36\"},{\"timestamp\":\"2026-08-15T23:08:36.302Z\",\"level\":\"INFO\",\"message\":\"Application started\",\"data\":{\"environment\":\"development\",\"apiUrl\":\"http://localhost:40001\",\"timestamp\":\"2026-08-15T23:08:36.301Z\"},\"url\":\"http://localhost:5173/logout\",\"userAgent\":\"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.7499.4 Safari/537.36\"},{\"timestamp\":\"2026-08-15T23:09:06.292Z\",\"level\":\"INFO\",\"message\":\"Application started\",\"data\":{\"environment\":\"development\",\"apiUrl\":\"http://localhost:40001\",\"timestamp\":\"2026-08-15T23:09:06.291Z\"},\"url\":\"http://localhost:5173/\",\"userAgent\":\"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.7499.4 Safari/537.36\"},{\"timestamp\":\"2026-08-15T23:09:07.819Z\",\"level\":\"INFO\",\"message\":\"Application started\",\"data\":{\"environment\":\"development\",\"apiUrl\":\"http://localhost:40001\",\"timestamp\":\"2026-08-15T23:09:07.819Z\"},\"url\":\"http://localhost:5173/dashboard\",\"userAgent\":\"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.7499.4 Safari/537.36\"},{\"timestamp\":\"2026-08-15T23:09:24.006Z\",\"level\":\"INFO\",\"message\":\"Application started\",\"data\":{\"environment\":\"development\",\"apiUrl\":\"http://localhost:40001\",\"timestamp\":\"2026-08-15T23:09:24.006Z\"},\"url\":\"http://localhost:5173/logout\",\"userAgent\":\"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.7499.4 Safari/537.36\"},{\"timestamp\":\"2026-08-15T23:11:09.059Z\",\"level\":\"INFO\",\"message\":\"Application started\",\"data\":{\"environment\":\"development\",\"apiUrl\":\"http://localhost:40001\",\"timestamp\":\"2026-08-15T23:11:09.059Z\"},\"url\":\"http://localhost:5173/\",\"userAgent\":\"Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:144.0.2) Gecko/20100101 Firefox/144.0.2\"},{\"timestamp\":\"2026-08-15T23:11:14.362Z\",\"level\":\"INFO\",\"message\":\"Application started\",\"data\":{\"environment\":\"development\",\"apiUrl\":\"http://localhost:40001\",\"timestamp\":\"2026-08-15T23:11:14.362Z\"},\"url\":\"http://localhost:5173/dashboard\",\"userAgent\":\"Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:144.0.2) Gecko/20100101 Firefox/144.0.2\"},{\"timestamp\":\"2026-08-15T23:11:28.242Z\",\"level\":\"INFO\",\"message\":\"Application started\",\"data\":{\"environment\":\"development\",\"apiUrl\":\"http://localhost:40001\",\"timestamp\":\"2026-08-15T23:11:28.242Z\"},\"url\":\"http://localhost:5173/logout\",\"userAgent\":\"Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:144.0.2) Gecko/20100101 Firefox/144.0.2\"},{\"timestamp\":\"2026-08-15T23:12:08.628Z\",\"level\":\"INFO\",\"message\":\"Application started\",\"data\":{\"environment\":\"development\",\"apiUrl\":\"http://localhost:40001\",\"timestamp\":\"2026-08-15T23:12:08.628Z\"},\"url\":\"http://localhost:5173/\",\"userAgent\":\"Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:144.0.2) Gecko/20100101 Firefox/144.0.2\"},{\"timestamp\":\"2026-08-15T23:12:15.862Z\",\"level\":\"INFO\",\"message\":\"Application started\",\"data\":{\"environment\":\"development\",\"apiUrl\":\"http://localhost:40001\",\"timestamp\":\"2026-08-15T23:12:15.862Z\"},\"url\":\"http://localhost:5173/dashboard\",\"userAgent\":\"Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:144.0.2) Gecko/20100101 Firefox/144.0.2\"},{\"timestamp\":\"2026-08-15T23:12:19.701Z\",\"level\":\"INFO\",\"message\":\"Application started\",\"data\":{\"environment\":\"development\",\"apiUrl\":\"http://localhost:40001\",\"timestamp\":\"2026-08-15T23:12:19.701Z\"},\"url\":\"http://localhost:5173/logout\",\"userAgent\":\"Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:144.0.2) Gecko/20100101 Firefox/144.0.2\"},{\"timestamp\":\"2026-08-15T23:46:07.090Z\",\"level\":\"INFO\",\"message\":\"Application started\",\"data\":{\"environment\":\"development\",\"apiUrl\":\"http://localhost:40001\",\"timestamp\":\"2026-08-15T23:46:07.090Z\"},\"url\":\"http://localhost:5173/logout\",\"userAgent\":\"Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:144.0.2) Gecko/20100101 Firefox/144.0.2\"}]"
+          "value": "[{\"timestamp\":\"2026-09-27T17:46:14.683Z\",\"level\":\"INFO\",\"message\":\"Application started\",\"data\":{\"environment\":\"development\",\"apiUrl\":\"http://192.168.170.127:40001\",\"timestamp\":\"2026-09-27T17:46:14.683Z\"},\"url\":\"http://localhost:5173/\",\"userAgent\":\"Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:142.0.1) Gecko/20100101 Firefox/142.0.1\"}]"
         },
         {
           "name": "roles",
-          "value": "[]"
+          "value": "[\"admin\"]"
         },
         {
           "name": "email",
-          "value": ""
+          "value": "ewilson@example.com"
         },
         {
           "name": "lastActivityAt",
-          "value": "0"
+          "value": "1790531175131"
         },
         {
           "name": "department",
-          "value": ""
+          "value": "675000000000000000000002"
         },
         {
           "name": "belongsToCenter",
-          "value": "[]"
+          "value": "[\"675000000000000000000005\"]"
         },
         {
-          "name": "consultationAccessDaysBefore",
-          "value": "0"
+          "name": "__vue-devtools-frame-state__",
+          "value": "{\"width\":80,\"height\":60,\"top\":0,\"left\":50,\"open\":false,\"route\":\"/\",\"position\":\"bottom\",\"isFirstVisit\":true,\"closeOnOutsideClick\":false,\"minimizePanelInactive\":5000,\"preferShowFloatingPanel\":true,\"reduceMotion\":false}"
         },
         {
           "name": "__VUE_DEVTOOLS_NEXT_PLUGIN_SETTINGS__dev.esm.pinia__",
@@ -50,23 +65,19 @@
         },
         {
           "name": "username",
-          "value": ""
+          "value": "ewilson"
         },
         {
           "name": "__vue-devtools-theme__",
           "value": "auto"
         },
         {
-          "name": "__vue-devtools-frame-state__",
-          "value": "{\"width\":80,\"height\":60,\"top\":0,\"left\":50,\"open\":false,\"route\":\"/\",\"position\":\"bottom\",\"isFirstVisit\":true,\"closeOnOutsideClick\":false,\"minimizePanelInactive\":5000,\"preferShowFloatingPanel\":true,\"reduceMotion\":false}"
-        },
-        {
-          "name": "postLoginRedirectPath",
-          "value": "/logout"
+          "name": "consultationAccessDaysBefore",
+          "value": "3"
         },
         {
           "name": "permissions",
-          "value": "[]"
+          "value": "[\"form:archive\",\"consultation:delete\",\"user:delete\"]"
         }
       ]
     }

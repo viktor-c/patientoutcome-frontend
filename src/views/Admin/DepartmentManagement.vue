@@ -103,6 +103,21 @@
               clearable
             />
 
+            <v-select
+              v-model="selectedTemplateIds"
+              :items="formTemplates"
+              item-value="id"
+              item-title="title"
+              :label="t('departmentManagement.fields.formTemplates')"
+              :hint="t('departmentManagement.templateSelectionHint')"
+              :loading="loadingTemplateOptions"
+              chips
+              closable-chips
+              clearable
+              multiple
+              persistent-hint
+            />
+
             <v-textarea
               v-model="editedDepartment.description"
               :label="t('departmentManagement.fields.description')"
@@ -198,8 +213,13 @@
 import { ref, computed, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useNotifierStore } from '@/stores/notifierStore'
-import { userDepartmentApi } from '@/api.ts'
-import type { UserDepartment } from '@/api'
+import { formtemplateApi, userDepartmentApi } from '@/api.ts'
+import type {
+  CreateUserDepartmentRequest,
+  GetFormTemplatesShortlist200ResponseResponseObjectInner as FormTemplateShortList,
+  UpdateDepartmentByIdRequest,
+  UserDepartment,
+} from '@/api'
 
 const { t } = useI18n()
 const notifierStore = useNotifierStore()
@@ -210,9 +230,11 @@ const deleting = ref(false)
 const dialog = ref(false)
 const deleteDialog = ref(false)
 const usersAssignedDialog = ref(false)
+const loadingTemplateOptions = ref(false)
 const formRef = ref()
 
 const departments = ref<UserDepartment[]>([])
+const formTemplates = ref<FormTemplateShortList[]>([])
 const editedDepartment = ref<UserDepartment>({
   name: '',
   shortName: '',
@@ -225,6 +247,7 @@ const editedDepartment = ref<UserDepartment>({
 const editedIndex = ref(-1)
 const departmentToDelete = ref<UserDepartment | null>(null)
 const centers = ref<UserDepartment[]>([])
+const selectedTemplateIds = ref<string[]>([])
 
 const departmentTypes = computed(() => [
   { value: 'department', title: t('departmentManagement.types.department') },
@@ -254,7 +277,49 @@ const rules = {
 
 onMounted(() => {
   loadDepartments()
+  loadTemplateOptions()
 })
+
+function getMessage(error: unknown) {
+  return error instanceof Error ? error.message : String(error)
+}
+
+function getAllTemplateIds() {
+  return formTemplates.value
+    .map(template => template.id)
+    .filter((templateId): templateId is string => typeof templateId === 'string' && templateId.length > 0)
+}
+
+async function loadTemplateOptions(force = false) {
+  if (loadingTemplateOptions.value) return
+  if (!force && formTemplates.value.length > 0) return
+
+  loadingTemplateOptions.value = true
+  try {
+    const response = await formtemplateApi.getFormTemplatesShortlist()
+    formTemplates.value = response.responseObject || []
+  } catch (error: unknown) {
+    notifierStore.notify(getMessage(error) || t('departmentManagement.templateLoadError'), 'error')
+  } finally {
+    loadingTemplateOptions.value = false
+  }
+}
+
+async function loadTemplateSelection(departmentId?: string) {
+  await loadTemplateOptions()
+
+  if (!departmentId) {
+    selectedTemplateIds.value = getAllTemplateIds()
+    return
+  }
+
+  try {
+    const response = await formtemplateApi.getDepartmentMapping({ departmentId })
+    selectedTemplateIds.value = response.responseObject?.formTemplateIds || []
+  } catch {
+    selectedTemplateIds.value = getAllTemplateIds()
+  }
+}
 
 async function loadDepartments() {
   loading.value = true
@@ -266,14 +331,14 @@ async function loadDepartments() {
       centers.value = response.responseObject.filter(d => d.departmentType === 'center')
     }
   } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : String(error)
+    const message = getMessage(error)
     notifierStore.notify(message || t('departmentManagement.loadError'), 'error')
   } finally {
     loading.value = false
   }
 }
 
-function openCreateDialog() {
+async function openCreateDialog() {
   editedIndex.value = -1
   editedDepartment.value = {
     name: '',
@@ -285,17 +350,20 @@ function openCreateDialog() {
     center: undefined,
   }
   dialog.value = true
+  await loadTemplateSelection()
 }
 
-function openEditDialog(department: UserDepartment) {
+async function openEditDialog(department: UserDepartment) {
   editedIndex.value = departments.value.findIndex(d => d.id === department.id)
   editedDepartment.value = { ...department }
   dialog.value = true
+  await loadTemplateSelection(typeof department.id === 'string' ? department.id : undefined)
 }
 
 function closeDialog() {
   dialog.value = false
   editedIndex.value = -1
+  selectedTemplateIds.value = []
   editedDepartment.value = {
     name: '',
     shortName: '',
@@ -313,9 +381,14 @@ async function saveDepartment() {
   saving.value = true
   try {
     if (editedIndex.value === -1) {
+      const createRequest: CreateUserDepartmentRequest = {
+        ...editedDepartment.value,
+        formTemplateIds: selectedTemplateIds.value,
+      }
+
       // Create new department
       const response = await userDepartmentApi.createUserDepartment({
-        createUserDepartmentRequest: editedDepartment.value
+        createUserDepartmentRequest: createRequest
       })
       if (response.success) {
         notifierStore.notify(t('departmentManagement.createSuccess'), 'success')
@@ -325,9 +398,14 @@ async function saveDepartment() {
     } else {
       // Update existing department
       const id = editedDepartment.value.id!
+      const updateRequest: UpdateDepartmentByIdRequest = {
+        ...editedDepartment.value,
+        formTemplateIds: selectedTemplateIds.value,
+      }
+
       const response = await userDepartmentApi.updateDepartmentById({
         id,
-        updateDepartmentByIdRequest: editedDepartment.value
+        updateDepartmentByIdRequest: updateRequest
       })
       if (response.success) {
         notifierStore.notify(t('departmentManagement.updateSuccess'), 'success')
@@ -336,7 +414,7 @@ async function saveDepartment() {
       }
     }
   } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : String(error)
+    const message = getMessage(error)
     notifierStore.notify(message || t('departmentManagement.deleteError'), 'error')
     notifierStore.notify(message || t('departmentManagement.saveError'), 'error')
   } finally {
@@ -367,7 +445,7 @@ async function deleteDepartment() {
     deleteDialog.value = false
     
     // Check if error is due to users still assigned (409 Conflict)
-    const message = error instanceof Error ? error.message : String(error)
+    const message = getMessage(error)
     if (message?.includes('409') || message?.includes('still assigned')) {
       usersAssignedDialog.value = true
     } else {

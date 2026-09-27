@@ -139,7 +139,7 @@ const handleDeleteCase = () => {
     <v-expansion-panel-text>
       <v-row>
         <!-- Case Details -->
-        <v-col cols="12" lg="6">
+        <v-col cols="6" lg="6">
           <v-card variant="outlined" class="mb-4">
             <v-card-title class="text-h6">
               <v-icon class="me-2">mdi-information</v-icon>
@@ -199,7 +199,7 @@ const handleDeleteCase = () => {
                 <v-list-item>
                   <v-list-item-title>{{ t('patientOverview.medicalHistory') }}</v-list-item-title>
                   <v-list-item-subtitle>{{ patientCase.medicalHistory || t('common.notAvailable')
-                  }}</v-list-item-subtitle>
+                    }}</v-list-item-subtitle>
                 </v-list-item>
 
                 <v-list-item v-if="patientCase.supervisors?.length">
@@ -226,8 +226,6 @@ const handleDeleteCase = () => {
               </v-list>
             </v-card-text>
           </v-card>
-        </v-col>
-        <v-col cols="12" lg="6">
           <!-- Surgeries -->
           <v-card variant="outlined">
             <v-card-title class="text-h6">
@@ -280,10 +278,8 @@ const handleDeleteCase = () => {
             </v-card-text>
           </v-card>
         </v-col>
-      </v-row>
-      <v-row>
         <!-- Consultations -->
-        <v-col cols="12" lg="6">
+        <v-col cols="6" lg="6">
           <ConsultationCard
                             :case-id="patientCase.id"
                             :patient-id="patientId"

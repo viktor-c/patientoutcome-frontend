@@ -1,5 +1,5 @@
 import { test, expect, type BrowserContext, type Page } from '@playwright/test';
-import { ensureAuthDir, getStorageStatePath, loginWithRole, logoutCurrentUser } from '../helpers/auth';
+import { ensureAuthDir, loginWithRole, logoutCurrentUser } from '../helpers/auth';
 
 test.describe('Authentication flow', () => {
   test.describe.configure({ mode: 'serial' });
@@ -10,7 +10,7 @@ test.describe('Authentication flow', () => {
   test.beforeAll(async ({ browser }) => {
     ensureAuthDir();
 
-    sharedContext = await browser.newContext({ storageState: getStorageStatePath('clinician') });
+    sharedContext = await browser.newContext();
     sharedPage = await sharedContext.newPage();
     await loginWithRole(sharedPage, 'clinician');
   });
@@ -34,7 +34,7 @@ test.describe('Authentication flow', () => {
   });
 
 
-    test.afterAll(async () => {
+  test.afterAll(async () => {
     await logoutCurrentUser(sharedPage, 'clinician');
     await sharedContext.close();
   });

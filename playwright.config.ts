@@ -65,13 +65,13 @@ export default defineConfig({
     },
     ...(process.env.PW_INCLUDE_WEBKIT === 'true'
       ? [
-          {
-            name: 'webkit',
-            use: {
-              ...devices['Desktop Safari'],
-            },
+        {
+          name: 'webkit',
+          use: {
+            ...devices['Desktop Safari'],
           },
-        ]
+        },
+      ]
       : []),
 
     /* Test against mobile viewports. */

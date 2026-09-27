@@ -33,7 +33,9 @@ export function getStorageStatePath(role: UserRole) {
 
 export async function applyRuntimeApiUrl(page: Page, apiUrl = 'http://localhost:40001') {
   await page.addInitScript((configuredApiUrl) => {
+    // @ts-expect-error __APP_CONFIG__ is defined in env.d.ts
     window.__APP_CONFIG__ = {
+      // @ts-expect-error __APP_CONFIG__ is defined in env.d.ts
       ...(window.__APP_CONFIG__ || {}),
       VITE_API_URL: configuredApiUrl,
     };

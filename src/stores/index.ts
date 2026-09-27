@@ -3,3 +3,5 @@ export * from './notifierStore';
 export * from './consultationStore';
 export * from './userStore';
 export * from './formTemplateStore';
+export * from './dashboardStore';
+

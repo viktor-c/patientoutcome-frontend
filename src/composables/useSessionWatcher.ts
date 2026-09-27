@@ -37,13 +37,17 @@ export function useSessionWatcher() {
   async function verifySession() {
     if (!userStore.isAuthenticated()) return // nothing to check
 
-    const result = await userStore.checkSessionWithServer()
-    if (result === false) {
-      // Session expired on the server – redirect to login
-      await router.push({ name: 'Login', query: { reason: 'session-expired' } })
+    try {
+      const result = await userStore.checkSessionWithServer()
+      if (result === false) {
+        // Session expired on the server – redirect to login
+        await router.push({ name: 'Login', query: { reason: 'session-expired' } })
+      }
+      // result === null  -> network offline, keep the user on the page
+      // result === true  -> session is still valid, lastActivityAt updated inside the store
+    } catch (error) {
+      console.error('Session verification failed:', error)
     }
-    // result === null  -> network offline, keep the user on the page
-    // result === true  -> session is still valid, lastActivityAt updated inside the store
   }
 
   /** Called when the browser tab regains visibility or focus. */

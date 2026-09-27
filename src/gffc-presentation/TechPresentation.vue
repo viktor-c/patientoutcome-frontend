@@ -337,7 +337,8 @@ import { onMounted, onUnmounted } from 'vue'
 let Reveal: any = null
 
 onMounted(async () => {
-  // Dynamically import Reveal.js
+  // Dynamically import Reveal.js and CSS to reduce main bundle size
+  await import('reveal.js/plugin/highlight/zenburn.css')
   // @ts-expect-error - reveal.js doesn't have full TypeScript definitions
   const RevealModule = await import('reveal.js')
   // @ts-expect-error - reveal.js plugins don't have full TypeScript definitions
@@ -376,7 +377,7 @@ onUnmounted(() => {
 /* Import Reveal.js CSS */
 @import 'reveal.js/dist/reveal.css';
 @import 'reveal.js/dist/theme/white.css';
-@import 'reveal.js/plugin/highlight/zenburn.css';
+/* Highlight CSS is loaded dynamically with reveal.js to avoid large chunk */
 
 .presentation-container {
   width: 100%;

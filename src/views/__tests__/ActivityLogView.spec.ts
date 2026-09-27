@@ -33,7 +33,7 @@ class MockEventSource {
   OPEN = 1
   CLOSED = 2
 
-  constructor(url: string, options?: EventSourceInit) {
+  constructor(url: string) {
     this.url = url
     setTimeout(() => {
       this.readyState = this.OPEN
@@ -65,6 +65,7 @@ class MockEventSource {
 let mockEventSourceInstance: MockEventSource | null = null
 
 global.EventSource = vi.fn((url: string, options?: EventSourceInit) => {
+  //@ts-ignore
   mockEventSourceInstance = new MockEventSource(url, options)
   return mockEventSourceInstance
 }) as unknown as typeof EventSource
@@ -551,9 +552,8 @@ describe('ActivityLogView.vue', () => {
         },
       })
 
-      const buttons = wrapper.findAll('button')
-      const reconnectButton = buttons.find((btn) =>
-        btn.find('.v-icon').text().includes('mdi-refresh')
+      const reconnectButton = wrapper.findAllComponents({ name: 'VBtn' }).find((btn: any) =>
+        btn.props('icon') === 'mdi-refresh'
       )
 
       expect(reconnectButton).toBeDefined()
@@ -665,9 +665,8 @@ describe('ActivityLogView.vue', () => {
         },
       })
 
-      const buttons = wrapper.findAll('button')
-      const clearButton = buttons.find((btn) =>
-        btn.find('.v-icon').text().includes('mdi-delete')
+      const clearButton = wrapper.findAllComponents({ name: 'VBtn' }).find((btn: any) =>
+        btn.props('icon') === 'mdi-delete'
       )
 
       expect(clearButton).toBeDefined()

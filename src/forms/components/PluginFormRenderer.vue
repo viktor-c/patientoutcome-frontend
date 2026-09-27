@@ -290,6 +290,9 @@ const errorMessage = computed(() => {
   if (!pluginExists.value) {
     return `Form plugin not found for template ID: ${props.templateId}`
   }
+  if (!FormComponent.value) {
+    return `Form component missing for template ID: ${props.templateId}`
+  }
   return null
 })
 

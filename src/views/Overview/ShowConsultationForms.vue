@@ -11,6 +11,7 @@ import { useConsultationFlow } from '@/composables/useConsultationFlow'
 import { useCodeAccessLogging } from '@/composables/useCodeAccessLogging'
 import { getConsultationAccessWindowFromConsultation, type ConsultationAccessWindow } from '@/utils/consultationAccessWindow'
 import { formatDateTimeForLocale } from '@/utils/localeDateTime'
+import NotificationPreferences from '@/components/NotificationPreferences.vue'
 
 import type { Form, PatientFormData } from '@/types/index'
 import type { FormSubmissionData, FormComponentContext } from '@/forms/types'
@@ -458,12 +459,11 @@ console.debug(`ShowConsultationForms.vue isSmallScreen: ${isSmallScreen.value}, 
       <v-progress-linear color="green" :model-value="formFillProgress" :height="8"></v-progress-linear>
     </v-container> -->
     <v-container>
-      <!--TODO Notification Preferences (patient case-code flow) -->
-      <!-- <v-card v-if="externalCode" class="mb-4">
+      <v-card v-if="externalCode" class="mb-4">
         <v-card-text>
           <NotificationPreferences :case-access-token="externalCode" />
         </v-card-text>
-      </v-card> -->
+      </v-card>
 
       <transition name="slide-down">
         <!-- show error messages -->

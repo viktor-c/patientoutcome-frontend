@@ -1,4 +1,12 @@
 {
   "extends": "@tsconfig/node22/tsconfig.json",
-  "include": ["./**/*"]
+  "include": ["./**/*"],
+  "compilerOptions": {
+    "skipLibCheck": true,
+    "noImplicitAny": true
+  },
+  "typeAcquisition": {
+    "enable": true,
+    "include": ["@playwright/test"]
+  }
 }
