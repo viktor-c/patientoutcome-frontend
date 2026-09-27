@@ -26,6 +26,23 @@ Object.defineProperty(window, 'visualViewport', {
   },
 })
 
+Object.defineProperty(window, 'matchMedia', {
+  writable: true,
+  configurable: true,
+  value: (query: string) => ({
+    matches: false,
+    media: query,
+    onchange: null,
+    addEventListener() { },
+    removeEventListener() { },
+    addListener() { },
+    removeListener() { },
+    dispatchEvent() {
+      return false
+    },
+  }),
+})
+
 // Mock ResizeObserver
 global.ResizeObserver = class ResizeObserver {
   observe() { }

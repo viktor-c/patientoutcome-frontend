@@ -31,9 +31,19 @@ export function getStorageStatePath(role: UserRole) {
   return roleConfig[role].storageStatePath;
 }
 
+export async function applyRuntimeApiUrl(page: Page, apiUrl = 'http://localhost:40001') {
+  await page.addInitScript((configuredApiUrl) => {
+    window.__APP_CONFIG__ = {
+      ...(window.__APP_CONFIG__ || {}),
+      VITE_API_URL: configuredApiUrl,
+    };
+  }, apiUrl);
+}
+
 export async function loginWithRole(page: Page, role: UserRole) {
   const credentials = roleConfig[role];
 
+  await applyRuntimeApiUrl(page);
   await page.goto(URL);
   await page.locator('#login-username').first().click();
   await page.locator('#login-username').first().fill(credentials.username);
@@ -41,17 +51,18 @@ export async function loginWithRole(page: Page, role: UserRole) {
   await page.locator('#login-password').first().click();
   await page.locator('#login-password').first().fill(credentials.password);
   await page.locator('#login-submit').click();
-  // await expect(page.locator('#app-logout-button')).toBeVisible();
-  await expect(page.locator('h1', { hasText: 'Dashboard' })).toBeVisible();
+  await page.waitForURL('**/dashboard', { timeout: 15_000 });
+  await expect(page.locator('.creation-flow-btn')).toBeVisible({ timeout: 15_000 });
   await page.context().storageState({ path: credentials.storageStatePath });
 }
 
 export async function logoutCurrentUser(page: Page, role: UserRole = 'clinician') {
   const credentials = roleConfig[role];
 
+  await applyRuntimeApiUrl(page);
   await page.goto(`${URL}logout`);
 
-  await expect(page.locator('#login-username')).toBeVisible({timeout: 10_000});
+  await expect(page.locator('#login-username')).toBeVisible({ timeout: 10_000 });
   await expect(page.locator('#login-submit')).toBeVisible({ timeout: 10_000 });
 
   await page.context().storageState({ path: credentials.storageStatePath });

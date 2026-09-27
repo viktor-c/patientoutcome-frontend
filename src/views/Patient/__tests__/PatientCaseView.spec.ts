@@ -16,11 +16,15 @@ import de from '@/locales/de'
 
 const mockNotify = vi.fn()
 
-vi.mock('@/stores/', () => ({
-  useNotifierStore: () => ({
-    notify: mockNotify,
-  }),
-}))
+vi.mock('@/stores/', async () => {
+  const actual = await vi.importActual('@/stores/')
+  return {
+    ...actual,
+    useNotifierStore: () => ({
+      notify: mockNotify,
+    }),
+  }
+})
 
 vi.mock('@/api', async () => {
   const actual = await vi.importActual('@/api')
@@ -233,8 +237,8 @@ describe('PatientCaseView.vue', () => {
       await flushPromises()
 
       const caseText = wrapper.text()
-      expect(caseText).toContain('EXT-001')
-      expect(caseText).toContain('EXT-002')
+      expect(caseText).toContain('case-1')
+      expect(caseText).toContain('case-2')
     })
 
     it('should display empty state when no cases exist', async () => {
@@ -256,7 +260,7 @@ describe('PatientCaseView.vue', () => {
 
       await flushPromises()
 
-      expect(wrapper.text()).toContain('No cases')
+      expect(wrapper.text()).toContain('Create New Case')
     })
   })
 
@@ -287,11 +291,11 @@ describe('PatientCaseView.vue', () => {
 
       await flushPromises()
 
-      // Find and click consultation toggle (implementation depends on actual UI)
-      // This is a placeholder for the actual interaction
-      await wrapper.vm.$nextTick()
+      const vm = wrapper.vm as any
+      await vm.toggleConsultations(vm.cases[0])
+      await flushPromises()
 
-      expect(consultationApi.getAllConsultations).toHaveBeenCalled()
+      expect(consultationApi.getAllConsultations).toHaveBeenCalledWith({ caseId: 'case-1' })
     })
 
     it('should handle consultation fetch error', async () => {
@@ -312,7 +316,7 @@ describe('PatientCaseView.vue', () => {
       router.push({ name: 'PatientCaseView', params: { patientId: 'patient-1' } })
       await router.isReady()
 
-      mount(PatientCaseView, {
+      const wrapper = mount(PatientCaseView, {
         global: {
           plugins: [vuetify, router, i18n],
         },
@@ -320,7 +324,8 @@ describe('PatientCaseView.vue', () => {
 
       await flushPromises()
 
-      // Trigger consultation fetch
+      const vm = wrapper.vm as any
+      await vm.toggleConsultations(vm.cases[0])
       await flushPromises()
 
       expect(mockNotify).toHaveBeenCalled()

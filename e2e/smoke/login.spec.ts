@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { ensureAuthDir, getStorageStatePath, loginWithRole } from '../helpers/auth';
+import { applyRuntimeApiUrl, ensureAuthDir, getStorageStatePath, loginWithRole } from '../helpers/auth';
 
 const URL = 'http://localhost:5173/';
 
@@ -11,8 +11,9 @@ test.describe('Authentication flow', () => {
   });
 
   test('E2E testing: check that login with incorrect credentials fails', async ({ page }) => {
+    await applyRuntimeApiUrl(page);
     await page.goto(URL);
-    
+
     await page.locator('#login-username').first().click();
     await page.locator('#login-username').first().fill('fakeuser');
     await page.locator('#login-username').first().press('Tab');
@@ -25,7 +26,7 @@ test.describe('Authentication flow', () => {
   test('E2E testing: check that login and logout flow works', async ({ page }) => {
     await test.step('login', async () => {
       await loginWithRole(page, 'clinician');
-      await expect(page.getByRole('heading', { name: 'Dashboard' })).toBeVisible();
+      await expect(page.locator('.creation-flow-btn')).toBeVisible();
       await expect(page.locator('#app-logout-button')).toBeVisible();
     });
 
@@ -39,8 +40,9 @@ test.describe('Authentication flow', () => {
     const context = await browser.newContext({ storageState: getStorageStatePath('clinician') });
     const page = await context.newPage();
 
+    await applyRuntimeApiUrl(page);
     await page.goto(URL);
-    await expect(page.getByRole('heading', { name: 'Dashboard' })).toBeVisible();
+    await expect(page.locator('.creation-flow-btn')).toBeVisible();
 
     await context.close();
   });
