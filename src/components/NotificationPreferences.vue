@@ -1,11 +1,15 @@
 <template>
-  <v-card variant="outlined" :loading="loading" class="notification-prefs">
-    <v-card-title class="d-flex align-center gap-2">
+  <v-card variant="outlined" :loading="loading || contactLoading">
+    <v-card-title class="d-flex align-center ">
       <v-icon>mdi-bell-outline</v-icon>
       {{ $t ? $t('notifications.title') : 'Browser notifications' }}
     </v-card-title>
 
     <v-card-text>
+      <p class="text-body-2 text-medium-emphasis mb-4">
+        {{ t('completionInfo.notificationPrompt')
+          || 'Optional: enable browser notifications for reminders and updates about your forms.' }}
+      </p>
       <!-- Not supported -->
       <v-alert
                v-if="supportStatus !== 'supported'"
@@ -84,6 +88,49 @@
             {{ $t ? $t('notifications.testButton') : 'Send test notification' }}
           </v-btn>
         </div>
+
+        <template v-if="caseAccessToken">
+          <v-divider class="my-4" />
+          <p class="text-body-2 mb-2">
+            {{ t('notifications.emailSectionTitle') }}
+          </p>
+          <v-text-field
+                        v-model="emailAddress"
+                        :label="t('notifications.emailLabel')"
+                        type="email"
+                        variant="outlined"
+                        density="comfortable"
+                        :disabled="contactLoading"
+                        class="mb-2" />
+          <v-checkbox
+                      v-model="futureConsultationReminders"
+                      :label="t('notifications.emailConsentLabel')"
+                      :disabled="contactLoading"
+                      density="compact"
+                      hide-details
+                      class="mb-3" />
+          <div class="d-flex flex-wrap ga-2">
+            <v-btn
+                   color="primary"
+                   variant="flat"
+                   :disabled="!canSaveEmail"
+                   :loading="contactLoading"
+                   @click="onSaveEmailSubscription">
+              {{ t('notifications.saveEmailSubscription') }}
+            </v-btn>
+            <v-btn
+                   v-if="hasStoredEmailSubscription"
+                   color="error"
+                   variant="text"
+                   :loading="contactLoading"
+                   @click="onClearEmailSubscription">
+              {{ t('notifications.removeEmailSubscription') }}
+            </v-btn>
+          </div>
+          <p v-if="contactStatusMessage" class="text-caption text-medium-emphasis mt-3 mb-0">
+            {{ contactStatusMessage }}
+          </p>
+        </template>
       </template>
 
       <!-- Error -->
@@ -117,6 +164,11 @@ import { computed, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { usePwaInstall } from '@/composables/usePwaInstall'
 import { usePushNotifications } from '@/composables/usePushNotifications'
+import {
+  clearPatientNotificationContact,
+  getPatientNotificationContact,
+  savePatientNotificationContact,
+} from '@/services/notificationApi'
 
 const props = defineProps<{
   /** Patient case-code session token; provide for patient flow, omit for admin. */
@@ -151,10 +203,29 @@ const isPermissionDenied = computed(() => permission.value === 'denied')
 const isDevMode = import.meta.env.DEV
 const actionMessage = ref<string | null>(null)
 const actionMessageType = ref<'success' | 'error'>('success')
+const emailAddress = ref('')
+const futureConsultationReminders = ref(false)
+const hasStoredEmailSubscription = ref(false)
+const contactLoading = ref(false)
 
 const supportAlertType = computed<'info' | 'warning'>(() =>
   supportStatus.value === 'ios-home-screen-required' ? 'warning' : 'info',
 )
+
+const emailIsValid = computed(() => /.+@.+\..+/.test(emailAddress.value.trim()))
+const canSaveEmail = computed(() => {
+  if (!props.caseAccessToken) return false
+  return emailIsValid.value && futureConsultationReminders.value
+})
+
+const contactStatusMessage = computed(() => {
+  if (!props.caseAccessToken) return ''
+  if (hasStoredEmailSubscription.value && emailAddress.value) {
+    return t('notifications.emailStatusActive', { email: emailAddress.value })
+  }
+
+  return t('notifications.emailStatusInactive')
+})
 
 const supportMessage = computed(() => {
   switch (supportStatus.value) {
@@ -219,14 +290,77 @@ async function onInstallApp() {
   refreshInstalledState()
 }
 
+async function loadPatientNotificationContact() {
+  if (!props.caseAccessToken) return
+
+  contactLoading.value = true
+  try {
+    const contact = await getPatientNotificationContact(props.caseAccessToken)
+    emailAddress.value = contact.email ?? ''
+    futureConsultationReminders.value = contact.futureConsultationReminders
+    hasStoredEmailSubscription.value = contact.subscribed
+  } catch {
+    emailAddress.value = ''
+    futureConsultationReminders.value = false
+    hasStoredEmailSubscription.value = false
+  } finally {
+    contactLoading.value = false
+  }
+}
+
+async function onSaveEmailSubscription() {
+  if (!props.caseAccessToken || !canSaveEmail.value) return
+
+  contactLoading.value = true
+  actionMessage.value = null
+
+  try {
+    const result = await savePatientNotificationContact({
+      caseAccessToken: props.caseAccessToken,
+      email: emailAddress.value.trim(),
+      futureConsultationReminders: futureConsultationReminders.value,
+    })
+
+    emailAddress.value = result.email ?? ''
+    futureConsultationReminders.value = result.futureConsultationReminders
+    hasStoredEmailSubscription.value = result.subscribed
+    actionMessageType.value = 'success'
+    actionMessage.value = t('notifications.emailSaveSuccess')
+  } catch (err) {
+    actionMessageType.value = 'error'
+    actionMessage.value = err instanceof Error ? err.message : t('notifications.emailSaveError')
+  } finally {
+    contactLoading.value = false
+  }
+}
+
+async function onClearEmailSubscription() {
+  if (!props.caseAccessToken) return
+
+  contactLoading.value = true
+  actionMessage.value = null
+
+  try {
+    await clearPatientNotificationContact(props.caseAccessToken)
+    emailAddress.value = ''
+    futureConsultationReminders.value = false
+    hasStoredEmailSubscription.value = false
+    actionMessageType.value = 'success'
+    actionMessage.value = t('notifications.emailRemoveSuccess')
+  } catch (err) {
+    actionMessageType.value = 'error'
+    actionMessage.value = err instanceof Error ? err.message : t('notifications.emailSaveError')
+  } finally {
+    contactLoading.value = false
+  }
+}
+
 onMounted(async () => {
   refreshInstalledState()
   await checkCurrentSubscription()
+  await loadPatientNotificationContact()
 })
 </script>
 
 <style scoped>
-.notification-prefs {
-  max-width: 480px;
-}
 </style>

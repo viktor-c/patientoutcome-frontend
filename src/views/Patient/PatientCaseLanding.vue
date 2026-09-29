@@ -23,6 +23,7 @@ import CreateEditSurgeryDialog from '@/components/dialogs/CreateEditSurgeryDialo
 import CascadeDeleteDialog from '@/components/dialogs/CascadeDeleteDialog.vue'
 import NotesEditor from '@/components/forms/NotesEditor.vue'
 import QRCodeDisplay from '@/components/QRCodeDisplay.vue'
+import NotificationStatusPanel from '@/components/NotificationStatusPanel.vue'
 import { getConsultationAccessWindowFromConsultation } from '@/utils/consultationAccessWindow'
 import { getAccessInfo } from '@/utils/dashboardUtils'
 import { createCaseAccessCode } from '@/utils/caseAccessCode'
@@ -1690,6 +1691,10 @@ onUnmounted(() => {
     <!-- Archive Code Confirmation Step 1 -->
     <v-dialog v-model="showArchiveConfirmStep1" max-width="500px">
       <v-card>
+
+      <NotificationStatusPanel
+               :patient-id="patient?.id"
+               :case-id="caseId" />
         <v-card-title class="d-flex align-center gap-2">
           <v-icon color="warning">mdi-alert-circle</v-icon>
           {{ t('alerts.general.confirmAction') }}

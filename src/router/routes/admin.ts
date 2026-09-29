@@ -11,6 +11,7 @@ import BackupManagement from '@/views/Admin/BackupManagement.vue'
 import SettingsManagement from '@/views/Admin/SettingsManagement.vue'
 import DeletedItemsManagement from '@/views/Admin/DeletedItemsManagement.vue'
 import FormAccessCodesManagement from '@/views/Admin/FormAccessCodesManagement.vue'
+import NotificationClientsManagement from '@/views/Admin/NotificationClientsManagement.vue'
 import PluginFormDemo from '@/views/PluginFormDemo.vue'
 
 export const adminRoutes: RouteRecordRaw[] = [
@@ -84,6 +85,12 @@ export const adminRoutes: RouteRecordRaw[] = [
         name: 'admin-form-access-codes',
         component: FormAccessCodesManagement,
         meta: { titleKey: 'pageTitles.formAccessCodesManagement', requiredRole: 'admin' }
+      },
+      {
+        path: 'notification-clients',
+        name: 'admin-notification-clients',
+        component: NotificationClientsManagement,
+        meta: { titleKey: 'pageTitles.notificationClientsManagement', requiredRole: 'admin' }
       },
       {
         path: 'plugin-form-demo',

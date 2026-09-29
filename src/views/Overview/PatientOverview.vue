@@ -17,6 +17,7 @@ import PatientCaseCard from '@/components/cards/PatientCaseCard.vue'
 import CreateEditConsultationDialog from '@/components/dialogs/CreateEditConsultationDialog.vue'
 import CreateEditSurgeryDialog from '@/components/dialogs/CreateEditSurgeryDialog.vue'
 import CascadeDeleteDialog from '@/components/dialogs/CascadeDeleteDialog.vue'
+import NotificationStatusPanel from '@/components/NotificationStatusPanel.vue'
 
 const componentName = 'PatientOverview.vue'
 const { t } = useI18n()
@@ -593,7 +594,7 @@ const confirmCascadeDelete = async (selectedOptions: Record<string, boolean>) =>
           </v-row>
         </v-card-text>
       </v-card>
-
+      <NotificationStatusPanel :patient-id="patientId" />
       <!-- Cases -->
       <div v-if="cases.length === 0" class="text-center py-8">
         <v-icon color="grey" size="64">mdi-folder-open</v-icon>

@@ -64,6 +64,11 @@ const adminMenuItems = [
     icon: 'mdi-form-select',
     route: 'admin-form-access-codes'
   },
+  {
+    title: 'Notification Clients',
+    icon: 'mdi-bell-badge-outline',
+    route: 'admin-notification-clients'
+  },
   // Add more admin items here in the future
 ];
 

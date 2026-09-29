@@ -17,6 +17,7 @@ import CascadeDeleteDialog from '@/components/dialogs/CascadeDeleteDialog.vue'
 import AccessCodeAssignment from '@/components/AccessCodeAssignment.vue'
 import AssignedCodeDisplay from '@/components/AssignedCodeDisplay.vue'
 import ElsnerFeedbackChart, { type ElsnerPoint } from '@/components/forms/ElsnerFeedbackChart.vue'
+import NotificationStatusPanel from '@/components/NotificationStatusPanel.vue'
 import { getConsultationAccessWindowFromConsultation } from '@/utils/consultationAccessWindow'
 import ScoreScale from '@/components/ScoreScale.vue'
 import { useUserStore, useFormTemplateStore } from '@/stores'
@@ -1076,6 +1077,11 @@ const assignedConsultationAccessWindow = computed(() => {
           </v-row>
         </v-card-text>
       </v-card>
+
+      <NotificationStatusPanel
+               :patient-id="patientRouteId as string"
+               :case-id="caseRouteId as string"
+               :consultation-id="consultation.id" />
 
       <!-- Current Consultation Forms -->
       <v-card class="mb-6" v-if="consultation.proms?.filter(form => !form.deletedAt).length">

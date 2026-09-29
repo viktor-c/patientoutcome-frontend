@@ -6,6 +6,11 @@ import * as components from 'vuetify/components'
 import * as directives from 'vuetify/directives'
 import { createI18n } from 'vue-i18n'
 import NotificationPreferences from '../NotificationPreferences.vue'
+import {
+  clearPatientNotificationContact,
+  getPatientNotificationContact,
+  savePatientNotificationContact,
+} from '@/services/notificationApi'
 
 const supported = ref(true)
 const supportStatus = ref<'supported' | 'insecure-context' | 'ios-home-screen-required' | 'unsupported-browser'>('supported')
@@ -50,6 +55,20 @@ vi.mock('@/composables/usePwaInstall', () => ({
   }),
 }))
 
+vi.mock('@/services/notificationApi', () => ({
+  getPatientNotificationContact: vi.fn().mockResolvedValue({
+    email: null,
+    futureConsultationReminders: false,
+    subscribed: false,
+  }),
+  savePatientNotificationContact: vi.fn().mockResolvedValue({
+    email: 'patient@example.com',
+    futureConsultationReminders: true,
+    subscribed: true,
+  }),
+  clearPatientNotificationContact: vi.fn().mockResolvedValue(undefined),
+}))
+
 describe('NotificationPreferences.vue', () => {
   const vuetify = createVuetify({ components, directives })
   const i18n = createI18n({
@@ -72,6 +91,18 @@ describe('NotificationPreferences.vue', () => {
           testDescription: 'notifications.testDescription',
           testButton: 'notifications.testButton',
           testSent: 'notifications.testSent',
+          emailSectionTitle: 'notifications.emailSectionTitle',
+          emailLabel: 'notifications.emailLabel',
+          emailConsentLabel: 'notifications.emailConsentLabel',
+          saveEmailSubscription: 'notifications.saveEmailSubscription',
+          removeEmailSubscription: 'notifications.removeEmailSubscription',
+          emailStatusActive: 'notifications.emailStatusActive',
+          emailStatusInactive: 'notifications.emailStatusInactive',
+          emailSaveSuccess: 'notifications.emailSaveSuccess',
+          emailRemoveSuccess: 'notifications.emailRemoveSuccess',
+        },
+        completionInfo: {
+          notificationPrompt: 'completionInfo.notificationPrompt',
         },
       },
     },
@@ -89,6 +120,15 @@ describe('NotificationPreferences.vue', () => {
     isIos.value = false
     canPromptInstall.value = false
     installMode.value = 'browser-manual'
+    vi.mocked(getPatientNotificationContact).mockResolvedValue({
+      caseId: 'case-1',
+      patientId: 'patient-1',
+      email: null,
+      futureConsultationReminders: false,
+      subscribed: false,
+      consentedAt: null,
+      unsubscribedAt: null,
+    })
   })
 
   it('checks the current subscription state on mount', async () => {
@@ -117,6 +157,89 @@ describe('NotificationPreferences.vue', () => {
     await flushPromises()
 
     expect(subscribe).toHaveBeenCalledWith({ caseAccessToken: 'CASE01' })
+  })
+
+  it('loads existing patient email reminder preferences when a case token is present', async () => {
+    vi.mocked(getPatientNotificationContact).mockResolvedValueOnce({
+      caseId: 'case-1',
+      patientId: 'patient-1',
+      email: 'patient@example.com',
+      futureConsultationReminders: true,
+      subscribed: true,
+      consentedAt: null,
+      unsubscribedAt: null,
+    })
+
+    const wrapper = mount(NotificationPreferences, {
+      props: { caseAccessToken: 'CASE01' },
+      global: {
+        plugins: [vuetify, i18n],
+      },
+    })
+
+    await flushPromises()
+
+    expect(getPatientNotificationContact).toHaveBeenCalledWith('CASE01')
+    expect(wrapper.text()).toContain('notifications.emailStatusActive')
+  })
+
+  it('saves patient email reminder preferences', async () => {
+    const wrapper = mount(NotificationPreferences, {
+      props: { caseAccessToken: 'CASE01' },
+      global: {
+        plugins: [vuetify, i18n],
+      },
+    })
+
+    await flushPromises()
+
+    const emailInput = wrapper.find('input[type="email"]')
+    await emailInput.setValue('patient@example.com')
+    wrapper.findComponent({ name: 'VCheckbox' }).vm.$emit('update:modelValue', true)
+    await flushPromises()
+
+    const saveButton = wrapper.findAllComponents({ name: 'VBtn' })
+      .find((button) => button.text().includes('notifications.saveEmailSubscription'))
+
+    await saveButton!.trigger('click')
+    await flushPromises()
+
+    expect(savePatientNotificationContact).toHaveBeenCalledWith({
+      caseAccessToken: 'CASE01',
+      email: 'patient@example.com',
+      futureConsultationReminders: true,
+    })
+    expect(wrapper.text()).toContain('notifications.emailSaveSuccess')
+  })
+
+  it('removes the saved patient email reminder preference', async () => {
+    vi.mocked(getPatientNotificationContact).mockResolvedValueOnce({
+      caseId: 'case-1',
+      patientId: 'patient-1',
+      email: 'patient@example.com',
+      futureConsultationReminders: true,
+      subscribed: true,
+      consentedAt: null,
+      unsubscribedAt: null,
+    })
+
+    const wrapper = mount(NotificationPreferences, {
+      props: { caseAccessToken: 'CASE01' },
+      global: {
+        plugins: [vuetify, i18n],
+      },
+    })
+
+    await flushPromises()
+
+    const removeButton = wrapper.findAllComponents({ name: 'VBtn' })
+      .find((button) => button.text().includes('notifications.removeEmailSubscription'))
+
+    await removeButton!.trigger('click')
+    await flushPromises()
+
+    expect(clearPatientNotificationContact).toHaveBeenCalledWith('CASE01')
+    expect(wrapper.text()).toContain('notifications.emailRemoveSuccess')
   })
 
   it('calls unsubscribe when the switch is turned off', async () => {
