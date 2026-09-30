@@ -78,7 +78,7 @@ function handleUpdate(section: string, questionKey: string, value: number) {
 }
 
 function hasAnsweredValue(section: string, questionKey: string): boolean {
-  return getCurrentValue(section, questionKey) !== null
+  return getCurrentValue(section, questionKey) !== undefined
 }
 
 function activateSlider(
@@ -107,13 +107,13 @@ function activateSlider(
 }
 
 // Get current value for a question
-function getCurrentValue(section: string, questionKey: string): number | null {
+function getCurrentValue(section: string, questionKey: string): number | undefined {
   const qData = getQuestion(section, questionKey)
   if (typeof qData === 'number') {
     return qData
   }
-  // 'na' string or null returns null for slider display
-  return null
+  // 'na' string or null returns undefined for slider display
+  return undefined
 }
 
 // Get question label
@@ -140,7 +140,7 @@ const currentQuestionIndex = ref(0)
 const carouselModel = ref(0)
 
 // Track original values to detect modifications
-const originalValues = ref<Record<string, Record<string, number | null>>>({})
+const originalValues = ref<Record<string, Record<string, number | undefined>>>({})
 const hasInitializedOriginalValues = ref(false)
 
 // Initialize original values from modelValue
@@ -164,14 +164,14 @@ const isCurrentQuestionAnswered = computed(() => {
   const question = currentQuestion.value
   if (!question) return false
   const value = getCurrentValue(question.section, question.key)
-  return value !== null || isNA(question.section, question.key)
+  return value !== undefined || isNA(question.section, question.key)
 })
 
 const allQuestionsAnswered = computed(() => {
   return allQuestions.value.every((q) => {
     const value = getCurrentValue(q.section, q.key)
     const na = isNA(q.section, q.key)
-    return value !== null || na
+    return value !== undefined || na
   })
 })
 
@@ -179,7 +179,7 @@ const answeredQuestions = computed(() => {
   return allQuestions.value.filter(q => {
     const value = getCurrentValue(q.section, q.key)
     const na = isNA(q.section, q.key)
-    return value !== null || na
+    return value !== undefined || na
   }).length
 })
 
@@ -192,7 +192,7 @@ const progress = computed(() => {
 function isQuestionModified(section: string, questionKey: string): boolean {
   const current = getCurrentValue(section, questionKey)
   const original = originalValues.value[section]?.[questionKey]
-  return current !== null && original !== null && current !== original
+  return current !== undefined && original !== undefined && current !== original
 }
 
 // Get color for a question based on its state
@@ -201,7 +201,7 @@ function getQuestionColor(section: string, questionKey: string, index: number): 
   if (isQuestionModified(section, questionKey)) return 'warning'
   const value = getCurrentValue(section, questionKey)
   const na = isNA(section, questionKey)
-  if (value !== null || na) return 'success'
+  if (value !== undefined || na) return 'success'
   return 'grey'
 }
 
@@ -340,31 +340,31 @@ const navigationItems = computed<QuestionNavItem[]>(() => {
                           hide-details />
             </div>
 
-              <!-- Slider -->
-              <v-slider
-                  v-if="hasAnsweredValue(currentQuestion.section, currentQuestion.key)"
-                  :model-value="getCurrentValue(currentQuestion.section, currentQuestion.key)"
-                  :readonly="readonly"
-                  :disabled="isNA(currentQuestion.section, currentQuestion.key) || readonly"
-                  :min="0"
-                  :max="4"
-                  :step="1"
-                  thumb-label="always"
-                  color="primary"
-                  track-color="grey-lighten-2"
-                  @update:model-value="(value) => handleUpdate(currentQuestion.section, currentQuestion.key, value as number)"
-                  class="mt-4 mb-1" />
-              <div
-                v-else
-                class="slider-activation-track mt-4 mb-1"
-                :class="{ 'slider-activation-track--disabled': isNA(currentQuestion.section, currentQuestion.key) || readonly }"
-                role="button"
-                :tabindex="isNA(currentQuestion.section, currentQuestion.key) || readonly ? -1 : 0"
-                :aria-disabled="isNA(currentQuestion.section, currentQuestion.key) || readonly"
-                :aria-label="getQuestionLabel(currentQuestion.section, currentQuestion.key)"
-                @pointerdown="activateSlider(currentQuestion.section, currentQuestion.key, $event)"
-                @keydown.enter.prevent="handleUpdate(currentQuestion.section, currentQuestion.key, 0)"
-                @keydown.space.prevent="handleUpdate(currentQuestion.section, currentQuestion.key, 0)" />
+            <!-- Slider -->
+            <v-slider
+                      v-if="hasAnsweredValue(currentQuestion.section, currentQuestion.key)"
+                      :model-value="getCurrentValue(currentQuestion.section, currentQuestion.key)"
+                      :readonly="readonly"
+                      :disabled="isNA(currentQuestion.section, currentQuestion.key) || readonly"
+                      :min="0"
+                      :max="4"
+                      :step="1"
+                      thumb-label="always"
+                      color="primary"
+                      track-color="grey-lighten-2"
+                      @update:model-value="(value) => handleUpdate(currentQuestion.section, currentQuestion.key, value as number)"
+                      class="mt-4 mb-1" />
+            <div
+                 v-else
+                 class="slider-activation-track mt-4 mb-1"
+                 :class="{ 'slider-activation-track--disabled': isNA(currentQuestion.section, currentQuestion.key) || readonly }"
+                 role="button"
+                 :tabindex="isNA(currentQuestion.section, currentQuestion.key) || readonly ? -1 : 0"
+                 :aria-disabled="isNA(currentQuestion.section, currentQuestion.key) || readonly"
+                 :aria-label="getQuestionLabel(currentQuestion.section, currentQuestion.key)"
+                 @pointerdown="activateSlider(currentQuestion.section, currentQuestion.key, $event)"
+                 @keydown.enter.prevent="handleUpdate(currentQuestion.section, currentQuestion.key, 0)"
+                 @keydown.space.prevent="handleUpdate(currentQuestion.section, currentQuestion.key, 0)" />
 
             <div class="d-flex justify-space-between">
               <span class="">0 - {{ getTickLabels(currentQuestion.section, currentQuestion.key).low }}</span>
@@ -468,29 +468,29 @@ const navigationItems = computed<QuestionNavItem[]>(() => {
                               density="compact"
                               hide-details />
                 </div>
-                 <v-slider
-                     v-if="hasAnsweredValue(question.section, question.key)"
-                     :model-value="getCurrentValue(question.section, question.key)"
-                     :min="0"
-                     :max="4"
-                     :step="1"
-                     :disabled="isNA(question.section, question.key) || readonly"
-                     :readonly="readonly"
-                     @update:model-value="(value) => handleUpdate(question.section, question.key, value as number)"
-                     class="mobile-slider"
-                     hide-details
-                     thumb-label="always" />
-                 <div
-                   v-else
-                   class="slider-activation-track mobile-slider"
-                   :class="{ 'slider-activation-track--disabled': isNA(question.section, question.key) || readonly }"
-                   role="button"
-                   :tabindex="isNA(question.section, question.key) || readonly ? -1 : 0"
-                   :aria-disabled="isNA(question.section, question.key) || readonly"
-                   :aria-label="getQuestionLabel(question.section, question.key)"
-                   @pointerdown="activateSlider(question.section, question.key, $event)"
-                   @keydown.enter.prevent="handleUpdate(question.section, question.key, 0)"
-                   @keydown.space.prevent="handleUpdate(question.section, question.key, 0)" />
+                <v-slider
+                          v-if="hasAnsweredValue(question.section, question.key)"
+                          :model-value="getCurrentValue(question.section, question.key)"
+                          :min="0"
+                          :max="4"
+                          :step="1"
+                          :disabled="isNA(question.section, question.key) || readonly"
+                          :readonly="readonly"
+                          @update:model-value="(value) => handleUpdate(question.section, question.key, value as number)"
+                          class="mobile-slider"
+                          hide-details
+                          thumb-label="always" />
+                <div
+                     v-else
+                     class="slider-activation-track mobile-slider"
+                     :class="{ 'slider-activation-track--disabled': isNA(question.section, question.key) || readonly }"
+                     role="button"
+                     :tabindex="isNA(question.section, question.key) || readonly ? -1 : 0"
+                     :aria-disabled="isNA(question.section, question.key) || readonly"
+                     :aria-label="getQuestionLabel(question.section, question.key)"
+                     @pointerdown="activateSlider(question.section, question.key, $event)"
+                     @keydown.enter.prevent="handleUpdate(question.section, question.key, 0)"
+                     @keydown.space.prevent="handleUpdate(question.section, question.key, 0)" />
               </div>
               <div class="tick-labels mt-2">
                 <span class="tick-label-low">0 - {{ getTickLabels(question.section, question.key).low }}</span>
@@ -528,19 +528,19 @@ const navigationItems = computed<QuestionNavItem[]>(() => {
                                 hide-details
                                 class="na-checkbox" />
                   </div>
-                     <v-slider
-                         v-if="hasAnsweredValue(question.section, question.key)"
-                         :model-value="getCurrentValue(question.section, question.key)"
-                         :min="0"
-                         :max="4"
-                         :step="1"
-                         :disabled="isNA(question.section, question.key) || readonly"
-                         :readonly="readonly"
-                         @update:model-value="(value) => handleUpdate(question.section, question.key, value as number)"
-                         class="desktop-slider"
-                         hide-details
-                         thumb-label="always" />
-                     <div
+                  <v-slider
+                            v-if="hasAnsweredValue(question.section, question.key)"
+                            :model-value="getCurrentValue(question.section, question.key)"
+                            :min="0"
+                            :max="4"
+                            :step="1"
+                            :disabled="isNA(question.section, question.key) || readonly"
+                            :readonly="readonly"
+                            @update:model-value="(value) => handleUpdate(question.section, question.key, value as number)"
+                            class="desktop-slider"
+                            hide-details
+                            thumb-label="always" />
+                  <div
                        v-else
                        class="slider-activation-track desktop-slider"
                        :class="{ 'slider-activation-track--disabled': isNA(question.section, question.key) || readonly }"
@@ -594,29 +594,29 @@ const navigationItems = computed<QuestionNavItem[]>(() => {
                               density="compact"
                               hide-details />
                 </div>
-                 <v-slider
-                     v-if="hasAnsweredValue(question.section, question.key)"
-                     :model-value="getCurrentValue(question.section, question.key)"
-                     :min="0"
-                     :max="4"
-                     :step="1"
-                     :disabled="isNA(question.section, question.key) || readonly"
-                     :readonly="readonly"
-                     @update:model-value="(value) => handleUpdate(question.section, question.key, value as number)"
-                     class="mobile-slider"
-                     hide-details
-                     thumb-label="always" />
-                 <div
-                   v-else
-                   class="slider-activation-track mobile-slider"
-                   :class="{ 'slider-activation-track--disabled': isNA(question.section, question.key) || readonly }"
-                   role="button"
-                   :tabindex="isNA(question.section, question.key) || readonly ? -1 : 0"
-                   :aria-disabled="isNA(question.section, question.key) || readonly"
-                   :aria-label="getQuestionLabel(question.section, question.key)"
-                   @pointerdown="activateSlider(question.section, question.key, $event)"
-                   @keydown.enter.prevent="handleUpdate(question.section, question.key, 0)"
-                   @keydown.space.prevent="handleUpdate(question.section, question.key, 0)" />
+                <v-slider
+                          v-if="hasAnsweredValue(question.section, question.key)"
+                          :model-value="getCurrentValue(question.section, question.key)"
+                          :min="0"
+                          :max="4"
+                          :step="1"
+                          :disabled="isNA(question.section, question.key) || readonly"
+                          :readonly="readonly"
+                          @update:model-value="(value) => handleUpdate(question.section, question.key, value as number)"
+                          class="mobile-slider"
+                          hide-details
+                          thumb-label="always" />
+                <div
+                     v-else
+                     class="slider-activation-track mobile-slider"
+                     :class="{ 'slider-activation-track--disabled': isNA(question.section, question.key) || readonly }"
+                     role="button"
+                     :tabindex="isNA(question.section, question.key) || readonly ? -1 : 0"
+                     :aria-disabled="isNA(question.section, question.key) || readonly"
+                     :aria-label="getQuestionLabel(question.section, question.key)"
+                     @pointerdown="activateSlider(question.section, question.key, $event)"
+                     @keydown.enter.prevent="handleUpdate(question.section, question.key, 0)"
+                     @keydown.space.prevent="handleUpdate(question.section, question.key, 0)" />
               </div>
               <div class="tick-labels mt-2">
                 <span class="tick-label-low">0 - {{ getTickLabels(question.section, question.key).low }}</span>
@@ -654,19 +654,19 @@ const navigationItems = computed<QuestionNavItem[]>(() => {
                                 hide-details
                                 class="na-checkbox" />
                   </div>
-                     <v-slider
-                         v-if="hasAnsweredValue(question.section, question.key)"
-                         :model-value="getCurrentValue(question.section, question.key)"
-                         :min="0"
-                         :max="4"
-                         :step="1"
-                         :disabled="isNA(question.section, question.key) || readonly"
-                         :readonly="readonly"
-                         @update:model-value="(value) => handleUpdate(question.section, question.key, value as number)"
-                         class="desktop-slider"
-                         hide-details
-                         thumb-label="always" />
-                     <div
+                  <v-slider
+                            v-if="hasAnsweredValue(question.section, question.key)"
+                            :model-value="getCurrentValue(question.section, question.key)"
+                            :min="0"
+                            :max="4"
+                            :step="1"
+                            :disabled="isNA(question.section, question.key) || readonly"
+                            :readonly="readonly"
+                            @update:model-value="(value) => handleUpdate(question.section, question.key, value as number)"
+                            class="desktop-slider"
+                            hide-details
+                            thumb-label="always" />
+                  <div
                        v-else
                        class="slider-activation-track desktop-slider"
                        :class="{ 'slider-activation-track--disabled': isNA(question.section, question.key) || readonly }"

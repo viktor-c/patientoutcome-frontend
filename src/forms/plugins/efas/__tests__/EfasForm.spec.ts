@@ -7,6 +7,7 @@ import { createI18n } from 'vue-i18n'
 import en from '@/locales/en'
 import EfasForm from '../EfasForm.vue'
 import { getInitialData } from '../scoring'
+import type { FormSubmissionData } from '@/forms/types'
 
 function mountComponent() {
   const vuetify = createVuetify({ components, directives })
@@ -42,7 +43,7 @@ describe('EfasForm', () => {
     const emissions = wrapper.emitted('update:modelValue')
     expect(emissions).toBeTruthy()
 
-    const payload = emissions?.[0]?.[0]
+    const payload = emissions?.[0]?.[0] as FormSubmissionData
     expect(payload.rawFormData.standardfragebogen.q1).toBe(0)
     expect(payload.fillStatus).toBe('incomplete')
 
