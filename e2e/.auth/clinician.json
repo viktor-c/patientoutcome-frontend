@@ -2,10 +2,10 @@
   "cookies": [
     {
       "name": "connect.sid",
-      "value": "s%3Av7yq9yqRKKF8ULSb1ayZDkDu7AF3ev_D.Wu%2F1EKEo4M3YIiMTwQ1scpGb%2B1reX2aC6XJFauXniTQ",
+      "value": "s%3A-IQQ5xvGoqP5naCOJp7tvQiOiGCTw3cI.nDOWuW0b2Iut2uAz9IT%2FCc6TDOWqJPbbAnRl%2FHICuAI",
       "domain": "localhost",
       "path": "/",
-      "expires": 1790660775.127,
+      "expires": 1790935454.765056,
       "httpOnly": true,
       "secure": false,
       "sameSite": "Lax"
@@ -16,16 +16,52 @@
       "origin": "http://localhost:5173",
       "localStorage": [
         {
+          "name": "lastActivityAt",
+          "value": "1790805854768"
+        },
+        {
+          "name": "name",
+          "value": "Emma Wilson"
+        },
+        {
+          "name": "belongsToCenter",
+          "value": "[\"675000000000000000000005\"]"
+        },
+        {
+          "name": "__vue-devtools-theme__",
+          "value": "auto"
+        },
+        {
+          "name": "department",
+          "value": "675000000000000000000002"
+        },
+        {
+          "name": "__VUE_DEVTOOLS_NEXT_PLUGIN_SETTINGS__dev.esm.pinia__",
+          "value": "{\"logStoreChanges\":true}"
+        },
+        {
+          "name": "sessionExpiresAt",
+          "value": "2026-10-02T10:04:14.768Z"
+        },
+        {
+          "name": "email",
+          "value": "ewilson@example.com"
+        },
+        {
+          "name": "username",
+          "value": "ewilson"
+        },
+        {
+          "name": "roles",
+          "value": "[\"admin\"]"
+        },
+        {
           "name": "daysBeforeConsultations",
           "value": "7"
         },
         {
-          "name": "name",
-          "value": "Ethan"
-        },
-        {
-          "name": "sessionExpiresAt",
-          "value": "2026-09-29T05:46:15.131Z"
+          "name": "consultationAccessDaysBefore",
+          "value": "3"
         },
         {
           "name": "consultationAccessDaysAfter",
@@ -33,47 +69,11 @@
         },
         {
           "name": "app_logs",
-          "value": "[{\"timestamp\":\"2026-09-27T17:46:14.683Z\",\"level\":\"INFO\",\"message\":\"Application started\",\"data\":{\"environment\":\"development\",\"apiUrl\":\"http://192.168.170.127:40001\",\"timestamp\":\"2026-09-27T17:46:14.683Z\"},\"url\":\"http://localhost:5173/\",\"userAgent\":\"Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:142.0.1) Gecko/20100101 Firefox/142.0.1\"}]"
-        },
-        {
-          "name": "roles",
-          "value": "[\"admin\"]"
-        },
-        {
-          "name": "email",
-          "value": "ewilson@example.com"
-        },
-        {
-          "name": "lastActivityAt",
-          "value": "1790531175131"
-        },
-        {
-          "name": "department",
-          "value": "675000000000000000000002"
-        },
-        {
-          "name": "belongsToCenter",
-          "value": "[\"675000000000000000000005\"]"
+          "value": "[{\"timestamp\":\"2026-09-30T22:04:14.370Z\",\"level\":\"INFO\",\"message\":\"Application started\",\"data\":{\"environment\":\"development\",\"apiUrl\":\"http://192.168.170.127:40001\",\"timestamp\":\"2026-09-30T22:04:14.368Z\"},\"url\":\"http://localhost:5173/\",\"userAgent\":\"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.7390.37 Safari/537.36\"}]"
         },
         {
           "name": "__vue-devtools-frame-state__",
           "value": "{\"width\":80,\"height\":60,\"top\":0,\"left\":50,\"open\":false,\"route\":\"/\",\"position\":\"bottom\",\"isFirstVisit\":true,\"closeOnOutsideClick\":false,\"minimizePanelInactive\":5000,\"preferShowFloatingPanel\":true,\"reduceMotion\":false}"
-        },
-        {
-          "name": "__VUE_DEVTOOLS_NEXT_PLUGIN_SETTINGS__dev.esm.pinia__",
-          "value": "{\"logStoreChanges\":true}"
-        },
-        {
-          "name": "username",
-          "value": "ewilson"
-        },
-        {
-          "name": "__vue-devtools-theme__",
-          "value": "auto"
-        },
-        {
-          "name": "consultationAccessDaysBefore",
-          "value": "3"
         },
         {
           "name": "permissions",
