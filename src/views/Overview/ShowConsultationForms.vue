@@ -379,9 +379,9 @@ const startCountdown = () => {
     name: 'completioninfo',
     query: completionCaseAccessToken.value
       ? {
-          ...(externalCode ? { externalCode } : {}),
-          caseAccessToken: completionCaseAccessToken.value,
-        }
+        ...(externalCode ? { externalCode } : {}),
+        caseAccessToken: completionCaseAccessToken.value,
+      }
       : externalCode
         ? { externalCode }
         : undefined,

@@ -324,7 +324,8 @@ onMounted(async () => {
             <div class="d-flex ga-1 flex-wrap">
               <v-btn size="small" variant="text" @click="openPatient(item.patientId)">{{ t('common.patient') }}</v-btn>
               <v-btn size="small" variant="text" @click="openCase(item.caseId)">{{ t('common.case') }}</v-btn>
-              <v-btn size="small" variant="text" @click="openConsultation(item.consultationId)">{{ t('common.consultation') }}</v-btn>
+              <v-btn size="small" variant="text" @click="openConsultation(item.consultationId)">{{
+                t('common.consultation') }}</v-btn>
             </div>
           </template>
           <template #bottom>
@@ -409,7 +410,8 @@ onMounted(async () => {
             <div class="d-flex ga-1 flex-wrap align-center">
               <v-btn size="small" variant="text" @click="openPatient(item.patientId)">{{ t('common.patient') }}</v-btn>
               <v-btn size="small" variant="text" @click="openCase(item.caseId)">{{ t('common.case') }}</v-btn>
-              <v-btn size="small" variant="text" @click="openConsultation(item.consultationId)">{{ t('common.consultation') }}</v-btn>
+              <v-btn size="small" variant="text" @click="openConsultation(item.consultationId)">{{
+                t('common.consultation') }}</v-btn>
               <v-btn
                      size="small"
                      color="primary"
@@ -451,7 +453,8 @@ onMounted(async () => {
             <div class="d-flex ga-1 flex-wrap align-center">
               <v-btn size="small" variant="text" @click="openPatient(item.patientId)">{{ t('common.patient') }}</v-btn>
               <v-btn size="small" variant="text" @click="openCase(item.caseId)">{{ t('common.case') }}</v-btn>
-              <v-btn size="small" variant="text" @click="openConsultation(item.consultationId)">{{ t('common.consultation') }}</v-btn>
+              <v-btn size="small" variant="text" @click="openConsultation(item.consultationId)">{{
+                t('common.consultation') }}</v-btn>
               <v-btn
                      size="small"
                      color="secondary"
