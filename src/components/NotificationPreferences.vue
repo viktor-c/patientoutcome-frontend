@@ -89,48 +89,49 @@
           </v-btn>
         </div>
 
-        <template v-if="caseAccessToken">
-          <v-divider class="my-4" />
-          <p class="text-body-2 mb-2">
-            {{ t('notifications.emailSectionTitle') }}
-          </p>
-          <v-text-field
-                        v-model="emailAddress"
-                        :label="t('notifications.emailLabel')"
-                        type="email"
-                        variant="outlined"
-                        density="comfortable"
-                        :disabled="contactLoading"
-                        class="mb-2" />
-          <v-checkbox
-                      v-model="futureConsultationReminders"
-                      :label="t('notifications.emailConsentLabel')"
+      </template>
+
+      <template v-if="caseAccessToken">
+        <v-divider class="my-4" />
+        <p class="text-body-2 mb-2">
+          {{ t('notifications.emailSectionTitle') }}
+        </p>
+        <v-text-field
+                      v-model="emailAddress"
+                      :label="t('notifications.emailLabel')"
+                      type="email"
+                      variant="outlined"
+                      density="comfortable"
                       :disabled="contactLoading"
-                      density="compact"
-                      hide-details
-                      class="mb-3" />
-          <div class="d-flex flex-wrap ga-2">
-            <v-btn
-                   color="primary"
-                   variant="flat"
-                   :disabled="!canSaveEmail"
-                   :loading="contactLoading"
-                   @click="onSaveEmailSubscription">
-              {{ t('notifications.saveEmailSubscription') }}
-            </v-btn>
-            <v-btn
-                   v-if="hasStoredEmailSubscription"
-                   color="error"
-                   variant="text"
-                   :loading="contactLoading"
-                   @click="onClearEmailSubscription">
-              {{ t('notifications.removeEmailSubscription') }}
-            </v-btn>
-          </div>
-          <p v-if="contactStatusMessage" class="text-caption text-medium-emphasis mt-3 mb-0">
-            {{ contactStatusMessage }}
-          </p>
-        </template>
+                      class="mb-2" />
+        <v-checkbox
+                    v-model="futureConsultationReminders"
+                    :label="t('notifications.emailConsentLabel')"
+                    :disabled="contactLoading"
+                    density="compact"
+                    hide-details
+                    class="mb-3" />
+        <div class="d-flex flex-wrap ga-2">
+          <v-btn
+                 color="primary"
+                 variant="flat"
+                 :disabled="!canSaveEmail"
+                 :loading="contactLoading"
+                 @click="onSaveEmailSubscription">
+            {{ t('notifications.saveEmailSubscription') }}
+          </v-btn>
+          <v-btn
+                 v-if="hasStoredEmailSubscription"
+                 color="error"
+                 variant="text"
+                 :loading="contactLoading"
+                 @click="onClearEmailSubscription">
+            {{ t('notifications.removeEmailSubscription') }}
+          </v-btn>
+        </div>
+        <p v-if="contactStatusMessage" class="text-caption text-medium-emphasis mt-3 mb-0">
+          {{ contactStatusMessage }}
+        </p>
       </template>
 
       <!-- Error -->
@@ -175,7 +176,7 @@ const props = defineProps<{
   caseAccessToken?: string | null
 }>()
 
-const { t } = useI18n()
+const { t, locale } = useI18n()
 
 const {
   supported,
@@ -206,6 +207,7 @@ const actionMessageType = ref<'success' | 'error'>('success')
 const emailAddress = ref('')
 const futureConsultationReminders = ref(false)
 const hasStoredEmailSubscription = ref(false)
+const confirmationPending = ref(false)
 const contactLoading = ref(false)
 
 const supportAlertType = computed<'info' | 'warning'>(() =>
@@ -220,6 +222,9 @@ const canSaveEmail = computed(() => {
 
 const contactStatusMessage = computed(() => {
   if (!props.caseAccessToken) return ''
+  if (confirmationPending.value && emailAddress.value) {
+    return t('notifications.emailStatusPending', { email: emailAddress.value })
+  }
   if (hasStoredEmailSubscription.value && emailAddress.value) {
     return t('notifications.emailStatusActive', { email: emailAddress.value })
   }
@@ -296,13 +301,15 @@ async function loadPatientNotificationContact() {
   contactLoading.value = true
   try {
     const contact = await getPatientNotificationContact(props.caseAccessToken)
-    emailAddress.value = contact.email ?? ''
+    emailAddress.value = contact.pendingEmail ?? contact.email ?? ''
     futureConsultationReminders.value = contact.futureConsultationReminders
     hasStoredEmailSubscription.value = contact.subscribed
+    confirmationPending.value = contact.confirmationPending
   } catch {
     emailAddress.value = ''
     futureConsultationReminders.value = false
     hasStoredEmailSubscription.value = false
+    confirmationPending.value = false
   } finally {
     contactLoading.value = false
   }
@@ -319,13 +326,17 @@ async function onSaveEmailSubscription() {
       caseAccessToken: props.caseAccessToken,
       email: emailAddress.value.trim(),
       futureConsultationReminders: futureConsultationReminders.value,
+      locale: locale.value,
     })
 
-    emailAddress.value = result.email ?? ''
+    emailAddress.value = result.pendingEmail ?? result.email ?? ''
     futureConsultationReminders.value = result.futureConsultationReminders
     hasStoredEmailSubscription.value = result.subscribed
+    confirmationPending.value = result.confirmationPending
     actionMessageType.value = 'success'
-    actionMessage.value = t('notifications.emailSaveSuccess')
+    actionMessage.value = result.confirmationPending
+      ? t('notifications.emailConfirmationSent')
+      : t('notifications.emailSaveSuccess')
   } catch (err) {
     actionMessageType.value = 'error'
     actionMessage.value = err instanceof Error ? err.message : t('notifications.emailSaveError')
@@ -345,6 +356,7 @@ async function onClearEmailSubscription() {
     emailAddress.value = ''
     futureConsultationReminders.value = false
     hasStoredEmailSubscription.value = false
+    confirmationPending.value = false
     actionMessageType.value = 'success'
     actionMessage.value = t('notifications.emailRemoveSuccess')
   } catch (err) {

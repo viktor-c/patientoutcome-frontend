@@ -8,6 +8,11 @@ const route = useRoute()
 const { t } = useI18n()
 
 const caseAccessToken = computed(() => {
+  const explicitCaseAccessToken = route.query.caseAccessToken
+  if (typeof explicitCaseAccessToken === 'string' && explicitCaseAccessToken.length > 0) {
+    return explicitCaseAccessToken
+  }
+
   const value = route.query.externalCode
   return typeof value === 'string' && value.length > 0 ? value : null
 })

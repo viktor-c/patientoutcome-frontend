@@ -58,13 +58,21 @@ vi.mock('@/composables/usePwaInstall', () => ({
 vi.mock('@/services/notificationApi', () => ({
   getPatientNotificationContact: vi.fn().mockResolvedValue({
     email: null,
+    pendingEmail: null,
     futureConsultationReminders: false,
     subscribed: false,
+    confirmationPending: false,
+    confirmationExpired: false,
+    confirmationExpiresAt: null,
   }),
   savePatientNotificationContact: vi.fn().mockResolvedValue({
-    email: 'patient@example.com',
+    email: null,
+    pendingEmail: 'patient@example.com',
     futureConsultationReminders: true,
-    subscribed: true,
+    subscribed: false,
+    confirmationPending: true,
+    confirmationExpired: false,
+    confirmationExpiresAt: '2026-10-01T12:00:00.000Z',
   }),
   clearPatientNotificationContact: vi.fn().mockResolvedValue(undefined),
 }))
@@ -84,6 +92,7 @@ describe('NotificationPreferences.vue', () => {
           inactiveDescription: 'notifications.inactiveDescription',
           permissionDenied: 'notifications.permissionDenied',
           supportInsecureContext: 'notifications.supportInsecureContext',
+          unsupported: 'notifications.unsupported',
           installDescription: 'notifications.installDescription',
           installBrowserInstructions: 'notifications.installBrowserInstructions',
           installButton: 'notifications.installButton',
@@ -97,8 +106,10 @@ describe('NotificationPreferences.vue', () => {
           saveEmailSubscription: 'notifications.saveEmailSubscription',
           removeEmailSubscription: 'notifications.removeEmailSubscription',
           emailStatusActive: 'notifications.emailStatusActive',
+          emailStatusPending: 'notifications.emailStatusPending',
           emailStatusInactive: 'notifications.emailStatusInactive',
           emailSaveSuccess: 'notifications.emailSaveSuccess',
+          emailConfirmationSent: 'notifications.emailConfirmationSent',
           emailRemoveSuccess: 'notifications.emailRemoveSuccess',
         },
         completionInfo: {
@@ -124,8 +135,12 @@ describe('NotificationPreferences.vue', () => {
       caseId: 'case-1',
       patientId: 'patient-1',
       email: null,
+      pendingEmail: null,
       futureConsultationReminders: false,
       subscribed: false,
+      confirmationPending: false,
+      confirmationExpired: false,
+      confirmationExpiresAt: null,
       consentedAt: null,
       unsubscribedAt: null,
     })
@@ -164,8 +179,12 @@ describe('NotificationPreferences.vue', () => {
       caseId: 'case-1',
       patientId: 'patient-1',
       email: 'patient@example.com',
+      pendingEmail: null,
       futureConsultationReminders: true,
       subscribed: true,
+      confirmationPending: false,
+      confirmationExpired: false,
+      confirmationExpiresAt: null,
       consentedAt: null,
       unsubscribedAt: null,
     })
@@ -183,7 +202,42 @@ describe('NotificationPreferences.vue', () => {
     expect(wrapper.text()).toContain('notifications.emailStatusActive')
   })
 
-  it('saves patient email reminder preferences', async () => {
+  it('allows email reminder setup even when push notifications are unsupported', async () => {
+    supportStatus.value = 'unsupported-browser'
+
+    const wrapper = mount(NotificationPreferences, {
+      props: { caseAccessToken: 'CASE01' },
+      global: {
+        plugins: [vuetify, i18n],
+      },
+    })
+
+    await flushPromises()
+
+    const emailInput = wrapper.find('input[type="email"]')
+    expect(emailInput.exists()).toBe(true)
+
+    await emailInput.setValue('patient@example.com')
+    const checkbox = wrapper.findComponent({ name: 'VCheckbox' })
+    checkbox.vm.$emit('update:modelValue', true)
+    await flushPromises()
+
+    const saveButton = wrapper.findAllComponents({ name: 'VBtn' })
+      .find((button) => button.text().includes('notifications.saveEmailSubscription'))
+
+    expect(saveButton).toBeDefined()
+    await saveButton!.trigger('click')
+    await flushPromises()
+
+    expect(savePatientNotificationContact).toHaveBeenCalledWith({
+      caseAccessToken: 'CASE01',
+      email: 'patient@example.com',
+      futureConsultationReminders: true,
+      locale: 'en',
+    })
+  })
+
+  it('saves patient email reminder preferences and waits for email confirmation', async () => {
     const wrapper = mount(NotificationPreferences, {
       props: { caseAccessToken: 'CASE01' },
       global: {
@@ -208,8 +262,10 @@ describe('NotificationPreferences.vue', () => {
       caseAccessToken: 'CASE01',
       email: 'patient@example.com',
       futureConsultationReminders: true,
+      locale: 'en',
     })
-    expect(wrapper.text()).toContain('notifications.emailSaveSuccess')
+    expect(wrapper.text()).toContain('notifications.emailConfirmationSent')
+    expect(wrapper.text()).toContain('notifications.emailStatusPending')
   })
 
   it('removes the saved patient email reminder preference', async () => {
@@ -217,8 +273,12 @@ describe('NotificationPreferences.vue', () => {
       caseId: 'case-1',
       patientId: 'patient-1',
       email: 'patient@example.com',
+      pendingEmail: null,
       futureConsultationReminders: true,
       subscribed: true,
+      confirmationPending: false,
+      confirmationExpired: false,
+      confirmationExpiresAt: null,
       consentedAt: null,
       unsubscribedAt: null,
     })

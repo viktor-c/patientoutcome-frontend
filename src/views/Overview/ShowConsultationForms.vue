@@ -15,6 +15,23 @@ import { formatDateTimeForLocale } from '@/utils/localeDateTime'
 import type { Form, PatientFormData } from '@/types/index'
 import type { FormSubmissionData, FormComponentContext } from '@/forms/types'
 
+function getAccessCodeValue(accessCode: unknown): string | null {
+  if (!accessCode) return null
+
+  if (typeof accessCode === 'string') {
+    return accessCode
+  }
+
+  if (typeof accessCode === 'object' && accessCode !== null) {
+    const code = (accessCode as Record<string, unknown>).code
+    if (typeof code === 'string' && code.length > 0) {
+      return code
+    }
+  }
+
+  return null
+}
+
 function getRelevantSurgeryDate(consultation: unknown): string | null {
   if (!consultation || typeof consultation !== 'object') return null
 
@@ -89,6 +106,7 @@ const isReviewMode = ref(false) // True when reviewing completed forms
 const isFinalized = ref(false) // True after code is deactivated
 const consultationAccessWindow = ref<ConsultationAccessWindow | null>(null)
 const consultationSurgeryDate = ref<string | null>(null)
+const completionCaseAccessToken = ref<string | null>(externalCode ?? null)
 
 const formContext = computed<FormComponentContext | undefined>(() => {
   if (!consultationSurgeryDate.value) return undefined
@@ -125,6 +143,7 @@ onMounted(async () => {
 
     consultationAccessWindow.value = getConsultationAccessWindowFromConsultation(consultationResponse.responseObject)
     consultationSurgeryDate.value = getRelevantSurgeryDate(consultationResponse.responseObject)
+    completionCaseAccessToken.value = getAccessCodeValue(consultationResponse.responseObject.formAccessCode) ?? externalCode ?? null
 
     // Initialize access logging if using an external code
     if (externalCode) {
@@ -358,7 +377,14 @@ const saveAndGoToNextForm = async () => {
 const startCountdown = () => {
   router.push({
     name: 'completioninfo',
-    query: externalCode ? { externalCode } : undefined,
+    query: completionCaseAccessToken.value
+      ? {
+          ...(externalCode ? { externalCode } : {}),
+          caseAccessToken: completionCaseAccessToken.value,
+        }
+      : externalCode
+        ? { externalCode }
+        : undefined,
   })
 }
 
