@@ -11,9 +11,13 @@ const mockNotify = vi.fn()
 
 const {
   mockGetNotificationAdminStatus,
+  mockClearPatientNotificationContactByCaseId,
+  mockResendPatientNotificationConfirmationByCaseId,
   mockSendManualNotification,
 } = vi.hoisted(() => ({
   mockGetNotificationAdminStatus: vi.fn(),
+  mockClearPatientNotificationContactByCaseId: vi.fn().mockResolvedValue(undefined),
+  mockResendPatientNotificationConfirmationByCaseId: vi.fn().mockResolvedValue(undefined),
   mockSendManualNotification: vi.fn(),
 }))
 
@@ -24,7 +28,9 @@ vi.mock('@/stores/notifierStore', () => ({
 }))
 
 vi.mock('@/services/notificationApi', () => ({
+  clearPatientNotificationContactByCaseId: mockClearPatientNotificationContactByCaseId,
   getNotificationAdminStatus: mockGetNotificationAdminStatus,
+  resendPatientNotificationConfirmationByCaseId: mockResendPatientNotificationConfirmationByCaseId,
   sendManualNotification: mockSendManualNotification,
 }))
 
@@ -90,7 +96,15 @@ describe('NotificationClientsManagement.vue', () => {
               channels: 'Channels',
             },
             subscribed: 'Active',
+            pendingConfirmation: 'Pending confirmation',
+            pendingExpired: 'Confirmation expired',
             inactive: 'Inactive',
+            resendConfirmation: 'Resend confirmation',
+            deleteSubscription: 'Delete subscription',
+            resendConfirmationSuccess: 'Confirmation email resent.',
+            resendConfirmationError: 'Failed to resend confirmation email.',
+            deleteSuccess: 'Notification subscription removed.',
+            deleteError: 'Failed to remove notification subscription.',
             upcomingTitle: 'Upcoming reminders',
             recentTitle: 'Recent reminders',
             upcomingCount: '{count} upcoming',
@@ -141,8 +155,12 @@ describe('NotificationClientsManagement.vue', () => {
         {
           caseId: 'case-1',
           patientId: 'patient-1',
-          email: 'patient@example.com',
+          email: null,
+          pendingEmail: 'patient@example.com',
           futureConsultationReminders: true,
+          confirmationPending: true,
+          confirmationExpired: false,
+          confirmationExpiresAt: '2026-10-01T08:00:00.000Z',
           consentedAt: '2026-09-20T08:00:00.000Z',
           unsubscribedAt: null,
         },
@@ -198,6 +216,8 @@ describe('NotificationClientsManagement.vue', () => {
     expect(wrapper.text()).toContain('Showing 1-10 of 12')
     expect(wrapper.text()).toContain('Browser 1')
     expect(wrapper.text()).not.toContain('Browser 12')
+    expect(wrapper.text()).toContain('patient@example.com')
+    expect(wrapper.text()).toContain('Pending confirmation')
 
     const sendButton = wrapper.findAllComponents({ name: 'VBtn' })
       .find((button) => button.text().includes('Send now'))
@@ -237,5 +257,32 @@ describe('NotificationClientsManagement.vue', () => {
     expect(pushSpy).toHaveBeenCalledWith({ name: 'patientoverview', params: { patientId: 'patient-1' } })
     expect(pushSpy).toHaveBeenCalledWith({ name: 'patientcaselanding', params: { caseId: 'case-1' } })
     expect(pushSpy).toHaveBeenCalledWith({ name: 'consultationoverview', params: { consultationId: 'consult-1' } })
+  })
+
+  it('allows admins to resend pending confirmations and delete subscriptions', async () => {
+    const wrapper = mount(NotificationClientsManagement, {
+      global: {
+        plugins: [vuetify, i18n, router],
+      },
+    })
+
+    await flushPromises()
+
+    const resendButton = wrapper.findAllComponents({ name: 'VBtn' })
+      .find((button) => button.text().includes('Resend confirmation'))
+    const deleteButton = wrapper.findAllComponents({ name: 'VBtn' })
+      .find((button) => button.text().includes('Delete subscription'))
+
+    await resendButton!.trigger('click')
+    await flushPromises()
+
+    expect(mockResendPatientNotificationConfirmationByCaseId).toHaveBeenCalledWith('case-1')
+    expect(mockNotify).toHaveBeenCalledWith('Confirmation email resent.', 'success')
+
+    await deleteButton!.trigger('click')
+    await flushPromises()
+
+    expect(mockClearPatientNotificationContactByCaseId).toHaveBeenCalledWith('case-1')
+    expect(mockNotify).toHaveBeenCalledWith('Notification subscription removed.', 'success')
   })
 })

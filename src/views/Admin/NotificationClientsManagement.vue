@@ -4,7 +4,9 @@ import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { useNotifierStore } from '@/stores/notifierStore'
 import {
+  clearPatientNotificationContactByCaseId,
   getNotificationAdminStatus,
+  resendPatientNotificationConfirmationByCaseId,
   sendManualNotification,
   type NotificationAdminStatus,
   type NotificationEmailContactSummary,
@@ -93,6 +95,7 @@ const filteredEmailContacts = computed(() => {
   return (status.value?.emailContacts || []).filter((contact) =>
     matchesSearch([
       contact.email,
+      contact.pendingEmail,
       contact.patientId,
       contact.caseId,
     ]),
@@ -168,6 +171,33 @@ const loadStatus = async () => {
   }
 }
 
+const manageEmailSubscription = async (
+  contact: NotificationEmailContactSummary,
+  action: 'delete' | 'resend-confirmation',
+) => {
+  actionLoadingKey.value = `${action}:${contact.caseId}`
+
+  try {
+    if (action === 'delete') {
+      await clearPatientNotificationContactByCaseId(contact.caseId)
+      notifierStore.notify(t('admin.notificationClients.deleteSuccess'), 'success')
+    } else {
+      await resendPatientNotificationConfirmationByCaseId(contact.caseId)
+      notifierStore.notify(t('admin.notificationClients.resendConfirmationSuccess'), 'success')
+    }
+
+    await loadStatus()
+  } catch (error) {
+    const fallbackKey = action === 'delete'
+      ? 'admin.notificationClients.deleteError'
+      : 'admin.notificationClients.resendConfirmationError'
+    const message = error instanceof Error ? error.message : t(fallbackKey)
+    notifierStore.notify(message, 'error')
+  } finally {
+    actionLoadingKey.value = null
+  }
+}
+
 const sendNotification = async (item: NotificationStatusItem) => {
   actionLoadingKey.value = `${item.consultationId}:${item.type}`
   try {
@@ -207,10 +237,16 @@ const openConsultation = (consultationId: string | null) => {
 }
 
 const emailSubscriptionLabel = (contact: NotificationEmailContactSummary) => (
-  contact.futureConsultationReminders && !contact.unsubscribedAt
-    ? t('admin.notificationClients.subscribed')
-    : t('admin.notificationClients.inactive')
+  contact.confirmationPending
+    ? (contact.confirmationExpired
+      ? t('admin.notificationClients.pendingExpired')
+      : t('admin.notificationClients.pendingConfirmation'))
+    : contact.futureConsultationReminders && !contact.unsubscribedAt
+      ? t('admin.notificationClients.subscribed')
+      : t('admin.notificationClients.inactive')
 )
+
+const emailDisplay = (contact: NotificationEmailContactSummary) => contact.pendingEmail || contact.email || '-'
 
 const channelSummary = (item: NotificationStatusItem) => [
   item.channels.email ? t('admin.notificationClients.emailChannel') : null,
@@ -315,7 +351,7 @@ onMounted(async () => {
                       hide-default-footer
                       :loading="loading"
                       item-key="caseId">
-          <template #item.email="{ item }">{{ item.email || '-' }}</template>
+          <template #item.email="{ item }">{{ emailDisplay(item) }}</template>
           <template #item.futureConsultationReminders="{ item }">{{ emailSubscriptionLabel(item) }}</template>
           <template #item.consentedAt="{ item }">{{ formatDateTime(item.consentedAt) }}</template>
           <template #item.unsubscribedAt="{ item }">{{ formatDateTime(item.unsubscribedAt) }}</template>
@@ -323,6 +359,23 @@ onMounted(async () => {
             <div class="d-flex ga-1 flex-wrap">
               <v-btn size="small" variant="text" @click="openPatient(item.patientId)">{{ t('common.patient') }}</v-btn>
               <v-btn size="small" variant="text" @click="openCase(item.caseId)">{{ t('common.case') }}</v-btn>
+              <v-btn
+                     v-if="item.confirmationPending"
+                     size="small"
+                     color="secondary"
+                     variant="outlined"
+                     :loading="actionLoadingKey === `resend-confirmation:${item.caseId}`"
+                     @click="manageEmailSubscription(item, 'resend-confirmation')">
+                {{ t('admin.notificationClients.resendConfirmation') }}
+              </v-btn>
+              <v-btn
+                     size="small"
+                     color="error"
+                     variant="text"
+                     :loading="actionLoadingKey === `delete:${item.caseId}`"
+                     @click="manageEmailSubscription(item, 'delete')">
+                {{ t('admin.notificationClients.deleteSubscription') }}
+              </v-btn>
             </div>
           </template>
           <template #bottom>
