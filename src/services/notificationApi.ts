@@ -6,8 +6,12 @@ export interface PatientNotificationContact {
   caseId: string
   patientId: string
   email: string | null
+  pendingEmail: string | null
   futureConsultationReminders: boolean
   subscribed: boolean
+  confirmationPending: boolean
+  confirmationExpired: boolean
+  confirmationExpiresAt: string | null
   consentedAt: string | null
   unsubscribedAt: string | null
 }
@@ -31,7 +35,11 @@ export interface NotificationEmailContactSummary {
   caseId: string
   patientId: string
   email: string | null
+  pendingEmail: string | null
   futureConsultationReminders: boolean
+  confirmationPending: boolean
+  confirmationExpired: boolean
+  confirmationExpiresAt: string | null
   consentedAt: string | null
   unsubscribedAt: string | null
 }
@@ -99,6 +107,7 @@ export async function savePatientNotificationContact(payload: {
   caseAccessToken: string
   email: string
   futureConsultationReminders: boolean
+  locale?: string
 }): Promise<PatientNotificationContact> {
   const response = await fetch(`${apiBasePath}/notifications/patient-contact`, {
     method: 'POST',
@@ -135,6 +144,24 @@ export async function getNotificationAdminStatus(params: {
   })
 
   return parseJsonResponse<NotificationAdminStatus>(response)
+}
+
+export async function resendPatientNotificationConfirmationByCaseId(caseId: string): Promise<void> {
+  const response = await fetch(`${apiBasePath}/notifications/admin/patient-contact/${encodeURIComponent(caseId)}/resend-confirmation`, {
+    method: 'POST',
+    credentials: 'include',
+  })
+
+  await parseJsonResponse<{ message: string }>(response)
+}
+
+export async function clearPatientNotificationContactByCaseId(caseId: string): Promise<void> {
+  const response = await fetch(`${apiBasePath}/notifications/admin/patient-contact/${encodeURIComponent(caseId)}`, {
+    method: 'DELETE',
+    credentials: 'include',
+  })
+
+  await parseJsonResponse<void>(response)
 }
 
 export async function sendManualNotification(payload: {
